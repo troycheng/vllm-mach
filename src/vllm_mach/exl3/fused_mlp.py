@@ -34,14 +34,30 @@ def _single_down_weight(layer: Any, rows: int) -> Any | None:
     return next(iter(state.weights.values()))
 
 
-def _try_fused_forward(module: Any, x: torch.Tensor) -> Any:
-    if not enabled() or x.ndim != 2 or x.dtype != torch.bfloat16:
+def _try_fused_forward(module: Any, x: Any) -> Any:
+    if not enabled():
         return _NOT_APPLICABLE
+
+    packed_input = False
+    if isinstance(x, torch.Tensor):
+        if x.ndim != 2 or x.dtype != torch.bfloat16:
+            return _NOT_APPLICABLE
+        rows = int(x.shape[0])
+    else:
+        try:
+            runtime = __import__("mxfp6")
+            packed_type = runtime.MXFP8Tensor
+        except (AttributeError, ImportError):
+            return _NOT_APPLICABLE
+        if not isinstance(x, packed_type):
+            return _NOT_APPLICABLE
+        packed_input = True
+        rows = int(x.rows)
 
     gate_up_layer = module.gate_up_proj
     down_layer = module.down_proj
-    gate_up_state = mxfp6_hybrid.state_for_rows(gate_up_layer, int(x.shape[0]))
-    down_weight = _single_down_weight(down_layer, int(x.shape[0]))
+    gate_up_state = mxfp6_hybrid.state_for_rows(gate_up_layer, rows)
+    down_weight = _single_down_weight(down_layer, rows)
     eligible = (
         gate_up_state is not None
         and gate_up_state.merged_weight is not None
@@ -54,8 +70,17 @@ def _try_fused_forward(module: Any, x: torch.Tensor) -> Any:
     if not eligible:
         return _NOT_APPLICABLE
 
-    gate_up_result = gate_up_layer(x)
-    gate_up = gate_up_result[0] if isinstance(gate_up_result, tuple) else gate_up_result
+    if packed_input:
+        gate_up = mxfp6_hybrid.apply_mxfp8_weight(
+            x, gate_up_state.merged_weight
+        )
+    else:
+        gate_up_result = gate_up_layer(x)
+        gate_up = (
+            gate_up_result[0]
+            if isinstance(gate_up_result, tuple)
+            else gate_up_result
+        )
     activation = mxfp6_hybrid.fused_silu_mxfp8(gate_up)
     output = mxfp6_hybrid.apply_mxfp8_weight(activation, down_weight)
     if bool(getattr(down_layer, "reduce_results", False)) and int(

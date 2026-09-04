@@ -14,3 +14,6 @@ remains subject to the BSD 3-Clause License.
 
 The MXFP6 workspace warmup integration follows the public mxfp6_sm120 vLLM
 example and is adapted as Apache-2.0 framework glue for vLLM Mach.
+
+The version-locked FlashInfer profile contains a small patch derived from the
+FlashInfer project, which is licensed under the Apache License, Version 2.0.

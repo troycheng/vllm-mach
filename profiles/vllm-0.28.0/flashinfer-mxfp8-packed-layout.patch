@@ -1,0 +1,64 @@
+diff --git a/flashinfer/data/include/flashinfer/comm/trtllm_allreduce_fusion.cuh b/flashinfer/data/include/flashinfer/comm/trtllm_allreduce_fusion.cuh
+--- a/flashinfer/data/include/flashinfer/comm/trtllm_allreduce_fusion.cuh
++++ b/flashinfer/data/include/flashinfer/comm/trtllm_allreduce_fusion.cuh
+@@ -1180,7 +1180,9 @@
+ 
+       // compute UE8M0 scale and quantize to FP8
+       auto compute_ue8m0_scale = [](float group_absmax) -> float {
+-        float y_s = fmaxf(group_absmax / FP8_E4M3_MAX, 1e-10f);
++        // Preserve the existing MXFP6 SM120 quantizer's UE8M0 rule, including
++        // zero and tiny groups, instead of inheriting the generic FP8 floor.
++        float y_s = fmaxf(group_absmax / FP8_E4M3_MAX, 1e-30f);
+         unsigned int y_s_bits = __float_as_uint(y_s);
+         if (y_s_bits & 0x7fffff) {
+           y_s_bits = (y_s_bits + 0x800000) & 0x7f800000;
+@@ -1206,37 +1208,22 @@
+       auto write_group_scale = [&](int group_idx_in_row, float group_absmax) {
+         float y_s = compute_ue8m0_scale(group_absmax);
+         int groups_per_row = m_params.hidden_dim / group_size;
+-        int k_num_packed = (groups_per_row + 3) / 4;
+-        int token_num = m_params.size / m_params.hidden_dim;
+-        int pack_idx = group_idx_in_row / 4;
+-        int pos = group_idx_in_row % 4;
+-        int elem_idx = pack_idx * m_params.tma_aligned_mn + token_id;
++        // Match cutlass::detail::Sm1xxBlockScaledConfig<32>::SfKMajorAtom.
++        // One 512-byte atom stores 128 rows x four consecutive K groups.
++        // The experiment is admitted only for groups_per_row % 4 == 0.
++        int k_atom = group_idx_in_row / 4;
++        int k_in_atom = group_idx_in_row % 4;
++        int token_atom = token_id / 128;
++        int token_in_atom = token_id % 128;
++        int k_atoms_per_row = groups_per_row / 4;
++        int scale_offset = token_atom * k_atoms_per_row * 512 + k_atom * 512 +
++                           (token_in_atom % 32) * 16 + (token_in_atom / 32) * 4 +
++                           k_in_atom;
+ 
+         // Write valid exponent
+         unsigned int bits = __float_as_uint(y_s);
+         uint8_t exponent = static_cast<uint8_t>((bits >> 23u) & 0xffu);
+-        reinterpret_cast<uint8_t*>(m_params.scale_out)[elem_idx * 4 + pos] = exponent;
+-
+-        // K-padding: last valid group zeros trailing bytes in its pack
+-        if (group_idx_in_row == groups_per_row - 1) {
+-          for (int p = pos + 1; p < 4; p++) {
+-            reinterpret_cast<uint8_t*>(m_params.scale_out)[elem_idx * 4 + p] = 0;
+-          }
+-        }
+-
+-        // MN-padding: on last valid token, first group zeros all packs
+-        // for padding tokens (token_num .. tma_aligned_mn - 1).
+-        // Skip the last packed column (pk = k_num_packed - 1) because
+-        // scale_out storage is (token_num + (k_num_packed-1)*tma_aligned_mn)
+-        // elements — the last column only has token_num rows allocated.
+-        if (token_id == token_num - 1 && group_idx_in_row == 0) {
+-          for (int pad_t = token_num; pad_t < m_params.tma_aligned_mn; pad_t++) {
+-            for (int pk = 0; pk < k_num_packed - 1; pk++) {
+-              int pad_elem = pk * m_params.tma_aligned_mn + pad_t;
+-              reinterpret_cast<uint32_t*>(m_params.scale_out)[pad_elem] = 0;
+-            }
+-          }
+-        }
++        reinterpret_cast<uint8_t*>(m_params.scale_out)[scale_offset] = exponent;
+       };
+ 
+       if (use_warp_shuffle) {

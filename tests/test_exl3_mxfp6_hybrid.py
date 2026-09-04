@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import sys
 from types import SimpleNamespace
 
 import pytest
 import torch
 
+from vllm_mach.exl3 import fused_mlp
 from vllm_mach.exl3 import mxfp6_hybrid as hybrid
 from vllm_mach.exl3.dense_adapter import Exl3Config, Exl3LinearMethod
-from vllm_mach.exl3 import fused_mlp
 
 
 class _TensorMap:
@@ -311,6 +312,72 @@ def test_fused_mlp_uses_packed_activation(monkeypatch) -> None:
 
     assert torch.all(output == 3)
     assert seen == [(packed, weight)]
+
+
+def test_fused_mlp_consumes_packed_input_without_requantizing(monkeypatch) -> None:
+    monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_PROFILE)
+
+    class _Packed:
+        def __init__(self, rows, k):
+            self.rows = rows
+            self.k = k
+
+    monkeypatch.setitem(sys.modules, "mxfp6", SimpleNamespace(MXFP8Tensor=_Packed))
+    gate_up_weight = hybrid.HybridPackedWeight(
+        torch.empty(0), torch.empty(0), rows=32, k=8
+    )
+    down_weight = hybrid.HybridPackedWeight(
+        torch.empty(0), torch.empty(0), rows=8, k=16
+    )
+
+    class _Linear:
+        bias = None
+
+        def __init__(self, state):
+            self._mach_exl3_mxfp6 = state
+
+        def __call__(self, _x):
+            raise AssertionError("packed input must bypass the BF16 linear boundary")
+
+    module = SimpleNamespace(
+        gate_up_proj=_Linear(
+            hybrid.HybridState(
+                route=hybrid.HybridRoute.ALL_ROWS,
+                weights={},
+                merged_weight=gate_up_weight,
+            )
+        ),
+        down_proj=_Linear(
+            hybrid.HybridState(
+                route=hybrid.HybridRoute.ALL_ROWS,
+                weights={0: down_weight},
+            )
+        ),
+        expert_gate=None,
+    )
+    module.down_proj.input_is_parallel = True
+    module.down_proj.reduce_results = False
+    module.down_proj.tp_size = 2
+    packed_input = _Packed(rows=4, k=8)
+    packed_activation = _Packed(rows=4, k=16)
+    calls = []
+
+    def apply(activation, weight):
+        calls.append((activation, weight))
+        if weight is gate_up_weight:
+            return torch.ones((4, 32), dtype=torch.bfloat16)
+        return torch.full((4, 8), 3, dtype=torch.bfloat16)
+
+    monkeypatch.setattr(hybrid, "apply_mxfp8_weight", apply)
+    monkeypatch.setattr(hybrid, "fused_silu_mxfp8", lambda _value: packed_activation)
+
+    output = fused_mlp._try_fused_forward(module, packed_input)
+
+    assert torch.all(output == 3)
+    assert calls == [
+        (packed_input, gate_up_weight),
+        (packed_activation, down_weight),
+    ]
 
 
 def test_fused_mlp_falls_back_outside_dense_hybrid_contract(monkeypatch) -> None:

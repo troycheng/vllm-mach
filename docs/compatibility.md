@@ -14,4 +14,8 @@ The runtime includes the tested EXL3 Dense path, an alpha MXFP6 Dense bridge, an
 
 For eligible Dense MLPs, the profile uses `mxfp6-sm120` to fuse SiLU/mul with packed MXFP8 activation quantization before the MXFP6 down projection. The hook requires BF16 two-dimensional input, bias-free Hybrid gate/up and down projections, and the standard TP-parallel reduction contract. Other modules fall back to their original vLLM forward method. Set `VLLM_MACH_EXL3_MXFP6_FUSED_MLP=0` to disable this fusion for diagnosis.
 
-The profile does not cover `lm_head`, routed MoE, or GDN kernel replacement. Other models, tensor-parallel layouts, vLLM versions, and GPU architectures remain unverified. The full public `mxfp6_sm120` vLLM example remains the reference for its additional patches.
+`VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=1` enables a narrower Qwen3.8-27B decode path. It defers the attention and MLP tensor-parallel reductions, then uses FlashInfer to combine AllReduce, residual add, Gemma RMSNorm, and per-token-group MXFP8 quantization. The packed activation is passed directly to the MXFP6 gate/up projection. Eligibility is limited to TP2, PP1, non-speculative BF16 execution, hidden size 5120, and one to 32 rows. Other shapes use the ordinary fused AllReduce/RMSNorm result.
+
+This path supports the FlashInfer headers shipped by `flashinfer-python==0.6.16.post3` and `0.6.18` after applying the matching patches in the vLLM 0.28 runtime profile. The plugin checks the final patched header SHA before dispatch. This is a correctness boundary: an unpatched or different header is rejected instead of interpreting an incompatible scale layout as MXFP8 input.
+
+The profile does not cover `lm_head`, routed MoE, or GDN kernel replacement. Other models, tensor-parallel layouts, vLLM versions, FlashInfer versions, and GPU architectures remain unverified. The full public `mxfp6_sm120` vLLM example remains the reference for its additional patches.

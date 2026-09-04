@@ -1,8 +1,10 @@
-# vLLM Mach
+<p align="center">
+  <img src="assets/logo/vllm-mach-horizontal.png" alt="vLLM Mach" width="720">
+</p>
 
 vLLM Mach is an independent performance engineering layer for vLLM. It focuses on end-to-end serving performance under real workload shapes while keeping model fidelity explicit and testable. Qwen is the current model focus; EXL3 and MXFP6 are execution backends, not the boundary of the project.
 
-The `0.1.0a1` preview contains an out-of-tree EXL3 provider for `vllm==0.28.0` and two optional ways to use the external `mxfp6-sm120` runtime. The native Dense bridge connects vLLM's OCP-MX selector to that runtime. A separate, opt-in profile converts selected EXL3 projections to MXFP6 when the model is loaded. The CUDA implementation stays in `mxfp6-sm120`; it is not copied into this repository.
+The `0.1.0a2` preview contains an out-of-tree EXL3 provider for `vllm==0.28.0` and two optional ways to use the external `mxfp6-sm120` runtime. The native Dense bridge connects vLLM's OCP-MX selector to that runtime. A separate, opt-in profile converts selected EXL3 projections to MXFP6 when the model is loaded. The CUDA implementation stays in `mxfp6-sm120`; it is not copied into this repository.
 
 ## Current support
 
@@ -12,7 +14,7 @@ Native execution requires an ExLlamaV3 build exporting `exl3_gemm` and `exl3_mge
 
 The optional MXFP6 path handles static MXFP6 E3M2 weights with dynamic MXFP8 E4M3 activations through `mxfp6-sm120==0.2.1`. The selector is restricted to SM120 and leaves vLLM's emulation kernel in place for other supported MXFP6 layouts. The first bridge covers Dense layers, the `mxfp8_e4m3` Quark mapping (the checkpoint metadata spelling is `fp8_e4m3`), and Stream-K workspace warmup through a version-locked vLLM runtime profile. It does not include routed MoE or GDN kernel changes; the complete public reproducer in [mxfp6_sm120](https://github.com/Nekofish-L/mxfp6_sm120/tree/main/examples/vllm) remains the reference for those paths.
 
-The selective EXL3/MXFP6 profile is disabled by default. Setting `VLLM_MACH_EXL3_MXFP6_PROFILE=qwen38-27b` reconstructs the selected rank-local EXL3 shards after tensor-parallel slicing and quantizes the copies during model loading. `mlp.gate_up_proj`, `mlp.down_proj`, `linear_attn.out_proj`, and `self_attn.o_proj` use MXFP6 for every row count. The Dense MLP path fuses SiLU/mul with the packed MXFP8 activation consumed by the MXFP6 down projection. `linear_attn.in_proj_qkvz` and `self_attn.qkv_proj` use MXFP6 only for prefill calls with at least 128 rows; their decode path remains EXL3. `lm_head` and unmatched projections also remain EXL3. The profile requires the validated Qwen3.8-27B Dense geometry, TP2/PP1, SM120, and `mxfp6-sm120==0.2.1`. It does not rewrite the checkpoint.
+The selective EXL3/MXFP6 profile is disabled by default. Setting `VLLM_MACH_EXL3_MXFP6_PROFILE=qwen38-27b` reconstructs the selected rank-local EXL3 shards after tensor-parallel slicing and quantizes the copies during model loading. `mlp.gate_up_proj`, `mlp.down_proj`, `linear_attn.out_proj`, and `self_attn.o_proj` use MXFP6 for every row count. The Dense MLP path fuses SiLU/mul with the packed MXFP8 activation consumed by the MXFP6 down projection. An additional opt-in path fuses the preceding TP2 AllReduce, residual add, Gemma RMSNorm, and packed MXFP8 quantization, so the gate/up projection can consume the packed activation directly. `linear_attn.in_proj_qkvz` and `self_attn.qkv_proj` use MXFP6 only for prefill calls with at least 128 rows; their decode path remains EXL3. `lm_head` and unmatched projections also remain EXL3. The profile requires the validated Qwen3.8-27B Dense geometry, TP2/PP1, SM120, and `mxfp6-sm120==0.2.1`. It does not rewrite the checkpoint.
 
 ## Install
 
@@ -28,10 +30,7 @@ CUDA environment as vLLM, then install that wheel before vLLM Mach. The bridge
 checks its version and ABI at runtime and fails closed when the native library
 is not usable.
 
-Stream-K CUDA Graph execution also requires the version-locked
-[`vLLM 0.28 runtime profile`](profiles/vllm-0.28.0/README.md). The profile adds
-workspace warmup calls at the two lifecycle points that vLLM 0.28 does not
-provide as plugin hooks.
+Stream-K CUDA Graph execution and the optional fused collective path require the version-locked [`vLLM 0.28 runtime profile`](profiles/vllm-0.28.0/README.md). The profile contains the lifecycle calls needed for workspace warmup and the two source patches needed for FlashInfer AR/RMSNorm/MXFP8. The fused collective remains disabled unless its environment variable is set.
 
 Build a wheel with:
 
@@ -54,6 +53,8 @@ export VLLM_EXL3_GRAPH_DECODE=1
 export VLLM_MACH_EXL3_MXFP6_PROFILE=qwen38-27b
 # Optional diagnostic fallback to the separate SiLU and MXFP8 operations:
 # export VLLM_MACH_EXL3_MXFP6_FUSED_MLP=0
+# Optional FlashInfer AR/RMSNorm/MXFP8 path; requires the matching runtime profile:
+# export VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=1
 export VLLM_EXL3_B12X_MIN_M=128
 export VLLM_EXL3_B12X_N_RANGE=5120-36864
 export VLLM_EXL3_B12X_ANY_BITS=1
@@ -70,6 +71,6 @@ These environment variables describe the validated profile, not universal defaul
 
 ## Development status
 
-The alpha MXFP6 integration covers the native Dense selector and the explicit Qwen3.8-27B EXL3/MXFP6 profile described above. Both use the same graph-safe custom operator and workspace lifecycle. The selective profile and its fused Dense MLP activation path have passed their native operation-boundary checks; the profile has also passed TP2 eager and FULL_DECODE_ONLY graph serving gates. No throughput claim is attached to this preview. Routed MoE, fused GDN/collective changes, additional models, and additional GPU architectures still need their own correctness tests and same-image end-to-end comparisons before support is declared.
+The alpha MXFP6 integration covers the native Dense selector and the explicit Qwen3.8-27B EXL3/MXFP6 profile described above. Both use the same graph-safe custom operator and workspace lifecycle. The selective profile, fused Dense MLP activation, and optional FlashInfer AR/RMSNorm/MXFP8 path have operation-boundary and TP2 serving evidence under the documented profile. No general throughput claim is attached to this preview. Routed MoE, GDN kernel replacement, additional models, and additional GPU architectures still need their own correctness tests and same-image end-to-end comparisons before support is declared.
 
 See [compatibility](docs/compatibility.md) for the version boundary and [validation](docs/validation.md) for the completed gates. vLLM Mach is not affiliated with or endorsed by the vLLM project.
