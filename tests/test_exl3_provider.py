@@ -21,9 +21,9 @@ from vllm.platforms import PlatformEnum
 from vllm_mach.exl3 import dense_adapter
 from vllm_mach.exl3.dense_adapter import Exl3Config, Exl3LinearMethod
 from vllm_mach.exl3.hadamard import hadamard_fold_weight_chunked
-from vllm_mach.exl3.plugin import register
 from vllm_mach.mxfp6 import Mxfp6Sm120LinearKernel, register_dense_kernel
 from vllm_mach.mxfp6 import dense as mxfp6_dense
+from vllm_mach.plugin import register
 
 
 def _storage() -> dict[str, object]:
@@ -134,6 +134,22 @@ def test_mxfp6_registration_can_be_repeated_without_duplicate_kernel() -> None:
         kernels[:] = original
 
 
+def test_mxfp6_registration_does_not_import_optional_runtime(monkeypatch) -> None:
+    kernels = linear_kernels._POSSIBLE_MXFP6_KERNELS[PlatformEnum.CUDA]
+    original = list(kernels)
+
+    def unexpected_import():
+        raise AssertionError("registration imported mxfp6")
+
+    monkeypatch.setattr("vllm_mach.mxfp6._optional_runtime_is_installed", lambda: True)
+    monkeypatch.setattr(mxfp6_dense, "_import_mxfp6", unexpected_import)
+    try:
+        assert register_dense_kernel()
+        assert kernels[0] is Mxfp6Sm120LinearKernel
+    finally:
+        kernels[:] = original
+
+
 def test_mxfp6_activation_mapping_is_idempotent(monkeypatch) -> None:
     from vllm.model_executor.layers.quantization.quark.schemes import (
         quark_ocp_mx,
@@ -147,10 +163,7 @@ def test_mxfp6_activation_mapping_is_idempotent(monkeypatch) -> None:
     try:
         assert mxfp6_dense.register_vllm_mxfp8_activation()
         assert mxfp6_dense.register_vllm_mxfp8_activation()
-        assert (
-            quark_ocp_mx._ACTIVATION_QUANT_KEY_MAP["mxfp8_e4m3"]
-            == kMxfp8Dynamic
-        )
+        assert quark_ocp_mx._ACTIVATION_QUANT_KEY_MAP["mxfp8_e4m3"] == kMxfp8Dynamic
     finally:
         if original is None:
             quark_ocp_mx._ACTIVATION_QUANT_KEY_MAP.pop("mxfp8_e4m3", None)
@@ -198,9 +211,7 @@ def test_mxfp6_native_dense_matches_reference() -> None:
         pytest.skip("mxfp6-sm120 is unavailable")
 
     rows, input_features = 128, 128
-    weights = torch.randn(
-        (rows, input_features), device="cuda", dtype=torch.float16
-    )
+    weights = torch.randn((rows, input_features), device="cuda", dtype=torch.float16)
     packed = mxfp6.quantize_mxfp6(weights)
     layer = SimpleNamespace(
         weight=packed.values.reshape(rows, -1).contiguous(),
@@ -212,9 +223,7 @@ def test_mxfp6_native_dense_matches_reference() -> None:
         MxFp6LinearLayerConfig(kMxfp6E3M2Static, kMxfp8Dynamic)
     )
     kernel.process_weights_after_loading(layer)
-    x = torch.randn(
-        (4, input_features), device="cuda", dtype=torch.bfloat16
-    )
+    x = torch.randn((4, input_features), device="cuda", dtype=torch.bfloat16)
 
     actual = kernel.apply_weights(layer, x)
     reference = mxfp6.gemm_from_float(
@@ -230,14 +239,42 @@ def test_mxfp6_native_dense_matches_reference() -> None:
     torch.testing.assert_close(actual, reference, rtol=0, atol=0)
 
 
+def test_mxfp6_rejects_invalid_packed_shape_before_scale_packing(
+    monkeypatch,
+) -> None:
+    pack_called = False
+
+    def pack_scales(scales):
+        nonlocal pack_called
+        pack_called = True
+        return scales
+
+    monkeypatch.setattr(
+        mxfp6_dense,
+        "_import_mxfp6",
+        lambda: SimpleNamespace(pack_scales=pack_scales),
+    )
+    layer = SimpleNamespace(
+        weight=torch.empty((7, 96), dtype=torch.uint8),
+        weight_scale=torch.empty((7, 4), dtype=torch.uint8),
+    )
+    kernel = object.__new__(Mxfp6Sm120LinearKernel)
+
+    with pytest.raises(ValueError, match="output features divisible by 8"):
+        kernel.process_weights_after_loading(layer)
+    assert not pack_called
+
+
 def test_checkpoint_detection_and_metadata_validation() -> None:
     storage = _storage()
-    assert Exl3Config.override_quantization_method(
-        {"tensor_storage": storage}, None
-    ) == "exl3"
-    assert Exl3Config.override_quantization_method(
-        {"tensor_storage": storage}, "awq"
-    ) is None
+    assert (
+        Exl3Config.override_quantization_method({"tensor_storage": storage}, None)
+        == "exl3"
+    )
+    assert (
+        Exl3Config.override_quantization_method({"tensor_storage": storage}, "awq")
+        is None
+    )
 
     config = Exl3Config.from_config({"bits": 5.5, "tensor_storage": storage})
     config.maybe_update_config(

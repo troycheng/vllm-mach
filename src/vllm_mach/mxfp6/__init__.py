@@ -2,18 +2,20 @@
 
 """Optional native MXFP6 backends for vLLM Mach.
 
-The package is deliberately import-light. Importing this module does not
-import ``mxfp6`` or load a CUDA shared library. The optional module is checked
-only when the registration wrapper is called to enable the public
-``fp8_e4m3`` spelling; the shared library is loaded only when vLLM asks the
-kernel selector about a concrete device.
+The package is deliberately import-light. Importing or registering this module
+does not import ``mxfp6`` or load a CUDA shared library. Registration checks
+only installed distribution metadata; the shared library is loaded when vLLM
+asks the kernel selector about a concrete device.
 """
 
 from __future__ import annotations
 
 import importlib
 import importlib.util
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
+
+_SUPPORTED_RUNTIME_VERSION = "0.2.1"
 
 _DENSE_EXPORTS = {
     "Mxfp6Sm120LinearKernel",
@@ -24,8 +26,11 @@ _DENSE_EXPORTS = {
 
 def _optional_runtime_is_installed() -> bool:
     try:
-        return importlib.util.find_spec("mxfp6") is not None
-    except (ImportError, ModuleNotFoundError, ValueError):
+        return (
+            importlib.util.find_spec("mxfp6") is not None
+            and version("mxfp6-sm120") == _SUPPORTED_RUNTIME_VERSION
+        )
+    except (ImportError, ModuleNotFoundError, PackageNotFoundError, ValueError):
         return False
 
 
@@ -45,6 +50,7 @@ def __getattr__(name: str) -> Any:
     value = getattr(dense, name)
     globals()[name] = value
     return value
+
 
 __all__ = [
     "Mxfp6Sm120LinearKernel",

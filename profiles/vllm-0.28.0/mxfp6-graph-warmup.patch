@@ -1,0 +1,78 @@
+diff --git a/vllm/model_executor/warmup/kernel_warmup.py b/vllm/model_executor/warmup/kernel_warmup.py
+--- a/vllm/model_executor/warmup/kernel_warmup.py
++++ b/vllm/model_executor/warmup/kernel_warmup.py
+@@ -160,6 +160,14 @@ def kernel_warmup(worker: "Worker", *, process_local_only: bool = False):
+ 
+     b12x_warmup(worker, cudagraph_capture_sizes)
+ 
++    from vllm_mach.mxfp6.warmup import warmup_mxfp6_sm120
++
++    warmup_mxfp6_sm120(
++        worker.get_model(),
++        [1, worker.scheduler_config.max_num_batched_tokens, *cudagraph_capture_sizes],
++        worker.model_config.dtype,
++    )
++
+     minimax_m3_msa_warmup(worker)
+ 
+     enable_flashinfer_autotune = (
+diff --git a/vllm/v1/worker/gpu/cudagraph_utils.py b/vllm/v1/worker/gpu/cudagraph_utils.py
+--- a/vllm/v1/worker/gpu/cudagraph_utils.py
++++ b/vllm/v1/worker/gpu/cudagraph_utils.py
+@@ -308,6 +308,7 @@ class CudaGraphManager:
+         self,
+         create_forward_fn: CreateForwardFn,
+         progress_bar_desc: str = "Capturing CUDA graphs",
++        capture_stream_warmup: Callable[[], None] | None = None,
+     ) -> None:
+         """Capture CUDA graphs.
+ 
+@@ -319,6 +320,9 @@ class CudaGraphManager:
+                 metadata during warmup.
+         """
+         with graph_capture(device=self.device):
++            if capture_stream_warmup is not None:
++                capture_stream_warmup()
++
+             # Capture in order: PIECEWISE first, then FULL. PIECEWISE has larger
+             # activations so FULL activations should fit in already allocated
+             # buffers in the graph pool.
+@@ -362,7 +366,11 @@ class CudaGraphManager:
+                             set_graph_pool_id(self.pool)
+                         else:
+                             set_graph_pool_id(current_platform.graph_pool_handle())
+-                        with torch.cuda.graph(graph, self.pool):
++                        with torch.cuda.graph(
++                            graph,
++                            self.pool,
++                            stream=torch.cuda.current_stream(),
++                        ):
+                             forward_fn(CUDAGraphMode.NONE)
+                             # Join offloader's copy stream after forward to avoid
+                             # unjoined stream error. The last layer's start_prefetch
+@@ -585,7 +593,24 @@ class ModelCudaGraphManager(CudaGraphManager):
+ 
+             return forward_fn
+ 
+-        super().capture(create_forward_fn, progress_bar_desc)
++        capture_sizes = [
++            desc.num_tokens for descs in self._capture_descs.values() for desc in descs
++        ]
++
++        def warmup_capture_stream() -> None:
++            from vllm_mach.mxfp6.warmup import warmup_mxfp6_sm120_stream
++
++            warmup_mxfp6_sm120_stream(
++                model,
++                capture_sizes,
++                self.vllm_config.model_config.dtype,
++            )
++
++        super().capture(
++            create_forward_fn,
++            progress_bar_desc,
++            capture_stream_warmup=warmup_capture_stream,
++        )
+ 
+     def run_fullgraph(
+         self, desc: BatchExecutionDescriptor

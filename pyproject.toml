@@ -17,15 +17,12 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-[project.optional-dependencies]
-mxfp6 = ["mxfp6-sm120==0.2.1"]
-
 [project.urls]
 Repository = "https://github.com/troycheng/vllm-mach"
 Issues = "https://github.com/troycheng/vllm-mach/issues"
 
 [project.entry-points."vllm.general_plugins"]
-mach_exl3 = "vllm_mach.exl3.plugin:register"
+mach = "vllm_mach.plugin:register"
 
 [tool.setuptools.packages.find]
 where = ["src"]

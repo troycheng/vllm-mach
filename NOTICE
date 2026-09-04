@@ -11,3 +11,6 @@ licenses.
 MXFP6 SM120 is an optional external runtime dependency provided by the
 mxfp6-sm120 package. Its source code is not distributed in this package and
 remains subject to the BSD 3-Clause License.
+
+The MXFP6 workspace warmup integration follows the public mxfp6_sm120 vLLM
+example and is adapted as Apache-2.0 framework glue for vLLM Mach.

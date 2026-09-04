@@ -27,15 +27,10 @@ from vllm.platforms import PlatformEnum, current_platform
 from vllm.utils.torch_utils import direct_register_custom_op
 
 _REQUIRED_API = (
-    "PackedMXFP6Tensor",
     "gemm_from_float",
     "is_available",
     "load_library",
     "pack_scales",
-    "warmup_w6a8",
-    "begin_workspace_planning",
-    "finalize_workspace_planning",
-    "workspace_stats",
 )
 _CUSTOM_OP_REGISTERED = False
 
@@ -56,6 +51,28 @@ def _compute_capability_number(compute_capability: Any) -> int | None:
 
 def _has_required_api(mxfp6: ModuleType) -> bool:
     return all(hasattr(mxfp6, name) for name in _REQUIRED_API)
+
+
+def _logical_weight_shape(weight: torch.Tensor) -> tuple[int, int]:
+    if weight.ndim != 2:
+        raise ValueError(
+            "mxfp6-sm120 requires a two-dimensional packed weight; "
+            f"got shape={tuple(weight.shape)}"
+        )
+    output_features, packed_input_features = map(int, weight.shape)
+    if packed_input_features % 3 != 0:
+        raise ValueError(
+            "mxfp6-sm120 requires four FP6 values packed into three bytes; "
+            f"got packed K={packed_input_features}"
+        )
+    input_features = packed_input_features * 4 // 3
+    if output_features % 8 != 0 or input_features % 128 != 0:
+        raise ValueError(
+            "mxfp6-sm120 requires output features divisible by 8 and "
+            f"input features divisible by 128; got N={output_features}, "
+            f"K={input_features}"
+        )
+    return output_features, input_features
 
 
 def is_mxfp6_sm120_available(
@@ -147,9 +164,7 @@ class Mxfp6Sm120LinearKernel(MxFp6LinearKernel):
         return True, None
 
     @classmethod
-    def can_implement(
-        cls, config: MxFp6LinearLayerConfig
-    ) -> tuple[bool, str | None]:
+    def can_implement(cls, config: MxFp6LinearLayerConfig) -> tuple[bool, str | None]:
         if config.weight_quant_key != kMxfp6E3M2Static:
             return False, "requires static MXFP6 E3M2 weights"
         if config.activation_quant_key != kMxfp8Dynamic:
@@ -158,6 +173,7 @@ class Mxfp6Sm120LinearKernel(MxFp6LinearKernel):
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         mxfp6 = _import_mxfp6()
+        _logical_weight_shape(layer.weight)
         layer.weight = torch.nn.Parameter(
             layer.weight.data.contiguous(), requires_grad=False
         )
@@ -172,13 +188,12 @@ class Mxfp6Sm120LinearKernel(MxFp6LinearKernel):
         x: torch.Tensor,
         bias: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        output_features = int(layer.weight.shape[0])
+        output_features, expected_input_features = _logical_weight_shape(layer.weight)
         input_features = int(x.shape[-1])
-        if output_features % 8 != 0 or input_features % 128 != 0:
+        if input_features != expected_input_features:
             raise ValueError(
-                "mxfp6-sm120 requires output features divisible by 8 and "
-                f"input features divisible by 128; got N={output_features}, "
-                f"K={input_features}"
+                "mxfp6-sm120 activation and packed weight dimensions differ; "
+                f"got activation K={input_features}, weight K={expected_input_features}"
             )
         _ensure_custom_op_registered()
         output_shape = (*x.shape[:-1], output_features)
@@ -206,9 +221,6 @@ def register_vllm_mxfp8_activation() -> bool:
     """
 
     try:
-        mxfp6 = _import_mxfp6()
-        if not _has_required_api(mxfp6):
-            return False
         quark_ocp_mx = importlib.import_module(
             "vllm.model_executor.layers.quantization.quark.schemes.quark_ocp_mx"
         )
@@ -240,6 +252,7 @@ def register_dense_kernel() -> bool:
     registered = False
     try:
         from vllm.model_executor.kernels import linear
+
         registry = getattr(linear, "_POSSIBLE_MXFP6_KERNELS", None)
         if isinstance(registry, dict):
             cuda_kernels = registry.get(PlatformEnum.CUDA)
