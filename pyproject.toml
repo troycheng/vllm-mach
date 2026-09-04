@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vllm-mach"
 version = "0.1.0a2"
-description = "Performance-oriented extensions for vLLM serving workloads"
+description = "High-performance runtime extensions for vLLM"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -18,8 +18,11 @@ classifiers = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/troycheng/vllm-mach"
 Repository = "https://github.com/troycheng/vllm-mach"
 Issues = "https://github.com/troycheng/vllm-mach/issues"
+Releases = "https://github.com/troycheng/vllm-mach/releases"
+"MXFP6 SM120" = "https://github.com/Nekofish-L/mxfp6_sm120"
 
 [project.entry-points."vllm.general_plugins"]
 mach = "vllm_mach.plugin:register"
