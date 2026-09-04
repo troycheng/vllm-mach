@@ -7,6 +7,7 @@ import torch
 
 from vllm_mach.exl3 import mxfp6_hybrid as hybrid
 from vllm_mach.exl3.dense_adapter import Exl3Config, Exl3LinearMethod
+from vllm_mach.exl3 import fused_mlp
 
 
 class _TensorMap:
@@ -256,3 +257,123 @@ def test_hybrid_native_operator_matches_runtime_reference() -> None:
     )
 
     torch.testing.assert_close(actual, reference, rtol=0, atol=0)
+
+
+def test_fused_mlp_uses_packed_activation(monkeypatch) -> None:
+    monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_PROFILE)
+    weight = hybrid.HybridPackedWeight(
+        torch.empty(0), torch.empty(0), rows=8, k=16
+    )
+    gate_up_state = hybrid.HybridState(
+        route=hybrid.HybridRoute.ALL_ROWS,
+        weights={},
+        merged_weight=hybrid.HybridPackedWeight(
+            torch.empty(0), torch.empty(0), rows=32, k=8
+        ),
+    )
+    down_state = hybrid.HybridState(
+        route=hybrid.HybridRoute.ALL_ROWS,
+        weights={0: weight},
+    )
+
+    class _Linear:
+        bias = None
+
+        def __init__(self, state, output):
+            self._mach_exl3_mxfp6 = state
+            self.output = output
+
+        def __call__(self, _x):
+            return self.output, None
+
+    gate_up = torch.ones((4, 32), dtype=torch.bfloat16)
+    module = SimpleNamespace(
+        gate_up_proj=_Linear(gate_up_state, gate_up),
+        down_proj=_Linear(down_state, None),
+        expert_gate=None,
+    )
+    module.down_proj.input_is_parallel = True
+    module.down_proj.reduce_results = False
+    module.down_proj.tp_size = 2
+    packed = SimpleNamespace(k=16)
+    seen = []
+    monkeypatch.setattr(hybrid, "fused_silu_mxfp8", lambda value: packed)
+    monkeypatch.setattr(
+        hybrid,
+        "apply_mxfp8_weight",
+        lambda activation, selected: seen.append((activation, selected))
+        or torch.full((4, 8), 3, dtype=torch.bfloat16),
+    )
+
+    output = fused_mlp._try_fused_forward(
+        module, torch.ones((4, 8), dtype=torch.bfloat16)
+    )
+
+    assert torch.all(output == 3)
+    assert seen == [(packed, weight)]
+
+
+def test_fused_mlp_falls_back_outside_dense_hybrid_contract(monkeypatch) -> None:
+    monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_PROFILE)
+    module = SimpleNamespace(
+        gate_up_proj=SimpleNamespace(),
+        down_proj=SimpleNamespace(),
+        expert_gate=object(),
+    )
+    result = fused_mlp._try_fused_forward(
+        module, torch.ones((4, 8), dtype=torch.float16)
+    )
+    assert result is fused_mlp._NOT_APPLICABLE
+
+
+def test_fused_mlp_native_boundary_matches_runtime_reference() -> None:
+    mxfp6 = pytest.importorskip("mxfp6")
+    if not torch.cuda.is_available():
+        pytest.skip("requires CUDA")
+    if torch.cuda.get_device_capability() != (12, 0):
+        pytest.skip("requires SM120")
+    if not mxfp6.is_available():
+        pytest.skip("mxfp6-sm120 is unavailable")
+
+    rows, k, n = 4, 128, 128
+    gate_up = torch.randn((rows, 2 * k), device="cuda", dtype=torch.bfloat16)
+    actual_activation = hybrid.fused_silu_mxfp8(gate_up)
+    reference_values, reference_logical_scales = (
+        mxfp6.silu_and_mul_mxfp8_logical(gate_up)
+    )
+
+    torch.testing.assert_close(
+        actual_activation.values,
+        reference_values.view(torch.uint8),
+        rtol=0,
+        atol=0,
+    )
+    torch.testing.assert_close(
+        mxfp6.unpack_scales(actual_activation.scales, rows, k),
+        reference_logical_scales,
+        rtol=0,
+        atol=0,
+    )
+
+    packed = mxfp6.quantize_mxfp6(
+        torch.randn((n, k), device="cuda", dtype=torch.bfloat16)
+    )
+    weight = hybrid.HybridPackedWeight(
+        values=packed.values,
+        scales=packed.scales,
+        rows=packed.rows,
+        k=packed.k,
+    )
+    actual_output = hybrid.apply_mxfp8_weight(actual_activation, weight)
+    reference_activation = mxfp6.MXFP8Tensor(
+        reference_values.view(torch.uint8),
+        mxfp6.pack_scales(reference_logical_scales),
+        rows,
+        k,
+    )
+    reference_output = mxfp6.gemm_w6a8(
+        reference_activation,
+        packed,
+        out_dtype=torch.bfloat16,
+    )
+    torch.testing.assert_close(actual_output, reference_output, rtol=0, atol=0)

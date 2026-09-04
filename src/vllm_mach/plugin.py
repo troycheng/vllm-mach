@@ -7,6 +7,7 @@ from importlib.metadata import version
 from vllm.model_executor.layers.quantization import register_quantization_config
 
 from .exl3.dense_adapter import Exl3Config
+from .exl3.fused_mlp import install as install_fused_mlp
 from .mxfp6 import register_dense_kernel
 
 
@@ -20,6 +21,7 @@ def register() -> None:
         )
     register_quantization_config("exl3")(Exl3Config)
     register_dense_kernel()
+    install_fused_mlp()
 
 
 __all__ = ["register"]

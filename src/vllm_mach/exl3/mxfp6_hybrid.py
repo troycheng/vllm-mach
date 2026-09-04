@@ -316,6 +316,64 @@ def apply_weight(x: torch.Tensor, weight: HybridPackedWeight) -> torch.Tensor:
     )
 
 
+def fused_silu_mxfp8(gate_up: torch.Tensor) -> Any:
+    """Fuse SiLU/mul with the packed MXFP8 input for an MXFP6 down projection."""
+
+    if gate_up.ndim != 2 or gate_up.dtype != torch.bfloat16:
+        raise ValueError("fused SiLU/MXFP8 expects a two-dimensional BF16 tensor")
+    rows, doubled_k = map(int, gate_up.shape)
+    if doubled_k % 2:
+        raise ValueError(f"gate/up width must be even; got {doubled_k}")
+    k = doubled_k // 2
+    if k % 32:
+        raise ValueError(f"fused SiLU/MXFP8 requires K divisible by 32; got {k}")
+
+    runtime = importlib.import_module("mxfp6")
+    required = ("MXFP8Tensor", "silu_and_mul_mxfp8_packed_out")
+    missing = [name for name in required if not hasattr(runtime, name)]
+    if missing:
+        raise RuntimeError(
+            "mxfp6-sm120 is missing the fused MLP API: " + ", ".join(missing)
+        )
+
+    values = torch.empty((rows, k), dtype=torch.uint8, device=gate_up.device)
+    scale_groups = ((k // 32 + 3) // 4) * 4
+    scales = torch.empty(
+        ((rows + 127) // 128 * 128) * scale_groups,
+        dtype=torch.uint8,
+        device=gate_up.device,
+    )
+    runtime.silu_and_mul_mxfp8_packed_out(values, scales, gate_up)
+    return runtime.MXFP8Tensor(values, scales, rows, k)
+
+
+def apply_mxfp8_weight(activation: Any, weight: HybridPackedWeight) -> torch.Tensor:
+    """Apply one Hybrid weight to an already packed MXFP8 activation."""
+
+    runtime = importlib.import_module("mxfp6")
+    required = ("PackedMXFP6Tensor", "gemm_w6a8")
+    missing = [name for name in required if not hasattr(runtime, name)]
+    if missing:
+        raise RuntimeError(
+            "mxfp6-sm120 is missing the packed W6A8 API: " + ", ".join(missing)
+        )
+    if int(activation.k) != weight.k:
+        raise ValueError(
+            f"MXFP8 activation K={activation.k} does not match weight K={weight.k}"
+        )
+    packed_weight = runtime.PackedMXFP6Tensor(
+        weight.values,
+        weight.scales,
+        weight.rows,
+        weight.k,
+    )
+    return runtime.gemm_w6a8(
+        activation,
+        packed_weight,
+        out_dtype=torch.bfloat16,
+    )
+
+
 __all__ = [
     "PROFILE_ENV",
     "QWEN38_27B_PROFILE",
@@ -323,7 +381,9 @@ __all__ = [
     "HybridRoute",
     "HybridState",
     "active_profile",
+    "apply_mxfp8_weight",
     "apply_weight",
+    "fused_silu_mxfp8",
     "iter_packed_weights",
     "prepare_layer",
     "route_for_prefix",

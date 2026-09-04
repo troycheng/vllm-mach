@@ -14,4 +14,6 @@ The serving gate used the public Qwen3.5-27B-MXFP6 checkpoint, TP2, two SM120 GP
 
 The selective EXL3/MXFP6 profile received a separate TP2 gate on Qwen3.8-27B K5/K6. Eager mode loaded 14.22 GiB per rank and completed a 1,852-token prompt plus 32 generated tokens. FULL_DECODE_ONLY mode planned the shared MXFP6 workspace, captured all seven configured graph sizes in 6 seconds, and used 0.13 GiB per rank for CUDA Graphs. Four concurrent requests with 1,702 to 1,972 prompt tokens and a subsequent changed-input request with 2,372 prompt tokens all returned HTTP 200. No plugin, worker, CUDA, or graph replay error was observed.
 
+The fused Dense MLP boundary was checked on SM120 against the public `mxfp6-sm120==0.2.1` reference operations. The fused SiLU/MXFP8 values and logical scales matched the reference exactly, and the following MXFP8-by-MXFP6 down projection produced bitwise-identical BF16 output.
+
 This is a functional gate, not a performance comparison. End-to-end A/B measurements at the documented request shapes and broader correctness coverage remain release work, and no MXFP6 throughput number is claimed by this preview.
