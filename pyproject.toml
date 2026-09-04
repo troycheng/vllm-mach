@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-mach"
+version = "0.1.0"
+description = "Performance-oriented extensions for vLLM serving workloads"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{name = "Tong Cheng"}]
+dependencies = ["vllm==0.28.0"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Repository = "https://github.com/troycheng/vllm-mach"
+Issues = "https://github.com/troycheng/vllm-mach/issues"
+
+[project.entry-points."vllm.general_plugins"]
+mach_exl3 = "vllm_mach.exl3.plugin:register"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["vllm_mach*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

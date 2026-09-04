@@ -1,0 +1,9 @@
+vLLM Mach
+Copyright 2026 Tong Cheng and contributors
+
+The EXL3 provider contains code derived from the vLLM project, which is
+licensed under the Apache License, Version 2.0.
+
+ExLlamaV3 and B12X are optional external runtime dependencies. Their source
+code is not distributed in this package and remains subject to their own
+licenses.
