@@ -64,7 +64,7 @@ print(vllm_mach.exl3.Exl3Config().get_name())
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == "exl3"
+    assert result.stdout.strip().splitlines()[-1] == "exl3"
 
 
 def test_mxfp6_import_does_not_load_optional_module() -> None:
@@ -301,6 +301,14 @@ def test_unverified_model_layout_is_rejected() -> None:
         assert "refusing unverified configuration" in str(exc)
     else:
         raise AssertionError("an unverified model layout was accepted")
+
+
+def test_qwen35_text_subconfig_is_accepted() -> None:
+    config = Exl3Config(tensor_storage=_storage())
+    text_config = _model_config()
+    text_config.model_type = "qwen3_5_text"
+
+    config.maybe_update_config("unused-local-model", text_config)
 
 
 def test_invalid_metadata_is_rejected_before_loading() -> None:

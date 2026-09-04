@@ -4,6 +4,11 @@ from types import SimpleNamespace
 
 import torch
 
+from vllm_mach.exl3.mxfp6_hybrid import (
+    HybridPackedWeight,
+    HybridRoute,
+    HybridState,
+)
 from vllm_mach.mxfp6 import warmup
 from vllm_mach.mxfp6.dense import Mxfp6Sm120LinearKernel
 
@@ -35,6 +40,26 @@ def test_collect_w6a8_problems_deduplicates_shapes() -> None:
     problems = warmup._collect_w6a8_problems(_Model())
     assert len(problems) == 1
     assert problems[0][:2] == (8, 128)
+
+
+def test_collect_w6a8_problems_includes_hybrid_weights() -> None:
+    model = _Model()
+    model.hybrid = torch.nn.Module()
+    model.hybrid._mach_exl3_mxfp6 = HybridState(
+        route=HybridRoute.PREFILL_ONLY,
+        weights={
+            "q": HybridPackedWeight(
+                values=torch.empty((16, 96), dtype=torch.uint8),
+                scales=torch.empty((16, 4), dtype=torch.uint8),
+                rows=16,
+                k=128,
+            )
+        },
+    )
+
+    problems = warmup._collect_w6a8_problems(model)
+
+    assert {(n, k) for n, k, _, _ in problems} == {(8, 128), (16, 128)}
 
 
 def test_warmup_plans_workspace_and_normalizes_sizes(monkeypatch) -> None:

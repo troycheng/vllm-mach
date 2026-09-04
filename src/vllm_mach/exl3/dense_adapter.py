@@ -43,6 +43,7 @@ from vllm.model_executor.parameter import BasevLLMParameter
 from vllm.model_executor.utils import replace_parameter, set_weight_attrs
 from vllm.transformers_utils.repo_utils import get_hf_file_to_dict
 
+from . import mxfp6_hybrid
 from .hadamard import hadamard_fold_weight_chunked
 
 if TYPE_CHECKING:
@@ -74,7 +75,7 @@ _B12X_TRELLIS_C_TMP_CAP = 192 * 4 * 64 * 256
 _B12X_C_TMP_SHARED: dict[int, torch.Tensor] = {}
 _B12X_TRELLIS_BUF_CACHE_MAX_ROWS = 128
 _EMBED_ONLINE_EPS = 1.0e-8
-_SUPPORTED_MODEL_TYPE = "qwen3_5"
+_SUPPORTED_MODEL_TYPES = ("qwen3_5", "qwen3_5_text")
 _SUPPORTED_ARCHITECTURE = "Qwen3_5ForConditionalGeneration"
 _SUPPORTED_HIDDEN_SIZE = 5120
 
@@ -1275,6 +1276,7 @@ class Exl3Config(QuantizationConfig):
             self.tensor_storage = config["tensor_storage"]
         self._validate_storage_metadata()
         self._validate_model_config(hf_config)
+        mxfp6_hybrid.validate_profile_model(hf_config)
         self._force_independent_lm_head(hf_config)
 
     @staticmethod
@@ -1289,7 +1291,7 @@ class Exl3Config(QuantizationConfig):
         architectures = set(getattr(config, "architectures", None) or ())
         hidden_size = getattr(config, "hidden_size", None)
         problems: list[str] = []
-        if model_type != _SUPPORTED_MODEL_TYPE:
+        if model_type not in _SUPPORTED_MODEL_TYPES:
             problems.append(f"model_type={model_type!r}")
         if architectures and _SUPPORTED_ARCHITECTURE not in architectures:
             problems.append(f"architectures={sorted(architectures)!r}")
@@ -1650,6 +1652,12 @@ class Exl3LinearMethod(LinearMethodBase):
                 param.exl3_tensors[shard_id] = tensor.to(
                     device=device, non_blocking=True
                 ).contiguous()
+        hybrid = None
+        prefix = str(getattr(layer, "prefix", ""))
+        if mxfp6_hybrid.route_for_prefix(prefix) is not None:
+            hybrid = mxfp6_hybrid.prepare_layer(layer, _load_exl3_ext())
+        if hybrid is not None and hybrid.route is mxfp6_hybrid.HybridRoute.ALL_ROWS:
+            return
         self._prepare_qkv_mgemm(layer)
         for shard_id in layer.exl3_shard_ids:
             trellis = layer.trellis.exl3_tensors[shard_id]
@@ -1814,6 +1822,8 @@ class Exl3LinearMethod(LinearMethodBase):
     ) -> torch.Tensor:
         original_shape = x.shape[:-1]
         original_dtype = x.dtype
+        rows = x.reshape(-1, x.shape[-1]).shape[0]
+        hybrid = mxfp6_hybrid.state_for_rows(layer, rows)
         bundle = getattr(layer, "exl3_qkv_mgemm", None)
         prefix = getattr(layer, "prefix", "")
         small_bf16 = (
@@ -1827,10 +1837,20 @@ class Exl3LinearMethod(LinearMethodBase):
         )
         bf16_bundle = small_bf16 and bundle is not None
         target_dtype = (
-            torch.bfloat16 if bf16_regular or bf16_bundle else torch.float16
+            torch.bfloat16
+            if hybrid
+            else (torch.bfloat16 if bf16_regular or bf16_bundle else torch.float16)
         )
         x_2d = x.reshape(-1, x.shape[-1]).to(target_dtype).contiguous()
-        if bf16_bundle:
+        if hybrid is not None and hybrid.merged_weight is not None:
+            output = mxfp6_hybrid.apply_weight(x_2d, hybrid.merged_weight)
+        elif hybrid is not None:
+            outputs = [
+                mxfp6_hybrid.apply_weight(x_2d, hybrid.weights[shard_id])
+                for shard_id in layer.exl3_shard_ids
+            ]
+            output = outputs[0] if len(outputs) == 1 else torch.cat(outputs, dim=-1)
+        elif bf16_bundle:
             output = _exl3_mgemm_bf16_io(
                 x_2d,
                 bundle[0],

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import torch
 
+from ..exl3.mxfp6_hybrid import iter_packed_weights
 from .dense import Mxfp6Sm120LinearKernel, _import_mxfp6
 
 
@@ -14,6 +15,11 @@ def _collect_w6a8_problems(
 ) -> list[tuple[int, int, torch.Tensor, torch.Tensor]]:
     problems: dict[tuple[int, int], tuple[torch.Tensor, torch.Tensor]] = {}
     for layer in model.modules():
+        for packed in iter_packed_weights(layer):
+            problems.setdefault(
+                (packed.rows, packed.k),
+                (packed.values, packed.scales),
+            )
         scheme = getattr(layer, "scheme", None)
         kernel = getattr(scheme, "ocp_mx_linear", None)
         if not isinstance(kernel, Mxfp6Sm120LinearKernel):
