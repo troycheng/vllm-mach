@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-mach"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Performance-oriented extensions for vLLM serving workloads"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,6 +16,9 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+
+[project.optional-dependencies]
+mxfp6 = ["mxfp6-sm120==0.2.1"]
 
 [project.urls]
 Repository = "https://github.com/troycheng/vllm-mach"
