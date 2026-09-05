@@ -1,5 +1,13 @@
 # Validation
 
+## 0.1.0a3 candidate
+
+The M24/M32 and sampling-metadata integration passed 60 package tests with 3 skipped, a native source build against public ExLlamaV3 headers, and changing-input eager/Graph checks on both TP ranks. A complete EXL3/MXFP6 service with the fused FlashInfer collective then captured graph sizes `[1, 2, 4, 8, 16, 24, 32]`, returned a completion, and passed the existing 40-task retention suite with no pass/fail regressions. Exact output agreement with the stored reference was 33/40. The tested Mach runtime source is commit `dd48f2a`; the subsequent candidate packaging changes version metadata and documentation only.
+
+These checks do not establish a new end-to-end speedup or full-model bitwise equivalence. The new switches remain opt-in. See [experimental decode paths](experimental-decode.md) for source identities, build instructions, and numerical limits.
+
+## 0.1.0a2
+
 Version 0.1.0a2 is based on the provider slice validated on 2026-09-03 against `vllm/vllm-openai:v0.28.0`, ExLlamaV3 1.4.6 with the BF16-I/O extension, and B12X 1.3.0. The Dense MXFP6 bridge and fused paths received separate GPU gates on 2026-09-04.
 
 The clean-container checks covered import without CUDA initialization, idempotent EXL3 and MXFP6 registration, the native MXFP6 W6A8 selector contract, fail-closed behavior when the optional wheel is absent, valid and invalid checkpoint metadata, the bundled Hadamard fold, the serialized fallback, wheel contents, and installation without the development sources.

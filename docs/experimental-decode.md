@@ -32,4 +32,6 @@ On 2026-09-05, the Mach port passed 60 CPU tests with 3 skipped. A bounded GPU c
 
 The M32 extension was also rebuilt using the pinned public ExLlamaV3 headers, Python 3.12, PyTorch 2.13.0+cu130, and CUDA 13.2, targeting SM120a. That build passed the same GPU checks. Its shared-library SHA256 was `ed0aacdbc79496d32e4f2bf49249e837f4e23fcb6de45c051cf4cc3a8ab86402`. This verifies the documented source build for that environment, not binary compatibility with other runtimes.
 
-This is port-level verification, not a full Mach service comparison or a new release certification.
+The subsequent Mach TP2 service check enabled these options together with the EXL3/MXFP6 profile and fused FlashInfer AllReduce/RMSNorm/MXFP8 path. It captured all seven graph sizes, became healthy, and completed the existing 40-task retention suite at a maximum concurrency of 32. All 40 tasks passed with no pass/fail regressions against the stored reference; 33 outputs matched exactly. Both worker processes loaded the rebuilt M32 library.
+
+The task suite is a functional regression check, not a full-distribution fidelity test or a throughput benchmark. The service check used an 8,192-token model limit; it does not extend validation to longer contexts.
