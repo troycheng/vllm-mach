@@ -1,6 +1,6 @@
 # Validation
 
-## 0.1.0a4 candidate
+## 0.1.0a4
 
 On 2026-09-05, the compatibility candidate passed 68 package tests with 3 skipped. ExLlamaV3 was rebuilt from public commit `d0094bc922bcf2d6cf5e948ba35f347adda3a6ca`; the independent M32 extension was built from the Mach `v0.1.0a3` source. Both used the official `vllm/vllm-openai:v0.28.0` image, Python 3.12, PyTorch 2.13.0+cu130, CUDA toolkit 13.2, and target `12.0a`. Both extensions imported after PyTorch without initializing CUDA.
 

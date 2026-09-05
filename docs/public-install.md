@@ -1,6 +1,6 @@
 # Public EXL3 installation
 
-The `0.1.0a4` compatibility fix is not yet published. Do not combine `0.1.0a3` BF16 grouped execution with ExLlamaV3 commit `d0094bc`; it fails with `had_group_ids must be a CPU tensor`.
+Use Mach `0.1.0a4` or later for this installation. Do not combine `0.1.0a3` BF16 grouped execution with ExLlamaV3 commit `d0094bc`; it fails with `had_group_ids must be a CPU tensor`.
 
 ## Fixed runtime contract
 

@@ -33,7 +33,7 @@ Install vLLM and the release wheel in the same environment:
 ```bash
 python -m pip install "vllm==0.28.0"
 python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a3/vllm_mach-0.1.0a3-py3-none-any.whl
+  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a4/vllm_mach-0.1.0a4-py3-none-any.whl
 ```
 
 The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
@@ -45,7 +45,7 @@ python -m pip install -r requirements.txt
 MAX_JOBS=4 python -m pip install --no-build-isolation .
 ```
 
-Native BF16 I/O is not part of the `v1.4.6` tag. It requires [ExLlamaV3 Draft PR #330](https://github.com/turboderp-org/exllamav3/pull/330), currently published at commit [`d0094bc`](https://github.com/troycheng/exllamav3/tree/d0094bc922bcf2d6cf5e948ba35f347adda3a6ca). That revision requires the Mach `0.1.0a4` compatibility fix, currently unreleased: `0.1.0a3` passes GPU group metadata to an API that expects CPU metadata. To build the native revision:
+Native BF16 I/O is not part of the `v1.4.6` tag. It requires [ExLlamaV3 Draft PR #330](https://github.com/turboderp-org/exllamav3/pull/330), validated at commit [`d0094bc`](https://github.com/troycheng/exllamav3/tree/d0094bc922bcf2d6cf5e948ba35f347adda3a6ca). That revision requires Mach `0.1.0a4` or later: `0.1.0a3` passes GPU group metadata to an API that expects CPU metadata. To build the native revision:
 
 ```bash
 git fetch origin pull/330/head:pr-330
@@ -134,7 +134,7 @@ The hybrid profile keeps `lm_head` and unmatched projections on EXL3. It routes 
 
 ## Validation
 
-The unreleased `0.1.0a4` compatibility candidate passed 68 package tests with 3 skipped and a public-source EXL3 service check without B12X: all seven graph sizes captured, 40/40 tasks passed, and 39/40 outputs matched the stored reference exactly. See [public installation](docs/public-install.md) for the dependency contract and [validation](docs/validation.md) for the tested scope.
+Release `0.1.0a4` passed 68 package tests with 3 skipped and a public-source EXL3 service check without B12X: all seven graph sizes captured, 40/40 tasks passed, and 39/40 outputs matched the stored reference exactly. See [public installation](docs/public-install.md) for the dependency contract and [validation](docs/validation.md) for the tested scope.
 
 Release `0.1.0a3` passed 60 package tests with 3 skipped. Its Qwen3.8-27B TP2 service check enabled the new decode options alongside the EXL3/MXFP6 profile and fused FlashInfer collective, captured all seven graph sizes, and passed the existing 40-task regression suite with no new failures. Exact output agreement with the stored reference was 33/40.
 
