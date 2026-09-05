@@ -102,3 +102,51 @@ def test_true_m32_workspace(monkeypatch):
         torch.zeros(8, dtype=torch.int32), 6, 128) for _ in range(2)]
     assert calls[0].data_ptr() != calls[1].data_ptr()
     assert all(torch.all(out == 7) for out in outputs)
+
+
+@pytest.mark.parametrize("rows", [8, 24, 32])
+@pytest.mark.parametrize("legacy", [False, True])
+def test_base_group_ids_contract(monkeypatch, rows, legacy):
+    ids = torch.zeros(8, dtype=torch.int32)
+    host_ids = torch.ones(8, dtype=torch.int32)
+    observed = []
+
+    def grouped(x, ptrs, scratch, out, unique, had, svh, group_ids, *args):
+        observed.append(group_ids.data_ptr())
+        out.zero_()
+
+    monkeypatch.setattr(adapter, "_BF16_IO_LEGACY_CUDA_GROUP_IDS", legacy)
+    monkeypatch.setattr(adapter, "_BF16_IO_TILE_M32_ENABLED", False)
+    monkeypatch.setattr(adapter, "_load_exl3_ext",
+                        lambda: SimpleNamespace(exl3_mgemm_bf16_io_grouped_had=grouped))
+    ptrs = torch.empty(8, dtype=torch.int64)
+    adapter._exl3_mgemm_bf16_io._init_fn(
+        torch.zeros(rows, 128, dtype=torch.bfloat16), ptrs, ptrs, ptrs,
+        torch.empty(1, dtype=torch.int64), ids, 6, 128, host_ids)
+    expected = ids if legacy else host_ids
+    assert observed and all(p == expected.data_ptr() for p in observed)
+
+
+def test_public_contract_rejects_missing_host_metadata(monkeypatch):
+    monkeypatch.setattr(adapter, "_BF16_IO_LEGACY_CUDA_GROUP_IDS", False)
+    monkeypatch.setattr(adapter, "_BF16_IO_TILE_M32_ENABLED", False)
+    monkeypatch.setattr(adapter, "_load_exl3_ext", lambda: object())
+    ptrs = torch.empty(8, dtype=torch.int64)
+    with pytest.raises(ValueError, match="prebuilt CPU Hadamard"):
+        adapter._exl3_mgemm_bf16_io._init_fn(
+            torch.zeros(24, 128, dtype=torch.bfloat16), ptrs, ptrs, ptrs,
+            torch.empty(1, dtype=torch.int64),
+            torch.empty(8, dtype=torch.int32, device="meta"), 6, 128)
+
+
+def test_b12x_absence_uses_native_default(monkeypatch):
+    monkeypatch.setattr(adapter, "_B12X_INSTALLED", False)
+    monkeypatch.setattr(adapter, "_B12X_MIN_M", 0)
+    monkeypatch.delenv("VLLM_EXL3_SKIP_TRELLIS_PREP", raising=False)
+    trellis = torch.empty(8, 320, 96, dtype=torch.int16)
+    assert not adapter._b12x_trellis_k6_supported(
+        trellis, has_mcg=True, has_mul1=False)
+    monkeypatch.setattr(adapter, "_B12X_MIN_M", 128)
+    with pytest.raises(RuntimeError, match="b12x is not installed"):
+        adapter._b12x_trellis_k6_supported(
+            trellis, has_mcg=True, has_mul1=False)

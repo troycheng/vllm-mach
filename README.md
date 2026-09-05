@@ -42,18 +42,18 @@ The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/tu
 git clone --branch v1.4.6 --depth 1 https://github.com/turboderp-org/exllamav3.git
 cd exllamav3
 python -m pip install -r requirements.txt
-MAX_JOBS=4 python -m pip install .
+MAX_JOBS=4 python -m pip install --no-build-isolation .
 ```
 
-Native BF16 I/O is not part of the `v1.4.6` tag. It requires [ExLlamaV3 Draft PR #330](https://github.com/turboderp-org/exllamav3/pull/330), currently published at commit [`d0094bc`](https://github.com/troycheng/exllamav3/tree/d0094bc922bcf2d6cf5e948ba35f347adda3a6ca). To build that revision instead:
+Native BF16 I/O is not part of the `v1.4.6` tag. It requires [ExLlamaV3 Draft PR #330](https://github.com/turboderp-org/exllamav3/pull/330), currently published at commit [`d0094bc`](https://github.com/troycheng/exllamav3/tree/d0094bc922bcf2d6cf5e948ba35f347adda3a6ca). That revision requires the Mach `0.1.0a4` compatibility fix, currently unreleased: `0.1.0a3` passes GPU group metadata to an API that expects CPU metadata. To build the native revision:
 
 ```bash
 git fetch origin pull/330/head:pr-330
 git checkout d0094bc922bcf2d6cf5e948ba35f347adda3a6ca
-MAX_JOBS=4 python -m pip install .
+MAX_JOBS=4 python -m pip install --no-build-isolation .
 ```
 
-Release validation used the same BF16 API in a `v1.4.6`-based wheel. PR #330 was rebased afterward, so the public commit above is not byte-identical to the tested wheel. [B12X](https://github.com/local-inference-lab/b12x) is an optional prefill backend.
+Earlier release validation used a `v1.4.6`-based experimental wheel with a different group-metadata contract. See [public installation and compatibility](docs/public-install.md) for the fixed path and legacy-wheel option. [B12X](https://github.com/local-inference-lab/b12x) is an optional prefill backend.
 
 The EXL3/MXFP6 profile also requires [`mxfp6-sm120==0.2.1`](https://github.com/Nekofish-L/mxfp6_sm120#build), built against the same PyTorch and CUDA environment. Stream-K graph execution and the optional FlashInfer collective require the version-locked patches under [`profiles/vllm-0.28.0`](profiles/vllm-0.28.0/README.md). Apply the FlashInfer patch before JIT compilation.
 
@@ -133,6 +133,8 @@ The hybrid profile keeps `lm_head` and unmatched projections on EXL3. It routes 
 [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120) owns MXFP6 packing, MXFP8 activation quantization, W6A8 GEMM, and workspace management. vLLM Mach handles vLLM registration, checkpoint metadata, tensor-parallel slices, projection routing, CUDA Graph lifecycle, and the optional FlashInfer AllReduce/RMSNorm/MXFP8 boundary. The hybrid profile requires both packages.
 
 ## Validation
+
+The unreleased `0.1.0a4` compatibility candidate passed 68 package tests with 3 skipped and a public-source EXL3 service check without B12X: all seven graph sizes captured, 40/40 tasks passed, and 39/40 outputs matched the stored reference exactly. See [public installation](docs/public-install.md) for the dependency contract and [validation](docs/validation.md) for the tested scope.
 
 Release `0.1.0a3` passed 60 package tests with 3 skipped. Its Qwen3.8-27B TP2 service check enabled the new decode options alongside the EXL3/MXFP6 profile and fused FlashInfer collective, captured all seven graph sizes, and passed the existing 40-task regression suite with no new failures. Exact output agreement with the stored reference was 33/40.
 

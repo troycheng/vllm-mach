@@ -1,5 +1,18 @@
 # Validation
 
+## 0.1.0a4 candidate
+
+On 2026-09-05, the compatibility candidate passed 68 package tests with 3 skipped. ExLlamaV3 was rebuilt from public commit `d0094bc922bcf2d6cf5e948ba35f347adda3a6ca`; the independent M32 extension was built from the Mach `v0.1.0a3` source. Both used the official `vllm/vllm-openai:v0.28.0` image, Python 3.12, PyTorch 2.13.0+cu130, CUDA toolkit 13.2, and target `12.0a`. Both extensions imported after PyTorch without initializing CUDA.
+
+The fixed Mach wheel then served Qwen3.8-27B K5/K6 on two RTX 5090 GPUs with TP2. QKV MGEMM, BF16 I/O, M24/M32, the native M32 module, and the vLLM 0.28 sampling-metadata patch were enabled. B12X and the MXFP6 hybrid profile were not installed/enabled. Native prefill used no persistent reconstructed-weight cache and a 512 MiB reconstruction limit. The service used an 8,192-token model limit, 4,096 batched tokens, and at most 32 sequences.
+
+All seven FULL_DECODE_ONLY graph sizes `[1, 2, 4, 8, 16, 24, 32]` captured successfully, and both workers loaded the M32 module. The existing 40-task suite ran at concurrency 32: 40/40 passed, zero pass/fail regressions, and 39/40 outputs matched the stored reference exactly. This is a functional compatibility check, not full-model bitwise equivalence or a throughput benchmark. Legacy GPU-metadata routing has unit coverage; the older experimental wheel was not rerun on GPUs in this check. The separate public MXFP6/FlashInfer dependency build remains outside this check.
+
+Native wheel SHA-256 values:
+
+- ExLlamaV3: `cc56e5cb4cb43c1b3cda5818ab25b723bca626a9c6cd1c8c8952e4cb181c210f`
+- M32 extension: `150abfaf996d1ec4bcc19a222fceb924a976c17e0396717cc027c3794c5530e5`
+
 ## 0.1.0a3
 
 The M24/M32 and sampling-metadata integration passed 60 package tests with 3 skipped, a native source build against public ExLlamaV3 headers, and changing-input eager/Graph checks on both TP ranks. A complete EXL3/MXFP6 service with the fused FlashInfer collective then captured graph sizes `[1, 2, 4, 8, 16, 24, 32]`, returned a completion, and passed the existing 40-task retention suite with no pass/fail regressions. Exact output agreement with the stored reference was 33/40. The tested Mach runtime source is commit `dd48f2a`; the subsequent candidate packaging changes version metadata and documentation only.

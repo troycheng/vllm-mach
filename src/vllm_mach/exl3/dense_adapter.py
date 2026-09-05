@@ -58,6 +58,9 @@ _EXL3_EXT: Any | None = None
 _B12X_TRELLIS_LINEAR_API: Any | None = None
 _QKV_MGEMM_ENABLED = os.environ.get("EXL3_QKV_MGEMM", "0") == "1"
 _BF16_IO_ENABLED = os.environ.get("EXL3_BF16_IO", "0") == "1"
+_BF16_IO_LEGACY_CUDA_GROUP_IDS = (
+    os.environ.get("EXL3_BF16_IO_LEGACY_CUDA_GROUP_IDS", "0") == "1"
+)
 _BF16_IO_M24_ENABLED = os.environ.get("EXL3_BF16_IO_M24", "0") == "1"
 _BF16_IO_M32_ENABLED = os.environ.get("EXL3_BF16_IO_M32", "0") == "1"
 _BF16_IO_TILE_M32_ENABLED = os.environ.get("EXL3_BF16_IO_TILE_M32", "0") == "1"
@@ -74,6 +77,7 @@ _PREFILL_FUSED_RECONSTRUCT_MIN_M = int(
     os.environ.get("VLLM_EXL3_PREFILL_FUSED_RECONSTRUCT_MIN_M", "0")
 )
 _B12X_MIN_M = int(os.environ.get("VLLM_EXL3_B12X_MIN_M", "0"))
+_B12X_INSTALLED = importlib.util.find_spec("b12x") is not None
 _B12X_TRELLIS_C_TMP_CAP = 192 * 4 * 64 * 256
 _B12X_C_TMP_SHARED: dict[int, torch.Tensor] = {}
 _B12X_TRELLIS_BUF_CACHE_MAX_ROWS = 128
@@ -719,6 +723,7 @@ def _exl3_mgemm_bf16_io(
     had_group_ids: torch.Tensor,
     bits: int,
     output_size: int,
+    host_had_group_ids: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Decode-only homogeneous MGEMM writing the final BF16 layout."""
     ext = _load_exl3_ext()
@@ -732,6 +737,13 @@ def _exl3_mgemm_bf16_io(
         else None
     )
     use_tile_m32 = m32_ext is not None
+    base_group_ids = had_group_ids
+    if grouped_hadamard and not use_tile_m32 and not _BF16_IO_LEGACY_CUDA_GROUP_IDS:
+        base_group_ids = (
+            host_had_group_ids if host_had_group_ids is not None else had_group_ids
+        )
+        if base_group_ids.device.type != "cpu":
+            raise ValueError("The public BF16 API requires prebuilt CPU Hadamard group IDs.")
     if grouped_hadamard and m > 16 and not use_tile_m32:
         output = torch.empty(
             (m, count * output_size), dtype=torch.bfloat16, device=x.device
@@ -751,7 +763,7 @@ def _exl3_mgemm_bf16_io(
             ext.exl3_mgemm_bf16_io_grouped_had(
                 x.narrow(0, start, chunk_m), trellis_ptrs, scratch,
                 output.narrow(0, start, chunk_m), unique_suh_ptrs, x_had,
-                svh_ptrs, had_group_ids, bits, force_num_sms,
+                svh_ptrs, base_group_ids, bits, force_num_sms,
                 count * output_size, True,
                 True,  # Direct BF16 epilogue is validated for grouped-Hadamard QKV.
                 False,  # Every row chunk keeps all matrices resident.
@@ -783,7 +795,7 @@ def _exl3_mgemm_bf16_io(
             else:
                 ext.exl3_mgemm_bf16_io_grouped_had(
                     x, trellis_ptrs, scratch, output, unique_suh_ptrs, x_had,
-                    svh_ptrs, had_group_ids, bits, force_num_sms,
+                    svh_ptrs, base_group_ids, bits, force_num_sms,
                     count * output_size, True,
                     True,  # Direct BF16 epilogue is validated for grouped-Hadamard QKV.
                     False,  # All served M<=16 shapes omit the terminal group barrier.
@@ -808,8 +820,9 @@ def _exl3_mgemm_bf16_io_fake(
     had_group_ids: torch.Tensor,
     bits: int,
     output_size: int,
+    host_had_group_ids: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    del suh_ptrs, svh_ptrs, unique_suh_ptrs, had_group_ids, bits
+    del suh_ptrs, svh_ptrs, unique_suh_ptrs, had_group_ids, host_had_group_ids, bits
     return torch.empty(
         (x.shape[0], trellis_ptrs.numel() * output_size),
         dtype=torch.bfloat16,
@@ -1034,6 +1047,12 @@ def _b12x_trellis_k6_supported(
     # When VLLM_EXL3_SKIP_TRELLIS_PREP=1, skip b12x prepared weights (saves 16GB).
     # Attention layers fall back to ext.exl3_gemm (raw trellis codes, no prep needed).
     if os.environ.get("VLLM_EXL3_SKIP_TRELLIS_PREP", "0") == "1":
+        return False
+    if not _B12X_INSTALLED:
+        if _B12X_MIN_M > 0:
+            raise RuntimeError(
+                "VLLM_EXL3_B12X_MIN_M enables B12X, but b12x is not installed."
+            )
         return False
     bounds = _b12x_trellis_n_bounds()
     if bounds is not None:
@@ -1797,6 +1816,7 @@ class Exl3LinearMethod(LinearMethodBase):
                         bundle[8],
                         bundle[3],
                         bundle[6],
+                        bundle[9],
                     )
                 else:
                     _exl3_qkv_mgemm(
@@ -1929,6 +1949,7 @@ class Exl3LinearMethod(LinearMethodBase):
                 bundle[8],
                 bundle[3],
                 bundle[6],
+                bundle[9],
             )
         elif bundle is not None and x_2d.shape[0] < 128:
             stacked = _exl3_qkv_mgemm(
@@ -2121,6 +2142,7 @@ class Exl3LinearMethod(LinearMethodBase):
             output_size,
             unique_suh_ptrs,
             had_group_ids_tensor,
+            torch.tensor(had_group_ids, dtype=torch.int32, device="cpu"),
         )
         logger.debug(
             "EXL3 QKV MGEMM prepared %s: %d x K5120xN%d, %.1f MiB "
