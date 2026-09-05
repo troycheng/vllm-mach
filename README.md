@@ -24,7 +24,7 @@ vLLM Mach adds an EXL3 provider and optional MXFP6 execution paths to vLLM 0.28.
 | EXL3/MXFP6 | The EXL3 configuration above with `VLLM_MACH_EXL3_MXFP6_PROFILE=qwen38-27b` and `mxfp6-sm120==0.2.1` |
 | Fused FlashInfer collective | The EXL3/MXFP6 profile with `flashinfer-python==0.6.16.post3` or `0.6.18` and the matching runtime patches |
 
-The EXL3 provider does not require MXFP6. This table records completed validation for release `0.1.0a2`; configurations outside it remain unverified. See [compatibility](docs/compatibility.md) for native dependencies, fallback behavior, and unsupported configurations.
+The EXL3 provider does not require MXFP6. This table records the validated base configurations. Release `0.1.0a3` adds separately validated opt-in decode paths described below; configurations outside the documented checks remain unverified. See [compatibility](docs/compatibility.md) for native dependencies, fallback behavior, and unsupported configurations.
 
 ## Installation
 
@@ -33,7 +33,7 @@ Install vLLM and the release wheel in the same environment:
 ```bash
 python -m pip install "vllm==0.28.0"
 python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a2/vllm_mach-0.1.0a2-py3-none-any.whl
+  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a3/vllm_mach-0.1.0a3-py3-none-any.whl
 ```
 
 The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
@@ -99,7 +99,7 @@ vllm serve malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated \
 
 `EXL3_BF16_IO=1` requires the PR #330 build above. Leave it unset when using the official `v1.4.6` tag.
 
-Source builds also offer opt-in M24/M32 decode paths and a sampling metadata patch. See [experimental decode paths](docs/experimental-decode.md) for configuration and validation limits; these options are not included in the `0.1.0a2` release profile.
+Release `0.1.0a3` also offers opt-in M24/M32 decode paths and a sampling metadata patch. The true-M32 kernel requires a separate native build, and the sampling patch must be applied to vLLM. See [experimental decode paths](docs/experimental-decode.md) for configuration and validation limits.
 
 For prefill, vLLM Mach can dispatch eligible K6 matrices to B12X and use ExLlamaV3's fused reconstruction plus Hadamard path:
 
@@ -134,7 +134,7 @@ The hybrid profile keeps `lm_head` and unmatched projections on EXL3. It routes 
 
 ## Validation
 
-Release `0.1.0a2` passed its package and clean-install checks. The Qwen3.8-27B TP2 service gate loaded the model, captured all configured graph sizes, selected the fused FlashInfer path on both ranks, reached the health check, and returned a completion response.
+Release `0.1.0a3` passed 60 package tests with 3 skipped. Its Qwen3.8-27B TP2 service check enabled the new decode options alongside the EXL3/MXFP6 profile and fused FlashInfer collective, captured all seven graph sizes, and passed the existing 40-task regression suite with no new failures. Exact output agreement with the stored reference was 33/40.
 
 The detailed test matrix and historical fused-collective measurements are in [the validation record](docs/validation.md). They are integration evidence, not a general performance claim.
 

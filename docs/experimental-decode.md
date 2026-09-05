@@ -1,6 +1,6 @@
 # Experimental decode paths
 
-These source-only options are not part of the validated `0.1.0a2` release profile. They are disabled by default and require `EXL3_BF16_IO=1`, the BF16 API described in the main README, and compatible grouped QKV/QKVZ bundles.
+These options are available in `0.1.0a3`. They are disabled by default and require `EXL3_BF16_IO=1`, the BF16 API described in the main README, and compatible grouped QKV/QKVZ bundles.
 
 | Option | Dispatch |
 |---|---|

@@ -1,6 +1,6 @@
 # Validation
 
-## 0.1.0a3 candidate
+## 0.1.0a3
 
 The M24/M32 and sampling-metadata integration passed 60 package tests with 3 skipped, a native source build against public ExLlamaV3 headers, and changing-input eager/Graph checks on both TP ranks. A complete EXL3/MXFP6 service with the fused FlashInfer collective then captured graph sizes `[1, 2, 4, 8, 16, 24, 32]`, returned a completion, and passed the existing 40-task retention suite with no pass/fail regressions. Exact output agreement with the stored reference was 33/40. The tested Mach runtime source is commit `dd48f2a`; the subsequent candidate packaging changes version metadata and documentation only.
 
