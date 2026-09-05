@@ -99,6 +99,8 @@ vllm serve malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated \
 
 `EXL3_BF16_IO=1` requires the PR #330 build above. Leave it unset when using the official `v1.4.6` tag.
 
+Source builds also offer opt-in M24/M32 decode paths and a sampling metadata patch. See [experimental decode paths](docs/experimental-decode.md) for configuration and validation limits; these options are not included in the `0.1.0a2` release profile.
+
 For prefill, vLLM Mach can dispatch eligible K6 matrices to B12X and use ExLlamaV3's fused reconstruction plus Hadamard path:
 
 ```bash

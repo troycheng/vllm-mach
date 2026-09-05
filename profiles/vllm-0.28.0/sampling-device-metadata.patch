@@ -1,0 +1,24 @@
+diff --git a/vllm/v1/worker/gpu/sample/gumbel.py b/vllm/v1/worker/gpu/sample/gumbel.py
+--- a/vllm/v1/worker/gpu/sample/gumbel.py
++++ b/vllm/v1/worker/gpu/sample/gumbel.py
+@@ -1,7 +1,11 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++import os
++
+ import torch
+ 
+ from vllm.triton_utils import HAS_TRITON, tl, tldevice, triton
++
++_MACH_STAGE_METADATA = os.environ.get("VLLM_MACH_SAMPLING_DEVICE_METADATA", "0") == "1"
+ 
+ # Smallest positive value produced by Triton's fp32 `tl.rand`. Used to clamp
+@@ -243,4 +247,8 @@
+ ) -> torch.Tensor:
++    if _MACH_STAGE_METADATA:
++        # Stage mapped host metadata once before the vocabulary tiles read it.
++        temperature = temperature.clone()
++        seed = seed.clone()
+     # Enforce contiguity on non-strided input tensors
+     expanded_idx_mapping = expanded_idx_mapping.contiguous()
+     pos = pos.contiguous()

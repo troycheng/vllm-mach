@@ -58,6 +58,9 @@ _EXL3_EXT: Any | None = None
 _B12X_TRELLIS_LINEAR_API: Any | None = None
 _QKV_MGEMM_ENABLED = os.environ.get("EXL3_QKV_MGEMM", "0") == "1"
 _BF16_IO_ENABLED = os.environ.get("EXL3_BF16_IO", "0") == "1"
+_BF16_IO_M24_ENABLED = os.environ.get("EXL3_BF16_IO_M24", "0") == "1"
+_BF16_IO_M32_ENABLED = os.environ.get("EXL3_BF16_IO_M32", "0") == "1"
+_BF16_IO_TILE_M32_ENABLED = os.environ.get("EXL3_BF16_IO_TILE_M32", "0") == "1"
 _EXL3_GEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int]] = set()
 _EXL3_QKV_MGEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int, int]] = set()
 _B12X_TRELLIS_WARMED_DEVICES: set[tuple[int, int]] = set()
@@ -721,35 +724,79 @@ def _exl3_mgemm_bf16_io(
     ext = _load_exl3_ext()
     count = trellis_ptrs.numel()
     m, k = x.shape
-    scratch = torch.empty(
-        (count, m, output_size), dtype=torch.float16, device=x.device
-    )
-    output = torch.empty(
-        (m, count * output_size), dtype=torch.bfloat16, device=x.device
-    )
     force_num_sms = {2: 85, 8: 20, 14: 12}[count]
-    if unique_suh_ptrs.numel() < count:
-        x_had = torch.empty(
-            (unique_suh_ptrs.numel(), m, k), dtype=torch.float16, device=x.device
+    grouped_hadamard = unique_suh_ptrs.numel() < count
+    m32_ext = (
+        _load_exl3_m32_ext()
+        if grouped_hadamard and m == 32 and _BF16_IO_TILE_M32_ENABLED
+        else None
+    )
+    use_tile_m32 = m32_ext is not None
+    if grouped_hadamard and m > 16 and not use_tile_m32:
+        output = torch.empty(
+            (m, count * output_size), dtype=torch.bfloat16, device=x.device
         )
-        ext.exl3_mgemm_bf16_io_grouped_had(
-            x, trellis_ptrs, scratch, output, unique_suh_ptrs, x_had,
-            svh_ptrs, had_group_ids, bits, force_num_sms,
-            count * output_size, True,
-            True,  # Direct BF16 epilogue is validated for grouped-Hadamard QKV.
-            False,  # All served M<=16 shapes omit the terminal group barrier.
-        )
+        for start in range(0, m, 16):
+            chunk_m = min(16, m - start)
+            scratch = torch.empty(
+                (count, chunk_m, output_size),
+                dtype=torch.float16,
+                device=x.device,
+            )
+            x_had = torch.empty(
+                (unique_suh_ptrs.numel(), chunk_m, k),
+                dtype=torch.float16,
+                device=x.device,
+            )
+            ext.exl3_mgemm_bf16_io_grouped_had(
+                x.narrow(0, start, chunk_m), trellis_ptrs, scratch,
+                output.narrow(0, start, chunk_m), unique_suh_ptrs, x_had,
+                svh_ptrs, had_group_ids, bits, force_num_sms,
+                count * output_size, True,
+                True,  # Direct BF16 epilogue is validated for grouped-Hadamard QKV.
+                False,  # Every row chunk keeps all matrices resident.
+            )
     else:
+        scratch = torch.empty(
+            (count, m, output_size), dtype=torch.float16, device=x.device
+        )
+        output = torch.empty(
+            (m, count * output_size), dtype=torch.bfloat16, device=x.device
+        )
         x_had = torch.empty(
-            (count, m, k), dtype=torch.float16, device=x.device
+            ((unique_suh_ptrs.numel() if grouped_hadamard else count), m, k),
+            dtype=torch.float16,
+            device=x.device,
         )
-        ext.exl3_mgemm_bf16_io(
-            x, trellis_ptrs, scratch, output, suh_ptrs, x_had, svh_ptrs,
-            bits, force_num_sms, count * output_size, True,
-            False,  # Wide MLP retains the distributed scratch epilogue.
-            False,  # All served M<=16 shapes omit the terminal group barrier.
-        )
+        if grouped_hadamard:
+            if use_tile_m32:
+                locks = torch.empty(
+                    count * (output_size // 128),
+                    dtype=torch.int32,
+                    device=x.device,
+                )
+                m32_ext.grouped_had_m32(
+                    x, trellis_ptrs, scratch, output, unique_suh_ptrs, x_had,
+                    svh_ptrs, had_group_ids, locks, bits, force_num_sms,
+                    count * output_size, True,
+                )
+            else:
+                ext.exl3_mgemm_bf16_io_grouped_had(
+                    x, trellis_ptrs, scratch, output, unique_suh_ptrs, x_had,
+                    svh_ptrs, had_group_ids, bits, force_num_sms,
+                    count * output_size, True,
+                    True,  # Direct BF16 epilogue is validated for grouped-Hadamard QKV.
+                    False,  # All served M<=16 shapes omit the terminal group barrier.
+                )
+        else:
+            ext.exl3_mgemm_bf16_io(
+                x, trellis_ptrs, scratch, output, suh_ptrs, x_had, svh_ptrs,
+                bits, force_num_sms, count * output_size, True,
+                False,  # Wide MLP retains the distributed scratch epilogue.
+                False,  # All served M<=16 shapes omit the terminal group barrier.
+            )
     return output
+
 
 @_exl3_mgemm_bf16_io.register_fake
 def _exl3_mgemm_bf16_io_fake(
@@ -768,6 +815,23 @@ def _exl3_mgemm_bf16_io_fake(
         dtype=torch.bfloat16,
         device=x.device,
     )
+
+def _load_exl3_m32_ext() -> Any | None:
+    from .m32 import load_extension
+    return load_extension()
+
+
+def _bf16_bundle_rows_supported(rows: int, bundle: tuple) -> bool:
+    if not _BF16_IO_ENABLED:
+        return False
+    if 1 <= rows <= 16:
+        return True
+    grouped = bundle[7].numel() < bundle[0].numel()
+    return grouped and (
+        (rows == 24 and _BF16_IO_M24_ENABLED)
+        or (rows == 32 and _BF16_IO_M32_ENABLED)
+    )
+
 
 def _graph_decode_enabled() -> bool:
     """Return whether serialized dense EXL3 may run under CUDA graphs.
@@ -1723,7 +1787,7 @@ class Exl3LinearMethod(LinearMethodBase):
                 device=device,
             )
             for m in pending:
-                if _BF16_IO_ENABLED and m <= 16:
+                if _bf16_bundle_rows_supported(m, bundle):
                     _exl3_mgemm_bf16_io(
                         source.narrow(0, 0, m).to(torch.bfloat16),
                         bundle[0],
@@ -1835,7 +1899,12 @@ class Exl3LinearMethod(LinearMethodBase):
         bf16_regular = small_bf16 and prefix.endswith(
             ("mlp.down_proj", "linear_attn.out_proj", "self_attn.o_proj")
         )
-        bf16_bundle = small_bf16 and bundle is not None
+        bf16_bundle = (
+            bundle is not None
+            and bias is None
+            and original_dtype == torch.bfloat16
+            and _bf16_bundle_rows_supported(rows, bundle)
+        )
         target_dtype = (
             torch.bfloat16
             if hybrid
