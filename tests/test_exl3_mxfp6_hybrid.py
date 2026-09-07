@@ -81,6 +81,81 @@ def _reset_runtime():
     _Runtime.fail_after = None
 
 
+def _checkpoint_profile(monkeypatch):
+    monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_CHECKPOINT_PROFILE)
+    monkeypatch.setenv(hybrid.CHECKPOINT_ENV, "/test/paired-checkpoint")
+
+
+def test_checkpoint_profile_requires_explicit_source(monkeypatch):
+    monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_CHECKPOINT_PROFILE)
+    monkeypatch.delenv(hybrid.CHECKPOINT_ENV, raising=False)
+    with pytest.raises(ValueError, match="explicit local"):
+        hybrid.active_profile()
+    monkeypatch.setenv(hybrid.CHECKPOINT_ENV, "/test/checkpoint")
+    monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_PROFILE)
+    with pytest.raises(ValueError, match="requires"):
+        hybrid.active_profile()
+
+
+@pytest.mark.parametrize("rows,active", [(0, False), (1, False), (16, False),
+    (24, False), (31, False), (32, True), (33, False), (127, False),
+    (128, True), (4096, True)])
+def test_checkpoint_qkv_dispatch_is_physical_m32_or_prefill(monkeypatch, rows, active):
+    _checkpoint_profile(monkeypatch)
+    route = hybrid.route_for_prefix("model.layers.3.self_attn.qkv_proj")
+    assert route is hybrid.HybridRoute.PREFILL_AND_M32
+    assert hybrid.HybridState(route, {}).active_for_rows(rows) is active
+
+
+def test_checkpoint_loading_is_merged_and_does_not_requantize(monkeypatch):
+    import vllm.distributed as distributed
+    _checkpoint_profile(monkeypatch)
+    monkeypatch.setattr(distributed, "get_tensor_model_parallel_rank", lambda: 1)
+    monkeypatch.setattr(distributed, "get_tensor_model_parallel_world_size", lambda: 2)
+    monkeypatch.setattr(hybrid, "_load_runtime", lambda device: SimpleNamespace(
+        pack_scales=lambda x: x))
+    layer = _layer("model.layers.3.self_attn.qkv_proj", ["q", "k", "v"], [8, 8, 8])
+    layer.exl3_input_size_per_partition = 128
+    weight = hybrid.HybridPackedWeight(torch.empty(0), torch.empty(0), 24, 128)
+    calls = []
+
+    def load(prefix, **kwargs):
+        calls.append((prefix, kwargs))
+        return SimpleNamespace(shard_ids=("q", "k", "v"), weights={}, merged_weight=weight)
+
+    state = hybrid.prepare_layer(layer, object(), checkpoint=SimpleNamespace(load_layer=load))
+    assert state.merged_weight is weight
+    assert hybrid.state_for_rows(layer, 32) is state
+    assert hybrid.state_for_rows(layer, 24) is None
+    assert len(layer.trellis.exl3_tensors) == 3
+    assert calls[0][1]["rank"] == 1 and calls[0][1]["tp_size"] == 2
+    assert hybrid.prepare_layer(layer, object()) is state
+    assert len(calls) == 1
+
+
+def test_checkpoint_apply_uses_one_merged_call_and_preserves_bias(monkeypatch):
+    weight = hybrid.HybridPackedWeight(torch.empty(0), torch.empty(0), 24, 128)
+    layer = SimpleNamespace(prefix="model.layers.3.self_attn.qkv_proj",
+        exl3_shard_ids=["q", "k", "v"],
+        _mach_exl3_mxfp6=hybrid.HybridState(hybrid.HybridRoute.PREFILL_AND_M32, {}, weight))
+    calls = []
+    monkeypatch.setattr(hybrid, "apply_weight", lambda x, w: calls.append((x.shape, w))
+        or torch.full((x.shape[0], w.rows), 2, dtype=torch.bfloat16))
+    out = Exl3LinearMethod(Exl3Config()).apply(
+        layer, torch.ones((2, 16, 128), dtype=torch.float32), bias=torch.ones(24))
+    assert out.shape == (2, 16, 24) and out.dtype == torch.float32
+    assert torch.all(out == 3) and len(calls) == 1
+
+
+def test_checkpoint_graph_priming_skips_mxfp6_m32(monkeypatch):
+    layer = SimpleNamespace(_mach_exl3_mxfp6=hybrid.HybridState(
+        hybrid.HybridRoute.PREFILL_AND_M32, {}))
+    config = Exl3Config()
+    config.graph_decode_rows = (32,)
+    # No trellis/bundle/native EXL3 dependency is needed for this routed row.
+    Exl3LinearMethod(config)._prime_graph_decode_shapes(layer)
+
+
 def test_profile_routes_only_the_validated_projection_families(monkeypatch) -> None:
     monkeypatch.setenv(hybrid.PROFILE_ENV, hybrid.QWEN38_27B_PROFILE)
     all_rows = (

@@ -1288,6 +1288,7 @@ class Exl3Config(QuantizationConfig):
         self.tensor_storage = tensor_storage or {}
         self._eager_checked = False
         self.graph_decode_rows: tuple[int, ...] | None = None
+        self._hybrid_checkpoint: Any | None = None
 
     def get_name(self) -> str:
         return "exl3"
@@ -1360,6 +1361,7 @@ class Exl3Config(QuantizationConfig):
         self._validate_storage_metadata()
         self._validate_model_config(hf_config)
         mxfp6_hybrid.validate_profile_model(hf_config)
+        self._hybrid_checkpoint = mxfp6_hybrid.checkpoint_for_model(hf_config)
         self._force_independent_lm_head(hf_config)
 
     @staticmethod
@@ -1738,7 +1740,9 @@ class Exl3LinearMethod(LinearMethodBase):
         hybrid = None
         prefix = str(getattr(layer, "prefix", ""))
         if mxfp6_hybrid.route_for_prefix(prefix) is not None:
-            hybrid = mxfp6_hybrid.prepare_layer(layer, _load_exl3_ext())
+            hybrid = mxfp6_hybrid.prepare_layer(
+                layer, _load_exl3_ext(), checkpoint=self.quant_config._hybrid_checkpoint
+            )
         if hybrid is not None and hybrid.route is mxfp6_hybrid.HybridRoute.ALL_ROWS:
             return
         self._prepare_qkv_mgemm(layer)
@@ -1771,6 +1775,11 @@ class Exl3LinearMethod(LinearMethodBase):
         ``_require_enforce_eager`` granted graph decode.
         """
         rows = self.quant_config.graph_decode_rows
+        if not rows:
+            return
+        # MXFP6 weights are primed by the shared workspace planner. Do not
+        # require an unused EXL3 M32 extension for the checkpoint profile.
+        rows = tuple(m for m in rows if mxfp6_hybrid.state_for_rows(layer, m) is None)
         if not rows:
             return
         owner = getattr(layer, "prefix", layer.__class__.__name__)

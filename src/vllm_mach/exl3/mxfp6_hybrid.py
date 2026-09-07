@@ -16,6 +16,8 @@ import torch
 
 PROFILE_ENV = "VLLM_MACH_EXL3_MXFP6_PROFILE"
 QWEN38_27B_PROFILE = "qwen38-27b"
+QWEN38_27B_CHECKPOINT_PROFILE = "qwen38-27b-checkpoint"
+CHECKPOINT_ENV = "VLLM_MACH_MXFP6_CHECKPOINT"
 _SUPPORTED_RUNTIME_VERSION = "0.2.1"
 _SUPPORTED_W6A8_ABI = "native-w6a8-30-v5"
 _STATE_ATTRIBUTE = "_mach_exl3_mxfp6"
@@ -24,6 +26,7 @@ _STATE_ATTRIBUTE = "_mach_exl3_mxfp6"
 class HybridRoute(Enum):
     ALL_ROWS = "all-rows"
     PREFILL_ONLY = "prefill-only"
+    PREFILL_AND_M32 = "prefill-and-m32"
 
 
 @dataclass(frozen=True)
@@ -46,7 +49,11 @@ class HybridState:
     prefill_min_rows: int = 128
 
     def active_for_rows(self, rows: int) -> bool:
-        return self.route is HybridRoute.ALL_ROWS or rows >= self.prefill_min_rows
+        return rows > 0 and (
+            self.route is HybridRoute.ALL_ROWS
+            or rows >= self.prefill_min_rows
+            or (self.route is HybridRoute.PREFILL_AND_M32 and rows == 32)
+        )
 
 
 _ALL_ROWS_SUFFIXES = (
@@ -63,13 +70,34 @@ _PREFILL_ONLY_SUFFIXES = (
 
 def active_profile() -> str | None:
     raw = os.environ.get(PROFILE_ENV, "").strip().lower()
+    checkpoint = os.environ.get(CHECKPOINT_ENV, "").strip()
+    if checkpoint and raw != QWEN38_27B_CHECKPOINT_PROFILE:
+        raise ValueError(
+            f"{CHECKPOINT_ENV} requires {PROFILE_ENV}={QWEN38_27B_CHECKPOINT_PROFILE}"
+        )
     if not raw:
         return None
-    if raw != QWEN38_27B_PROFILE:
+    if raw not in (QWEN38_27B_PROFILE, QWEN38_27B_CHECKPOINT_PROFILE):
         raise ValueError(
-            f"{PROFILE_ENV} only accepts {QWEN38_27B_PROFILE!r}; got {raw!r}"
+            f"{PROFILE_ENV} only accepts {QWEN38_27B_PROFILE!r} or "
+            f"{QWEN38_27B_CHECKPOINT_PROFILE!r}; got {raw!r}"
         )
+    if raw == QWEN38_27B_CHECKPOINT_PROFILE and not checkpoint:
+        raise ValueError(f"{raw} requires an explicit local {CHECKPOINT_ENV} directory")
     return raw
+
+
+def checkpoint_for_model(hf_config: Any | None) -> Any | None:
+    """Bind the explicit second weight source once per quantization config."""
+    if active_profile() != QWEN38_27B_CHECKPOINT_PROFILE:
+        return None
+    from .mxfp6_checkpoint import Mxfp6Checkpoint
+
+    if hf_config is None:
+        raise ValueError("The checkpoint profile requires the served model configuration")
+    return Mxfp6Checkpoint(
+        os.environ[CHECKPOINT_ENV].strip(), expected_config=hf_config
+    )
 
 
 def validate_profile_model(hf_config: Any | None) -> None:
@@ -110,6 +138,8 @@ def route_for_prefix(prefix: str) -> HybridRoute | None:
     if any(_matches_suffix(prefix, suffix) for suffix in _ALL_ROWS_SUFFIXES):
         return HybridRoute.ALL_ROWS
     if any(_matches_suffix(prefix, suffix) for suffix in _PREFILL_ONLY_SUFFIXES):
+        if active_profile() == QWEN38_27B_CHECKPOINT_PROFILE:
+            return HybridRoute.PREFILL_AND_M32
         return HybridRoute.PREFILL_ONLY
     return None
 
@@ -223,7 +253,9 @@ def _quantize(runtime: Any, weight_k_n: torch.Tensor) -> HybridPackedWeight:
     )
 
 
-def prepare_layer(layer: torch.nn.Module, extension: Any) -> HybridState | None:
+def prepare_layer(
+    layer: torch.nn.Module, extension: Any, *, checkpoint: Any | None = None
+) -> HybridState | None:
     """Build the rank-local MXFP6 copy for one selected EXL3 linear."""
 
     existing = getattr(layer, _STATE_ATTRIBUTE, None)
@@ -241,7 +273,43 @@ def prepare_layer(layer: torch.nn.Module, extension: Any) -> HybridState | None:
 
     first = layer.trellis.exl3_tensors[shard_ids[0]]
     runtime = _load_runtime(first.device)
-    if prefix.lower().endswith("mlp.gate_up_proj"):
+    if active_profile() == QWEN38_27B_CHECKPOINT_PROFILE:
+        if checkpoint is None:
+            raise ValueError("Checkpoint profile was not bound to the served model")
+        from vllm.distributed import (
+            get_tensor_model_parallel_rank,
+            get_tensor_model_parallel_world_size,
+        )
+
+        if not hasattr(runtime, "pack_scales"):
+            raise RuntimeError("Direct MXFP6 loading requires mxfp6.pack_scales")
+        loaded = checkpoint.load_layer(
+            prefix,
+            rank=get_tensor_model_parallel_rank(),
+            tp_size=get_tensor_model_parallel_world_size(),
+            device=first.device,
+            pack_scales=runtime.pack_scales,
+        )
+        if tuple(loaded.shard_ids) != tuple(shard_ids):
+            raise ValueError(
+                f"Checkpoint shard order {loaded.shard_ids!r} does not match "
+                f"EXL3 shard order {shard_ids!r} for {prefix}"
+            )
+        expected_k = int(layer.exl3_input_size_per_partition)
+        if loaded.merged_weight is not None:
+            expected_n = sum(_logical_output_size(layer, sid) for sid in shard_ids)
+            sizes = [(loaded.merged_weight, expected_n)]
+        else:
+            if set(loaded.weights) != set(shard_ids):
+                raise ValueError(f"Incomplete checkpoint projections for {prefix}")
+            sizes = [(loaded.weights[sid], _logical_output_size(layer, sid))
+                     for sid in shard_ids]
+        if any(weight.rows != n or weight.k != expected_k for weight, n in sizes):
+            raise ValueError(f"Checkpoint TP shapes do not match EXL3 layer {prefix}")
+        state = HybridState(
+            route=route, weights=loaded.weights, merged_weight=loaded.merged_weight
+        )
+    elif prefix.lower().endswith("mlp.gate_up_proj"):
         if route is not HybridRoute.ALL_ROWS or len(shard_ids) != 2:
             raise ValueError(
                 f"EXL3/MXFP6 gate/up expects two all-row shards; got {shard_ids!r}"
@@ -375,12 +443,15 @@ def apply_mxfp8_weight(activation: Any, weight: HybridPackedWeight) -> torch.Ten
 
 
 __all__ = [
+    "CHECKPOINT_ENV",
     "PROFILE_ENV",
+    "QWEN38_27B_CHECKPOINT_PROFILE",
     "QWEN38_27B_PROFILE",
     "HybridPackedWeight",
     "HybridRoute",
     "HybridState",
     "active_profile",
+    "checkpoint_for_model",
     "apply_mxfp8_weight",
     "apply_weight",
     "fused_silu_mxfp8",
