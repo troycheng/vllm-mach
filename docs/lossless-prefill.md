@@ -1,5 +1,17 @@
 # Lossless prefill port
 
+## Direct SUM increment
+
+The development source includes `lossless_direct_sum_prefill_service_v1`, selected and retained by the source experiment on September 8, 2026. Native package `0.1.0a3` adds a separate direct library; enable it with `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1` alongside the input and SUM switches. The previous modes remain available. See [build and configuration](../native/lossless_prefill/README.md#direct-sum).
+
+The source experiment's A/B/B/A service comparison recorded c32 throughput of 1403.5140 → 1412.2002 output tokens/s (+0.6189%) against input+SUM, with two lifecycles per arm. Its c4/c16/c24 changes were −0.0525% / +0.1226% / +0.2540%. These are historical source-stack measurements, not Mach release results, and must not be added to earlier codec gains.
+
+The source investigation found that the shared model adapter is sensitive to batch composition: decode requests can switch between Temporal EXL3 and checkpoint MXFP6 routes when mixed with prefill. In controlled cohorts with matching recorded batch paths, old SUM and direct SUM produced identical token sequences for all 192 requests. Uncontrolled c24 runs differed, including repeated runs of old SUM. This does not establish arbitrary batch-invariant output or complete business-quality acceptance. The direct collective preserves its tested BF16 boundary; it does not fix or redefine the model adapter's route-dependent numerical behavior. The complete producer stream/event contract for residual preloads has not been independently verified at runtime; the source audit found the preload ordering also present in the reference implementation and did not establish it as the cause of the text differences.
+
+Mach acceptance: all 126 package tests passed after clearing the serving image's profile environment. The native extension built with CUDA 13.0; installed FlashInfer, old SUM and direct SUM matched bitwise on eight fixtures per rank, including alias and changing-input Graph checks. Three mixed-workspace PDL rounds passed. One complete service lifecycle activated direct SUM on both ranks and verified 128 full 4096×5120 residual/norm instances per rank bitwise against installed FlashInfer. All 40 task cases passed with zero pass/fail regressions; 35/40 outputs exactly matched the stored reference text. All 256 fixed-token c32 requests completed (1024 input / 256 output tokens each). Verification was enabled, so this run does not establish a Mach performance gain. Source exhaustive, poison and sanitizer checks were not repeated for this port.
+
+## Input+SUM increment
+
 The development source now also carries the incremental `lossless_sum_prefill_service_v1` path. Set `VLLM_MACH_LOSSLESS_PREFILL_SUM=1` in addition to the original opt-in switch and rebuild native package `0.1.0a2`. Input-only remains available. The additional SUM header region raises the minimum workspace capacity to 84,213,760 bytes; no new workspace pool or KV allocation is introduced. The new device source preserves the source experiment's arithmetic and synchronization, with only registration namespace changes.
 
 Its source experiment recorded +0.4854% c32 in the first full sweep and +0.6178% in a separate, fully conditioned c32 confirmation round, each with two lifecycles per arm. These rounds must not be pooled and neither establishes a general speedup. They compare input+SUM against input-only, not against unmodified FlashInfer or released Mach.

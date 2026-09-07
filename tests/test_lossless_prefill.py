@@ -6,6 +6,20 @@ import torch
 from vllm_mach.exl3.lossless_prefill import eligible, validate_workspace, MIN_WORKSPACE_BYTES, SUM_MIN_WORKSPACE_BYTES
 
 
+def test_mode_selection(monkeypatch):
+    from vllm_mach.exl3.lossless_prefill import selected_mode
+    monkeypatch.delenv('VLLM_MACH_LOSSLESS_PREFILL_SUM', raising=False)
+    monkeypatch.delenv('VLLM_MACH_LOSSLESS_PREFILL_DIRECT', raising=False)
+    assert selected_mode() == 'input'
+    monkeypatch.setenv('VLLM_MACH_LOSSLESS_PREFILL_DIRECT', '1')
+    with pytest.raises(RuntimeError, match='Direct SUM requires'):
+        selected_mode()
+    monkeypatch.setenv('VLLM_MACH_LOSSLESS_PREFILL_SUM', '1')
+    assert selected_mode() == 'direct'
+    monkeypatch.setenv('VLLM_MACH_LOSSLESS_PREFILL_DIRECT', '0')
+    assert selected_mode() == 'sum'
+
+
 def test_opt_in_and_shape(monkeypatch):
     monkeypatch.delenv('VLLM_MACH_LOSSLESS_PREFILL', raising=False)
     assert not eligible((4096, 5120), torch.bfloat16, 2)

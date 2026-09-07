@@ -15,7 +15,7 @@ if not CUDA_HOME or 'release 13.0,' not in subprocess.check_output(
 root = Path(importlib.metadata.distribution('flashinfer-python').locate_file('flashinfer/data'))
 
 setup(
-    name='vllm-mach-lossless-prefill', version='0.1.0a2',
+    name='vllm-mach-lossless-prefill', version='0.1.0a3',
     license='Apache-2.0', license_files=['LICENSE'],
     ext_modules=[CUDAExtension(
         name, [source],
@@ -31,5 +31,6 @@ setup(
         }) for name, source in [
             ('mach_lossless_prefill_ext', 'ar_codec_extension.cu'),
             ('mach_lossless_prefill_sum_ext', 'sum_codec_extension.cu'),
+            ('mach_lossless_prefill_direct_ext', 'direct_codec_extension.cu'),
         ]], cmdclass={'build_ext': BuildExtension},
 )

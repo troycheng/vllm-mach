@@ -33,6 +33,12 @@ Both switches default to off. The SUM switch requires `VLLM_MACH_LOSSLESS_PREFIL
 
 The native library is loaded with `torch.ops.load_library`, not imported as a Python extension. First use must happen outside CUDA Graph capture. Decode M24/M32 remains on its original one-shot path.
 
+### Direct SUM
+
+Native package `0.1.0a3` also builds the direct SUM variant. Keep both switches above enabled and add `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1`. It packs only the input half needed by the peer, supports exact signed-zero blocks, and feeds the producing rank's BF16 sum directly into the existing residual/GemmaRMSNorm operation. This removes 20 MiB of local SUM writes and 20 MiB of rereads per rank at the supported shape. Peer SUM transfer, arithmetic ordering, both barriers and PDL completion are retained. Workspace capacity is unchanged from input+SUM.
+
+The direct switch defaults to off and requires the SUM switch. Unset it and restart workers to restore input+SUM; unset both to restore input-only. All three modes remain restricted to the validated TP2/BF16/M4096×H5120 boundary.
+
 ## Validation
 
 The included boundary harness can run without model files:
@@ -48,6 +54,8 @@ GLOO_SOCKET_IFNAME=lo python -m torch.distributed.run \
 It compares the installed FlashInfer implementation, a recompiled control and the packed path, including changing-input Graph replay. Real captured inputs can be supplied through `--capture-dir` with `--validate-only`; `bench_mixed_workspace.py` additionally covers mixed M24/M32 one-shot and M4096 two-shot use of a shared workspace. Those captured model inputs are not distributed.
 
 For input+SUM, use `bench_sum_codec.py` with `--reference-library` pointing to `mach_lossless_prefill_ext` and `--library` pointing to `mach_lossless_prefill_sum_ext`. The same `--smoke` mode requires no model data. `bench_sum_mixed_workspace.py` covers the new SUM path sharing a workspace with M24/M32 one-shot Graph calls.
+
+For direct SUM, use `bench_direct_codec.py` with `--reference-library` pointing to `mach_lossless_prefill_sum_ext` and `--library` pointing to `mach_lossless_prefill_direct_ext`. `bench_direct_mixed_workspace.py` tests shared-workspace transitions with the direct library. Both boundary harnesses compare against installed FlashInfer and support `--smoke` without model files.
 
 For a diagnostic service run, also set `VLLM_MACH_LOSSLESS_PREFILL_VERIFY=1`. The first eligible call at each norm instance is compared bitwise with installed FlashInfer, checking both residual and normalized outputs. This adds communication and synchronization; **disable it for performance measurement**. Logs report activation and the number of verified norm instances per rank.
 

@@ -6,11 +6,19 @@ import os
 
 logger = logging.getLogger(__name__)
 _loaded = False
-_loaded_sum = None
+_loaded_mode = None
 _workspace = None
 _verified_norms = set()
 MIN_WORKSPACE_BYTES = 84_049_920
 SUM_MIN_WORKSPACE_BYTES = 84_213_760
+
+
+def selected_mode():
+    if os.getenv('VLLM_MACH_LOSSLESS_PREFILL_DIRECT', '0') == '1':
+        if os.getenv('VLLM_MACH_LOSSLESS_PREFILL_SUM', '0') != '1':
+            raise RuntimeError('Direct SUM requires VLLM_MACH_LOSSLESS_PREFILL_SUM=1')
+        return 'direct'
+    return 'sum' if os.getenv('VLLM_MACH_LOSSLESS_PREFILL_SUM', '0') == '1' else 'input'
 
 
 def eligible(shape, dtype, tp_size):
@@ -36,9 +44,10 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
     from vllm.distributed import get_tensor_model_parallel_rank, get_tp_group
     from vllm.distributed.device_communicators.flashinfer_all_reduce import get_fi_ar_workspace
 
-    global _loaded, _loaded_sum, _workspace
-    sum_codec = os.getenv('VLLM_MACH_LOSSLESS_PREFILL_SUM', '0') == '1'
-    if _loaded and sum_codec != _loaded_sum:
+    global _loaded, _loaded_mode, _workspace
+    mode = selected_mode()
+    sum_codec = mode != 'input'
+    if _loaded and mode != _loaded_mode:
         raise RuntimeError('Lossless prefill mode changed; restart the worker')
     if torch.cuda.get_device_capability(hidden_states.device) != (12, 0):
         raise RuntimeError('Lossless prefill has only been validated on SM120')
@@ -54,14 +63,16 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
         for package, expected in [('vllm', '0.28.0'), ('flashinfer-python', '0.6.18')]:
             if importlib.metadata.version(package) != expected:
                 raise RuntimeError(f'Lossless prefill requires {package}=={expected}')
-        extension = 'mach_lossless_prefill_sum_ext' if sum_codec else 'mach_lossless_prefill_ext'
+        extension = {'input': 'mach_lossless_prefill_ext', 'sum': 'mach_lossless_prefill_sum_ext',
+                     'direct': 'mach_lossless_prefill_direct_ext'}[mode]
         spec = importlib.util.find_spec(extension)
         if spec is None or not spec.origin:
             raise RuntimeError('Build/install native/lossless_prefill before enabling this profile')
         torch.ops.load_library(spec.origin)
-        _loaded, _loaded_sum, _workspace = True, sum_codec, workspace
+        _loaded, _loaded_mode, _workspace = True, mode, workspace
         logger.warning('Mach lossless prefill active: rank=%s shape=4096x5120 buffer_size=%s mode=%s',
-                       rank, workspace.metadata['buffer_size'], 'input+sum' if sum_codec else 'input-only')
+                       rank, workspace.metadata['buffer_size'],
+                       {'input': 'input-only', 'sum': 'input+sum', 'direct': 'direct-sum'}[mode])
     if workspace is not _workspace:
         raise RuntimeError('Lossless prefill workspace changed; restart the worker')
     verify = os.getenv('VLLM_MACH_LOSSLESS_PREFILL_VERIFY', '0') == '1' and norm not in _verified_norms
@@ -76,11 +87,12 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
             launch_with_pdl=True, fp32_acc=True, max_token_num=max_token_num,
             pattern_code=1, norm_out=reference_norm,
         )
-    ops = torch.ops.mach_lossless_prefill_sum if sum_codec else torch.ops.mach_lossless_prefill
+    ops = getattr(torch.ops, {'input': 'mach_lossless_prefill', 'sum': 'mach_lossless_prefill_sum',
+                             'direct': 'mach_lossless_prefill_direct'}[mode])
     ops.run(
         hidden_states, residual, norm.weight, workspace.workspace_tensor,
         hidden_states, norm_out, rank, int(workspace.metadata['buffer_size']),
-        float(norm.variance_epsilon), 1.0, True, True,
+        float(norm.variance_epsilon), 1.0, 1 if mode == 'direct' else True, True,
     )
     if verify:
         if not (torch.equal(hidden_states.view(torch.uint16), reference_input.view(torch.uint16))
