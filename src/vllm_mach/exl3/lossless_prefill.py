@@ -6,9 +6,11 @@ import os
 
 logger = logging.getLogger(__name__)
 _loaded = False
+_loaded_sum = None
 _workspace = None
 _verified_norms = set()
 MIN_WORKSPACE_BYTES = 84_049_920
+SUM_MIN_WORKSPACE_BYTES = 84_213_760
 
 
 def eligible(shape, dtype, tp_size):
@@ -18,14 +20,14 @@ def eligible(shape, dtype, tp_size):
             and dtype == torch.bfloat16)
 
 
-def validate_workspace(workspace, rank):
+def validate_workspace(workspace, rank, sum_codec=False):
     if workspace is None or workspace.backend != 'trtllm':
         raise RuntimeError('Lossless prefill requires a trtllm workspace')
     meta = workspace.metadata
     if (meta.get('tp_size') != 2 or meta.get('tp_rank') != rank
             or meta.get('hidden_dim') != 5120
             or meta.get('max_token_num', 0) < 4096
-            or meta.get('buffer_size', 0) < MIN_WORKSPACE_BYTES):
+            or meta.get('buffer_size', 0) < (SUM_MIN_WORKSPACE_BYTES if sum_codec else MIN_WORKSPACE_BYTES)):
         raise RuntimeError('Lossless prefill workspace metadata/capacity mismatch')
 
 
@@ -34,7 +36,10 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
     from vllm.distributed import get_tensor_model_parallel_rank, get_tp_group
     from vllm.distributed.device_communicators.flashinfer_all_reduce import get_fi_ar_workspace
 
-    global _loaded, _workspace
+    global _loaded, _loaded_sum, _workspace
+    sum_codec = os.getenv('VLLM_MACH_LOSSLESS_PREFILL_SUM', '0') == '1'
+    if _loaded and sum_codec != _loaded_sum:
+        raise RuntimeError('Lossless prefill mode changed; restart the worker')
     if torch.cuda.get_device_capability(hidden_states.device) != (12, 0):
         raise RuntimeError('Lossless prefill has only been validated on SM120')
     rank = get_tensor_model_parallel_rank()
@@ -42,20 +47,21 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
         world_size=2, rank=rank, max_token_num=max_token_num,
         hidden_dim=5120, dtype=hidden_states.dtype, group=get_tp_group().cpu_group,
     )
-    validate_workspace(workspace, rank)
+    validate_workspace(workspace, rank, sum_codec)
     if not _loaded:
         if torch.cuda.is_current_stream_capturing():
             raise RuntimeError('Initialize lossless prefill before CUDA Graph capture')
         for package, expected in [('vllm', '0.28.0'), ('flashinfer-python', '0.6.18')]:
             if importlib.metadata.version(package) != expected:
                 raise RuntimeError(f'Lossless prefill requires {package}=={expected}')
-        spec = importlib.util.find_spec('mach_lossless_prefill_ext')
+        extension = 'mach_lossless_prefill_sum_ext' if sum_codec else 'mach_lossless_prefill_ext'
+        spec = importlib.util.find_spec(extension)
         if spec is None or not spec.origin:
             raise RuntimeError('Build/install native/lossless_prefill before enabling this profile')
         torch.ops.load_library(spec.origin)
-        _loaded, _workspace = True, workspace
-        logger.warning('Mach lossless prefill active: rank=%s shape=4096x5120 buffer_size=%s',
-                       rank, workspace.metadata['buffer_size'])
+        _loaded, _loaded_sum, _workspace = True, sum_codec, workspace
+        logger.warning('Mach lossless prefill active: rank=%s shape=4096x5120 buffer_size=%s mode=%s',
+                       rank, workspace.metadata['buffer_size'], 'input+sum' if sum_codec else 'input-only')
     if workspace is not _workspace:
         raise RuntimeError('Lossless prefill workspace changed; restart the worker')
     verify = os.getenv('VLLM_MACH_LOSSLESS_PREFILL_VERIFY', '0') == '1' and norm not in _verified_norms
@@ -70,7 +76,8 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
             launch_with_pdl=True, fp32_acc=True, max_token_num=max_token_num,
             pattern_code=1, norm_out=reference_norm,
         )
-    torch.ops.mach_lossless_prefill.run(
+    ops = torch.ops.mach_lossless_prefill_sum if sum_codec else torch.ops.mach_lossless_prefill
+    ops.run(
         hidden_states, residual, norm.weight, workspace.workspace_tensor,
         hidden_states, norm_out, rank, int(workspace.metadata['buffer_size']),
         float(norm.variance_epsilon), 1.0, True, True,

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from vllm_mach.exl3.lossless_prefill import eligible, validate_workspace, MIN_WORKSPACE_BYTES
+from vllm_mach.exl3.lossless_prefill import eligible, validate_workspace, MIN_WORKSPACE_BYTES, SUM_MIN_WORKSPACE_BYTES
 
 
 def test_opt_in_and_shape(monkeypatch):
@@ -28,3 +28,17 @@ def test_workspace_contract():
             validate_workspace(SimpleNamespace(backend='trtllm', metadata={**meta, key: value}), 0)
     with pytest.raises(RuntimeError, match='trtllm'):
         validate_workspace(SimpleNamespace(backend='mnnvl', metadata=meta), 0)
+
+
+def test_sum_header_capacity():
+    meta = dict(tp_size=2, tp_rank=0, hidden_dim=5120, max_token_num=4096,
+                buffer_size=MIN_WORKSPACE_BYTES)
+    workspace = SimpleNamespace(backend='trtllm', metadata=meta)
+    validate_workspace(workspace, 0, sum_codec=False)
+    with pytest.raises(RuntimeError, match='mismatch'):
+        validate_workspace(workspace, 0, sum_codec=True)
+    meta['buffer_size'] = SUM_MIN_WORKSPACE_BYTES
+    validate_workspace(workspace, 0, sum_codec=True)
+    meta['buffer_size'] -= 1
+    with pytest.raises(RuntimeError, match='mismatch'):
+        validate_workspace(workspace, 0, sum_codec=True)

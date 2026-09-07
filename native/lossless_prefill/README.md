@@ -1,6 +1,6 @@
 # Lossless BF16 prefill collective
 
-Optional, version-locked TP2 SM120 implementation for BF16 M4096×H5120 AllReduce/residual/GemmaRMSNorm. It compresses only input peer reads, restoring BF16 bits before the existing FP32 sum. The sum-transfer leg and residual/norm arithmetic remain unchanged. Other shapes keep the existing vLLM dispatcher.
+Optional, version-locked TP2 SM120 implementation for BF16 M4096×H5120 AllReduce/residual/GemmaRMSNorm. The input-only path compresses peer reads, restoring BF16 bits before the existing FP32 sum. The optional input+SUM path also compresses the rounded BF16 sum sent to the peer; the producing rank keeps its own half raw. Both paths preserve residual/norm arithmetic and the original barriers. Other shapes keep the existing vLLM dispatcher.
 
 The codec uses 256-value blocks, fixed 512-byte slots, 384-byte compressed payloads and two-byte headers. Exponent ranges that cannot be represented exactly, zeros and special values select raw BF16 per block. This does not quantize activations or reduce the allocated workspace size.
 
@@ -23,7 +23,13 @@ patch --batch --fuzz=0 -p1 -d /path/to/site-packages \
 export VLLM_MACH_LOSSLESS_PREFILL=1
 ```
 
-The switch defaults to off. Unsupported shapes retain their existing dispatch. Enabling it without the native extension, on an unvalidated device, or with incompatible workspace metadata raises an error. The workspace must be the same `trtllm` object throughout the worker lifetime and provide at least 84,049,920 bytes per rank, including the header region. The pointer table is not the payload allocation. Changing the FlashInfer workspace ABI requires revalidation.
+To also enable the SUM leg, use native package `0.1.0a2` or later and set:
+
+```bash
+export VLLM_MACH_LOSSLESS_PREFILL_SUM=1
+```
+
+Both switches default to off. The SUM switch requires `VLLM_MACH_LOSSLESS_PREFILL=1`; leave SUM unset for the input-only path. Unsupported shapes retain their existing dispatch. Enabling a path without its native extension, on an unvalidated device, or with incompatible workspace metadata raises an error. The workspace must be the same `trtllm` object throughout the worker lifetime. Input-only needs at least 84,049,920 bytes per rank; input+SUM needs 84,213,760 bytes, with separate input/SUM header arrays totaling 320 KiB. The pointer table is not the payload allocation. Changing the mode requires a worker restart; changing the FlashInfer workspace ABI requires revalidation.
 
 The native library is loaded with `torch.ops.load_library`, not imported as a Python extension. First use must happen outside CUDA Graph capture. Decode M24/M32 remains on its original one-shot path.
 
@@ -40,6 +46,8 @@ GLOO_SOCKET_IFNAME=lo python -m torch.distributed.run \
 ```
 
 It compares the installed FlashInfer implementation, a recompiled control and the packed path, including changing-input Graph replay. Real captured inputs can be supplied through `--capture-dir` with `--validate-only`; `bench_mixed_workspace.py` additionally covers mixed M24/M32 one-shot and M4096 two-shot use of a shared workspace. Those captured model inputs are not distributed.
+
+For input+SUM, use `bench_sum_codec.py` with `--reference-library` pointing to `mach_lossless_prefill_ext` and `--library` pointing to `mach_lossless_prefill_sum_ext`. The same `--smoke` mode requires no model data. `bench_sum_mixed_workspace.py` covers the new SUM path sharing a workspace with M24/M32 one-shot Graph calls.
 
 For a diagnostic service run, also set `VLLM_MACH_LOSSLESS_PREFILL_VERIFY=1`. The first eligible call at each norm instance is compared bitwise with installed FlashInfer, checking both residual and normalized outputs. This adds communication and synchronization; **disable it for performance measurement**. Logs report activation and the number of verified norm instances per rank.
 

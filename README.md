@@ -136,7 +136,7 @@ Release `0.1.0a6` provides a [complete checkpoint/Temporal serving profile](prof
 
 ## MXFP6 integration
 
-The development source also includes an optional [lossless BF16 prefill collective](native/lossless_prefill/README.md) for TP2 SM120 at M4096×H5120. It requires a separate CUDA 13.0 build and a vLLM caller patch; enable it with `VLLM_MACH_LOSSLESS_PREFILL=1`. Other shapes keep the existing path. This is not included in the a6 release. See [port validation](docs/lossless-prefill.md).
+The development source also includes an optional [lossless BF16 prefill collective](native/lossless_prefill/README.md) for TP2 SM120 at M4096×H5120. It requires a separate CUDA 13.0 build and a vLLM caller patch; enable input compression with `VLLM_MACH_LOSSLESS_PREFILL=1`, and optionally SUM compression with `VLLM_MACH_LOSSLESS_PREFILL_SUM=1`. Other shapes keep the existing path. This is not included in the a6 release. See [port validation](docs/lossless-prefill.md).
 
 [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120) owns MXFP6 packing, MXFP8 activation quantization, W6A8 GEMM, and workspace management. vLLM Mach handles vLLM registration, checkpoint metadata, tensor-parallel slices, projection routing, CUDA Graph lifecycle, and the optional FlashInfer AllReduce/RMSNorm/MXFP8 boundary. The hybrid profile requires both packages.
 
