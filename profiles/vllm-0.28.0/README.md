@@ -29,7 +29,13 @@ patch --batch --fuzz=0 -p1 -d /path/to/site-packages \
   < /path/to/vllm-mach/profiles/vllm-0.28.0/flashinfer-sm120-cluster-limit.patch
 ```
 
-FlashInfer `0.6.18` already contains that cluster-size guard and only needs the packed-layout patch. Both supported inputs produce the same final header SHA256: `8e3f0d82c307da6d0b7be769cb672164c14bd8594eb5dc8dbad8fb2091b331df`. The plugin verifies this hash when `VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=1` is selected.
+FlashInfer `0.6.18` already contains the cluster-size guard, but its version number does not establish fused-path compatibility. The plugin requires the exact patched header SHA256 `8e3f0d82c307da6d0b7be769cb672164c14bd8594eb5dc8dbad8fb2091b331df`, including patched `0.6.16.post3`. The previously documented claim that all patched `0.6.18` inputs produce this hash was too broad.
+
+A tested `0.6.18` wheel instead produced header `049e8b8c0b9f866d1a49247399a17de0809f3779521753debcd648b7888b1a4e`, with additional kernel-side PDL guards. A local acceptance experiment allowing that header failed the TP2 task regression. It remains rejected; do not bypass the guard. See [validation.md](../../docs/validation.md) for the tested configuration. After applying the patches, check the installed header before allocating GPUs or starting a service:
+
+```bash
+python -c 'import flashinfer; from vllm_mach.exl3.fused_allreduce import _verify_flashinfer_header; _verify_flashinfer_header(flashinfer)'
+```
 
 ## Sampling metadata
 

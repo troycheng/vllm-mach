@@ -128,7 +128,7 @@ export VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=1
 
 The hybrid profile keeps `lm_head` and unmatched projections on EXL3. It routes MLP and attention output projections to MXFP6 for all row counts. QKV and QKVZ projections use MXFP6 for prefill calls with at least 128 rows and EXL3 for decode.
 
-The unreleased [direct-checkpoint profile](docs/checkpoint-hybrid.md) adds original MXFP6 weight loading and merged QKV execution at physical M32 and prefill. It is separate from the profile above and has not completed Mach service acceptance. An [ExLlamaV3 1.4.8 BF16 source-upgrade candidate](profiles/exllamav3-1.4.8/README.md) is also available; the validated installation pin is unchanged.
+The unreleased [direct-checkpoint profile](docs/checkpoint-hybrid.md) adds original MXFP6 weight loading and merged QKV execution at physical M32 and prefill. It is separate from the profile above and has passed TP2 functional checks; full-model fidelity and performance remain unverified. A tested [ExLlamaV3 1.4.8 BF16 source build](profiles/exllamav3-1.4.8/README.md) is available for this profile. The default installation pin is unchanged.
 
 ## MXFP6 integration
 

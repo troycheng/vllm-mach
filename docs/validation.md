@@ -1,5 +1,19 @@
 # Validation
 
+## 0.1.0a5.dev0
+
+The direct-checkpoint profile passed the existing 95 package tests (3 skipped) and a full CPU comparison with the frozen experimental loader: 256 rank-local projections per TP rank, identical packed weights and logical scales, and matching aggregate content digests. This establishes the port's loading contract for the tested checkpoint, not a public checkpoint download identity.
+
+ExLlamaV3 1.4.8 with the PR #330 BF16 patch was built in the official vLLM 0.28.0 image using Python 3.12, PyTorch 2.13.0+cu130, and the CUDA 13.2 development toolkit. The unmodified image lacked `cusparse.h`. Importing the built extension after PyTorch did not initialize CUDA. Its wheel SHA-256 is `90606feea9a28f5423b712bcec3468ea1dc31c18229744dbfb6019e7819f9586`.
+
+The real-weight native check passed 52 cases on two RTX 5090 GPUs, with three changing inputs per case. EXL3 QKV/QKVZ covered M=1/16/24/32 with CPU Hadamard group IDs; the six MXFP6 projection families covered M=24/32/128. Eager and CUDA Graph outputs were bitwise identical to the respective reference call paths. The separate EXL3 M32 extension was disabled; the checkpoint profile uses MXFP6 at QKV M32.
+
+The first TP2 service check used the original development wheel, the patched 1.4.8 dependency, and `mxfp6-sm120==0.2.1`. All seven FULL_DECODE_ONLY graph sizes `[1, 2, 4, 8, 16, 24, 32]` captured. The existing 40-task suite at concurrency 32 passed 40/40 with no pass/fail regressions; 35/40 outputs matched the stored reference exactly. FlashInfer 0.6.16.post3 could not create its AllReduce workspace on the selected pair and used the fallback, so this run does not validate the fused collective path.
+
+A second configuration installed FlashInfer Python/cubin/JIT-cache 0.6.18. Its patched header had SHA-256 `049e8b8c0b9f866d1a49247399a17de0809f3779521753debcd648b7888b1a4e`, which Mach rejected. A local experiment allowing that exact header activated fused AllReduce/GemmaRMSNorm/MXFP8 on both ranks and captured all seven Graph sizes, but passed 0/40 tasks, with 40 regressions and repetitive malformed outputs. The experimental allowance was removed. The cause has not been isolated to FlashInfer or the Mach integration; this is not evidence for an upstream bug report. Keep the optional fused collective disabled for this upgrade candidate. The default dependency pin and header guard remain unchanged.
+
+These are functional checks, not full-model bitwise equivalence, business accuracy, or throughput measurements. Temporal M24 and private FLA arithmetic-layout patches were not installed. The experimental recipe's fidelity and performance results must not be attributed to this Mach build.
+
 ## 0.1.0a4
 
 On 2026-09-05, the compatibility candidate passed 68 package tests with 3 skipped. ExLlamaV3 was rebuilt from public commit `d0094bc922bcf2d6cf5e948ba35f347adda3a6ca`; the independent M32 extension was built from the Mach `v0.1.0a3` source. Both used the official `vllm/vllm-openai:v0.28.0` image, Python 3.12, PyTorch 2.13.0+cu130, CUDA toolkit 13.2, and target `12.0a`. Both extensions imported after PyTorch without initializing CUDA.
