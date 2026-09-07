@@ -101,4 +101,17 @@ def test_fused_allreduce_writes_mxfp6_packed_layout(monkeypatch) -> None:
     assert calls["scale_out"].stride() == (1, 4)
     assert calls["block_quant_group_size"] == 32
     assert calls["weight_bias"] == 1.0
+    assert calls["launch_with_pdl"] is True
     assert torch.all(residual_out == 3)
+
+
+@pytest.mark.parametrize("is_aot", [True, False])
+def test_fused_allreduce_requires_patched_jit_build(monkeypatch, is_aot) -> None:
+    spec = SimpleNamespace(is_aot=is_aot, aot_path="/prebuilt/trtllm_comm.so")
+    module = SimpleNamespace(gen_trtllm_comm_module=lambda: spec)
+    monkeypatch.setattr(fused_allreduce.importlib, "import_module", lambda _name: module)
+    if is_aot:
+        with pytest.raises(RuntimeError, match="bypasses the MXFP8 layout patch"):
+            fused_allreduce._verify_flashinfer_jit()
+    else:
+        fused_allreduce._verify_flashinfer_jit()

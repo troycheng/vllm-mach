@@ -18,7 +18,10 @@ from . import mxfp6_hybrid
 
 FUSED_AR_ENV = "VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8"
 _SUPPORTED_FLASHINFER_HEADER_SHA256 = frozenset(
-    {"8e3f0d82c307da6d0b7be769cb672164c14bd8594eb5dc8dbad8fb2091b331df"}
+    {
+        "8e3f0d82c307da6d0b7be769cb672164c14bd8594eb5dc8dbad8fb2091b331df",
+        "049e8b8c0b9f866d1a49247399a17de0809f3779521753debcd648b7888b1a4e",
+    }
 )
 _SEEN = False
 
@@ -83,9 +86,27 @@ def _verify_flashinfer_header(flashinfer: Any) -> None:
         )
 
 
-def _load_dependencies() -> SimpleNamespace:
+def _verify_flashinfer_jit() -> None:
+    jit_comm = importlib.import_module("flashinfer.jit.comm")
+    spec = jit_comm.gen_trtllm_comm_module()
+    if spec.is_aot:
+        raise RuntimeError(
+            f"{FUSED_AR_ENV}=1 requires compiling the patched FlashInfer source; "
+            f"prebuilt trtllm_comm at {spec.aot_path} bypasses the MXFP8 layout patch. "
+            "Use an environment without the flashinfer-jit-cache prebuilt module "
+            "and restart the process."
+        )
+
+
+def verify_flashinfer_profile() -> None:
+    """Check both patched source identity and the selected module build path."""
     flashinfer = importlib.import_module("flashinfer")
     _verify_flashinfer_header(flashinfer)
+    _verify_flashinfer_jit()
+
+
+def _load_dependencies() -> SimpleNamespace:
+    verify_flashinfer_profile()
     comm = importlib.import_module("flashinfer.comm")
     runtime = importlib.import_module("mxfp6")
     fi_workspace = importlib.import_module(
@@ -208,4 +229,7 @@ def fused_allreduce_gemma_rms_norm_mxfp8(
     )
 
 
-__all__ = ["FUSED_AR_ENV", "enabled", "fused_allreduce_gemma_rms_norm_mxfp8"]
+__all__ = [
+    "FUSED_AR_ENV", "enabled", "fused_allreduce_gemma_rms_norm_mxfp8",
+    "verify_flashinfer_profile",
+]

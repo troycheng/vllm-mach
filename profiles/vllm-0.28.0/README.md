@@ -29,12 +29,20 @@ patch --batch --fuzz=0 -p1 -d /path/to/site-packages \
   < /path/to/vllm-mach/profiles/vllm-0.28.0/flashinfer-sm120-cluster-limit.patch
 ```
 
-FlashInfer `0.6.18` already contains the cluster-size guard, but its version number does not establish fused-path compatibility. The plugin requires the exact patched header SHA256 `8e3f0d82c307da6d0b7be769cb672164c14bd8594eb5dc8dbad8fb2091b331df`, including patched `0.6.16.post3`. The previously documented claim that all patched `0.6.18` inputs produce this hash was too broad.
+FlashInfer `0.6.18` already contains the cluster-size guard. The accepted patched header SHA256 values are `8e3f0d82c307da6d0b7be769cb672164c14bd8594eb5dc8dbad8fb2091b331df` (the earlier profile, including patched `0.6.16.post3`) and `049e8b8c0b9f866d1a49247399a17de0809f3779521753debcd648b7888b1a4e` (`0.6.18` with kernel-side PDL guards). Package version alone does not establish compatibility.
 
-A tested `0.6.18` wheel instead produced header `049e8b8c0b9f866d1a49247399a17de0809f3779521753debcd648b7888b1a4e`, with additional kernel-side PDL guards. A local acceptance experiment allowing that header failed the TP2 task regression. It remains rejected; do not bypass the guard. See [validation.md](../../docs/validation.md) for the tested configuration. After applying the patches, check the installed header before allocating GPUs or starting a service:
+The communication module must be compiled from this patched source. FlashInfer prefers the prebuilt `trtllm_comm.so` in `flashinfer-jit-cache`, even when the installed header has changed. The tested cache wheel used the unpatched scale layout and produced incorrect GEMM outputs. A header check cannot validate a prebuilt binary, so Mach rejects that build path as well as unknown header hashes.
+
+In the environment dedicated to this profile, remove the prebuilt cache package and restart any processes that imported FlashInfer:
 
 ```bash
-python -c 'import flashinfer; from vllm_mach.exl3.fused_allreduce import _verify_flashinfer_header; _verify_flashinfer_header(flashinfer)'
+python -m pip uninstall flashinfer-jit-cache
+```
+
+Keep `flashinfer-python` and `flashinfer-cubin` installed. A complete CUDA development toolkit is required; the tested build used CUDA 13.2. Uninstalling the cache package also makes its other prebuilt modules unavailable, so do this in the serving environment, not a shared environment used by unrelated services. After applying the patches, run the combined source/build-path check before starting vLLM:
+
+```bash
+python -c 'from vllm_mach.exl3.fused_allreduce import verify_flashinfer_profile; verify_flashinfer_profile()'
 ```
 
 ## Sampling metadata

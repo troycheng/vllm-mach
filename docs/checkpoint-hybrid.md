@@ -15,7 +15,7 @@ export VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=0
 
 These are additional settings for the existing EXL3 serve command. The profile retains the vLLM 0.28.0, Qwen3.8-27B Dense, SM120, TP2/PP1 boundary and requires a matching `mxfp6-sm120==0.2.1` build. Source metadata, packed shapes, and TP shard mapping are checked. Matching geometry alone does not establish that two checkpoints contain weights from the same model revision: the operator must verify the paired model origins. Do not combine unrelated fine-tunes.
 
-Keep the optional fused collective disabled for this upgrade candidate. The successful TP2 check used its fallback; the FlashInfer 0.6.18 fused-path experiment failed the task regression. This does not disable the MXFP6 weight routes or fused MLP activation path.
+The example leaves the optional fused collective disabled. Enabling it requires the [FlashInfer source-build profile](../profiles/vllm-0.28.0/README.md), including its prebuilt-cache check. This switch does not disable the MXFP6 weight routes or fused MLP activation path.
 
 The experimental MXFP6 checkpoint currently has a local content manifest but no verified public repository/revision. There is therefore no public download link for an exact reproduction of that recipe. This profile accepts an operator-provided local checkpoint; the experimental throughput and quality results must not be assigned to an arbitrary compatible checkpoint.
 
