@@ -1,0 +1,1641 @@
+diff --git a/exllamav3/exllamav3_ext/bindings.cpp b/exllamav3/exllamav3_ext/bindings.cpp
+index ddab5ed..e730618 100644
+--- a/exllamav3/exllamav3_ext/bindings.cpp
++++ b/exllamav3/exllamav3_ext/bindings.cpp
+@@ -22,6 +22,8 @@
+ #include "quant/reconstruct.cuh"
+ #include "quant/hadamard.cuh"
+ #include "quant/exl3_gemm.cuh"
++#include "quant/exl3_gemm_bf16_io.cuh"
++#include "quant/exl3_mgemm_bf16_io.cuh"
+ #include "quant/exl3_gemv.cuh"
+ #include "quant/exl3_gemv_int8.cuh"
+ #include "cpu/moe_mul1.h"
+@@ -145,6 +147,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
+     m.def("reconstruct_slice", &reconstruct_slice, "reconstruct_slice");
+     m.def("had_r_128", &had_r_128, "had_r_128");
+     m.def("exl3_gemm", &exl3_gemm, "exl3_gemm");
++    m.def("exl3_gemm_bf16_io", &exl3_gemm_bf16_io, "exl3_gemm_bf16_io");
++    m.def("exl3_mgemm_bf16_io", &exl3_mgemm_bf16_io, "exl3_mgemm_bf16_io");
++    m.def("exl3_mgemm_bf16_io_grouped_had", &exl3_mgemm_bf16_io_grouped_had, "exl3_mgemm_bf16_io_grouped_had");
+     m.def("exl3_gemv", &exl3_gemv, "exl3_gemv");
+     m.def("exl3_gemm_num_kernel_shapes", &exl3_gemm_num_kernel_shapes, "exl3_gemm_num_kernel_shapes");
+     m.def("exl3_gemm_shape_compat", &exl3_gemm_shape_compat, "exl3_gemm_shape_compat");
+diff --git a/exllamav3/exllamav3_ext/quant/exl3_bf16_io_common.cuh b/exllamav3/exllamav3_ext/quant/exl3_bf16_io_common.cuh
+new file mode 100644
+index 0000000..81f44bc
+--- /dev/null
++++ b/exllamav3/exllamav3_ext/quant/exl3_bf16_io_common.cuh
+@@ -0,0 +1,83 @@
++#pragma once
++
++#include <algorithm>
++#include <cstdint>
++
++#include "../util.h"
++
++// Group mappings are immutable launch metadata, not activation data. Passing a
++// validated, fixed-size value into the kernel keeps the mapping graph-safe and
++// avoids a device-side trap (which would poison the CUDA context on bad input).
++constexpr int EXL3_BF16_MAX_GROUPED_MATRICES = 256;
++struct Exl3Bf16HadGroupIds
++{
++    uint8_t values[EXL3_BF16_MAX_GROUPED_MATRICES];
++};
++
++// Validate the device-level requirements shared by the BF16 I/O kernels and
++// return the maximum number of blocks that may participate in one cooperative
++// launch. Keeping this check next to launch selection makes force_num_sms=0 a
++// portable default and turns unsupported devices into a clear host-side error.
++inline int exl3_bf16_cooperative_capacity
++(
++    void* kernel,
++    int device,
++    int block_dim,
++    int smem_bytes
++)
++{
++    int major = 0;
++    int cooperative = 0;
++    int max_smem = 0;
++    cuda_check(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device));
++    cuda_check(cudaDeviceGetAttribute(&cooperative, cudaDevAttrCooperativeLaunch, device));
++    cuda_check(cudaDeviceGetAttribute(&max_smem, cudaDevAttrMaxSharedMemoryPerBlockOptin, device));
++    TORCH_CHECK(major >= 8, "EXL3 BF16 I/O requires compute capability 8.0 or newer");
++    TORCH_CHECK(cooperative, "EXL3 BF16 I/O requires cooperative launch support");
++    TORCH_CHECK(
++        smem_bytes <= max_smem,
++        "EXL3 BF16 I/O requires ", smem_bytes,
++        " bytes of dynamic shared memory, but the device supports ", max_smem
++    );
++
++    cuda_check(cudaFuncSetAttribute(
++        kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_bytes));
++    int blocks_per_sm = 0;
++    cuda_check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
++        &blocks_per_sm, kernel, block_dim, smem_bytes));
++    TORCH_CHECK(
++        blocks_per_sm > 0,
++        "EXL3 BF16 I/O kernel cannot be resident with the requested launch resources"
++    );
++
++    int num_sms = 0;
++    cuda_check(cudaDeviceGetAttribute(&num_sms, cudaDevAttrMultiProcessorCount, device));
++    return blocks_per_sm * num_sms;
++}
++
++inline int exl3_bf16_select_sms
++(
++    int force_num_sms,
++    int total_sms,
++    int cooperative_capacity,
++    int resident_groups
++)
++{
++    TORCH_CHECK(resident_groups > 0, "EXL3 BF16 I/O requires at least one resident group");
++    TORCH_CHECK(force_num_sms >= 0, "EXL3 BF16 I/O force_num_sms must be nonnegative");
++    int num_sms = force_num_sms > 0
++        ? force_num_sms
++        : std::min(total_sms, cooperative_capacity / resident_groups);
++    TORCH_CHECK(
++        num_sms > 0 && num_sms <= total_sms,
++        "invalid EXL3 BF16 I/O SM count: ", num_sms,
++        " for a device with ", total_sms, " SMs"
++    );
++    TORCH_CHECK(
++        num_sms * resident_groups <= cooperative_capacity,
++        "EXL3 BF16 I/O cooperative grid exceeds device residency: ",
++        num_sms * resident_groups, " blocks requested, ",
++        cooperative_capacity, " supported"
++    );
++    return num_sms;
++}
+diff --git a/exllamav3/exllamav3_ext/quant/exl3_gemm_bf16_io.cu b/exllamav3/exllamav3_ext/quant/exl3_gemm_bf16_io.cu
+new file mode 100644
+index 0000000..f75682d
+--- /dev/null
++++ b/exllamav3/exllamav3_ext/quant/exl3_gemm_bf16_io.cu
+@@ -0,0 +1,181 @@
++#include <cuda_bf16.h>
++#include <cuda_fp16.h>
++#include <cooperative_groups.h>
++#include <climits>
++#include <c10/cuda/CUDAGuard.h>
++#include <ATen/cuda/CUDAContext.h>
++
++namespace cg = cooperative_groups;
++
++#include "../util.h"
++#include "../util.cuh"
++#include "exl3_gemm_bf16_io.cuh"
++#include "exl3_bf16_io_common.cuh"
++#include "exl3_gemm_kernel.cuh"
++#include "exl3_devctx.cuh"
++
++static void check_cuda_tensor
++(
++    const at::Tensor& tensor,
++    const at::Tensor& reference,
++    const char* name
++)
++{
++    TORCH_CHECK(tensor.is_cuda(), name, " must be a CUDA tensor");
++    TORCH_CHECK(tensor.device() == reference.device(), name, " must be on A.device()");
++    TORCH_CHECK(tensor.is_contiguous(), name, " must be contiguous");
++}
++template<int bits, int cb, bool final_grid_sync>
++__global__ __launch_bounds__(512)
++void exl3_gemm_bf16_io_kernel
++(
++    const __nv_bfloat16* __restrict__ A,
++    const uint16_t* __restrict__ B,
++    half* __restrict__ C_scratch,
++    __nv_bfloat16* __restrict__ C_bf16,
++    const int size_m,
++    const int size_k,
++    const int size_n,
++    int* __restrict__ locks,
++    const half* __restrict__ suh,
++    half* __restrict__ A_had,
++    const half* __restrict__ svh
++)
++{
++    auto grid = cg::this_grid();
++    int total_warps = size_m * size_k / 128;
++    int warps_grid = gridDim.x * blockDim.x / 32;
++    int this_warp = threadIdx.x / 32 + blockDim.x / 32 * blockIdx.x;
++    for (; this_warp < total_warps; this_warp += warps_grid)
++        had_bh_r_128_inner<true, false>
++        (
++            A + this_warp * 128,
++            A_had + this_warp * 128,
++            suh + (this_warp * 128) % size_k,
++            0.088388347648f
++        );
++
++    grid.sync();
++    exl3_gemm_kernel_inner
++    <bits, false, cb, 16, 32, 128, 4, 3, true>
++    (A_had, B, C_scratch, size_m, size_k, size_n, locks, svh, C_bf16);
++    if constexpr (final_grid_sync)
++        grid.sync();
++}
++
++template<int bits, int cb>
++int launch_bf16_io
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    int force_num_sms,
++    bool final_grid_sync
++)
++{
++    constexpr int block_dim = 512;
++    constexpr int smem_bytes = 90 * 1024;
++    int size_m = A.numel() / A.size(-1);
++    void* kernel = final_grid_sync
++        ? reinterpret_cast<void*>(exl3_gemm_bf16_io_kernel<bits, cb, true>)
++        : reinterpret_cast<void*>(exl3_gemm_bf16_io_kernel<bits, cb, false>);
++    int device = A.get_device();
++    int total_sms = DevCtx::instance().get_num_sms(device);
++    int cooperative_capacity = exl3_bf16_cooperative_capacity(
++        kernel, device, block_dim, smem_bytes);
++    int num_sms = exl3_bf16_select_sms(
++        force_num_sms, total_sms, cooperative_capacity, 1);
++    int* locks_ptr = DevCtx::instance().get_locks(device);
++    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
++
++    const __nv_bfloat16* A_ptr = reinterpret_cast<const __nv_bfloat16*>(A.data_ptr());
++    const uint16_t* B_ptr = reinterpret_cast<const uint16_t*>(B.data_ptr());
++    half* C_scratch_ptr = reinterpret_cast<half*>(C_scratch.data_ptr());
++    __nv_bfloat16* C_bf16_ptr = reinterpret_cast<__nv_bfloat16*>(C_bf16.data_ptr());
++    int size_k = A.size(-1);
++    int size_n = B.size(1) * 16;
++    const half* suh_ptr = reinterpret_cast<const half*>(suh.data_ptr());
++    half* A_had_ptr = reinterpret_cast<half*>(A_had.data_ptr());
++    const half* svh_ptr = reinterpret_cast<const half*>(svh.data_ptr());
++    void* args[] = {
++        &A_ptr, &B_ptr, &C_scratch_ptr, &C_bf16_ptr,
++        &size_m, &size_k, &size_n, &locks_ptr, &suh_ptr, &A_had_ptr, &svh_ptr,
++    };
++    cuda_check(cudaLaunchCooperativeKernel(
++        kernel, dim3(num_sms), dim3(block_dim), args, smem_bytes, stream));
++    cuda_check(cudaPeekAtLastError());
++    return 2;
++}
++
++int exl3_gemm_bf16_io
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    int force_shape_idx,
++    int force_num_sms,
++    bool mcg,
++    bool final_grid_sync
++)
++{
++    check_cuda_tensor(A, A, "A");
++    const at::cuda::OptionalCUDAGuard device_guard(A.device());
++    check_cuda_tensor(B, A, "B");
++    check_cuda_tensor(C_scratch, A, "C_scratch");
++    check_cuda_tensor(C_bf16, A, "C_bf16");
++    check_cuda_tensor(suh, A, "suh");
++    check_cuda_tensor(A_had, A, "A_had");
++    check_cuda_tensor(svh, A, "svh");
++    TORCH_CHECK_DTYPE(A, kBFloat16);
++    TORCH_CHECK_DTYPE(B, kShort);
++    TORCH_CHECK_DTYPE(C_scratch, kHalf);
++    TORCH_CHECK_DTYPE(C_bf16, kBFloat16);
++    TORCH_CHECK_DTYPE(suh, kHalf);
++    TORCH_CHECK_DTYPE(A_had, kHalf);
++    TORCH_CHECK_DTYPE(svh, kHalf);
++    TORCH_CHECK(A.dim() == 2 && B.dim() == 3,
++                "BF16 I/O requires 2D A and 3D encoded B");
++    TORCH_CHECK(C_scratch.dim() == 2 && C_bf16.dim() == 2 && A_had.dim() == 2,
++                "BF16 I/O scratch, output and Hadamard workspace must be 2D");
++    TORCH_CHECK(suh.dim() == 1 && svh.dim() == 1,
++                "BF16 I/O SUH and SVH must be one-dimensional");
++    TORCH_CHECK(force_shape_idx == 2, "BF16 I/O supports shape 2 only");
++    TORCH_CHECK(mcg, "BF16 I/O supports MCG only");
++    TORCH_CHECK(A.size(0) > 0 && A.size(0) <= 16, "BF16 I/O supports 1 <= m <= 16");
++    TORCH_CHECK(A.size(1) > 0 && A.size(1) % 128 == 0,
++                "BF16 I/O requires positive, 128-aligned k");
++    TORCH_CHECK(B.size(0) > 0 && B.size(1) > 0,
++                "BF16 I/O requires positive encoded k and n dimensions");
++    TORCH_CHECK(B.size(2) == 5 * 16 || B.size(2) == 6 * 16,
++                "BF16 I/O requires an exact K5 or K6 encoded B width");
++    TORCH_CHECK(A.size(1) <= INT_MAX && B.size(1) <= INT_MAX / 16,
++                "BF16 I/O dimensions exceed the kernel integer range");
++    TORCH_CHECK(A.size(-1) == B.size(0) * 16,
++                "BF16 I/O A and encoded B have incompatible k dimensions");
++    int size_m = A.size(0);
++    int size_k = A.size(1);
++    int size_n = B.size(1) * 16;
++    TORCH_CHECK(size_n % 128 == 0, "BF16 I/O requires 128-aligned n");
++    TORCH_CHECK(size_n / 128 <= MAX_TILES_C,
++                "BF16 I/O output exceeds the device lock workspace");
++    TORCH_CHECK(A_had.sizes() == A.sizes(),
++                "BF16 I/O Hadamard workspace must match A");
++    TORCH_CHECK(C_scratch.sizes() == at::IntArrayRef({size_m, size_n}),
++                "BF16 I/O FP16 scratch has an incompatible shape");
++    TORCH_CHECK(C_bf16.sizes() == C_scratch.sizes(),
++                "BF16 I/O output must match the FP16 scratch shape");
++    TORCH_CHECK(suh.numel() == size_k && svh.numel() == size_n,
++                "BF16 I/O SUH or SVH has an incompatible length");
++    int bits = B.size(2) / 16;
++    if (bits == 5) return launch_bf16_io<5, 1>(A, B, C_scratch, C_bf16, suh, A_had, svh, force_num_sms, final_grid_sync);
++    if (bits == 6) return launch_bf16_io<6, 1>(A, B, C_scratch, C_bf16, suh, A_had, svh, force_num_sms, final_grid_sync);
++    TORCH_CHECK(false, "BF16 I/O supports K5/K6 only");
++}
+diff --git a/exllamav3/exllamav3_ext/quant/exl3_gemm_bf16_io.cuh b/exllamav3/exllamav3_ext/quant/exl3_gemm_bf16_io.cuh
+new file mode 100644
+index 0000000..57426cb
+--- /dev/null
++++ b/exllamav3/exllamav3_ext/quant/exl3_gemm_bf16_io.cuh
+@@ -0,0 +1,22 @@
++#pragma once
++
++#include <ATen/Tensor.h>
++
++// Decode-only K5/K6 MCG path. Input and output stay BF16 at the public
++// boundary while the existing EXL3 Hadamard/GEMM arithmetic remains FP16.
++// final_grid_sync controls only the redundant terminal cooperative barrier.
++// force_num_sms == 0 derives a valid cooperative grid from the current device.
++int exl3_gemm_bf16_io
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    int force_shape_idx,
++    int force_num_sms,
++    bool mcg,
++    bool final_grid_sync
++);
+diff --git a/exllamav3/exllamav3_ext/quant/exl3_gemm_inner.cuh b/exllamav3/exllamav3_ext/quant/exl3_gemm_inner.cuh
+index d2b40f2..f426153 100644
+--- a/exllamav3/exllamav3_ext/quant/exl3_gemm_inner.cuh
++++ b/exllamav3/exllamav3_ext/quant/exl3_gemm_inner.cuh
+@@ -19,7 +19,7 @@
+     #define EXL3_GEMM_H_ACC 0
+ #endif
+ 
+-template<EXL3_GEMM_T_ARGS, bool shmem_out_had>
++template<EXL3_GEMM_T_ARGS, bool shmem_out_had, bool preserve_half_output = false>
+ inline __device__
+ void exl3_gemm_kernel_inner
+ (
+@@ -30,7 +30,9 @@ void exl3_gemm_kernel_inner
+     const int size_k,
+     const int size_n,
+     int* __restrict__ locks,
+-    const half* post_scale
++    const half* post_scale,
++    __nv_bfloat16* final_bf16 = nullptr,
++    int final_bf16_stride = 0
+ )
+ {
+     const int TILEBLOCKS_M = TILESIZE_M / 16;
+@@ -199,6 +201,10 @@ void exl3_gemm_kernel_inner
+ 
+     half* gl_c_ptr_16 = ((half*) C) + slice_m * gl_c_stride_m + slice2_n * gl_c_stride_n;
+     float* gl_c_ptr_32 = ((float*) C) + slice_m * gl_c_stride_m + slice2_n * gl_c_stride_n;
++    int gl_c_stride_bf16 = final_bf16_stride ? final_bf16_stride : size_n;
++    __nv_bfloat16* gl_c_ptr_bf16 = final_bf16
++        ? final_bf16 + slice_m * TILESIZE_M * gl_c_stride_bf16 + slice2_n * gl_c_stride_n
++        : nullptr;
+ 
+     register FragA frag_a[FRAG_STAGES];
+     register FragB frag_b[FRAG_STAGES][FRAGS_N_PER_WARP];
+@@ -221,6 +227,7 @@ void exl3_gemm_kernel_inner
+                 gl_c_ptr_32 += gl_c_stride_n;
+             else
+                 gl_c_ptr_16 += gl_c_stride_n;
++            if (gl_c_ptr_bf16) gl_c_ptr_bf16 += gl_c_stride_n;
+         }
+     };
+ 
+@@ -466,7 +473,15 @@ void exl3_gemm_kernel_inner
+             const float* had_in = sh_c + row * TILESIZE_N + col * 128;
+             const half* post_scale_c = post_scale + slice2_n * gl_c_stride_n + col * 128;
+ 
+-            if constexpr (c_fp32)
++            if (gl_c_ptr_bf16)
++            {
++                __nv_bfloat16* had_out = gl_c_ptr_bf16 + row * gl_c_stride_bf16 + col * 128;
++                if constexpr (preserve_half_output)
++                    had_fhb_r_128_inner<false, true>(had_in, had_out, post_scale_c, 0.088388347648f);
++                else
++                    had_fb_r_128_inner<false, true>(had_in, had_out, post_scale_c, 0.088388347648f);
++            }
++            else if constexpr (c_fp32)
+             {
+                 float* had_out = gl_c_ptr_32 + row * size_n + col * 128;
+                 had_ff_r_128_inner<false, true>(had_in, had_out, post_scale_c, 0.088388347648f);
+diff --git a/exllamav3/exllamav3_ext/quant/exl3_mgemm_bf16_io.cu b/exllamav3/exllamav3_ext/quant/exl3_mgemm_bf16_io.cu
+new file mode 100644
+index 0000000..eb125dc
+--- /dev/null
++++ b/exllamav3/exllamav3_ext/quant/exl3_mgemm_bf16_io.cu
+@@ -0,0 +1,496 @@
++#include <cuda_bf16.h>
++#include <cuda_fp16.h>
++#include <cooperative_groups.h>
++#include <climits>
++#include <c10/cuda/CUDAGuard.h>
++#include <ATen/cuda/CUDAContext.h>
++
++namespace cg = cooperative_groups;
++
++#include "../util.h"
++#include "../util.cuh"
++#include "exl3_mgemm_bf16_io.cuh"
++#include "exl3_bf16_io_common.cuh"
++#include "exl3_gemm_kernel.cuh"
++#include "exl3_devctx.cuh"
++
++static void check_cuda_tensor
++(
++    const at::Tensor& tensor,
++    const at::Tensor& reference,
++    const char* name
++)
++{
++    TORCH_CHECK(tensor.is_cuda(), name, " must be a CUDA tensor");
++    TORCH_CHECK(tensor.device() == reference.device(), name, " must be on A.device()");
++    TORCH_CHECK(tensor.is_contiguous(), name, " must be contiguous");
++}
++
++__global__ __launch_bounds__(32)
++void exl3_bf16_grouped_had_kernel
++(
++    const __nv_bfloat16* __restrict__ A,
++    half* __restrict__ A_had,
++    const half** __restrict__ suh_list,
++    const int size_m,
++    const int size_k
++)
++{
++    int group = blockIdx.z;
++    int row = blockIdx.x;
++    int col = blockIdx.y * 128;
++    had_bh_r_128_inner<true, false>
++    (
++        A + row * size_k + col,
++        A_had + ((size_t) group * size_m + row) * size_k + col,
++        suh_list[group],
++        0.088388347648f
++    );
++}
++
++template<int bits, int cb, bool direct_output, bool final_group_barrier>
++__global__ __launch_bounds__(512)
++void exl3_mgemm_bf16_io_kernel
++(
++    const __nv_bfloat16* __restrict__ A,
++    const uint16_t** __restrict__ B_list,
++    half* __restrict__ C_scratch,
++    __nv_bfloat16* __restrict__ C_bf16,
++    const int size_m,
++    const int size_k,
++    const int size_n,
++    int* __restrict__ locks,
++    const half** __restrict__ suh_list,
++    half* __restrict__ A_had,
++    const half** __restrict__ svh_list,
++    const int count,
++    const int output_stride
++)
++{
++    auto grid = cg::this_grid();
++    int* barrier_counters_sense = locks + BARRIER_LOCKS_OFFSET;
++
++    for (int j = blockIdx.z; j < count; j += gridDim.z)
++    {
++        const uint16_t* B = B_list[j];
++        const half* suh = suh_list[j];
++        half* A_had_j = A_had + j * size_m * size_k;
++
++        int total_warps = size_m * size_k / 128;
++        int warps_grid = gridDim.x * blockDim.x / 32;
++        int this_warp = threadIdx.x / 32 + blockDim.x / 32 * blockIdx.x;
++        for (; this_warp < total_warps; this_warp += warps_grid)
++            had_bh_r_128_inner<true, false>
++            (
++                A + this_warp * 128,
++                A_had_j + this_warp * 128,
++                suh + (this_warp * 128) % size_k,
++                0.088388347648f
++            );
++
++        group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++
++        half* C_j = C_scratch + j * size_m * size_n;
++        int lock_offs = blockIdx.z * size_n / 128;
++        const half* svh = svh_list[j];
++        __nv_bfloat16* C_bf16_j = C_bf16 + j * size_n;
++        if constexpr (direct_output)
++        {
++            exl3_gemm_kernel_inner
++            <bits, false, cb, 16, 32, 128, 4, 3, true, true>
++            (A_had_j, B, C_j, size_m, size_k, size_n,
++             locks + lock_offs, svh, C_bf16_j, output_stride);
++            if constexpr (final_group_barrier)
++                group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++        }
++        else
++        {
++            exl3_gemm_kernel_inner
++            <bits, false, cb, 16, 32, 128, 4, 3, false>
++            (A_had_j, B, C_j, size_m, size_k, size_n,
++             locks + lock_offs, nullptr);
++
++            group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++
++            total_warps = size_m * size_n / 128;
++            this_warp = threadIdx.x / 32 + blockDim.x / 32 * blockIdx.x;
++            for (; this_warp < total_warps; this_warp += warps_grid)
++            {
++                int blocks_per_row = size_n / 128;
++                int row = this_warp / blocks_per_row;
++                int col = (this_warp % blocks_per_row) * 128;
++                had_hb_r_128_inner<false, true>
++                (
++                    C_j + this_warp * 128,
++                    C_bf16_j + row * output_stride + col,
++                    svh + col,
++                    0.088388347648f
++                );
++            }
++
++            if constexpr (final_group_barrier)
++                group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++        }
++    }
++}
++
++template<int bits, int cb, bool direct_output, bool final_group_barrier>
++__global__ __launch_bounds__(512)
++void exl3_mgemm_bf16_io_grouped_had_kernel
++(
++    const uint16_t** __restrict__ B_list,
++    half* __restrict__ C_scratch,
++    __nv_bfloat16* __restrict__ C_bf16,
++    const int size_m,
++    const int size_k,
++    const int size_n,
++    int* __restrict__ locks,
++    const half* __restrict__ A_had,
++    const half** __restrict__ svh_list,
++    const Exl3Bf16HadGroupIds had_group_ids,
++    const int count,
++    const int group_count,
++    const int output_stride
++)
++{
++    int j = blockIdx.z;
++    auto grid = cg::this_grid();
++    int* barrier_counters_sense = locks + BARRIER_LOCKS_OFFSET;
++    const uint16_t* B = B_list[j];
++    int had_group_id = had_group_ids.values[j];
++    const half* A_had_j = A_had + (size_t) had_group_id * size_m * size_k;
++    half* C_j = C_scratch + (size_t) j * size_m * size_n;
++    int lock_offs = blockIdx.z * size_n / 128;
++    const half* svh = svh_list[j];
++    __nv_bfloat16* C_bf16_j = C_bf16 + j * size_n;
++    if constexpr (direct_output)
++    {
++        exl3_gemm_kernel_inner
++        <bits, false, cb, 16, 32, 128, 4, 3, true, true>
++        (A_had_j, B, C_j, size_m, size_k, size_n,
++         locks + lock_offs, svh, C_bf16_j, output_stride);
++        if constexpr (final_group_barrier)
++            group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++    }
++    else
++    {
++        exl3_gemm_kernel_inner
++        <bits, false, cb, 16, 32, 128, 4, 3, false>
++        (A_had_j, B, C_j, size_m, size_k, size_n,
++         locks + lock_offs, nullptr);
++
++        group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++
++        int total_warps = size_m * size_n / 128;
++        int warps_grid = gridDim.x * blockDim.x / 32;
++        int this_warp = threadIdx.x / 32 + blockDim.x / 32 * blockIdx.x;
++        for (; this_warp < total_warps; this_warp += warps_grid)
++        {
++            int blocks_per_row = size_n / 128;
++            int row = this_warp / blocks_per_row;
++            int col = (this_warp % blocks_per_row) * 128;
++            had_hb_r_128_inner<false, true>
++            (
++                C_j + this_warp * 128,
++                C_bf16_j + row * output_stride + col,
++                svh + col,
++                0.088388347648f
++            );
++        }
++
++        if constexpr (final_group_barrier)
++            group_barrier(blockIdx.z, gridDim.x, barrier_counters_sense);
++    }
++}
++
++template<int bits, int cb>
++int launch_mgemm_bf16_io
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    int force_num_sms,
++    int output_stride,
++    bool direct_output,
++    bool final_group_barrier
++)
++{
++    constexpr int block_dim = 512;
++    constexpr int smem_bytes = 90 * 1024;
++    void* kernel = direct_output
++        ? final_group_barrier
++            ? reinterpret_cast<void*>(exl3_mgemm_bf16_io_kernel<bits, cb, true, true>)
++            : reinterpret_cast<void*>(exl3_mgemm_bf16_io_kernel<bits, cb, true, false>)
++        : final_group_barrier
++            ? reinterpret_cast<void*>(exl3_mgemm_bf16_io_kernel<bits, cb, false, true>)
++            : reinterpret_cast<void*>(exl3_mgemm_bf16_io_kernel<bits, cb, false, false>);
++    int device = A.get_device();
++    int total_sms = DevCtx::instance().get_num_sms(device);
++    int count = B.numel();
++    int cooperative_capacity = exl3_bf16_cooperative_capacity(
++        kernel, device, block_dim, smem_bytes);
++    int resident_groups = force_num_sms > 0 && final_group_barrier ? 1 : count;
++    int num_sms = exl3_bf16_select_sms(
++        force_num_sms, total_sms, cooperative_capacity, resident_groups);
++    int concurrency = std::min(cooperative_capacity / num_sms, count);
++    TORCH_CHECK(concurrency > 0, "invalid BF16 MGEMM concurrency");
++    TORCH_CHECK(final_group_barrier || concurrency == count,
++                "omitting the terminal BF16 MGEMM barrier requires all matrices resident");
++    int* locks_ptr = DevCtx::instance().get_locks(device);
++    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
++    const __nv_bfloat16* A_ptr = reinterpret_cast<const __nv_bfloat16*>(A.data_ptr());
++    const uint16_t** B_ptrs = reinterpret_cast<const uint16_t**>(B.data_ptr());
++    half* C_ptr = reinterpret_cast<half*>(C_scratch.data_ptr());
++    __nv_bfloat16* C_bf16_ptr = reinterpret_cast<__nv_bfloat16*>(C_bf16.data_ptr());
++    int size_m = A.size(0);
++    int size_k = A.size(1);
++    int size_n = C_scratch.size(2);
++    const half** suh_ptrs = reinterpret_cast<const half**>(suh.data_ptr());
++    half* A_had_ptr = reinterpret_cast<half*>(A_had.data_ptr());
++    const half** svh_ptrs = reinterpret_cast<const half**>(svh.data_ptr());
++    void* args[] = {
++        &A_ptr, &B_ptrs, &C_ptr, &C_bf16_ptr,
++        &size_m, &size_k, &size_n, &locks_ptr,
++        &suh_ptrs, &A_had_ptr, &svh_ptrs, &count, &output_stride,
++    };
++    cuda_check(cudaLaunchCooperativeKernel(
++        kernel, dim3(num_sms, 1, concurrency),
++        dim3(block_dim), args, smem_bytes, stream));
++    cuda_check(cudaPeekAtLastError());
++    return 2;
++}
++
++int exl3_mgemm_bf16_io
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    int bits,
++    int force_num_sms,
++    int output_stride,
++    bool mcg,
++    bool direct_output,
++    bool final_group_barrier
++)
++{
++    check_cuda_tensor(A, A, "A");
++    const at::cuda::OptionalCUDAGuard device_guard(A.device());
++    check_cuda_tensor(B, A, "B");
++    check_cuda_tensor(C_scratch, A, "C_scratch");
++    check_cuda_tensor(C_bf16, A, "C_bf16");
++    check_cuda_tensor(suh, A, "suh");
++    check_cuda_tensor(A_had, A, "A_had");
++    check_cuda_tensor(svh, A, "svh");
++    TORCH_CHECK_DTYPE(A, kBFloat16);
++    TORCH_CHECK_DTYPE(B, kLong);
++    TORCH_CHECK_DTYPE(C_scratch, kHalf);
++    TORCH_CHECK_DTYPE(C_bf16, kBFloat16);
++    TORCH_CHECK_DTYPE(suh, kLong);
++    TORCH_CHECK_DTYPE(A_had, kHalf);
++    TORCH_CHECK_DTYPE(svh, kLong);
++    TORCH_CHECK(A.dim() == 2 && C_scratch.dim() == 3 && A_had.dim() == 3,
++                "BF16 MGEMM requires 2D A and 3D scratch workspaces");
++    TORCH_CHECK(B.dim() == 1 && suh.dim() == 1 && svh.dim() == 1,
++                "BF16 MGEMM pointer tables must be one-dimensional");
++    TORCH_CHECK(C_bf16.dim() == 2, "BF16 MGEMM output must be 2D");
++    TORCH_CHECK(A.size(0) > 0 && A.size(0) <= 16,
++                "BF16 MGEMM supports 1 <= m <= 16");
++    TORCH_CHECK(A.size(1) > 0 && A.size(1) % 128 == 0,
++                "BF16 MGEMM requires positive, 128-aligned k");
++    TORCH_CHECK(A.size(1) <= INT_MAX,
++                "BF16 MGEMM k exceeds the kernel integer range");
++    TORCH_CHECK(B.numel() > 0 && B.numel() <= EXL3_BF16_MAX_GROUPED_MATRICES,
++                "BF16 MGEMM matrix count is outside the supported range");
++    TORCH_CHECK(C_scratch.size(0) == B.numel() && C_scratch.size(1) == A.size(0),
++                "BF16 MGEMM scratch shape does not match count and m");
++    TORCH_CHECK(C_scratch.size(2) > 0 && C_scratch.size(2) % 128 == 0,
++                "BF16 MGEMM requires positive, 128-aligned n");
++    TORCH_CHECK(C_scratch.size(2) <= INT_MAX,
++                "BF16 MGEMM n exceeds the kernel integer range");
++    TORCH_CHECK(C_bf16.size(0) == A.size(0),
++                "BF16 MGEMM output m does not match A");
++    TORCH_CHECK(B.numel() == suh.numel() && B.numel() == svh.numel(),
++                "BF16 MGEMM pointer table lengths must match");
++    TORCH_CHECK(output_stride == C_bf16.size(1),
++                "BF16 MGEMM output_stride must match the output width");
++    TORCH_CHECK(
++        B.numel() * C_scratch.size(2) <= INT_MAX &&
++        output_stride >= B.numel() * C_scratch.size(2),
++        "BF16 MGEMM output does not hold every matrix"
++    );
++    TORCH_CHECK(B.numel() * (C_scratch.size(2) / 128) <= MAX_TILES_C,
++                "BF16 MGEMM output exceeds the device lock workspace");
++    TORCH_CHECK(A_had.sizes() == at::IntArrayRef({B.numel(), A.size(0), A.size(1)}),
++                "BF16 MGEMM Hadamard workspace has an incompatible shape");
++    TORCH_CHECK(mcg, "BF16 MGEMM supports MCG only");
++    if (bits == 5) return launch_mgemm_bf16_io<5, 1>(A, B, C_scratch, C_bf16, suh, A_had, svh, force_num_sms, output_stride, direct_output, final_group_barrier);
++    if (bits == 6) return launch_mgemm_bf16_io<6, 1>(A, B, C_scratch, C_bf16, suh, A_had, svh, force_num_sms, output_stride, direct_output, final_group_barrier);
++    TORCH_CHECK(false, "BF16 MGEMM supports K5/K6 only");
++}
++
++template<int bits, int cb>
++int launch_mgemm_bf16_io_grouped_had
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& unique_suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    const Exl3Bf16HadGroupIds& had_group_ids,
++    int force_num_sms,
++    int output_stride,
++    bool direct_output,
++    bool final_group_barrier
++)
++{
++    constexpr int block_dim = 512;
++    constexpr int smem_bytes = 90 * 1024;
++    void* kernel = direct_output
++        ? final_group_barrier
++            ? reinterpret_cast<void*>(exl3_mgemm_bf16_io_grouped_had_kernel<bits, cb, true, true>)
++            : reinterpret_cast<void*>(exl3_mgemm_bf16_io_grouped_had_kernel<bits, cb, true, false>)
++        : final_group_barrier
++            ? reinterpret_cast<void*>(exl3_mgemm_bf16_io_grouped_had_kernel<bits, cb, false, true>)
++            : reinterpret_cast<void*>(exl3_mgemm_bf16_io_grouped_had_kernel<bits, cb, false, false>);
++    int device = A.get_device();
++    int total_sms = DevCtx::instance().get_num_sms(device);
++    int count = B.numel();
++    int group_count = unique_suh.numel();
++    int size_m = A.size(0);
++    int size_k = A.size(1);
++    int size_n = C_scratch.size(2);
++    int cooperative_capacity = exl3_bf16_cooperative_capacity(
++        kernel, device, block_dim, smem_bytes);
++    int num_sms = exl3_bf16_select_sms(
++        force_num_sms, total_sms, cooperative_capacity, count);
++    int* locks_ptr = DevCtx::instance().get_locks(device);
++    cudaStream_t stream = at::cuda::getCurrentCUDAStream().stream();
++
++    const __nv_bfloat16* A_ptr = reinterpret_cast<const __nv_bfloat16*>(A.data_ptr());
++    half* A_had_ptr = reinterpret_cast<half*>(A_had.data_ptr());
++    const half** unique_suh_ptrs = reinterpret_cast<const half**>(unique_suh.data_ptr());
++    exl3_bf16_grouped_had_kernel<<<dim3(size_m, size_k / 128, group_count), 32, 0, stream>>>
++    (A_ptr, A_had_ptr, unique_suh_ptrs, size_m, size_k);
++    cuda_check(cudaPeekAtLastError());
++
++    const uint16_t** B_ptrs = reinterpret_cast<const uint16_t**>(B.data_ptr());
++    half* C_ptr = reinterpret_cast<half*>(C_scratch.data_ptr());
++    __nv_bfloat16* C_bf16_ptr = reinterpret_cast<__nv_bfloat16*>(C_bf16.data_ptr());
++    const half** svh_ptrs = reinterpret_cast<const half**>(svh.data_ptr());
++    Exl3Bf16HadGroupIds ids = had_group_ids;
++    void* args[] = {
++        &B_ptrs, &C_ptr, &C_bf16_ptr, &size_m, &size_k, &size_n, &locks_ptr,
++        &A_had_ptr, &svh_ptrs, &ids, &count, &group_count, &output_stride,
++    };
++    cuda_check(cudaLaunchCooperativeKernel(
++        kernel, dim3(num_sms, 1, count),
++        dim3(block_dim), args, smem_bytes, stream));
++    cuda_check(cudaPeekAtLastError());
++    return 2;
++}
++
++int exl3_mgemm_bf16_io_grouped_had
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& unique_suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    const at::Tensor& had_group_ids,
++    int bits,
++    int force_num_sms,
++    int output_stride,
++    bool mcg,
++    bool direct_output,
++    bool final_group_barrier
++)
++{
++    check_cuda_tensor(A, A, "A");
++    const at::cuda::OptionalCUDAGuard device_guard(A.device());
++    check_cuda_tensor(B, A, "B");
++    check_cuda_tensor(C_scratch, A, "C_scratch");
++    check_cuda_tensor(C_bf16, A, "C_bf16");
++    check_cuda_tensor(unique_suh, A, "unique_suh");
++    check_cuda_tensor(A_had, A, "A_had");
++    check_cuda_tensor(svh, A, "svh");
++    TORCH_CHECK(had_group_ids.device().is_cpu(), "had_group_ids must be a CPU tensor");
++    TORCH_CHECK(had_group_ids.is_contiguous(), "had_group_ids must be contiguous");
++    TORCH_CHECK_DTYPE(A, kBFloat16);
++    TORCH_CHECK_DTYPE(B, kLong);
++    TORCH_CHECK_DTYPE(C_scratch, kHalf);
++    TORCH_CHECK_DTYPE(C_bf16, kBFloat16);
++    TORCH_CHECK_DTYPE(unique_suh, kLong);
++    TORCH_CHECK_DTYPE(A_had, kHalf);
++    TORCH_CHECK_DTYPE(svh, kLong);
++    TORCH_CHECK_DTYPE(had_group_ids, kInt);
++    TORCH_CHECK(A.dim() == 2 && C_scratch.dim() == 3 && A_had.dim() == 3,
++                "grouped-Had BF16 MGEMM requires 2D A and 3D scratch workspaces");
++    TORCH_CHECK(B.dim() == 1 && unique_suh.dim() == 1 && svh.dim() == 1,
++                "grouped-Had BF16 MGEMM pointer tables must be one-dimensional");
++    TORCH_CHECK(had_group_ids.dim() == 1,
++                "had_group_ids must be one-dimensional");
++    TORCH_CHECK(C_bf16.dim() == 2,
++                "grouped-Had BF16 MGEMM output must be 2D");
++    TORCH_CHECK(A.size(0) > 0 && A.size(0) <= 16,
++                "grouped-Had BF16 MGEMM supports 1 <= m <= 16");
++    TORCH_CHECK(A.size(1) > 0 && A.size(1) % 128 == 0,
++                "grouped-Had BF16 MGEMM requires positive, 128-aligned k");
++    TORCH_CHECK(A.size(1) <= INT_MAX,
++                "grouped-Had BF16 MGEMM k exceeds the kernel integer range");
++    TORCH_CHECK(B.numel() > 0 && B.numel() <= EXL3_BF16_MAX_GROUPED_MATRICES,
++                "grouped-Had BF16 MGEMM matrix count is outside the supported range");
++    TORCH_CHECK(unique_suh.numel() > 0 &&
++                unique_suh.numel() <= EXL3_BF16_MAX_GROUPED_MATRICES,
++                "grouped-Had BF16 MGEMM group count is outside the supported range");
++    TORCH_CHECK(C_scratch.size(0) == B.numel() && C_scratch.size(1) == A.size(0),
++                "grouped-Had BF16 MGEMM scratch shape does not match count and m");
++    TORCH_CHECK(C_scratch.size(2) > 0 && C_scratch.size(2) % 128 == 0,
++                "grouped-Had BF16 MGEMM requires positive, 128-aligned n");
++    TORCH_CHECK(C_scratch.size(2) <= INT_MAX,
++                "grouped-Had BF16 MGEMM n exceeds the kernel integer range");
++    TORCH_CHECK(C_bf16.size(0) == A.size(0),
++                "grouped-Had BF16 MGEMM output m does not match A");
++    TORCH_CHECK(B.numel() == svh.numel() && B.numel() == had_group_ids.numel(),
++                "grouped-Had BF16 MGEMM table lengths must match matrix count");
++    TORCH_CHECK(A_had.size(0) == unique_suh.numel(),
++                "grouped-Had BF16 MGEMM workspace does not match group count");
++    TORCH_CHECK(A_had.size(1) == A.size(0) && A_had.size(2) == A.size(1),
++                "grouped-Had BF16 MGEMM workspace does not match A");
++    TORCH_CHECK(output_stride == C_bf16.size(1),
++                "grouped-Had BF16 MGEMM output_stride must match the output width");
++    TORCH_CHECK(
++        B.numel() * C_scratch.size(2) <= INT_MAX &&
++        output_stride >= B.numel() * C_scratch.size(2),
++        "grouped-Had BF16 MGEMM output does not hold every matrix"
++    );
++    TORCH_CHECK(B.numel() * (C_scratch.size(2) / 128) <= MAX_TILES_C,
++                "grouped-Had BF16 MGEMM output exceeds the device lock workspace");
++    TORCH_CHECK(mcg, "grouped-Had BF16 MGEMM supports MCG only");
++    TORCH_CHECK(A.size(1) / 128 <= 65535,
++                "grouped-Had BF16 MGEMM k exceeds the preprocessing grid limit");
++    Exl3Bf16HadGroupIds ids = {};
++    const int* ids_ptr = had_group_ids.const_data_ptr<int>();
++    for (int j = 0; j < B.numel(); ++j)
++    {
++        TORCH_CHECK(
++            ids_ptr[j] >= 0 && ids_ptr[j] < unique_suh.numel(),
++            "had_group_ids[", j, "] is outside [0, ", unique_suh.numel(), ")"
++        );
++        ids.values[j] = static_cast<uint8_t>(ids_ptr[j]);
++    }
++    if (bits == 5) return launch_mgemm_bf16_io_grouped_had<5, 1>(A, B, C_scratch, C_bf16, unique_suh, A_had, svh, ids, force_num_sms, output_stride, direct_output, final_group_barrier);
++    if (bits == 6) return launch_mgemm_bf16_io_grouped_had<6, 1>(A, B, C_scratch, C_bf16, unique_suh, A_had, svh, ids, force_num_sms, output_stride, direct_output, final_group_barrier);
++    TORCH_CHECK(false, "grouped-Had BF16 MGEMM supports K5/K6 only");
++}
+diff --git a/exllamav3/exllamav3_ext/quant/exl3_mgemm_bf16_io.cuh b/exllamav3/exllamav3_ext/quant/exl3_mgemm_bf16_io.cuh
+new file mode 100644
+index 0000000..f1c3f70
+--- /dev/null
++++ b/exllamav3/exllamav3_ext/quant/exl3_mgemm_bf16_io.cuh
+@@ -0,0 +1,46 @@
++#pragma once
++
++#include <ATen/Tensor.h>
++
++// Fixed-width decode bundles with a BF16 serving boundary. direct_output
++// selects the fused accumulator-to-BF16 epilogue; final_group_barrier controls
++// only the terminal barrier and may be false only when all matrices reside.
++// force_num_sms == 0 shares the available cooperative grid across matrices.
++int exl3_mgemm_bf16_io
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    int bits,
++    int force_num_sms,
++    int output_stride,
++    bool mcg,
++    bool direct_output,
++    bool final_group_barrier
++);
++
++// As above, but unique_suh/had_group_ids share transformed inputs among
++// matrices that use the same input scale/flip vector. had_group_ids is static
++// launch metadata supplied as a contiguous CPU int32 tensor, so its values can
++// be validated before capture and copied into CUDA Graph kernel parameters.
++int exl3_mgemm_bf16_io_grouped_had
++(
++    const at::Tensor& A,
++    const at::Tensor& B,
++    at::Tensor& C_scratch,
++    at::Tensor& C_bf16,
++    const at::Tensor& unique_suh,
++    at::Tensor& A_had,
++    const at::Tensor& svh,
++    const at::Tensor& had_group_ids,
++    int bits,
++    int force_num_sms,
++    int output_stride,
++    bool mcg,
++    bool direct_output,
++    bool final_group_barrier
++);
+diff --git a/exllamav3/exllamav3_ext/quant/hadamard_inner.cuh b/exllamav3/exllamav3_ext/quant/hadamard_inner.cuh
+index 9f85c25..34d3918 100644
+--- a/exllamav3/exllamav3_ext/quant/hadamard_inner.cuh
++++ b/exllamav3/exllamav3_ext/quant/hadamard_inner.cuh
+@@ -1,4 +1,5 @@
+ #pragma once
++#include <cuda_bf16.h>
+ #include "../compat.cuh"
+ 
+ #define ACT_SILU 0
+@@ -146,6 +147,173 @@ void had_hf_r_128_inner
+     ((half4*) output_ptr)[t] = v;
+ }
+ 
++// BF16 input with an explicit BF16 -> FP16 rounding boundary before the
++// existing half-precision Hadamard/scaling path.
++template <bool pre_scale, bool post_scale>
++inline __device__
++void had_bh_r_128_inner
++(
++    const __nv_bfloat16* __restrict__ input_ptr,
++    half* __restrict__ output_ptr,
++    const half* __restrict__ scale,
++    const float r_scale
++)
++{
++    int t = threadIdx.x & 31;
++    const __nv_bfloat16* src = input_ptr + t * 4;
++    half4 v;
++    v.x = __floats2half2_rn(__bfloat162float(src[0]), __bfloat162float(src[1]));
++    v.y = __floats2half2_rn(__bfloat162float(src[2]), __bfloat162float(src[3]));
++
++    if constexpr (pre_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x = __hmul2(v.x, scales.x);
++        v.y = __hmul2(v.y, scales.y);
++    }
++
++    float v0 = __half2float(__low2half(v.x));
++    float v1 = __half2float(__high2half(v.x));
++    float v2 = __half2float(__low2half(v.y));
++    float v3 = __half2float(__high2half(v.y));
++    float s0 = v0 + v1;
++    float d0 = v0 - v1;
++    float s1 = v2 + v3;
++    float d1 = v2 - v3;
++    float h0 = s0 + s1;
++    float h1 = d0 + d1;
++    float h2 = s0 - s1;
++    float h3 = d0 - d1;
++
++    shuffle_had_f4x32(h0, h1, h2, h3, t);
++    v.x = __floats2half2_rn(h0 * r_scale, h1 * r_scale);
++    v.y = __floats2half2_rn(h2 * r_scale, h3 * r_scale);
++
++    if constexpr (post_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x = __hmul2(v.x, scales.x);
++        v.y = __hmul2(v.y, scales.y);
++    }
++
++    ((half4*) output_ptr)[t] = v;
++}
++
++// Half input to BF16 output, retaining the existing FP16 Hadamard/scaling
++// result before the final widening store.
++template <bool pre_scale, bool post_scale>
++inline __device__
++void had_hb_r_128_inner
++(
++    const half* __restrict__ input_ptr,
++    __nv_bfloat16* __restrict__ output_ptr,
++    const half* __restrict__ scale,
++    const float r_scale
++)
++{
++    int t = threadIdx.x & 31;
++    half4 v = ((half4*) input_ptr)[t];
++
++    if constexpr (pre_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x = __hmul2(v.x, scales.x);
++        v.y = __hmul2(v.y, scales.y);
++    }
++
++    float v0 = __half2float(__low2half(v.x));
++    float v1 = __half2float(__high2half(v.x));
++    float v2 = __half2float(__low2half(v.y));
++    float v3 = __half2float(__high2half(v.y));
++    float s0 = v0 + v1;
++    float d0 = v0 - v1;
++    float s1 = v2 + v3;
++    float d1 = v2 - v3;
++    float h0 = s0 + s1;
++    float h1 = d0 + d1;
++    float h2 = s0 - s1;
++    float h3 = d0 - d1;
++
++    shuffle_had_f4x32(h0, h1, h2, h3, t);
++    v.x = __floats2half2_rn(h0 * r_scale, h1 * r_scale);
++    v.y = __floats2half2_rn(h2 * r_scale, h3 * r_scale);
++
++    if constexpr (post_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x = __hmul2(v.x, scales.x);
++        v.y = __hmul2(v.y, scales.y);
++    }
++
++    __nv_bfloat16* dst = output_ptr + t * 4;
++    dst[0] = __float2bfloat16(__half2float(__low2half(v.x)));
++    dst[1] = __float2bfloat16(__half2float(__high2half(v.x)));
++    dst[2] = __float2bfloat16(__half2float(__low2half(v.y)));
++    dst[3] = __float2bfloat16(__half2float(__high2half(v.y)));
++}
++
++// Float accumulator to BF16 output with the same FP16 boundary as
++// float->half scratch followed by had_hb_r_128_inner.
++template <bool pre_scale, bool post_scale>
++inline __device__
++void had_fhb_r_128_inner
++(
++    const float* __restrict__ input_ptr,
++    __nv_bfloat16* __restrict__ output_ptr,
++    const half* __restrict__ scale,
++    const float r_scale
++)
++{
++    int t = threadIdx.x & 31;
++    float4 input = ((float4*) input_ptr)[t];
++    half4 v;
++    v.x = __floats2half2_rn(input.x, input.y);
++    v.y = __floats2half2_rn(input.z, input.w);
++
++    if constexpr (pre_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x = __hmul2(v.x, scales.x);
++        v.y = __hmul2(v.y, scales.y);
++    }
++
++    float v0 = __half2float(__low2half(v.x));
++    float v1 = __half2float(__high2half(v.x));
++    float v2 = __half2float(__low2half(v.y));
++    float v3 = __half2float(__high2half(v.y));
++    float s0 = v0 + v1;
++    float d0 = v0 - v1;
++    float s1 = v2 + v3;
++    float d1 = v2 - v3;
++    float h0 = s0 + s1;
++    float h1 = d0 + d1;
++    float h2 = s0 - s1;
++    float h3 = d0 - d1;
++
++    shuffle_had_f4x32(h0, h1, h2, h3, t);
++    v.x = __floats2half2_rn(h0 * r_scale, h1 * r_scale);
++    v.y = __floats2half2_rn(h2 * r_scale, h3 * r_scale);
++
++    if constexpr (post_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x = __hmul2(v.x, scales.x);
++        v.y = __hmul2(v.y, scales.y);
++    }
++
++    __nv_bfloat16* dst = output_ptr + t * 4;
++    dst[0] = __float2bfloat16(__half2float(__low2half(v.x)));
++    dst[1] = __float2bfloat16(__half2float(__high2half(v.x)));
++    dst[2] = __float2bfloat16(__half2float(__low2half(v.y)));
++    dst[3] = __float2bfloat16(__half2float(__high2half(v.y)));
++}
++
+ // Float vector, half scales
+ 
+ template <bool pre_scale, bool post_scale>
+@@ -278,6 +446,63 @@ void had_fh_r_128_inner
+     ((half4*) output_ptr)[t] = o;
+ }
+ 
++// Float accumulator to BF16 output, converted through FP16 to preserve the
++// served FP32 -> FP16 epilogue followed by FP16 -> BF16 adapter semantics.
++template <bool pre_scale, bool post_scale>
++inline __device__
++void had_fb_r_128_inner
++(
++    const float* __restrict__ input_ptr,
++    __nv_bfloat16* __restrict__ output_ptr,
++    const half* __restrict__ scale,
++    const float r_scale
++)
++{
++    int t = threadIdx.x & 31;
++    float4 v = ((float4*) input_ptr)[t];
++
++    if constexpr (pre_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x *= __low2float(scales.x);
++        v.y *= __high2float(scales.x);
++        v.z *= __low2float(scales.y);
++        v.w *= __high2float(scales.y);
++    }
++
++    float s0 = v.x + v.y;
++    float d0 = v.x - v.y;
++    float s1 = v.z + v.w;
++    float d1 = v.z - v.w;
++    v.x = s0 + s1;
++    v.y = d0 + d1;
++    v.z = s0 - s1;
++    v.w = d0 - d1;
++    shuffle_had_f2x32(v.x, v.y, t);
++    shuffle_had_f2x32(v.z, v.w, t);
++    v.x *= r_scale;
++    v.y *= r_scale;
++    v.z *= r_scale;
++    v.w *= r_scale;
++
++    if constexpr (post_scale)
++    {
++        int i = blockIdx.y * 32 + t;
++        half4 scales = ((half4*) scale)[i];
++        v.x *= __low2float(scales.x);
++        v.y *= __high2float(scales.x);
++        v.z *= __low2float(scales.y);
++        v.w *= __high2float(scales.y);
++    }
++
++    __nv_bfloat16* dst = output_ptr + t * 4;
++    dst[0] = __float2bfloat16(__half2float(__float2half_rn(v.x)));
++    dst[1] = __float2bfloat16(__half2float(__float2half_rn(v.y)));
++    dst[2] = __float2bfloat16(__half2float(__float2half_rn(v.z)));
++    dst[3] = __float2bfloat16(__half2float(__float2half_rn(v.w)));
++}
++
+ // Fused op: o <- in_had(silu(out_had(g)) * out_had(u))
+ 
+ inline __device__
+diff --git a/tests/test_exl3_bf16_io.py b/tests/test_exl3_bf16_io.py
+new file mode 100644
+index 0000000..89c4435
+--- /dev/null
++++ b/tests/test_exl3_bf16_io.py
+@@ -0,0 +1,446 @@
++import pytest
++import torch
++
++from exllamav3.ext import exllamav3_ext as ext
++
++
++pytestmark = pytest.mark.skipif(
++    not torch.cuda.is_available(),
++    reason = "EXL3 BF16 I/O tests require CUDA",
++)
++
++
++def require_supported_device():
++    device = torch.device("cuda:0")
++    properties = torch.cuda.get_device_properties(device)
++    if properties.major < 8:
++        pytest.skip("EXL3 BF16 I/O requires compute capability 8.0 or newer")
++    optin_smem = getattr(
++        properties,
++        "shared_memory_per_block_optin",
++        properties.shared_memory_per_block,
++    )
++    if optin_smem < 90 * 1024:
++        pytest.skip("EXL3 BF16 I/O requires 90 KiB of dynamic shared memory")
++    torch.cuda.set_device(device)
++    return device
++
++
++def make_trellis(k, n, bits, device, seed):
++    generator = torch.Generator(device = device)
++    generator.manual_seed(seed)
++    return torch.randint(
++        0,
++        65536,
++        (k // 16, n // 16, bits * 16),
++        dtype = torch.int32,
++        device = device,
++        generator = generator,
++    ).to(torch.int16)
++
++
++def make_signs(size, device, seed):
++    generator = torch.Generator(device = device)
++    generator.manual_seed(seed)
++    values = torch.randint(
++        0,
++        2,
++        (size,),
++        dtype = torch.int32,
++        device = device,
++        generator = generator,
++    )
++    return (values * 2 - 1).to(torch.float16)
++
++
++def relative_rms(actual, expected):
++    actual_f = actual.float()
++    expected_f = expected.float()
++    return float(
++        torch.sqrt(torch.mean((actual_f - expected_f) ** 2))
++        / torch.sqrt(torch.mean(expected_f ** 2))
++    )
++
++
++class GemmCase:
++    def __init__(self, m, k, n, bits, device):
++        self.a_bf16 = torch.randn((m, k), dtype = torch.bfloat16, device = device)
++        self.b = make_trellis(k, n, bits, device, 1000 + bits)
++        self.suh = make_signs(k, device, 2000 + bits)
++        self.svh = make_signs(n, device, 3000 + bits)
++        self.a_had = torch.empty((m, k), dtype = torch.float16, device = device)
++        self.scratch = torch.empty((m, n), dtype = torch.float16, device = device)
++        self.output = torch.empty((m, n), dtype = torch.bfloat16, device = device)
++
++    def run(self, force_num_sms = 0, final_grid_sync = False):
++        ext.exl3_gemm_bf16_io(
++            self.a_bf16,
++            self.b,
++            self.scratch,
++            self.output,
++            self.suh,
++            self.a_had,
++            self.svh,
++            2,
++            force_num_sms,
++            True,
++            final_grid_sync,
++        )
++
++    def reference(self):
++        a_fp16 = self.a_bf16.to(torch.float16)
++        a_had = torch.empty_like(a_fp16)
++        output_fp16 = torch.empty_like(self.scratch)
++        ext.exl3_gemm(
++            a_fp16,
++            self.b,
++            output_fp16,
++            self.suh,
++            a_had,
++            self.svh,
++            2,
++            True,
++            False,
++            0,
++        )
++        return output_fp16.to(torch.bfloat16)
++
++
++class MgemmCase:
++    def __init__(self, m, k, n, bits, count, device):
++        self.m = m
++        self.k = k
++        self.n = n
++        self.count = count
++        self.a_bf16 = torch.randn((m, k), dtype = torch.bfloat16, device = device)
++        self.bs = [
++            make_trellis(k, n, bits, device, 4000 + bits * 10 + index)
++            for index in range(count)
++        ]
++        self.shared_suh = make_signs(k, device, 5000 + bits)
++        self.svhs = [make_signs(n, device, 6000 + index) for index in range(count)]
++        self.b_ptrs = self.pointer_tensor(self.bs, device)
++        self.suh_ptrs = self.pointer_tensor([self.shared_suh] * count, device)
++        self.unique_suh_ptrs = self.pointer_tensor([self.shared_suh], device)
++        self.svh_ptrs = self.pointer_tensor(self.svhs, device)
++        self.had_group_ids = torch.zeros(count, dtype = torch.int32)
++        self.a_had = torch.empty(
++            (count, m, k), dtype = torch.float16, device = device
++        )
++        self.a_had_grouped = torch.empty(
++            (1, m, k), dtype = torch.float16, device = device
++        )
++        self.scratch = torch.empty(
++            (count, m, n), dtype = torch.float16, device = device
++        )
++        self.output = torch.empty(
++            (m, count * n), dtype = torch.bfloat16, device = device
++        )
++
++    @staticmethod
++    def pointer_tensor(tensors, device):
++        return torch.tensor(
++            [tensor.data_ptr() for tensor in tensors],
++            dtype = torch.int64,
++            device = device,
++        )
++
++    def run(
++        self,
++        force_num_sms = 0,
++        direct_output = False,
++        final_group_barrier = False,
++    ):
++        ext.exl3_mgemm_bf16_io(
++            self.a_bf16,
++            self.b_ptrs,
++            self.scratch,
++            self.output,
++            self.suh_ptrs,
++            self.a_had,
++            self.svh_ptrs,
++            self.bs[0].size(2) // 16,
++            force_num_sms,
++            self.output.size(1),
++            True,
++            direct_output,
++            final_group_barrier,
++        )
++
++    def run_grouped(
++        self,
++        force_num_sms = 0,
++        direct_output = False,
++        final_group_barrier = False,
++    ):
++        ext.exl3_mgemm_bf16_io_grouped_had(
++            self.a_bf16,
++            self.b_ptrs,
++            self.scratch,
++            self.output,
++            self.unique_suh_ptrs,
++            self.a_had_grouped,
++            self.svh_ptrs,
++            self.had_group_ids,
++            self.bs[0].size(2) // 16,
++            force_num_sms,
++            self.output.size(1),
++            True,
++            direct_output,
++            final_group_barrier,
++        )
++
++    def reference(self):
++        a_fp16 = self.a_bf16.to(torch.float16)
++        outputs = []
++        for b, svh in zip(self.bs, self.svhs):
++            a_had = torch.empty_like(a_fp16)
++            output = torch.empty(
++                (self.m, self.n), dtype = torch.float16, device = a_fp16.device
++            )
++            ext.exl3_gemm(
++                a_fp16,
++                b,
++                output,
++                self.shared_suh,
++                a_had,
++                svh,
++                2,
++                True,
++                False,
++                0,
++            )
++            outputs.append(output.to(torch.bfloat16))
++        return torch.cat(outputs, dim = 1)
++
++
++@pytest.mark.parametrize("bits", (5, 6))
++@pytest.mark.parametrize("m", (4, 16))
++@torch.inference_mode()
++def test_exl3_gemm_bf16_io_matches_fp16_boundary(bits, m):
++    device = require_supported_device()
++    case = GemmCase(m, 128, 128, bits, device)
++    reference = case.reference()
++    case.run(final_grid_sync = False)
++    torch.cuda.synchronize()
++    without_final_sync = case.output.clone()
++    case.run(final_grid_sync = True)
++    torch.cuda.synchronize()
++    with_final_sync = case.output.clone()
++    torch.testing.assert_close(with_final_sync, without_final_sync, rtol = 0, atol = 0)
++    assert relative_rms(without_final_sync, reference) < 0.003
++    assert float(torch.nn.functional.cosine_similarity(
++        without_final_sync.float().flatten(), reference.float().flatten(), dim = 0
++    )) > 0.99999
++
++
++@pytest.mark.parametrize("bits", (5, 6))
++@pytest.mark.parametrize("m", (4, 16))
++@torch.inference_mode()
++def test_exl3_mgemm_bf16_io_modes_and_graph(bits, m):
++    device = require_supported_device()
++    case = MgemmCase(m, 128, 128, bits, 2, device)
++    reference = case.reference()
++
++    case.run(direct_output = False, final_group_barrier = True)
++    torch.cuda.synchronize()
++    ordinary = case.output.clone()
++    assert relative_rms(ordinary, reference) < 0.003
++    assert float(torch.nn.functional.cosine_similarity(
++        ordinary.float().flatten(), reference.float().flatten(), dim = 0
++    )) > 0.99999
++
++    case.run(force_num_sms = 1, direct_output = False, final_group_barrier = True)
++    torch.cuda.synchronize()
++    forced_one_sm = case.output.clone()
++    assert relative_rms(forced_one_sm, reference) < 0.003
++    assert float(torch.nn.functional.cosine_similarity(
++        forced_one_sm.float().flatten(), reference.float().flatten(), dim = 0
++    )) > 0.99999
++
++    case.run(direct_output = False, final_group_barrier = False)
++    torch.cuda.synchronize()
++    ordinary_no_barrier = case.output.clone()
++    torch.testing.assert_close(ordinary_no_barrier, ordinary, rtol = 0, atol = 0)
++
++    case.run(direct_output = True, final_group_barrier = False)
++    torch.cuda.synchronize()
++    ordinary_direct = case.output.clone()
++    torch.testing.assert_close(ordinary_direct, ordinary, rtol = 0, atol = 0)
++
++    case.run_grouped(direct_output = False, final_group_barrier = True)
++    torch.cuda.synchronize()
++    grouped_scratch = case.output.clone()
++    torch.testing.assert_close(grouped_scratch, ordinary, rtol = 0, atol = 0)
++
++    case.run_grouped(direct_output = True, final_group_barrier = False)
++    torch.cuda.synchronize()
++    grouped_direct = case.output.clone()
++    torch.testing.assert_close(grouped_direct, grouped_scratch, rtol = 0, atol = 0)
++
++    graph = torch.cuda.CUDAGraph()
++    with torch.cuda.graph(graph):
++        case.run_grouped(direct_output = True, final_group_barrier = False)
++    graph.replay()
++    torch.cuda.synchronize()
++    before = case.output.clone()
++    case.a_bf16.copy_(torch.randn_like(case.a_bf16))
++    graph.replay()
++    torch.cuda.synchronize()
++    assert not torch.equal(case.output, before)
++
++
++@torch.inference_mode()
++def test_exl3_bf16_io_rejects_invalid_layouts():
++    device = require_supported_device()
++    case = GemmCase(4, 128, 128, 5, device)
++
++    with pytest.raises(RuntimeError, match = "1 <= m <= 16"):
++        bad_a = torch.empty((0, 128), dtype = torch.bfloat16, device = device)
++        ext.exl3_gemm_bf16_io(
++            bad_a, case.b, case.scratch[:0], case.output[:0], case.suh,
++            case.a_had[:0], case.svh, 2, 0, True, False,
++        )
++
++    with pytest.raises(RuntimeError, match = "128-aligned k"):
++        bad_a = torch.empty((4, 64), dtype = torch.bfloat16, device = device)
++        bad_b = make_trellis(64, 128, 5, device, 7001)
++        bad_suh = torch.empty(64, dtype = torch.float16, device = device)
++        bad_a_had = torch.empty_like(bad_a, dtype = torch.float16)
++        ext.exl3_gemm_bf16_io(
++            bad_a, bad_b, case.scratch, case.output, bad_suh, bad_a_had,
++            case.svh, 2, 0, True, False,
++        )
++
++    with pytest.raises(RuntimeError, match = "exact K5 or K6"):
++        bad_b = torch.empty(
++            (8, 8, 81), dtype = torch.int16, device = device
++        )
++        ext.exl3_gemm_bf16_io(
++            case.a_bf16, bad_b, case.scratch, case.output, case.suh,
++            case.a_had, case.svh, 2, 0, True, False,
++        )
++
++    with pytest.raises(RuntimeError, match = "nonnegative"):
++        case.run(force_num_sms = -1)
++
++    properties = torch.cuda.get_device_properties(device)
++    with pytest.raises(RuntimeError, match = "invalid EXL3 BF16 I/O SM count"):
++        case.run(force_num_sms = properties.multi_processor_count + 1)
++
++
++@torch.inference_mode()
++def test_exl3_grouped_had_rejects_invalid_metadata_before_launch():
++    device = require_supported_device()
++    case = MgemmCase(4, 128, 128, 5, 2, device)
++
++    case.had_group_ids = case.had_group_ids.to(device)
++    with pytest.raises(RuntimeError, match = "CPU tensor"):
++        case.run_grouped()
++
++    case.had_group_ids = torch.tensor((0, -1), dtype = torch.int32)
++    with pytest.raises(RuntimeError, match = "outside"):
++        case.run_grouped()
++
++    case.had_group_ids = torch.tensor((0, 1), dtype = torch.int32)
++    with pytest.raises(RuntimeError, match = "outside"):
++        case.run_grouped()
++
++    case.had_group_ids = torch.zeros((1, 2), dtype = torch.int32)
++    with pytest.raises(RuntimeError):
++        case.run_grouped()
++
++    case.had_group_ids = torch.zeros(2, dtype = torch.int32)
++    case.run_grouped()
++    torch.cuda.synchronize()
++
++
++@torch.inference_mode()
++def test_exl3_mgemm_bf16_io_rejects_invalid_layouts():
++    device = require_supported_device()
++    case = MgemmCase(4, 128, 128, 5, 2, device)
++
++    def run(a, b_ptrs, scratch, output, suh_ptrs, a_had, svh_ptrs):
++        ext.exl3_mgemm_bf16_io(
++            a,
++            b_ptrs,
++            scratch,
++            output,
++            suh_ptrs,
++            a_had,
++            svh_ptrs,
++            5,
++            0,
++            output.size(1),
++            True,
++            False,
++            False,
++        )
++
++    with pytest.raises(RuntimeError, match = "one-dimensional|1"):
++        run(
++            case.a_bf16,
++            case.b_ptrs.view(1, 2),
++            case.scratch,
++            case.output,
++            case.suh_ptrs,
++            case.a_had,
++            case.svh_ptrs,
++        )
++
++    with pytest.raises(RuntimeError, match = "matrix count"):
++        run(
++            case.a_bf16,
++            case.b_ptrs[:0],
++            case.scratch[:0],
++            case.output[:, :0],
++            case.suh_ptrs[:0],
++            case.a_had[:0],
++            case.svh_ptrs[:0],
++        )
++
++    with pytest.raises(RuntimeError, match = "128-aligned k"):
++        bad_a = torch.empty((4, 64), dtype = torch.bfloat16, device = device)
++        bad_a_had = torch.empty(
++            (2, 4, 64), dtype = torch.float16, device = device
++        )
++        run(
++            bad_a,
++            case.b_ptrs,
++            case.scratch,
++            case.output,
++            case.suh_ptrs,
++            bad_a_had,
++            case.svh_ptrs,
++        )
++
++    with pytest.raises(RuntimeError, match = "128-aligned n"):
++        bad_scratch = torch.empty(
++            (2, 4, 64), dtype = torch.float16, device = device
++        )
++        bad_output = torch.empty(
++            (4, 128), dtype = torch.bfloat16, device = device
++        )
++        run(
++            case.a_bf16,
++            case.b_ptrs,
++            bad_scratch,
++            bad_output,
++            case.suh_ptrs,
++            case.a_had,
++            case.svh_ptrs,
++        )
++
++    with pytest.raises(RuntimeError, match = "does not hold every matrix"):
++        bad_output = torch.empty(
++            (4, 128), dtype = torch.bfloat16, device = device
++        )
++        run(
++            case.a_bf16,
++            case.b_ptrs,
++            case.scratch,
++            bad_output,
++            case.suh_ptrs,
++            case.a_had,
++            case.svh_ptrs,
++        )

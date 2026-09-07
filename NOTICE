@@ -8,6 +8,9 @@ ExLlamaV3 and B12X are optional external runtime dependencies and retain
 their own licenses. The separately built native/exl3_m32 extension contains
 code derived from ExLlamaV3, Copyright 2025 Turboderp, under the MIT License.
 See native/exl3_m32/LICENSE. It is not included in the vllm-mach Python wheel.
+The profiles/exllamav3-1.4.8 BF16 patch is derived from ExLlamaV3 under the
+same MIT License; see profiles/exllamav3-1.4.8/LICENSE. It is also excluded
+from the Python wheel.
 
 MXFP6 SM120 is an optional external runtime dependency provided by the
 mxfp6-sm120 package. Its source code is not distributed in this package and
