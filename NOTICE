@@ -29,3 +29,7 @@ code derived from FlashInfer (Copyright 2026 FlashInfer team) and framework
 integration derived from vLLM, both under the Apache License, Version 2.0.
 It is distributed separately from the Python wheel; original file notices
 are preserved.
+
+The optional native/lossless_prefill extension contains a frozen collective
+header and operations derived from FlashInfer under Apache-2.0, with a
+lossless BF16 peer-read codec. It is built separately from the Python wheel.
