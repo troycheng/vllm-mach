@@ -1,5 +1,15 @@
 # Validation
 
+## 0.1.0a5
+
+Package tests: 115 passed, 3 skipped. The separate Temporal M24 extension built against patched ExLlamaV3 1.4.8, Python 3.12, PyTorch 2.13.0+cu130 and CUDA 13.2 for SM120. Import after PyTorch did not initialize CUDA.
+
+On both TP ranks, real-weight QKV and QKVZ bundles at M24 were checked against the frozen Temporal service binary with three changing inputs each. All eager and CUDA Graph outputs matched that reference bitwise. The new native entry point rejected M16; package tests cover shape exclusions and missing/broken extension behavior. This establishes equivalence to the Temporal implementation, not to the older EXL3 reduction order.
+
+The combined service enabled original MXFP6 checkpoint loading, merged M32/prefill QKV, Temporal M24, BF16 I/O, the sampling-metadata patch, and source-built FlashInfer 0.6.18 fused AllReduce/GemmaRMSNorm/MXFP8. All seven FULL_DECODE_ONLY sizes `[1, 2, 4, 8, 16, 24, 32]` captured. The existing 40-task suite at concurrency 24 passed 40/40 with zero regressions and 33/40 exact reference outputs. B12X, the separate EXL3 M32 extension, and private FLA tuning were not used.
+
+The release wheel contains the same runtime source as this service check; final packaging updates README metadata only. These are functional integration checks. No Mach E2E performance or full-model losslessness claim is made.
+
 ## 0.1.0a5.dev0
 
 The direct-checkpoint profile passed the existing 95 package tests (3 skipped) and a full CPU comparison with the frozen experimental loader: 256 rank-local projections per TP rank, identical packed weights and logical scales, and matching aggregate content digests. This establishes the port's loading contract for the tested checkpoint, not a public checkpoint download identity.

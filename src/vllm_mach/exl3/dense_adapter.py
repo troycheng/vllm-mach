@@ -62,6 +62,7 @@ _BF16_IO_LEGACY_CUDA_GROUP_IDS = (
     os.environ.get("EXL3_BF16_IO_LEGACY_CUDA_GROUP_IDS", "0") == "1"
 )
 _BF16_IO_M24_ENABLED = os.environ.get("EXL3_BF16_IO_M24", "0") == "1"
+_TEMPORAL_QKV_M24_ENABLED = os.environ.get("EXL3_TEMPORAL_QKV_M24", "0") == "1"
 _BF16_IO_M32_ENABLED = os.environ.get("EXL3_BF16_IO_M32", "0") == "1"
 _BF16_IO_TILE_M32_ENABLED = os.environ.get("EXL3_BF16_IO_TILE_M32", "0") == "1"
 _EXL3_GEMM_PRIMED_SIGNATURES: set[tuple[int, int, int, int, int, int]] = set()
@@ -729,6 +730,21 @@ def _exl3_mgemm_bf16_io(
     ext = _load_exl3_ext()
     count = trellis_ptrs.numel()
     m, k = x.shape
+    if _TEMPORAL_QKV_M24_ENABLED:
+        from .temporal_m24 import eligible, load_extension
+        if eligible(m, k, bits, count, output_size):
+            temporal = load_extension()
+            if temporal is not None:
+                splits = 10 if count == 8 else 12
+                output = torch.empty((m, count * output_size), dtype=torch.bfloat16, device=x.device)
+                x_had = torch.empty((unique_suh_ptrs.numel(), m, k), dtype=torch.float16, device=x.device)
+                partial = torch.empty((count, splits, m, output_size), dtype=torch.float32, device=x.device)
+                temporal.run_grouped(
+                    x, trellis_ptrs, unique_suh_ptrs, svh_ptrs, had_group_ids,
+                    x_had, partial, output,
+                )
+                logger.warning_once("EXL3 Temporal M24 active: matrices=%d, N=%d, split=%d.", count, output_size, splits)
+                return output
     force_num_sms = {2: 85, 8: 20, 14: 12}[count]
     grouped_hadamard = unique_suh_ptrs.numel() < count
     m32_ext = (

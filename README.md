@@ -33,7 +33,7 @@ Install vLLM and the release wheel in the same environment:
 ```bash
 python -m pip install "vllm==0.28.0"
 python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a4/vllm_mach-0.1.0a4-py3-none-any.whl
+  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a5/vllm_mach-0.1.0a5-py3-none-any.whl
 ```
 
 The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
@@ -128,7 +128,9 @@ export VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=1
 
 The hybrid profile keeps `lm_head` and unmatched projections on EXL3. It routes MLP and attention output projections to MXFP6 for all row counts. QKV and QKVZ projections use MXFP6 for prefill calls with at least 128 rows and EXL3 for decode.
 
-The unreleased [direct-checkpoint profile](docs/checkpoint-hybrid.md) adds original MXFP6 weight loading and merged QKV execution at physical M32 and prefill. It is separate from the profile above and has passed TP2 functional checks; full-model fidelity and performance remain unverified. A tested [ExLlamaV3 1.4.8 BF16 source build](profiles/exllamav3-1.4.8/README.md) is available for this profile. The default installation pin is unchanged.
+Release `0.1.0a5` adds the opt-in [direct-checkpoint profile](docs/checkpoint-hybrid.md): original MXFP6 weights and merged QKV execution at physical M32 and prefill. A tested [ExLlamaV3 1.4.8 BF16 source build](profiles/exllamav3-1.4.8/README.md) is available; the default dependency pin is unchanged.
+
+The optional [Temporal M24 K6 extension](native/exl3_temporal_m24/README.md) handles two QKV/QKVZ bundle shapes at physical M24. Build it separately and set `EXL3_TEMPORAL_QKV_M24=1` alongside BF16 I/O and M24 support. It defaults to off; other row counts keep their existing paths. Experimental performance results are not Mach release measurements.
 
 ## MXFP6 integration
 
@@ -136,11 +138,7 @@ The unreleased [direct-checkpoint profile](docs/checkpoint-hybrid.md) adds origi
 
 ## Validation
 
-Release `0.1.0a4` passed 68 package tests with 3 skipped and a public-source EXL3 service check without B12X: all seven graph sizes captured, 40/40 tasks passed, and 39/40 outputs matched the stored reference exactly. See [public installation](docs/public-install.md) for the dependency contract and [validation](docs/validation.md) for the tested scope.
-
-Release `0.1.0a3` passed 60 package tests with 3 skipped. Its Qwen3.8-27B TP2 service check enabled the new decode options alongside the EXL3/MXFP6 profile and fused FlashInfer collective, captured all seven graph sizes, and passed the existing 40-task regression suite with no new failures. Exact output agreement with the stored reference was 33/40.
-
-The detailed test matrix and historical fused-collective measurements are in [the validation record](docs/validation.md). They are integration evidence, not a general performance claim.
+The [validation record](docs/validation.md) lists package tests, real-weight kernel checks, changing-input CUDA Graph checks, and TP2 task regressions for each release. The [public installation guide](docs/public-install.md) records the dependency contract. These checks establish the documented integration boundaries, not general model accuracy or performance claims.
 
 ## Limitations
 

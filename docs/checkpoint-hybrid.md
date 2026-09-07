@@ -1,6 +1,6 @@
 # Direct-checkpoint hybrid profile
 
-This unreleased profile ports the direct MXFP6 weight-loading and merged QKV routes from the experimental Qwen3.8-27B service. It is opt-in; the existing `qwen38-27b` profile is unchanged. The port has passed loading, native Graph, and TP2 functional checks described in [validation.md](validation.md). These checks do not establish full-model fidelity or performance.
+Available since `0.1.0a5`, this profile ports the direct MXFP6 weight-loading and merged QKV routes from the experimental Qwen3.8-27B service. It is opt-in; the existing `qwen38-27b` profile is unchanged. The port has passed loading, native Graph, and TP2 functional checks described in [validation.md](validation.md). These checks do not establish full-model fidelity or performance.
 
 ## Configuration
 
@@ -34,7 +34,7 @@ M denotes the physical flattened input row count, including CUDA Graph padding, 
 
 The source service's direct-checkpoint recipe passed its frozen performance comparison against the strong MXFP6 deployment on dual RTX 5090, TP2, FULL decode graphs, 1024 input / 256 output tokens. This is evidence for selecting the implementation, not a measurement of the Mach port or a 3K/1K performance claim.
 
-The later combined recipe also used a separate Temporal M24 EXL3 K6 kernel. That kernel is not included in this profile. Its measured c24 improvement and c4 regression must not be attributed to this port.
+The later combined recipe also used a separate Temporal M24 EXL3 K6 kernel. Mach provides it as an [optional native extension](../native/exl3_temporal_m24/README.md), disabled by default. Its experimental c24 improvement and c4 regression must not be attributed to this port.
 
 The 2026-09-07 experimental comparison used 256 fixed samples and 10,479 target tokens. For the combined recipe, the sample-weighted target-logprob MAE difference from MXFP6 was +0.003467 (95% CI [-0.000826, +0.007667]); the secondary NLL difference was +0.009464 nats/token (95% CI [+0.002434, +0.017180]). Intervals were not multiplicity-adjusted. These are prefill teacher-forced fidelity results, not business accuracy, and do not establish losslessness. The recipe also pinned FLA arithmetic configurations; Mach does not silently reproduce private rank-specific autotuner patches. Its own runtime and quality acceptance remain required.
 
