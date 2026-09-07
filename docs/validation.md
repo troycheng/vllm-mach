@@ -1,5 +1,11 @@
 # Validation
 
+## 0.1.0a6
+
+The final source tree passed 122 package tests in an isolated container without GPU access. The release wheel built and installed successfully; package metadata and `vllm_mach.__version__` both report `0.1.0a6`, and import did not initialize CUDA. Runtime kernel code is unchanged from a5; this release supplies the missing dependency overlays and complete opt-in serving configuration.
+
+The aligned service passed 40/40 tasks with zero pass/fail regressions and 37/40 exact stored-reference outputs. Both TP workers selected specialized GDN; Temporal QKV/QKVZ and all seven Graph sizes were active. The fixed-token concurrency sweep and bounded c16 warm-state retest are recorded in [checkpoint/Temporal alignment](champion-alignment.md), including the first-round latency limitation. Final packaging changes only version metadata and documentation; no additional full-service benchmark was run for packaging.
+
 ## 0.1.0a5
 
 Package tests: 115 passed, 3 skipped. The separate Temporal M24 extension built against patched ExLlamaV3 1.4.8, Python 3.12, PyTorch 2.13.0+cu130 and CUDA 13.2 for SM120. Import after PyTorch did not initialize CUDA.

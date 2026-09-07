@@ -59,3 +59,47 @@ Set the variable before starting vLLM. The patch copies temperature and seed ten
 
 Do not apply this profile to another vLLM version without revalidating its patch,
 imports, model load, changing-input graph capture, and inference behavior.
+
+## Checkpoint/Temporal serving configuration
+
+`qwen38-runtime-alignment.patch` adds the reference SM120 TP2 AllReduce size limits and backports fused QK norm/MRoPE handling from [vLLM #52676](https://github.com/vllm-project/vllm/pull/52676). It does not include the reference image's experimental MoE runner. Apply it alongside the patches above:
+
+```bash
+patch --batch --fuzz=0 -p1 -d /path/to/site-packages \
+  < profiles/vllm-0.28.0/qwen38-runtime-alignment.patch
+```
+
+Install the optional [FlashInfer GDN profile](../flashinfer-0.6.18-gdn/README.md), B12X 1.3.0, and the Temporal native extension, then source `qwen38-checkpoint-temporal.env`. Set `VLLM_MACH_MXFP6_CHECKPOINT` explicitly to the paired original MXFP6 checkpoint. The environment file enables online K6 embedding, B12X/fused reconstruction, the `trtllm` collective backend and GDN. Online embedding changes the stored numerical representation; these settings are opt-in and are not the package defaults.
+
+Use TP2, BF16 KV, TRITON_ATTN, max-model-len8192, max-num-seqs32, max-num-batched-tokens4096, chunked prefill, no prefix caching, text-only input, and FULL_DECODE_ONLY graph sizes1/2/4/8/16/24/32 for the reference configuration. Do not substitute a whole-model MXFP6 quantization configuration for the EXL3 provider.
+
+The profile files ship in the a6 source archive, not the Python wheel. Use a tagged checkout so the installer, overlay and environment file match:
+
+```bash
+git clone --branch v0.1.0a6 --depth 1 https://github.com/troycheng/vllm-mach.git
+cd vllm-mach
+```
+
+Prepare a dedicated environment with vLLM 0.28.0, the Mach wheel, patched [ExLlamaV3 1.4.8](../exllamav3-1.4.8/README.md), `mxfp6-sm120==0.2.1`, `flashinfer-python==0.6.18`, and `b12x==1.3.0`. Apply the graph-warmup, fused collective, sampling, FlashInfer layout and runtime-alignment patches above before running the GDN installer. Build the [Temporal extension](../../native/exl3_temporal_m24/README.md) in that environment. Do not reuse an unpatched FlashInfer communication binary.
+
+After installing those components:
+
+```bash
+python profiles/flashinfer-0.6.18-gdn/install.py --apply
+source profiles/vllm-0.28.0/qwen38-checkpoint-temporal.env
+export VLLM_MACH_MXFP6_CHECKPOINT=/path/to/paired-original-MXFP6-checkpoint
+python -c 'from vllm_mach.exl3.fused_allreduce import verify_flashinfer_profile; verify_flashinfer_profile()'
+
+vllm serve /path/to/EXL3-checkpoint \
+  --quantization exl3 --tensor-parallel-size 2 \
+  --dtype bfloat16 --kv-cache-dtype auto \
+  --gpu-memory-utilization 0.9 --max-model-len 8192 \
+  --max-num-seqs 32 --max-num-batched-tokens 4096 \
+  --enable-chunked-prefill --no-enable-prefix-caching \
+  --attention-backend TRITON_ATTN \
+  --limit-mm-per-prompt '{"image":0,"video":0}' \
+  --generation-config vllm \
+  --compilation-config '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[1,2,4,8,16,24,32]}'
+```
+
+Check both worker logs for `cuda_sm120_persistent`, both Temporal bundle shapes, fused FlashInfer collective activation and completed Graph capture. A healthy HTTP endpoint alone does not establish that these optional paths are active. Run a representative full-concurrency warmup before steady-state measurement; the first c16 round showed extra latency in acceptance. See the [combined integration result](../../docs/champion-alignment.md).

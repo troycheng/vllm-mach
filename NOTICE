@@ -24,3 +24,8 @@ example and is adapted as Apache-2.0 framework glue for vLLM Mach.
 
 The version-locked FlashInfer profile contains a small patch derived from the
 FlashInfer project, which is licensed under the Apache License, Version 2.0.
+The optional profiles/flashinfer-0.6.18-gdn source overlay contains fused GDN
+code derived from FlashInfer (Copyright 2026 FlashInfer team) and framework
+integration derived from vLLM, both under the Apache License, Version 2.0.
+It is distributed separately from the Python wheel; original file notices
+are preserved.

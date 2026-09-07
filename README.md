@@ -33,7 +33,7 @@ Install vLLM and the release wheel in the same environment:
 ```bash
 python -m pip install "vllm==0.28.0"
 python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a5/vllm_mach-0.1.0a5-py3-none-any.whl
+  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a6/vllm_mach-0.1.0a6-py3-none-any.whl
 ```
 
 The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
@@ -132,6 +132,8 @@ Release `0.1.0a5` adds the opt-in [direct-checkpoint profile](docs/checkpoint-hy
 
 The optional [Temporal M24 K6 extension](native/exl3_temporal_m24/README.md) handles two QKV/QKVZ bundle shapes at physical M24. Build it separately and set `EXL3_TEMPORAL_QKV_M24=1` alongside BF16 I/O and M24 support. It defaults to off; other row counts keep their existing paths. Experimental performance results are not Mach release measurements.
 
+Release `0.1.0a6` provides a [complete checkpoint/Temporal serving profile](profiles/vllm-0.28.0/README.md#checkpointtemporal-serving-configuration), including the [SM120 fused GDN backport](profiles/flashinfer-0.6.18-gdn/README.md), QK norm/MRoPE support and collective configuration. Obtain the profile files from the tagged source archive or checkout. Native extensions, runtime patches and environment settings must be installed together; upgrading the Python wheel alone does not enable this configuration. See the [alignment results](docs/champion-alignment.md) for the tested workload and first-round latency limitation.
+
 ## MXFP6 integration
 
 [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120) owns MXFP6 packing, MXFP8 activation quantization, W6A8 GEMM, and workspace management. vLLM Mach handles vLLM registration, checkpoint metadata, tensor-parallel slices, projection routing, CUDA Graph lifecycle, and the optional FlashInfer AllReduce/RMSNorm/MXFP8 boundary. The hybrid profile requires both packages.
@@ -142,7 +144,7 @@ The [validation record](docs/validation.md) lists package tests, real-weight ker
 
 ## Limitations
 
-The current release does not provide routed MoE execution, a GDN kernel replacement, `lm_head` conversion, or validated support for additional models and GPU architectures.
+Routed MoE execution, `lm_head` conversion and additional model/GPU configurations remain unsupported. The optional GDN source profile is not installed by the Python wheel.
 
 ## Contributing
 
