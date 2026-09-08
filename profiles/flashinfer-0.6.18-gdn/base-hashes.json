@@ -10,5 +10,8 @@
   "flashinfer/gdn_kernels/experimental/kernel/gdn_fused_decode_cutedsl_sm120_pdl.py": "dc2d114c3ee9dd0449ece98b584d17583a0fa2914185657e9474aa18c62ff584",
   "flashinfer/jit/gdn_fused_decode.py": "035a4af093ea9f0193f0f6525a07704b256f70e186ba70566cb3c5bf9bb30a1b",
   "vllm/config/compilation.py": "6e57a553093753856baaf7987e37ff24a15b73c95730e397e74d22c539d440ec",
-  "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": "da3c9bb565a740e9dc32c4c019b45b57015ebfa958f9900910b81acaa32937b9"
+  "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": [
+    "da3c9bb565a740e9dc32c4c019b45b57015ebfa958f9900910b81acaa32937b9",
+    "93f2e9a2331dc590d073983b66809796d7ce4cac9ed4c5908989fd9e615c2019"
+  ]
 }

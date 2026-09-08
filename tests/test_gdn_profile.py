@@ -55,3 +55,16 @@ def test_symlink_rejected(tmp_path):
     (root / 'pkg' / 'a.py').symlink_to(profile / 'overlay/pkg/a.py')
     with pytest.raises(RuntimeError, match='symlink'):
         installer.plan(root, profile)
+
+
+def test_known_previous_profile_upgrade(tmp_path):
+    root, profile = fixture_profile(tmp_path)
+    (root / 'pkg').mkdir()
+    target = root / 'pkg/a.py'
+    target.write_text('previous profile')
+    previous = installer.digest(target)
+    (profile / 'base-hashes.json').write_text(json.dumps({'pkg/a.py': [None, previous]}))
+    assert len(installer.plan(root, profile)) == 1
+    target.write_text('unrecognized edit')
+    with pytest.raises(RuntimeError, match='Unrecognized'):
+        installer.plan(root, profile)

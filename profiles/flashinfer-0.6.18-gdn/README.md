@@ -17,3 +17,11 @@ The installer checks all target hashes before writing, rejects unknown installed
 The SM120 TP2 reference uses `cuda_sm120_persistent`. Acceptance must observe that implementation in both worker logs and reject backend failures or unexpected fallback. CUDA Graph capture must complete before measuring. This profile is not a general GPU or model support claim.
 
 The combined checkpoint/Temporal configuration passed the existing40-task regression suite on TP2 SM120, with both workers using `cuda_sm120_persistent`. See the [alignment record](../../docs/champion-alignment.md). This validates the documented integration; it does not establish general precision equivalence or isolate the GDN speedup.
+
+## Optional M32 BA overlap (development)
+
+The development wheel and updated overlay add `VLLM_MACH_BA_OVERLAP=1`, default off. Install both, reapply this profile, and restart workers. The installer accepts the original source or the known previous Mach overlay; it still rejects unrelated edits.
+
+For the Qwen3.8-27B checkpoint profile, the M32 fallback can run the original BA projection and split/contiguous work on an auxiliary stream while QKV and convolution run on the main stream. The main stream joins before packed recurrent decode. Weights and arithmetic kernels are unchanged. The guard requires TP2, contiguous BF16 input of physical shape 32×5120, active merged checkpoint MXFP6 at M32, non-speculative decode without prefill, and the unsupported-shape fallback of the FlashInfer fused entry. Other paths keep serial execution. A captured M32 Graph can also serve padded tail batches; physical M32 does not imply 32 live requests.
+
+This port has CPU coverage for opt-in behavior, Mach routing, serial fallback, pending buffers and the join, plus overlay installation checks. **Mach GPU/Graph/service acceptance is pending; leave the switch off for a validated deployment.** The source experiment validated real layer tensors and recorded +1.4455% c32 throughput over direct SUM on its 1024-input/256-output workload. That result is not a Mach release claim or evidence for the ongoing 3000/1000 workload. See [the port record](../../docs/ba-overlap.md).

@@ -28,7 +28,8 @@ def plan(root, profile=PROFILE):
         if destination.is_symlink() or not destination.resolve().is_relative_to(root.resolve()):
             raise RuntimeError(f'Refusing symlink destination: {destination}')
         current, wanted = digest(destination), digest(source)
-        if current not in (original, wanted):
+        accepted = original if isinstance(original, list) else [original]
+        if current not in (*accepted, wanted):
             raise RuntimeError(f'Unrecognized installed source: {relative} ({current})')
         if current != wanted:
             changes.append((source, destination))

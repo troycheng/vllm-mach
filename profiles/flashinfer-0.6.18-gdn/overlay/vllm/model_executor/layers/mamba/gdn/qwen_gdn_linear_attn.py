@@ -535,6 +535,9 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
                 )
                 self.gdn_decode_kernel = "triton"
         self.enable_fused_gdn_decode = self.gdn_decode_kernel == "cuda"
+        if current_platform.is_cuda():
+            from vllm_mach.exl3.ba_overlap import prepare_stream
+            prepare_stream()
         logger.info_once("GDN decode kernel: %s", self.gdn_decode_kernel)
 
         self._fi_fused_decode_step: object | None = None
@@ -1027,7 +1030,10 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
         # ============================================================
         # Part 1: Input Projection
         # ============================================================
+        from vllm_mach.exl3.ba_overlap import before_qkv, after_qkv
+        ba_pending = before_qkv(self, hidden_states)
         mixed_qkvz, _ = self.in_proj_qkvz(hidden_states)
+        after_qkv(self, hidden_states, ba_pending)
 
         use_fused_gdn_decode = (
             self.enable_fused_gdn_decode
@@ -1825,6 +1831,8 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
             conv_state_indices=non_spec_state_indices_tensor[:num_actual_tokens],  # type: ignore[index]
             validate_data=False,
         )
+        from vllm_mach.exl3.ba_overlap import before_recurrent
+        before_recurrent(self)
         out_buf = core_attn_out[:num_actual_tokens].unsqueeze(1)
         fused_recurrent_gated_delta_rule_packed_decode(
             mixed_qkv=mixed_qkv_non_spec,
@@ -1943,7 +1951,8 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
         output_gate = output_gate_flat.reshape(
             output_gate_flat.size(0), -1, self.head_v_dim
         )
-        b, a = self.split_ba(ba)
+        from vllm_mach.exl3.ba_overlap import split_ba as scheduled_split_ba
+        b, a = scheduled_split_ba(self, ba)
         self._forward_core_fused_norm(
             mixed_qkv=mixed_qkv,
             b=b,
@@ -2142,7 +2151,8 @@ def qwen_gdn_attention_core_fi(
     else:
         # Preserve v0.28's CUDA fused-norm implementation for prefill, spec,
         # unregistered graph sizes, and any fail-closed compatibility check.
-        ba, _ = self.in_proj_ba(hidden_states)
+        from vllm_mach.exl3.ba_overlap import select_ba
+        ba, _ = select_ba(self, hidden_states)
         self._forward_core_fused_norm_packed(
             mixed_qkvz=mixed_qkvz,
             ba=ba,
