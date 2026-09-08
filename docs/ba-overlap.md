@@ -1,6 +1,6 @@
 # BA/QKV stream overlap
 
-Development port of `ba_overlap_direct_sum_service_v1`, on top of the direct SUM profile. It remains opt-in and is not included in a released Mach version. Build/configuration: [GDN profile](../profiles/flashinfer-0.6.18-gdn/README.md#optional-m32-ba-overlap-development).
+Experimental port of `ba_overlap_direct_sum_service_v1`, on top of the direct SUM profile. Included in `0.1.0a7`, disabled by default and still awaiting Mach GPU acceptance. Build/configuration: [GDN profile](../profiles/flashinfer-0.6.18-gdn/README.md#optional-m32-ba-overlap-development).
 
 The auxiliary stream forks before QKV, runs the existing BA projection and split/contiguous operations, and joins after convolution but before packed recurrent decode. A warmup initializes the auxiliary cuBLAS path outside Graph capture. Captured producer buffers are retained; eager outputs use cross-stream allocator tracking. The original recurrent, norm, output projection and sampling paths are unchanged.
 

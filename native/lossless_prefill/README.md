@@ -15,7 +15,7 @@ CUDA_HOME=/path/to/cuda-13.0 MAX_JOBS=2 \
 python -m pip install --no-deps dist/vllm_mach_lossless_prefill-*.whl
 ```
 
-Install the matching Mach development wheel, then apply the thin vLLM caller patch before starting the service:
+Install the matching Mach `0.1.0a7` wheel, then apply the thin vLLM caller patch before starting the service:
 
 ```bash
 patch --batch --fuzz=0 -p1 -d /path/to/site-packages \

@@ -2,7 +2,7 @@
 
 ## Direct SUM increment
 
-The development source includes `lossless_direct_sum_prefill_service_v1`, selected and retained by the source experiment on September 8, 2026. Native package `0.1.0a3` adds a separate direct library; enable it with `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1` alongside the input and SUM switches. The previous modes remain available. See [build and configuration](../native/lossless_prefill/README.md#direct-sum).
+Release `0.1.0a7` includes `lossless_direct_sum_prefill_service_v1`, selected and retained by the source experiment on September 8, 2026. Native package `0.1.0a3` adds a separate direct library; enable it with `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1` alongside the input and SUM switches. The previous modes remain available. See [build and configuration](../native/lossless_prefill/README.md#direct-sum).
 
 The source experiment's A/B/B/A service comparison recorded c32 throughput of 1403.5140 → 1412.2002 output tokens/s (+0.6189%) against input+SUM, with two lifecycles per arm. Its c4/c16/c24 changes were −0.0525% / +0.1226% / +0.2540%. These are historical source-stack measurements, not Mach release results, and must not be added to earlier codec gains.
 
@@ -12,11 +12,11 @@ Mach acceptance: all 126 package tests passed after clearing the serving image's
 
 ## Input+SUM increment
 
-The development source now also carries the incremental `lossless_sum_prefill_service_v1` path. Set `VLLM_MACH_LOSSLESS_PREFILL_SUM=1` in addition to the original opt-in switch and rebuild native package `0.1.0a2`. Input-only remains available. The additional SUM header region raises the minimum workspace capacity to 84,213,760 bytes; no new workspace pool or KV allocation is introduced. The new device source preserves the source experiment's arithmetic and synchronization, with only registration namespace changes.
+Release `0.1.0a7` also carries the incremental `lossless_sum_prefill_service_v1` path. Set `VLLM_MACH_LOSSLESS_PREFILL_SUM=1` in addition to the original opt-in switch and rebuild native package `0.1.0a2`. Input-only remains available. The additional SUM header region raises the minimum workspace capacity to 84,213,760 bytes; no new workspace pool or KV allocation is introduced. The new device source preserves the source experiment's arithmetic and synchronization, with only registration namespace changes.
 
 Its source experiment recorded +0.4854% c32 in the first full sweep and +0.6178% in a separate, fully conditioned c32 confirmation round, each with two lifecycles per arm. These rounds must not be pooled and neither establishes a general speedup. They compare input+SUM against input-only, not against unmodified FlashInfer or released Mach.
 
-Development integration after a6; not a published release. Build and configuration are documented in [native/lossless_prefill](../native/lossless_prefill/README.md).
+The following records describe the pre-release integration checks included with `0.1.0a7`. Build and configuration are documented in [native/lossless_prefill](../native/lossless_prefill/README.md).
 
 ## Input+SUM acceptance
 

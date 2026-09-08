@@ -20,7 +20,7 @@ The combined checkpoint/Temporal configuration passed the existing40-task regres
 
 ## Optional M32 BA overlap (development)
 
-The development wheel and updated overlay add `VLLM_MACH_BA_OVERLAP=1`, default off. Install both, reapply this profile, and restart workers. The installer accepts the original source or the known previous Mach overlay; it still rejects unrelated edits.
+The `0.1.0a7` wheel and updated overlay add `VLLM_MACH_BA_OVERLAP=1`, default off. Install both, reapply this profile, and restart workers. The installer accepts the original source or the known previous Mach overlay; it still rejects unrelated edits.
 
 For the Qwen3.8-27B checkpoint profile, the M32 fallback can run the original BA projection and split/contiguous work on an auxiliary stream while QKV and convolution run on the main stream. The main stream joins before packed recurrent decode. Weights and arithmetic kernels are unchanged. The guard requires TP2, contiguous BF16 input of physical shape 32×5120, active merged checkpoint MXFP6 at M32, non-speculative decode without prefill, and the unsupported-shape fallback of the FlashInfer fused entry. Other paths keep serial execution. A captured M32 Graph can also serve padded tail batches; physical M32 does not imply 32 live requests.
 
