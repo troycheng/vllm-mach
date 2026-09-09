@@ -104,9 +104,9 @@ vllm serve /path/to/EXL3-checkpoint \
 
 Check both worker logs for `cuda_sm120_persistent`, both Temporal bundle shapes, fused FlashInfer collective activation and completed Graph capture. A healthy HTTP endpoint alone does not establish that these optional paths are active. Run a representative full-concurrency warmup before steady-state measurement; the first c16 round showed extra latency in acceptance. See the [combined integration result](../../docs/champion-alignment.md).
 
-## Extended prefill profile (development)
+## Extended prefill profile
 
-The development source extends the checkpoint profile with direct SUM, 32 observed prefill shapes, and M32 BA overlap. Install the matching development wheel, build [lossless native package 0.1.0a4](../../native/lossless_prefill/README.md), and update the GDN overlay before starting workers. On top of the complete profile above, apply these caller patches in order:
+The v0.1.0a8 source extends the checkpoint profile with direct SUM, 32 observed prefill shapes, and M32 BA overlap. Install the matching v0.1.0a8 wheel, build [lossless native package 0.1.0a4](../../native/lossless_prefill/README.md), and update the GDN overlay before starting workers. On top of the complete profile above, apply these caller patches in order:
 
 ```bash
 patch --batch --fuzz=0 -p1 -d /path/to/site-packages < profiles/vllm-0.28.0/lossless-prefill.patch

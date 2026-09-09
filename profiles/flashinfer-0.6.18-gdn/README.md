@@ -18,12 +18,12 @@ The SM120 TP2 reference uses `cuda_sm120_persistent`. Acceptance must observe th
 
 The combined checkpoint/Temporal configuration passed the existing40-task regression suite on TP2 SM120, with both workers using `cuda_sm120_persistent`. See the [alignment record](../../docs/champion-alignment.md). This validates the documented integration; it does not establish general precision equivalence or isolate the GDN speedup.
 
-## Optional M32 BA overlap (development)
+## Optional M32 BA overlap
 
 The `0.1.0a7` wheel and updated overlay add `VLLM_MACH_BA_OVERLAP=1`, default off. Install both, reapply this profile, and restart workers. The installer accepts the original source or the known previous Mach overlay; it still rejects unrelated edits.
 
 For the Qwen3.8-27B checkpoint profile, the M32 fallback can run the original BA projection and split/contiguous work on an auxiliary stream while QKV and convolution run on the main stream. The main stream joins before packed recurrent decode. Weights and arithmetic kernels are unchanged. The guard requires TP2, contiguous BF16 input of physical shape 32×5120, active merged checkpoint MXFP6 at M32, non-speculative decode without prefill, and the unsupported-shape fallback of the FlashInfer fused entry. Other paths keep serial execution. A captured M32 Graph can also serve padded tail batches; physical M32 does not imply 32 live requests.
 
-The development snapshot has completed Mach GPU/Graph/service acceptance: serial-reference QKV/BA assertions passed during real replay at 48 layers per rank, followed by a separate verifier-off service test at 1024/256 and 3000/1000. The optional `qwen38-checkpoint-long.env` now enables BA overlap; base defaults remain off. The source experiment's +1.4455% c32 result remains source evidence, not an isolated Mach speedup. See [the port record](../../docs/ba-overlap.md).
+Version 0.1.0a8 has completed Mach GPU/Graph/service acceptance: serial-reference QKV/BA assertions passed during real replay at 48 layers per rank, followed by a separate verifier-off service test at 1024/256 and 3000/1000. The optional `qwen38-checkpoint-long.env` now enables BA overlap; base defaults remain off. The source experiment's +1.4455% c32 result remains source evidence, not an isolated Mach speedup. See [the port record](../../docs/ba-overlap.md).
 
-For diagnostics only, `VLLM_MACH_BA_OVERLAP_VERIFY=1` adds Graph-replayed bitwise assertions against the serial QKV/BA producers. Install the matching development wheel and overlay together. Keep verification off for normal serving.
+For diagnostics only, `VLLM_MACH_BA_OVERLAP_VERIFY=1` adds Graph-replayed bitwise assertions against the serial QKV/BA producers. Install the matching v0.1.0a8 wheel and overlay together. Keep verification off for normal serving.
