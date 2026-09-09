@@ -1033,7 +1033,7 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
         from vllm_mach.exl3.ba_overlap import before_qkv, after_qkv
         ba_pending = before_qkv(self, hidden_states)
         mixed_qkvz, _ = self.in_proj_qkvz(hidden_states)
-        after_qkv(self, hidden_states, ba_pending)
+        after_qkv(self, hidden_states, ba_pending, mixed_qkvz)
 
         use_fused_gdn_decode = (
             self.enable_fused_gdn_decode

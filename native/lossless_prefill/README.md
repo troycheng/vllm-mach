@@ -41,6 +41,16 @@ The direct switch defaults to off and requires the SUM switch. Unset it and rest
 
 ## Validation
 
+### Observed prefill shapes
+
+Native package `0.1.0a4` adds `mach_lossless_prefill_long_ext`. After applying `lossless-prefill.patch`, apply `profiles/vllm-0.28.0/long-prefill.patch` and set `VLLM_MACH_LOSSLESS_PREFILL_LONG=1`. It is a separate opt-in: M4096 still uses the original selected mode, decode remains unchanged, and unsupported shapes keep FlashInfer's existing dispatcher.
+
+This extension supports exactly 32 observed row counts at H5120/TP2/BF16, listed in `vllm_mach.exl3.long_prefill.ROWS`. It is dispatched only outside Graph capture. For the shapes previously handled by one-shot (M≤3276), it preserves that path's input normalization; larger shapes retain two-shot semantics. Odd row counts use explicit rank ownership. Workspace capacity must be at least `M * 5120 * 4 + (M * 5120 // 256) * 4` bytes. No extra workspace pool or KV allocation is introduced.
+
+`bench_long_prefill.py` accepts `--candidate-config` and `--candidate-library`. The JSON records `M`, library basename/SHA-256, namespace `mach_lossless_prefill_long`, absolute `capture_root`, and a `capture_selection` object. Use an empty selection with `--synthetic-only --validate-only` for model-free checks. This checks six cases per shape, changing-input Graph replay, in-place residual output and mixed-workspace PDL. Retained model inputs are not distributed. See [integration evidence](../../docs/long-prefill.md).
+
+### Earlier M4096 modes
+
 The included boundary harness can run without model files:
 
 ```bash

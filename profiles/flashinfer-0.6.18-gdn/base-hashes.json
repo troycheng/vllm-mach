@@ -12,6 +12,7 @@
   "vllm/config/compilation.py": "6e57a553093753856baaf7987e37ff24a15b73c95730e397e74d22c539d440ec",
   "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": [
     "da3c9bb565a740e9dc32c4c019b45b57015ebfa958f9900910b81acaa32937b9",
-    "93f2e9a2331dc590d073983b66809796d7ce4cac9ed4c5908989fd9e615c2019"
+    "93f2e9a2331dc590d073983b66809796d7ce4cac9ed4c5908989fd9e615c2019",
+    "f7ca64755c919cda6063efddca00f61ee53eec05783c1cdaa79be48dc6af4c32"
   ]
 }

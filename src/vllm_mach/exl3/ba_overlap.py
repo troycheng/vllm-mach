@@ -74,11 +74,17 @@ def before_qkv(module, hidden):
         return None
     assert _AUX is not None and _WARMED
     main = torch.cuda.current_stream()
+    reference = None
+    if os.getenv('VLLM_MACH_BA_OVERLAP_VERIFY', '0') == '1':
+        qkv, _ = module.in_proj_qkvz(hidden)
+        ba, _ = module.in_proj_ba(hidden)
+        b, a = module.split_ba(ba)
+        reference = (qkv, ba, b.contiguous(), a.contiguous())
     _AUX.wait_stream(main)
-    return {'main': main, 'aux': _AUX}
+    return {'main': main, 'aux': _AUX, 'reference': reference}
 
 
-def after_qkv(module, hidden, pending):
+def after_qkv(module, hidden, pending, qkv=None):
     if pending is None:
         return
     with torch.cuda.stream(pending['aux']):
@@ -86,13 +92,18 @@ def after_qkv(module, hidden, pending):
         b, a = module.split_ba(ba)
         b, a = b.contiguous(), a.contiguous()
     pending.update(ba=ba, b=b, a=a)
+    if pending.get('reference') is not None:
+        if qkv is None:
+            raise RuntimeError('BA verification requires the QKV result')
+        torch._assert_async(torch.all(qkv.view(torch.int16) == pending['reference'][0].view(torch.int16)),
+                            'BA overlap QKV differs from serial reference')
     module._mach_ba_pending = pending
     # Keep every captured producer buffer alive for the graph's lifetime.
     # Eager calls are protected by normal cross-stream allocator tracking.
     if torch.cuda.is_current_stream_capturing():
         if not hasattr(module, '_mach_ba_graph_buffers'):
             module._mach_ba_graph_buffers = []
-        module._mach_ba_graph_buffers.append((ba, b, a))
+        module._mach_ba_graph_buffers.append((ba, b, a, pending.get('reference')))
     else:
         for t in (ba, b, a):
             t.record_stream(pending['main'])
@@ -120,6 +131,13 @@ def before_recurrent(module):
     main = torch.cuda.current_stream()
     assert main.cuda_stream == pending['main'].cuda_stream
     main.wait_stream(pending['aux'])
+    if pending.get('reference') is not None:
+        for actual, expected in zip((pending['ba'], pending['b'], pending['a']), pending['reference'][1:]):
+            torch._assert_async(torch.all(actual.view(torch.int16) == expected.view(torch.int16)),
+                                'BA overlap branch differs from serial reference')
+        if torch.cuda.is_current_stream_capturing() and not getattr(module, '_mach_ba_verified_graph', False):
+            print('MACH_BA_VERIFY_GRAPH rank=%d prefix=%s' % (module.tp_rank, module.prefix), flush=True)
+            module._mach_ba_verified_graph = True
     module._mach_ba_pending = None
     if torch.cuda.is_current_stream_capturing() and not getattr(module, '_mach_ba_recorded', False):
         print('MACH_BA_OVERLAP_CAPTURE rank=%d prefix=%s M=32 join=before_packed_recurrent' %
