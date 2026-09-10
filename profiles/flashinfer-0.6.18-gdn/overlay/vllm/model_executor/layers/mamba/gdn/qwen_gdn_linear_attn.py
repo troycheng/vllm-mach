@@ -89,6 +89,7 @@ logger = init_logger(__name__)
 
 MAX_FUSED_GDN_MTP_TOKENS = 8
 FUSED_GDN_STATE_DTYPES = (torch.float32, torch.bfloat16)
+FP16_SSM_OPT_IN_ENV = "VLLM_MACH_FP16_SSM_STATE"
 
 
 def _resolve_gdn_fused_decode_step() -> tuple[object, object] | None:
@@ -560,6 +561,25 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
         self, vllm_config: VllmConfig
     ) -> str | None:
         conv_state_dtype, recurrent_state_dtype = self.get_state_dtype()
+        # Only the existing non-speculative packed recurrence admits FP16.
+        # Keep the FlashInfer and speculative dtype contracts unchanged.
+        narrow_fp16_state = (
+            recurrent_state_dtype == torch.float16
+            and os.environ.get(FP16_SSM_OPT_IN_ENV) == "1"
+            and current_platform.is_cuda()
+            and current_platform.is_device_capability(120)
+            and self.tp_size == 2
+            and self.hidden_size == 5120
+            and self.num_k_heads == 16
+            and self.num_v_heads == 48
+            and self.head_k_dim == 128
+            and self.head_v_dim == 128
+            and vllm_config.model_config.dtype == torch.bfloat16
+            and conv_state_dtype == torch.bfloat16
+            and vllm_config.speculative_config is None
+            and self.enable_packed_recurrent_decode
+        )
+        self._mach_fp16_ssm_decode_enabled = narrow_fp16_state
         if (
             self.gqa_interleaved_layout
             or self.head_k_dim != 128
@@ -567,7 +587,10 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
             or self.norm.activation != "silu"
             or vllm_config.model_config.dtype != torch.bfloat16
             or conv_state_dtype != torch.bfloat16
-            or recurrent_state_dtype not in FUSED_GDN_STATE_DTYPES
+            or (
+                recurrent_state_dtype not in FUSED_GDN_STATE_DTYPES
+                and not narrow_fp16_state
+            )
             or not current_platform.has_device_capability(80)
         ):
             return (

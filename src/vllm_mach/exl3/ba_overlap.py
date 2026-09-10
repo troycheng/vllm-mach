@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""M32 TP2 Qwen3.8 FI-fallback BA branch scheduling; arithmetic unchanged."""
+"""TP2 Qwen3.8 BA scheduling: M32, plus opt-in FP16-state M16/M24."""
 import os
 import torch
 
@@ -18,6 +18,39 @@ def merged_m32_route(layer):
 
 _AUX = None
 _WARMED = False
+_EXTRA_WARMED_ROWS = set()
+FP16_SSM_ENV = 'VLLM_MACH_FP16_SSM_STATE'
+EXTRA_ROWS_ENV = 'VLLM_MACH_BA_OVERLAP_M16_M24'
+
+
+def narrow_fp16_state_allowed(module):
+    return (
+        os.getenv(FP16_SSM_ENV) == '1'
+        and getattr(module, '_mach_fp16_ssm_decode_enabled', False) is True
+        and module.kv_cache[0].dtype == torch.bfloat16
+        and module.kv_cache[1].dtype == torch.float16
+        and module.tp_size == 2 and module.hidden_size == 5120
+        and module.num_k_heads == 16 and module.num_v_heads == 48
+        and module.head_k_dim == 128 and module.head_v_dim == 128
+        and module.enable_fused_gdn_decode and module.enable_packed_recurrent_decode
+    )
+
+
+def extra_row_allowed(module, hidden):
+    rows = hidden.shape[0] if hidden.ndim == 2 else -1
+    return (
+        os.getenv(EXTRA_ROWS_ENV) == '1'
+        and rows in (16, 24) and hidden.shape == (rows, 5120)
+        and hidden.dtype == torch.bfloat16 and hidden.is_contiguous()
+        and narrow_fp16_state_allowed(module)
+        and not module.gqa_interleaved_layout
+        and module.norm.weight.dtype in (torch.bfloat16, torch.float32)
+        # The checkpoint route retains EXL3 at M16/M24 and merges QKV at M32.
+        and merged_m32_route(module.in_proj_qkvz)
+        and state_for_rows(module.in_proj_qkvz, rows) is None
+        and module._fi_fused_decode_step is not None
+        and module._fi_fused_decode_supported is not None
+    )
 
 
 def prepare_stream():
@@ -34,6 +67,7 @@ def before_qkv(module, hidden):
     if not enabled():
         return None
     assert getattr(module, '_mach_ba_pending', None) is None
+    rows = hidden.shape[0] if hidden.ndim == 2 else -1
     # Warm the existing cuBLAS BA path once on the auxiliary stream before
     # graph construction. This is outside every scored request lifecycle.
     if not _WARMED and not torch.cuda.is_current_stream_capturing() and hidden.shape[0] >= 32:
@@ -44,13 +78,24 @@ def before_qkv(module, hidden):
         main.wait_stream(_AUX)
         warm.record_stream(main)
         _WARMED = True
-    if (hidden.shape != (32, 5120) or hidden.dtype != torch.bfloat16 or not hidden.is_contiguous()
+    extra_row = extra_row_allowed(module, hidden)
+    if (extra_row and rows not in _EXTRA_WARMED_ROWS
+            and not torch.cuda.is_current_stream_capturing()):
+        assert _AUX is not None
+        main = torch.cuda.current_stream()
+        _AUX.wait_stream(main)
+        with torch.cuda.stream(_AUX):
+            warm, _ = module.in_proj_ba(hidden)
+        main.wait_stream(_AUX)
+        warm.record_stream(main)
+        _EXTRA_WARMED_ROWS.add(rows)
+    existing_m32 = hidden.shape == (32, 5120) and merged_m32_route(module.in_proj_qkvz)
+    if (not (existing_m32 or extra_row) or hidden.dtype != torch.bfloat16 or not hidden.is_contiguous()
             or module.tp_size != 2 or module.gqa_interleaved_layout
             or not module.enable_fused_gdn_decode or not module.enable_packed_recurrent_decode
             or module.norm.weight.dtype not in (torch.bfloat16, torch.float32)
             or module.head_k_dim != 128 or module.head_v_dim != 128
             or module.num_v_heads != 48 or module.num_k_heads != 16
-            or not merged_m32_route(module.in_proj_qkvz)
             or module._fi_fused_decode_step is None or module._fi_fused_decode_supported is None):
         return None
     from vllm.forward_context import get_forward_context
@@ -60,19 +105,23 @@ def before_qkv(module, hidden):
         return None
     meta = raw[module.prefix]
     if (meta.spec_sequence_masks is not None or meta.num_prefills != 0 or meta.num_decodes <= 0
-            or meta.num_actual_tokens != 32 or module.kv_cache[0].dtype != torch.bfloat16
-            or module.kv_cache[1].dtype != torch.float32):
+            or meta.num_actual_tokens != rows or module.kv_cache[0].dtype != torch.bfloat16
+            or not (module.kv_cache[1].dtype == torch.float32
+                    or narrow_fp16_state_allowed(module))):
         return None
     supported = module._fi_fused_decode_supported(
-        32, hidden_size=module.hidden_size, n_ba=module.in_proj_ba.output_size_per_partition,
+        rows, hidden_size=module.hidden_size, n_ba=module.in_proj_ba.output_size_per_partition,
         qkv_dim=module.conv_dim // module.tp_size,
         num_qk_heads=module.num_k_heads // module.tp_size,
         num_v_heads=module.num_v_heads // module.tp_size, head_dim=module.head_k_dim,
         conv_width=module.conv_kernel_size, conv_state_len=module.conv_kernel_size - 1,
         device=hidden.device, conv_state_layout='DS' if is_conv_state_dim_first() else 'SD')
-    if supported:
+    # M16 is registered by FI, but _forward_core_fi rejects FP16 state.
+    # Only the narrow extra-row path may bypass that geometry-only answer.
+    if supported and not extra_row:
         return None
-    assert _AUX is not None and _WARMED
+    assert _AUX is not None
+    assert _WARMED if rows == 32 else rows in _EXTRA_WARMED_ROWS
     main = torch.cuda.current_stream()
     reference = None
     if os.getenv('VLLM_MACH_BA_OVERLAP_VERIFY', '0') == '1':
@@ -81,7 +130,7 @@ def before_qkv(module, hidden):
         b, a = module.split_ba(ba)
         reference = (qkv, ba, b.contiguous(), a.contiguous())
     _AUX.wait_stream(main)
-    return {'main': main, 'aux': _AUX, 'reference': reference}
+    return {'main': main, 'aux': _AUX, 'reference': reference, 'rows': rows}
 
 
 def after_qkv(module, hidden, pending, qkv=None):
@@ -139,7 +188,9 @@ def before_recurrent(module):
             print('MACH_BA_VERIFY_GRAPH rank=%d prefix=%s' % (module.tp_rank, module.prefix), flush=True)
             module._mach_ba_verified_graph = True
     module._mach_ba_pending = None
-    if torch.cuda.is_current_stream_capturing() and not getattr(module, '_mach_ba_recorded', False):
-        print('MACH_BA_OVERLAP_CAPTURE rank=%d prefix=%s M=32 join=before_packed_recurrent' %
-              (module.tp_rank, module.prefix), flush=True)
-        module._mach_ba_recorded = True
+    rows = pending.get('rows', 32)
+    recorded = getattr(module, '_mach_ba_recorded_rows', set())
+    if torch.cuda.is_current_stream_capturing() and rows not in recorded:
+        print('MACH_BA_OVERLAP_CAPTURE rank=%d prefix=%s M=%d join=before_packed_recurrent' %
+              (module.tp_rank, module.prefix, rows), flush=True)
+        module._mach_ba_recorded_rows = recorded | {rows}
