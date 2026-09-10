@@ -42,7 +42,7 @@ Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, measured i
 
 Our K5/K6 hybrid source stack delivers **35.6% higher throughput than official vLLM 0.29 FP8**, averaging the four concurrency levels equally. It also improves on the accelerated vLLM 0.28 FP8 stack by **30.4%** and the native MXFP6 Champion by **10.3%**.
 
-The K5/K6 and K4/K5 curves were measured on the optimization source stack. The [Mach development profile](docs/fp16-ssm.md) integrates the K5/K6 optimizations and passes 40/40 task checks plus 2,592 byte comparisons for serial versus overlapped execution; these full-length curves are not release-wheel measurements. K4/K5 uses a derived W6 execution cache; NVFP4 uses local calibration.
+The K5/K6 and K4/K5 curves were measured on the optimization source stack. The [Mach 0.1.0a9 profile](docs/fp16-ssm.md) integrates the K5/K6 optimizations and passes 40/40 task checks plus 2,592 byte comparisons for serial versus overlapped execution; these full-length curves are not release-wheel measurements. K4/K5 uses a derived W6 execution cache; NVFP4 uses local calibration.
 
 ### Numerical fidelity
 
@@ -71,7 +71,7 @@ Install vLLM and the release wheel in the same environment:
 ```bash
 python -m pip install "vllm==0.28.0"
 python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a6/vllm_mach-0.1.0a6-py3-none-any.whl
+  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a9/vllm_mach-0.1.0a9-py3-none-any.whl
 ```
 
 The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
@@ -176,7 +176,7 @@ Release `0.1.0a6` provides a [complete checkpoint/Temporal serving profile](prof
 
 Release `0.1.0a7` adds an optional [lossless BF16 prefill collective](native/lossless_prefill/README.md) for TP2 SM120 at M4096×H5120. It requires a separate CUDA 13.0 build and a vLLM caller patch; enable input compression with `VLLM_MACH_LOSSLESS_PREFILL=1`, and optionally SUM compression with `VLLM_MACH_LOSSLESS_PREFILL_SUM=1`. Other shapes keep the existing path. The direct SUM variant additionally uses `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1`. The separate [M32 BA overlap](docs/ba-overlap.md) defaults to off in a7. The [v0.1.0a8 long-prefill profile](docs/long-prefill.md) has completed GPU acceptance and explicitly enables BA32 together with 32 observed prefill shapes. See [port validation](docs/lossless-prefill.md).
 
-The development [FP16 SSM profile](docs/fp16-ssm.md) adds optional FP16 recurrent storage and M16/M24 BA scheduling to the checkpoint profile. FP16 state changes numerical precision; existing profiles retain their defaults.
+The [FP16 SSM profile](docs/fp16-ssm.md) in release `0.1.0a9` adds optional FP16 recurrent storage and M16/M24 BA scheduling to the checkpoint profile. FP16 state changes numerical precision; existing profiles retain their defaults.
 
 [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120) owns MXFP6 packing, MXFP8 activation quantization, W6A8 GEMM, and workspace management. vLLM Mach handles vLLM registration, checkpoint metadata, tensor-parallel slices, projection routing, CUDA Graph lifecycle, and the optional FlashInfer AllReduce/RMSNorm/MXFP8 boundary. The hybrid profile requires both packages.
 
