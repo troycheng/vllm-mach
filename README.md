@@ -15,6 +15,12 @@
 
 vLLM Mach adds an EXL3 provider and optional MXFP6 execution paths to vLLM 0.28. Its first validated model-specific profile targets Qwen3.8-27B Dense. The EXL3 path validates checkpoint metadata, loads tensor-parallel slices through vLLM's packed-module mapping, groups compatible QKV and QKVZ projections, and primes kernels before CUDA Graph capture. BF16 I/O and fused prefill reconstruction are optional. Native MXFP6 kernels are provided by [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120).
 
+## Why Mach
+
+Mach targets fast serving at small and medium batch sizes, with most tuning focused on 4 to 32 concurrent requests. Its hybrid profiles choose EXL3 or MXFP6 by projection and row count, then combine those kernels with grouped execution, fused tensor-parallel communication and CUDA Graph support. This gives prefill and decode different execution paths while retaining vLLM's serving interface.
+
+The aim is higher throughput with controlled numerical error. The current Qwen3.8-27B results show a useful middle ground between FP8's numerical fidelity and NVFP4's speed.
+
 ## Support
 
 | Path | Validated configuration |
@@ -25,6 +31,38 @@ vLLM Mach adds an EXL3 provider and optional MXFP6 execution paths to vLLM 0.28.
 | Fused FlashInfer collective | The EXL3/MXFP6 profile with `flashinfer-python==0.6.16.post3` or `0.6.18` and the matching runtime patches |
 
 The EXL3 provider does not require MXFP6. This table records the validated base configurations. Release `0.1.0a3` adds separately validated opt-in decode paths described below; configurations outside the documented checks remain unverified. See [compatibility](docs/compatibility.md) for native dependencies, fallback behavior, and unsupported configurations.
+
+## Performance
+
+### 3k/1k reference comparison
+
+Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, measured in September 2026. Each configuration uses 192/512/672/768 requests at c4/c16/c24/c32 after a full c32 warmup. Throughput counts generated tokens only.
+
+![Serving throughput across six configurations](docs/images/throughput-comparison.png)
+
+Our K5/K6 hybrid source stack delivers **35.6% higher throughput than official vLLM 0.29 FP8**, averaging the four concurrency levels equally. It also improves on the accelerated vLLM 0.28 FP8 stack by **30.4%** and the native MXFP6 Champion by **10.3%**.
+
+The K5/K6 and K4/K5 curves were measured on the optimization source stack. The [Mach development profile](docs/fp16-ssm.md) integrates the K5/K6 optimizations and passes 40/40 task checks plus 2,592 byte comparisons for serial versus overlapped execution; these full-length curves are not release-wheel measurements. K4/K5 uses a derived W6 execution cache; NVFP4 uses local calibration.
+
+### Numerical fidelity
+
+Gold-token logprob MAE against BF16 over 256 queries and 10,479 target tokens, using physical-M32 teacher-forced decode. Lower is better; whiskers show 95% query-bootstrap intervals.
+
+![Gold-token logprob MAE against BF16](docs/images/accuracy-comparison.png)
+
+K5/K6 records **0.0915 MAE**, compared with **0.0520 for official FP8** and **0.1700 for the tested NVFP4 configuration**. That is **46.2% lower MAE than NVFP4**, while retaining 88.8% to 97.4% of its throughput across the four concurrency levels. FP8 remains closest to BF16 in this test; NVFP4 remains fastest. MAE measures numerical deviation, not task accuracy.
+
+### Fidelity and throughput
+
+Upper-left is better: less logprob deviation from BF16 and higher throughput. Each point combines the M32 MAE above with the mean throughput gain over official vLLM 0.29 FP8, weighting c4/c16/c24/c32 equally. Horizontal bars show the MAE's 95% interval; vertical bars show the lowest and highest gains across those four concurrency levels.
+
+![Logprob MAE and throughput gain against official FP8](docs/images/quality-throughput-tradeoff.png)
+
+[Result tables, test setup, raw data and Mach release measurements](docs/benchmarks.md) are available.
+
+### Deployment tradeoffs
+
+The fastest profiles require matching native extensions and pinned vLLM/FlashInfer patches, so deployment takes more setup than a stock vLLM installation. The K5/K6 and K4/K5 results above also use opt-in FP16 recurrent state, which changes numerical behavior; the base profile keeps that option disabled. Current validation covers Qwen3.8-27B Dense, TP2 and SM120. Other models, MoE and GPU architectures need their own integration and validation.
 
 ## Installation
 
