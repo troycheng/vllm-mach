@@ -71,6 +71,8 @@ Release `0.1.0a10` targets [vLLM 0.29.0](profiles/vllm-0.29.0/README.md) with [p
 
 The a10 runtime profile passed TP2 service acceptance and a same-device 3k/1k short regression with throughput within 0.2% of a9 at c4/c16/c24/c32. See [upgrade results](docs/dependency-upgrade.md).
 
+The current source checkout also supports [patched ExLlamaV3 1.5.0](profiles/exllamav3-1.5.0/README.md) with the same a10 Python runtime. Rebuild its M32 and Temporal extensions together. [Validation](docs/exllamav3-1.5.0.md) passed with no material throughput change; the published a10 archive remains on 1.4.9.
+
 Install vLLM and the release wheel in the same environment:
 
 ```bash

@@ -2,6 +2,8 @@
 
 For the current profiles, use the [ExLlamaV3 1.4.9 patch](../profiles/exllamav3-1.4.9/README.md) with the a10 / vLLM 0.29 profile, or the [1.4.8 patch](../profiles/exllamav3-1.4.8/README.md) with a9. PR #330 is closed. The pinned 1.4.6 build below is retained for earlier installations.
 
+The current source checkout also includes a tested [1.5.0 upgrade](../profiles/exllamav3-1.5.0/README.md) for the a10 runtime. Rebuild ExLlamaV3 and the M32/Temporal extensions together; the published a10 source archive still contains the 1.4.9 profile.
+
 Use Mach `0.1.0a4` or later for this installation. Do not combine `0.1.0a3` BF16 grouped execution with ExLlamaV3 commit `d0094bc`; it fails with `had_group_ids must be a CPU tensor`.
 
 ## Fixed runtime contract

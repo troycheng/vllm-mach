@@ -18,6 +18,8 @@ Use the official 0.29 dependency set: PyTorch 2.13.0, FlashInfer Python/cubin 0.
 
 Use a dedicated environment. Install the Mach 0.1.0a10 wheel, [patched ExLlamaV3 1.4.9](../exllamav3-1.4.9/README.md), and the [M32](../../native/exl3_m32/README.md) and [Temporal](../../native/exl3_temporal_m24/README.md) extensions built against that source. The unchanged [lossless prefill extension](../../native/lossless_prefill/README.md) still uses its CUDA 13.0 build contract.
 
+The current Mach checkout also provides a validated [ExLlamaV3 1.5.0 build](../exllamav3-1.5.0/README.md). It replaces the 1.4.9 native dependency without changing the patches or settings below. Rebuild M32 and Temporal against the same patched 1.5.0 source; do not mix their headers between versions.
+
 From the matching Mach checkout, apply these patches to the environment's site-packages directory before importing vLLM or FlashInfer:
 
 ```bash
