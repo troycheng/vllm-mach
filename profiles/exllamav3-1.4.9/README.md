@@ -1,4 +1,4 @@
-# ExLlamaV3 1.4.9 BF16 build candidate
+# ExLlamaV3 1.4.9 BF16 build
 
 This is the downstream BF16 I/O patch for upstream `v1.4.9` (`5be886578ec80324c2c715269387be2058724b6e`). Native compilation, 11 BF16 tests, four upstream sliced-MGEMM cases and 52 real-checkpoint eager/Graph cases have passed on SM120 with PyTorch 2.13.0. The vLLM 0.29 TP2 service also passed 40/40 task checks and 2,592 BA state/output comparisons. The published a9 release remains on 1.4.8.
 

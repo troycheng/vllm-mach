@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://github.com/troycheng/vllm-mach/releases"><img alt="Release" src="https://img.shields.io/github/v/release/troycheng/vllm-mach?include_prereleases&sort=semver"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
-  <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.28.0-6C5CE7">
+  <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.29.0-6C5CE7">
 </p>
 
 vLLM Mach adds an EXL3 provider and optional MXFP6 execution paths to vLLM. Its first validated model-specific profile targets Qwen3.8-27B Dense. The EXL3 path validates checkpoint metadata, loads tensor-parallel slices through vLLM's packed-module mapping, groups compatible QKV and QKVZ projections, and primes kernels before CUDA Graph capture. BF16 I/O and fused prefill reconstruction are optional. Native MXFP6 kernels are provided by [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120).
@@ -28,6 +28,7 @@ The aim is higher throughput with controlled numerical error. The current Qwen3.
 | EXL3 | vLLM `0.28.0`; [Qwen3.8-27B Dense K5/K6 EXL3 checkpoint](https://huggingface.co/malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated/tree/ab3a91a13813df8096cb4c1d560ed3669035d0cf); TP2/PP1; SM120; BF16 KV cache; non-speculative decoding |
 | EXL3 CUDA Graph | The EXL3 configuration above with `FULL_DECODE_ONLY` capture sizes `1, 2, 4, 8, 16, 24, 32` |
 | EXL3/MXFP6 | The EXL3 configuration above with `VLLM_MACH_EXL3_MXFP6_PROFILE=qwen38-27b` and `mxfp6-sm120==0.2.1` |
+| a10 checkpoint-hybrid | vLLM `0.29.0`, patched ExLlamaV3 `1.4.9`; Qwen3.8-27B K5/K6; TP2/PP1, SM120, BF16 activations/KV, opt-in FP16 recurrent state; [configuration and regression](docs/dependency-upgrade.md) |
 | Fused FlashInfer collective | The EXL3/MXFP6 profile with `flashinfer-python==0.6.16.post3` or `0.6.18` and the matching runtime patches |
 
 The EXL3 provider does not require MXFP6. This table records the validated base configurations. Release `0.1.0a3` adds separately validated opt-in decode paths described below; configurations outside the documented checks remain unverified. See [compatibility](docs/compatibility.md) for native dependencies, fallback behavior, and unsupported configurations.
@@ -66,19 +67,23 @@ The fastest profiles require matching native extensions and pinned vLLM/FlashInf
 
 ## Installation
 
-The published `0.1.0a9` release uses vLLM 0.28.0. The development branch targets [vLLM 0.29.0](profiles/vllm-0.29.0/README.md) with [patched ExLlamaV3 1.4.9](profiles/exllamav3-1.4.9/README.md); use the matching profiles when building from source.
+Release `0.1.0a10` targets [vLLM 0.29.0](profiles/vllm-0.29.0/README.md) with [patched ExLlamaV3 1.4.9](profiles/exllamav3-1.4.9/README.md). Release `0.1.0a9` remains available for vLLM 0.28.0.
 
-The development profile passed TP2 service acceptance and a same-device 3k/1k short regression with throughput within 0.2% of a9 at c4/c16/c24/c32. See [upgrade results](docs/dependency-upgrade.md).
+The a10 runtime profile passed TP2 service acceptance and a same-device 3k/1k short regression with throughput within 0.2% of a9 at c4/c16/c24/c32. See [upgrade results](docs/dependency-upgrade.md).
 
 Install vLLM and the release wheel in the same environment:
 
 ```bash
-python -m pip install "vllm==0.28.0"
+python -m pip install "vllm==0.29.0"
 python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a9/vllm_mach-0.1.0a9-py3-none-any.whl
+  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a10/vllm_mach-0.1.0a10-py3-none-any.whl
 ```
 
-The base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
+Then follow the [0.29 runtime installation profile](profiles/vllm-0.29.0/README.md) to build patched ExLlamaV3 1.4.9 and matching native extensions and apply the vLLM/FlashInfer patches. The wheel alone does not install these components.
+
+### Earlier installations
+
+The vLLM 0.28 base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
 
 ```bash
 git clone --branch v1.4.6 --depth 1 https://github.com/turboderp-org/exllamav3.git
@@ -87,13 +92,15 @@ python -m pip install -r requirements.txt
 MAX_JOBS=4 python -m pip install --no-build-isolation .
 ```
 
-Native BF16 I/O uses Mach's downstream ExLlamaV3 patch. For the released profile, follow the [1.4.8 build instructions](profiles/exllamav3-1.4.8/README.md). [PR #330](https://github.com/turboderp-org/exllamav3/pull/330) is closed; the BF16 interface is maintained here, not supplied by the official ExLlamaV3 wheel. Mach `0.1.0a4` and later pass the CPU group metadata required by this interface.
+Native BF16 I/O uses Mach's downstream ExLlamaV3 patch. For a9, follow the [1.4.8 build instructions](profiles/exllamav3-1.4.8/README.md). [PR #330](https://github.com/turboderp-org/exllamav3/pull/330) is closed; the BF16 interface is maintained here, not supplied by the official ExLlamaV3 wheel. Mach `0.1.0a4` and later pass the CPU group metadata required by this interface.
 
 Earlier release validation used a `v1.4.6`-based experimental wheel with a different group-metadata contract. See [public installation and compatibility](docs/public-install.md) for the fixed path and legacy-wheel option. [B12X](https://github.com/local-inference-lab/b12x) is an optional prefill backend.
 
 The EXL3/MXFP6 profile also requires [`mxfp6-sm120==0.2.1`](https://github.com/Nekofish-L/mxfp6_sm120#build), built against the same PyTorch and CUDA environment. Stream-K graph execution and the optional FlashInfer collective require the version-locked patches under [`profiles/vllm-0.28.0`](profiles/vllm-0.28.0/README.md). The collective must compile from patched source: a prebuilt `trtllm_comm` module bypasses the layout patch and is rejected.
 
-To build vLLM Mach from source:
+### Build from source
+
+To build the current vLLM Mach version:
 
 ```bash
 git clone https://github.com/troycheng/vllm-mach.git

@@ -1,6 +1,6 @@
 # vLLM 0.29 runtime port
 
-Development profile against `v0.29.0` (`98dff2a81d747d1dba01a47f939f48c3526d4206`), for Mach `0.1.0a10.dev0`. It carries the a9 checkpoint-hybrid paths onto the new runtime. The published a9 release remains on vLLM 0.28.
+Runtime profile against `v0.29.0` (`98dff2a81d747d1dba01a47f939f48c3526d4206`), for Mach `0.1.0a10`. It carries the a9 checkpoint-hybrid paths onto the new runtime. The a9 release remains on vLLM 0.28.
 
 TP2 service validation is complete: 40/40 task checks and 2,592 BA state/output comparisons passed. The same-device 3k/1k short regression retained throughput at c4/c16/c24/c32. See [upgrade results and test setup](../../docs/dependency-upgrade.md).
 
@@ -16,7 +16,7 @@ Use the official 0.29 dependency set: PyTorch 2.13.0, FlashInfer Python/cubin 0.
 
 ## Installation
 
-Use a dedicated environment. Install the development Mach wheel, [patched ExLlamaV3 1.4.9](../exllamav3-1.4.9/README.md), and the [M32](../../native/exl3_m32/README.md) and [Temporal](../../native/exl3_temporal_m24/README.md) extensions built against that source. The unchanged [lossless prefill extension](../../native/lossless_prefill/README.md) still uses its CUDA 13.0 build contract.
+Use a dedicated environment. Install the Mach 0.1.0a10 wheel, [patched ExLlamaV3 1.4.9](../exllamav3-1.4.9/README.md), and the [M32](../../native/exl3_m32/README.md) and [Temporal](../../native/exl3_temporal_m24/README.md) extensions built against that source. The unchanged [lossless prefill extension](../../native/lossless_prefill/README.md) still uses its CUDA 13.0 build contract.
 
 From the matching Mach checkout, apply these patches to the environment's site-packages directory before importing vLLM or FlashInfer:
 
