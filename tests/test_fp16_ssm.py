@@ -66,6 +66,12 @@ def test_requires_original_exl3_decode_route(module, route):
     assert not ba.extra_row_allowed(module, torch.empty(16, 5120, dtype=torch.bfloat16))
 
 
+@pytest.fixture(params=['0.28.0', '0.29.0'], autouse=True)
+def gdn_profile(request, monkeypatch):
+    if request.param == '0.29.0':
+        monkeypatch.setattr(sys.modules[__name__], 'GDN', ROOT / 'profiles/vllm-0.29.0/gdn-overlay/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py')
+
+
 def gdn_guard():
     # Execute the actual overlay method without importing CUDA/vLLM on CPU.
     tree = ast.parse(GDN.read_text())

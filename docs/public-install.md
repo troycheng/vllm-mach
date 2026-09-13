@@ -1,5 +1,7 @@
 # Public EXL3 installation
 
+For the current profiles, use the [ExLlamaV3 1.4.8 patch](../profiles/exllamav3-1.4.8/README.md) with the a9 release, or the [1.4.9 patch](../profiles/exllamav3-1.4.9/README.md) with the vLLM 0.29 development profile. PR #330 is closed. The pinned 1.4.6 build below is retained for earlier installations.
+
 Use Mach `0.1.0a4` or later for this installation. Do not combine `0.1.0a3` BF16 grouped execution with ExLlamaV3 commit `d0094bc`; it fails with `had_group_ids must be a CPU tensor`.
 
 ## Fixed runtime contract

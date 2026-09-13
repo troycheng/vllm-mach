@@ -13,7 +13,7 @@
   <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.28.0-6C5CE7">
 </p>
 
-vLLM Mach adds an EXL3 provider and optional MXFP6 execution paths to vLLM 0.28. Its first validated model-specific profile targets Qwen3.8-27B Dense. The EXL3 path validates checkpoint metadata, loads tensor-parallel slices through vLLM's packed-module mapping, groups compatible QKV and QKVZ projections, and primes kernels before CUDA Graph capture. BF16 I/O and fused prefill reconstruction are optional. Native MXFP6 kernels are provided by [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120).
+vLLM Mach adds an EXL3 provider and optional MXFP6 execution paths to vLLM. Its first validated model-specific profile targets Qwen3.8-27B Dense. The EXL3 path validates checkpoint metadata, loads tensor-parallel slices through vLLM's packed-module mapping, groups compatible QKV and QKVZ projections, and primes kernels before CUDA Graph capture. BF16 I/O and fused prefill reconstruction are optional. Native MXFP6 kernels are provided by [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120).
 
 ## Why Mach
 
@@ -66,6 +66,10 @@ The fastest profiles require matching native extensions and pinned vLLM/FlashInf
 
 ## Installation
 
+The published `0.1.0a9` release uses vLLM 0.28.0. The development branch targets [vLLM 0.29.0](profiles/vllm-0.29.0/README.md) with [patched ExLlamaV3 1.4.9](profiles/exllamav3-1.4.9/README.md); use the matching profiles when building from source.
+
+The development profile passed TP2 service acceptance and a same-device 3k/1k short regression with throughput within 0.2% of a9 at c4/c16/c24/c32. See [upgrade results](docs/dependency-upgrade.md).
+
 Install vLLM and the release wheel in the same environment:
 
 ```bash
@@ -83,13 +87,7 @@ python -m pip install -r requirements.txt
 MAX_JOBS=4 python -m pip install --no-build-isolation .
 ```
 
-Native BF16 I/O is not part of the `v1.4.6` tag. It requires [ExLlamaV3 Draft PR #330](https://github.com/turboderp-org/exllamav3/pull/330), validated at commit [`d0094bc`](https://github.com/troycheng/exllamav3/tree/d0094bc922bcf2d6cf5e948ba35f347adda3a6ca). That revision requires Mach `0.1.0a4` or later: `0.1.0a3` passes GPU group metadata to an API that expects CPU metadata. To build the native revision:
-
-```bash
-git fetch origin pull/330/head:pr-330
-git checkout d0094bc922bcf2d6cf5e948ba35f347adda3a6ca
-MAX_JOBS=4 python -m pip install --no-build-isolation .
-```
+Native BF16 I/O uses Mach's downstream ExLlamaV3 patch. For the released profile, follow the [1.4.8 build instructions](profiles/exllamav3-1.4.8/README.md). [PR #330](https://github.com/turboderp-org/exllamav3/pull/330) is closed; the BF16 interface is maintained here, not supplied by the official ExLlamaV3 wheel. Mach `0.1.0a4` and later pass the CPU group metadata required by this interface.
 
 Earlier release validation used a `v1.4.6`-based experimental wheel with a different group-metadata contract. See [public installation and compatibility](docs/public-install.md) for the fixed path and legacy-wheel option. [B12X](https://github.com/local-inference-lab/b12x) is an optional prefill backend.
 
@@ -135,7 +133,7 @@ vllm serve malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated \
   '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[1,2,4,8,16,24,32]}'
 ```
 
-`EXL3_BF16_IO=1` requires the PR #330 build above. Leave it unset when using the official `v1.4.6` tag.
+`EXL3_BF16_IO=1` requires the matching downstream BF16 build described above. Leave it unset when using the official `v1.4.6` tag.
 
 Release `0.1.0a3` also offers opt-in M24/M32 decode paths and a sampling metadata patch. The true-M32 kernel requires a separate native build, and the sampling patch must be applied to vLLM. See [experimental decode paths](docs/experimental-decode.md) for configuration and validation limits.
 

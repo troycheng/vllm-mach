@@ -68,3 +68,34 @@ def test_known_previous_profile_upgrade(tmp_path):
     target.write_text('unrecognized edit')
     with pytest.raises(RuntimeError, match='Unrecognized'):
         installer.plan(root, profile)
+
+
+def test_v029_overlay_keeps_upstream_fixes():
+    profile = ROOT / 'profiles/vllm-0.29.0'
+    expected = json.loads((profile / 'gdn-base-hashes.json').read_text())
+    assert len(expected) == 12
+    assert all((profile / 'gdn-overlay' / p).is_file() for p in expected if p.startswith('vllm/'))
+    assert all((PROFILE / 'overlay' / p).is_file() and expected[p] is None
+               for p in expected if p.startswith('flashinfer/'))
+    gdn = (profile / 'gdn-overlay/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py').read_text()
+    assert 'cu_seqlens = cu_seqlens.to(torch.int64)' in gdn
+    assert 'output_gate_activation=self.norm.activation' in gdn
+    assert 'self.num_v_heads // self.num_k_heads in (1, 2, 3, 4, 8)' in gdn
+
+
+def test_unknown_vllm_version_rejected(tmp_path):
+    root, profile = fixture_profile(tmp_path)
+    with pytest.raises(RuntimeError, match='Unsupported vLLM'):
+        installer.plan(root, profile, vllm_version='0.30.0')
+
+
+def test_v029_installer_selects_matching_source(tmp_path):
+    root, profile = fixture_profile(tmp_path)
+    newer = profile.parent / 'vllm-0.29.0'
+    source = newer / 'gdn-overlay/vllm/gdn.py'
+    source.parent.mkdir(parents=True)
+    source.write_text('new vllm source\n')
+    (newer / 'gdn-base-hashes.json').write_text(json.dumps({'vllm/gdn.py': None}))
+    changes = installer.plan(root, profile, vllm_version='0.29.0')
+    assert (source, root / 'vllm/gdn.py') in changes
+    assert not (root / 'vllm/gdn.py').exists()

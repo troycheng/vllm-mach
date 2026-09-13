@@ -50,9 +50,9 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
                                     hidden_dim=5120, dtype=hidden_states.dtype, group=get_tp_group().cpu_group)
     validate_workspace(workspace, rank, rows)
     if _workspace is None:
-        for package, expected in [('vllm', '0.28.0'), ('flashinfer-python', '0.6.18')]:
-            if importlib.metadata.version(package) != expected:
-                raise RuntimeError(f'Long prefill requires {package}=={expected}')
+        for package, expected in [('vllm', ('0.28.0', '0.29.0')), ('flashinfer-python', ('0.6.18',))]:
+            if importlib.metadata.version(package).split('+', 1)[0] not in expected:
+                raise RuntimeError(f'Long prefill requires {package} in {expected}')
         spec = importlib.util.find_spec('mach_lossless_prefill_long_ext')
         if spec is None or not spec.origin:
             raise RuntimeError('Build/install native/lossless_prefill before enabling long prefill')

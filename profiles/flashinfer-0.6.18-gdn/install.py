@@ -14,14 +14,21 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
 
-def plan(root, profile=PROFILE):
+def plan(root, profile=PROFILE, vllm_version='0.28.0'):
     expected = json.loads((profile / 'base-hashes.json').read_text())
+    vllm_profile = profile.parent / 'vllm-0.29.0'
+    if vllm_version == '0.29.0':
+        expected.update(json.loads((vllm_profile / 'gdn-base-hashes.json').read_text()))
+    elif vllm_version != '0.28.0':
+        raise RuntimeError(f'Unsupported vLLM version: {vllm_version}')
     changes = []
     for relative, original in expected.items():
         name = Path(relative)
         if name.is_absolute() or '..' in name.parts:
             raise RuntimeError(f'Invalid profile path: {relative}')
         source = profile / 'overlay' / name
+        if vllm_version == '0.29.0' and name.parts[0] == 'vllm':
+            source = vllm_profile / 'gdn-overlay' / name
         destination = root / name
         if not source.is_file():
             raise RuntimeError(f'Missing profile source: {source}')
@@ -40,7 +47,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true', help='Apply after validating every target; default is check only')
     args = parser.parse_args()
-    for package, required in [('vllm', '0.28.0'), ('flashinfer-python', '0.6.18')]:
+    vllm_version = importlib.metadata.version('vllm').split('+', 1)[0]
+    if vllm_version not in ('0.28.0', '0.29.0'):
+        raise RuntimeError(f'Unsupported vLLM version: {vllm_version}')
+    for package, required in [('flashinfer-python', '0.6.18')]:
         actual = importlib.metadata.version(package)
         if actual != required:
             raise RuntimeError(f'{package} must be {required}; found {actual}')
@@ -48,7 +58,7 @@ def main():
              for p in ('vllm', 'flashinfer-python')}
     if len(roots) != 1:
         raise RuntimeError('vLLM and FlashInfer must be installed in the same environment')
-    changes = plan(roots.pop())
+    changes = plan(roots.pop(), vllm_version=vllm_version)
     for source, destination in changes:
         print(('install ' if args.apply else 'would install ') + str(destination))
     if args.apply:

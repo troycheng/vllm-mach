@@ -368,6 +368,9 @@ def _install_embed_online_hook() -> None:
             bits = _embed_online_bits()
             if bits is not None:
                 self.quant_method = Exl3OnlineEmbeddingMethod(bits)
+                # vLLM 0.29 caches this dispatch decision in __init__. Its
+                # plain-weight kernel cannot read our packed table/weight stub.
+                self.use_fused_embedding = False
 
     VocabParallelEmbedding.__init__ = _hooked_init
     VocabParallelEmbedding._exl3_embed_online_hooked = True

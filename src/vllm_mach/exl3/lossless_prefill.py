@@ -60,9 +60,9 @@ def run(hidden_states, residual, norm, norm_out, max_token_num):
     if not _loaded:
         if torch.cuda.is_current_stream_capturing():
             raise RuntimeError('Initialize lossless prefill before CUDA Graph capture')
-        for package, expected in [('vllm', '0.28.0'), ('flashinfer-python', '0.6.18')]:
-            if importlib.metadata.version(package) != expected:
-                raise RuntimeError(f'Lossless prefill requires {package}=={expected}')
+        for package, expected in [('vllm', ('0.28.0', '0.29.0')), ('flashinfer-python', ('0.6.18',))]:
+            if importlib.metadata.version(package).split('+', 1)[0] not in expected:
+                raise RuntimeError(f'Lossless prefill requires {package} in {expected}')
         extension = {'input': 'mach_lossless_prefill_ext', 'sum': 'mach_lossless_prefill_sum_ext',
                      'direct': 'mach_lossless_prefill_direct_ext'}[mode]
         spec = importlib.util.find_spec(extension)

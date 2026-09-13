@@ -67,6 +67,25 @@ print(vllm_mach.exl3.Exl3Config().get_name())
     assert result.stdout.strip().splitlines()[-1] == "exl3"
 
 
+def test_online_embedding_disables_cached_plain_weight_dispatch(monkeypatch):
+    from vllm.model_executor.layers.vocab_parallel_embedding import (
+        UnquantizedEmbeddingMethod, VocabParallelEmbedding,
+    )
+
+    def init(layer, *args, **kwargs):
+        torch.nn.Module.__init__(layer)
+        layer.quant_method = UnquantizedEmbeddingMethod()
+        layer.use_fused_embedding = True
+
+    monkeypatch.setattr(VocabParallelEmbedding, '__init__', init)
+    monkeypatch.setattr(VocabParallelEmbedding, '_exl3_embed_online_hooked', False, raising=False)
+    monkeypatch.setenv('VLLM_EXL3_EMBED_ONLINE_BITS', '6')
+    dense_adapter._install_embed_online_hook()
+    layer = VocabParallelEmbedding(128, 128)
+    assert isinstance(layer.quant_method, dense_adapter.Exl3OnlineEmbeddingMethod)
+    assert layer.use_fused_embedding is False
+
+
 def test_mxfp6_import_does_not_load_optional_module() -> None:
     code = """
 import sys

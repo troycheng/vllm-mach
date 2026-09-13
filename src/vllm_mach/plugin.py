@@ -15,9 +15,9 @@ def register() -> None:
     """Register every compatible vLLM Mach backend."""
 
     installed = version("vllm").split("+", 1)[0]
-    if installed != "0.28.0":
+    if installed not in ("0.28.0", "0.29.0"):
         raise RuntimeError(
-            f"vLLM Mach 0.1.0a2 requires vLLM 0.28.0; found {installed}."
+            f"vLLM Mach requires vLLM 0.28.0 or 0.29.0; found {installed}."
         )
     register_quantization_config("exl3")(Exl3Config)
     register_dense_kernel()

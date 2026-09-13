@@ -1,0 +1,278 @@
+diff --git a/vllm/compilation/passes/fusion/allreduce_rms_fusion.py b/vllm/compilation/passes/fusion/allreduce_rms_fusion.py
+index 559a99d..8f42b87 100644
+--- a/vllm/compilation/passes/fusion/allreduce_rms_fusion.py
++++ b/vllm/compilation/passes/fusion/allreduce_rms_fusion.py
+@@ -126,6 +126,8 @@ FI_ALLREDUCE_FUSION_MAX_SIZE_MB: dict[int, dict[int, float]] = {
+     },
+ }
+ 
++FI_ALLREDUCE_FUSION_MAX_SIZE_MB[120] = {2: 64}
++
+ # Max size of the input tensor per world size per device capability
+ # to use flashinfer one shot fused allreduce
+ # OneShot max size is at most 64MB / world size (FlashInfer restriction)
+@@ -152,6 +154,8 @@ _FI_ALLREDUCE_ONE_SHOT_MAX_SIZES_MB: dict[int, dict[int, float]] = {
+     },
+ }
+ 
++_FI_ALLREDUCE_ONE_SHOT_MAX_SIZES_MB[120] = {2: 32}
++
+ MiB = 1024 * 1024
+ 
+ 
+diff --git a/vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py b/vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py
+index 921c721..6dca96c 100644
+--- a/vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py
++++ b/vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py
+@@ -131,6 +131,14 @@ def fused_allreduce_gemma_rms_norm(
+     ok, max_token_num = _can_use_flashinfer(hidden_states, tp_size)
+     if ok:
+         norm_out = torch.empty_like(hidden_states)
++        from vllm_mach.exl3 import long_prefill
++        if long_prefill.eligible(hidden_states.shape, hidden_states.dtype, tp_size):
++            long_prefill.run(hidden_states, residual, norm, norm_out, max_token_num)
++            return norm_out, hidden_states
++        from vllm_mach.exl3 import lossless_prefill
++        if lossless_prefill.eligible(hidden_states.shape, hidden_states.dtype, tp_size):
++            lossless_prefill.run(hidden_states, residual, norm, norm_out, max_token_num)
++            return norm_out, hidden_states
+         # With norm_out provided, the kernel writes the new residual
+         # (all_reduce(hidden_states) + residual) into the hidden_states buffer
+         # and the normalized result into norm_out, leaving `residual` untouched.
+diff --git a/vllm/model_executor/models/qwen3_5.py b/vllm/model_executor/models/qwen3_5.py
+index f991f05..2916bf7 100644
+--- a/vllm/model_executor/models/qwen3_5.py
++++ b/vllm/model_executor/models/qwen3_5.py
+@@ -24,7 +24,9 @@
+ # limitations under the License.
+ """Inference-only Qwen3.5 Series compatible with HuggingFace weights."""
+ 
++import os
+ from collections.abc import Iterable
++from itertools import islice
+ 
+ import torch
+ from torch import nn
+@@ -35,6 +37,9 @@ from vllm.distributed import (
+     get_pp_group,
+ )
+ from vllm.logger import init_logger
++from vllm.model_executor.layers.fused_allreduce_gemma_rms_norm import (
++    fused_allreduce_gemma_rms_norm,
++)
+ from vllm.model_executor.layers.fused_moe.utils import (
+     is_model_fused_shared_expert_compatible,
+ )
+@@ -140,6 +145,13 @@ class Qwen3_5DecoderLayer(Qwen3NextDecoderLayer):
+             and parallel_config.pipeline_parallel_size == 1
+             and is_moe_layer
+         )
++        self.use_fused_ar_gemma_norm = (
++            os.getenv("VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8", "0") == "1"
++            and config.model_type == "qwen3_5_text"
++            and parallel_config.tensor_parallel_size == 2
++            and parallel_config.pipeline_parallel_size == 1
++            and vllm_config.speculative_config is None
++        )
+ 
+         if self.layer_type == "linear_attention":
+             self.linear_attn = QwenGatedDeltaNetAttention(
+@@ -147,7 +159,10 @@ class Qwen3_5DecoderLayer(Qwen3NextDecoderLayer):
+                 vllm_config=vllm_config,
+                 prefix=f"{prefix}.linear_attn",
+                 gqa_interleaved_layout=False,
+-                reduce_results=not self.use_attn_reduce_scatter_for_moe,
++                reduce_results=(
++                    not self.use_attn_reduce_scatter_for_moe
++                    and not self.use_fused_ar_gemma_norm
++                ),
+             )
+         elif self.layer_type == "full_attention":
+             self.self_attn = Qwen3NextAttention(
+@@ -156,7 +171,10 @@ class Qwen3_5DecoderLayer(Qwen3NextDecoderLayer):
+                 cache_config=cache_config,
+                 quant_config=quant_config,
+                 prefix=f"{prefix}.self_attn",
+-                reduce_results=not self.use_attn_reduce_scatter_for_moe,
++                reduce_results=(
++                    not self.use_attn_reduce_scatter_for_moe
++                    and not self.use_fused_ar_gemma_norm
++                ),
+             )
+         else:
+             raise ValueError(f"Invalid layer_type {self.layer_type}")
+@@ -174,6 +192,7 @@ class Qwen3_5DecoderLayer(Qwen3NextDecoderLayer):
+                 intermediate_size=config.intermediate_size,
+                 hidden_act=config.hidden_act,
+                 quant_config=quant_config,
++                reduce_results=not self.use_fused_ar_gemma_norm,
+                 prefix=f"{prefix}.mlp",
+             )
+         else:
+@@ -203,6 +222,70 @@ class Qwen3_5DecoderLayer(Qwen3NextDecoderLayer):
+                 ),
+             )
+ 
++    def forward(
++        self,
++        hidden_states: torch.Tensor,
++        residual: torch.Tensor | None,
++        positions: torch.Tensor = None,
++        **kwargs: object,
++    ):
++        if not self.use_fused_ar_gemma_norm:
++            return super().forward(
++                hidden_states=hidden_states,
++                residual=residual,
++                positions=positions,
++                **kwargs,
++            )
++
++        if residual is None:
++            residual = hidden_states
++            hidden_states = self.input_layernorm(hidden_states)
++        else:
++            hidden_states, residual = fused_allreduce_gemma_rms_norm(
++                hidden_states, residual, self.input_layernorm
++            )
++
++        if self.layer_type == "linear_attention":
++            hidden_states = self.linear_attn(hidden_states=hidden_states)
++        elif self.layer_type == "full_attention":
++            hidden_states = self.self_attn(
++                hidden_states=hidden_states,
++                positions=positions,
++            )
++        else:
++            raise ValueError("Invalid layer_type")
++
++        if self.layer_scale:
++            if len(hidden_states.shape) == 2:
++                hidden_states = hidden_states * (
++                    self.attn_layer_scale.to(hidden_states.dtype)[0] + 1
++                )
++            else:
++                hidden_states = hidden_states * (
++                    self.attn_layer_scale.to(hidden_states.dtype) + 1
++                )
++
++        from vllm_mach.exl3.fused_allreduce import (
++            fused_allreduce_gemma_rms_norm_mxfp8,
++        )
++
++        hidden_states, residual = fused_allreduce_gemma_rms_norm_mxfp8(
++            hidden_states, residual, self.post_attention_layernorm
++        )
++        hidden_states = self.mlp(hidden_states)
++
++        if self.layer_scale:
++            if len(hidden_states.shape) == 2:
++                hidden_states = hidden_states * (
++                    self.ffn_layer_scale.to(hidden_states.dtype)[0] + 1
++                )
++            else:
++                hidden_states = hidden_states * (
++                    self.ffn_layer_scale.to(hidden_states.dtype) + 1
++                )
++
++        return hidden_states, residual
++
+ 
+ @support_torch_compile(
+     dynamic_arg_dims={
+@@ -271,8 +354,66 @@ class Qwen3_5Model(Qwen3NextModel):
+         else:
+             self.norm = PPMissingLayer()
+ 
++        self.use_fused_ar_gemma_norm = (
++            os.getenv("VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8", "0") == "1"
++            and config.model_type == "qwen3_5_text"
++            and parallel_config.tensor_parallel_size == 2
++            and parallel_config.pipeline_parallel_size == 1
++            and vllm_config.speculative_config is None
++        )
+         self.aux_hidden_state_layers: tuple[int, ...] = ()
+ 
++    def forward(
++        self,
++        input_ids: torch.Tensor | None,
++        positions: torch.Tensor,
++        intermediate_tensors: IntermediateTensors | None = None,
++        inputs_embeds: torch.Tensor | None = None,
++    ) -> torch.Tensor | IntermediateTensors | tuple[torch.Tensor, list[torch.Tensor]]:
++        if not self.use_fused_ar_gemma_norm:
++            return super().forward(
++                input_ids, positions, intermediate_tensors, inputs_embeds
++            )
++
++        if get_pp_group().is_first_rank:
++            hidden_states = (
++                inputs_embeds
++                if inputs_embeds is not None
++                else self.embed_input_ids(input_ids)
++            )
++            residual = None
++        else:
++            assert intermediate_tensors is not None
++            hidden_states = intermediate_tensors["hidden_states"]
++            residual = intermediate_tensors["residual"]
++
++        aux_hidden_states = self._maybe_add_hidden_state(
++            [], 0, hidden_states, residual
++        )
++        for layer_idx, layer in enumerate(
++            islice(self.layers, self.start_layer, self.end_layer),
++            start=self.start_layer,
++        ):
++            hidden_states, residual = layer(
++                positions=positions,
++                hidden_states=hidden_states,
++                residual=residual,
++            )
++            self._maybe_add_hidden_state(
++                aux_hidden_states, layer_idx + 1, hidden_states, residual
++            )
++
++        if not get_pp_group().is_last_rank:
++            return IntermediateTensors(
++                {"hidden_states": hidden_states, "residual": residual}
++            )
++        hidden_states, _ = fused_allreduce_gemma_rms_norm(
++            hidden_states, residual, self.norm
++        )
++        if aux_hidden_states:
++            return hidden_states, aux_hidden_states
++        return hidden_states
++
+     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
+         # FSE must match construction (Qwen3NextSparseMoeBlock): reroute the
+         # shared expert into the extra fused slot only when AITER FSE is both
+diff --git a/vllm/v1/worker/gpu/sample/gumbel.py b/vllm/v1/worker/gpu/sample/gumbel.py
+index 4bf1f47..03831c6 100644
+--- a/vllm/v1/worker/gpu/sample/gumbel.py
++++ b/vllm/v1/worker/gpu/sample/gumbel.py
+@@ -1,9 +1,13 @@
+ # SPDX-License-Identifier: Apache-2.0
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
++import os
++
+ import torch
+ 
+ from vllm.triton_utils import HAS_TRITON, tl, tldevice, triton
+ 
++_MACH_STAGE_METADATA = os.environ.get("VLLM_MACH_SAMPLING_DEVICE_METADATA", "0") == "1"
++
+ # Smallest positive value produced by Triton's fp32 `tl.rand`. Used to clamp
+ # zero draws before the flipped Gumbel transform below.
+ #
+@@ -260,6 +264,10 @@ def gumbel_sample(
+     logits_cache_col: torch.Tensor | None = None,  # scalar or [num_tokens]
+     use_fp64: bool = False,
+ ) -> torch.Tensor:
++    if _MACH_STAGE_METADATA:
++        # Stage mapped host metadata once before the vocabulary tiles read it.
++        temperature = temperature.clone()
++        seed = seed.clone()
+     # Enforce contiguity on non-strided input tensors
+     expanded_idx_mapping = expanded_idx_mapping.contiguous()
+     pos = pos.contiguous()
