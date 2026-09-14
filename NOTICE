@@ -1,6 +1,11 @@
 vLLM Mach
 Copyright 2026 Tong Cheng and contributors
 
+The optional tools/quantization source collection includes NVFP4 scale-selection
+code adapted from NVIDIA Model Optimizer and frozen reference sources,
+Copyright 2026 NVIDIA CORPORATION & AFFILIATES, under Apache-2.0. Original
+file notices are preserved. These tools are not part of the Python wheel.
+
 The EXL3 provider contains code derived from the vLLM project, which is
 licensed under the Apache License, Version 2.0.
 
@@ -33,3 +38,8 @@ are preserved.
 The optional native/lossless_prefill extension contains a frozen collective
 header and operations derived from FlashInfer under Apache-2.0, with a
 lossless BF16 peer-read codec. It is built separately from the Python wheel.
+
+The optional native/owner_prefill extension also contains a collective header
+derived from FlashInfer under Apache-2.0, with owner-row communication and
+local MLP operations. Original header notices are retained. It is built
+separately from the Python wheel.

@@ -1,0 +1,52 @@
+{
+  "scope": "Existing numerical primitives plus Mach generation orchestration; no full-model regeneration validation",
+  "orchestration": ["../generate_assets.py", "common.py", "prepare_calibration.py", "capture.py", "build_rank64.py"],
+  "capture_adapters": {
+    "teacher_decode.py": "Original calibration_v1/teacher_decode_hook.py with pinned vLLM 0.29 sampler/logprob hashes",
+    "chunked_teacher.py": "Original quality_fp16_ssm_m32long_v1/chunked_teacher_bridge.py with pinned vLLM 0.29 sampler hash"
+  },
+  "revalidated": false,
+  "source_root_description": "Original Qwen3.8 Champion optimization workspace; paths below identify historical source files",
+  "files": [
+    {
+      "file": "offline_quant.py",
+      "source": "selective_gu_20260912/hessian_pilot_v1/offline_quant.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "fit_rank64.py",
+      "source": "selective_gu_20260912/inputaware_residual_pilot_v1/fit.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "derive_static_scales.py",
+      "source": "analysis/derive_rmsnorm_nvfp4_static_scales_stdlib_v1.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "upstream/nvfp4_fp8_sweep.py",
+      "source": "selective_gu_20260912/hessian_pilot_v1/upstream/nvfp4_fp8_sweep.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "upstream/nvfp4_quant.py",
+      "source": "selective_gu_20260912/hessian_pilot_v1/upstream/nvfp4_quant.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "upstream/_fp8_scale_candidates.py",
+      "source": "selective_gu_20260912/hessian_pilot_v1/upstream/_fp8_scale_candidates.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "upstream/fp4_kernel.py",
+      "source": "selective_gu_20260912/hessian_pilot_v1/upstream/fp4_kernel.py",
+      "edit": "verbatim; filename and directory only"
+    },
+    {
+      "file": "weight_container.py",
+      "source": "runtime_nvfp4_gu_w6_down_v1/frozen_nvfp4.py",
+      "edit": "Extract DirectNVFP4Weight unchanged; add module header/import. No conversion functions."
+    }
+  ]
+}

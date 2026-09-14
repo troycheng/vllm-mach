@@ -70,7 +70,11 @@ def _try_fused_forward(module: Any, x: Any) -> Any:
     if not eligible:
         return _NOT_APPLICABLE
 
-    if packed_input:
+    from . import rank64
+    selected_gate_up = rank64.apply(gate_up_layer, x, rows)
+    if selected_gate_up is not None:
+        gate_up = selected_gate_up
+    elif packed_input:
         gate_up = mxfp6_hybrid.apply_mxfp8_weight(
             x, gate_up_state.merged_weight
         )

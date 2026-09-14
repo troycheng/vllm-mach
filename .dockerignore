@@ -1,0 +1,11 @@
+.git
+**/__pycache__
+**/*.pyc
+.pytest_cache
+build
+dist
+*.egg-info
+**/*.so
+**/*.whl
+**/*.safetensors
+**/*.pt

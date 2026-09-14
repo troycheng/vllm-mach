@@ -31,7 +31,7 @@ The aim is higher throughput with controlled numerical error. The current Qwen3.
 | a10 checkpoint-hybrid | vLLM `0.29.0`, patched ExLlamaV3 `1.4.9`; Qwen3.8-27B K5/K6; TP2/PP1, SM120, BF16 activations/KV, opt-in FP16 recurrent state; [configuration and regression](docs/dependency-upgrade.md) |
 | Fused FlashInfer collective | The EXL3/MXFP6 profile with `flashinfer-python==0.6.16.post3` or `0.6.18` and the matching runtime patches |
 
-The EXL3 provider does not require MXFP6. This table records the validated base configurations. Release `0.1.0a3` adds separately validated opt-in decode paths described below; configurations outside the documented checks remain unverified. See [compatibility](docs/compatibility.md) for native dependencies, fallback behavior, and unsupported configurations.
+The EXL3 provider does not require MXFP6. This table records released configurations; the [current source installation](docs/installation.md) adds ExLlamaV3 1.5.0 and the new rank64/owner-prefill integration. See [compatibility](docs/compatibility.md) for native dependencies and fallback behavior.
 
 ## Performance
 
@@ -67,129 +67,49 @@ The fastest profiles require matching native extensions and pinned vLLM/FlashInf
 
 ## Installation
 
-Release `0.1.0a10` targets [vLLM 0.29.0](profiles/vllm-0.29.0/README.md) with [patched ExLlamaV3 1.4.9](profiles/exllamav3-1.4.9/README.md). Release `0.1.0a9` remains available for vLLM 0.28.0.
-
-The a10 runtime profile passed TP2 service acceptance and a same-device 3k/1k short regression with throughput within 0.2% of a9 at c4/c16/c24/c32. See [upgrade results](docs/dependency-upgrade.md).
-
-The current source checkout also supports [patched ExLlamaV3 1.5.0](profiles/exllamav3-1.5.0/README.md) with the same a10 Python runtime. Rebuild its M32 and Temporal extensions together. [Validation](docs/exllamav3-1.5.0.md) passed with no material throughput change; the published a10 archive remains on 1.4.9.
-
-Install vLLM and the release wheel in the same environment:
-
-```bash
-python -m pip install "vllm==0.29.0"
-python -m pip install \
-  https://github.com/troycheng/vllm-mach/releases/download/v0.1.0a10/vllm_mach-0.1.0a10-py3-none-any.whl
-```
-
-Then follow the [0.29 runtime installation profile](profiles/vllm-0.29.0/README.md) to build patched ExLlamaV3 1.4.9 and matching native extensions and apply the vLLM/FlashInfer patches. The wheel alone does not install these components.
-
-### Earlier installations
-
-The vLLM 0.28 base EXL3 path was validated with [ExLlamaV3 `v1.4.6`](https://github.com/turboderp-org/exllamav3/tree/v1.4.6) at commit `499890c75d20d8e7c9d061f37189ae611a5c9f0b`. Build it in the environment where vLLM is installed:
-
-```bash
-git clone --branch v1.4.6 --depth 1 https://github.com/turboderp-org/exllamav3.git
-cd exllamav3
-python -m pip install -r requirements.txt
-MAX_JOBS=4 python -m pip install --no-build-isolation .
-```
-
-Native BF16 I/O uses Mach's downstream ExLlamaV3 patch. For a9, follow the [1.4.8 build instructions](profiles/exllamav3-1.4.8/README.md). [PR #330](https://github.com/turboderp-org/exllamav3/pull/330) is closed; the BF16 interface is maintained here, not supplied by the official ExLlamaV3 wheel. Mach `0.1.0a4` and later pass the CPU group metadata required by this interface.
-
-Earlier release validation used a `v1.4.6`-based experimental wheel with a different group-metadata contract. See [public installation and compatibility](docs/public-install.md) for the fixed path and legacy-wheel option. [B12X](https://github.com/local-inference-lab/b12x) is an optional prefill backend.
-
-The EXL3/MXFP6 profile also requires [`mxfp6-sm120==0.2.1`](https://github.com/Nekofish-L/mxfp6_sm120#build), built against the same PyTorch and CUDA environment. Stream-K graph execution and the optional FlashInfer collective require the version-locked patches under [`profiles/vllm-0.28.0`](profiles/vllm-0.28.0/README.md). The collective must compile from patched source: a prebuilt `trtllm_comm` module bypasses the layout patch and is rejected.
-
-### Build from source
-
-To build the current vLLM Mach version:
+Use the [complete installation guide](docs/installation.md) for the current source profile: vLLM 0.29.0, ExLlamaV3 1.5.0 and matching native extensions. It includes the image build, model assets, complete startup command and a 3k/1k check. Installing the Python wheel alone does not reproduce the hybrid profile.
 
 ```bash
 git clone https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
-python -m pip install build
-python -m build --wheel
+docker buildx build --load \
+  --build-context cuda132=/usr/local/cuda-13.2 \
+  --build-arg MAX_JOBS=8 \
+  -f deploy/Dockerfile -t vllm-mach:local .
 ```
+
+This requires Linux x86-64, Docker Buildx and the CUDA 13.2 toolkit at the supplied path. The image supplies the separate CUDA 13.0 build for the lossless collective. The complete profile also requires matching local MXFP6 and rank64 assets. Mach does not distribute these assets. See [model asset generation](docs/quantization.md) for the two generation commands and their validation status; the installation guide also covers packaging existing assets.
+
+Release `0.1.0a10` remains available with ExLlamaV3 1.4.9; a9 uses vLLM 0.28. See [earlier installations](docs/public-install.md) for those versions. Mach's BF16 interface is maintained downstream; the official ExLlamaV3 wheel does not include it.
 
 ## Usage
 
-### EXL3
-
-Select the `mach` plugin explicitly when other vLLM plugins are installed:
+After building the image and preparing the three model directories in the installation guide:
 
 ```bash
-export VLLM_PLUGINS=mach
-
-vllm serve malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated \
-  --revision ab3a91a13813df8096cb4c1d560ed3669035d0cf \
-  --quantization exl3 \
-  --tensor-parallel-size 2
+docker run --rm --name mach --gpus '"device=0,1"' \
+  --ipc=host --network=host \
+  -v "$PWD/models:/models:ro" \
+  -v mach-kernel-cache:/root/.cache \
+  vllm-mach:local \
+  --model /models/exl3 --mxfp6-checkpoint /models/mxfp6 \
+  --rank64-bundle /models/rank64 --owner-prefill \
+  --max-num-seqs 48 --host 127.0.0.1 --port 8000
 ```
 
-The validated CUDA Graph configuration also enables QKV MGEMM and primes EXL3 kernels before capture:
+The launcher sets the full profile, including BF16 I/O, Temporal M24, GDN decode, fused collectives, BA overlap and FP16 recurrent state. `--dry-run` prints the resolved flags. Omit `--rank64-bundle` and `--owner-prefill` to use the previous checkpoint-hybrid execution paths.
 
-```bash
-export VLLM_PLUGINS=mach
-export EXL3_QKV_MGEMM=1
-export EXL3_BF16_IO=1
-export VLLM_EXL3_GRAPH_DECODE=1
+The new decode path uses selected NVFP4 gate/up weights with rank64 compensation at physical M32. Owner-prefill partitions rows between the two ranks and replicates MLP weights at 32 layers to reduce communication. Replication costs 3.11 GiB per GPU; the launcher keeps the original 8.22 GB KV allocation. These additions are optional and do not replace the EXL3 provider.
 
-vllm serve malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated \
-  --revision ab3a91a13813df8096cb4c1d560ed3669035d0cf \
-  --quantization exl3 \
-  --tensor-parallel-size 2 \
-  --compilation-config \
-  '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[1,2,4,8,16,24,32]}'
-```
-
-`EXL3_BF16_IO=1` requires the matching downstream BF16 build described above. Leave it unset when using the official `v1.4.6` tag.
-
-Release `0.1.0a3` also offers opt-in M24/M32 decode paths and a sampling metadata patch. The true-M32 kernel requires a separate native build, and the sampling patch must be applied to vLLM. See [experimental decode paths](docs/experimental-decode.md) for configuration and validation limits.
-
-For prefill, vLLM Mach can dispatch eligible K6 matrices to B12X and use ExLlamaV3's fused reconstruction plus Hadamard path:
-
-```bash
-export VLLM_EXL3_B12X_MIN_M=128
-export VLLM_EXL3_B12X_N_RANGE=5120-36864
-export VLLM_EXL3_B12X_ANY_BITS=1
-export VLLM_EXL3_PREFILL_FUSED_RECONSTRUCT_MIN_M=128
-```
-
-Install B12X before enabling its route. Fused prefill reconstruction uses `reconstruct_had_slice` from ExLlamaV3 and falls back to the regular reconstruction path when the symbol is unavailable.
-
-### EXL3/MXFP6
-
-Enable the Qwen3.8-27B profile in the same environment as the EXL3 serve command:
-
-```bash
-export VLLM_MACH_EXL3_MXFP6_PROFILE=qwen38-27b
-```
-
-After applying the matching vLLM and FlashInfer patches, enable the fused TP2 collective with:
-
-```bash
-export VLLM_MACH_EXL3_MXFP6_FUSED_AR_NORM_MXFP8=1
-```
-
-The hybrid profile keeps `lm_head` and unmatched projections on EXL3. It routes MLP and attention output projections to MXFP6 for all row counts. QKV and QKVZ projections use MXFP6 for prefill calls with at least 128 rows and EXL3 for decode.
-
-Release `0.1.0a5` adds the opt-in [direct-checkpoint profile](docs/checkpoint-hybrid.md): original MXFP6 weights and merged QKV execution at physical M32 and prefill. A tested [ExLlamaV3 1.4.8 BF16 source build](profiles/exllamav3-1.4.8/README.md) is available; the default dependency pin is unchanged.
-
-The optional [Temporal M24 K6 extension](native/exl3_temporal_m24/README.md) handles two QKV/QKVZ bundle shapes at physical M24. Build it separately and set `EXL3_TEMPORAL_QKV_M24=1` alongside BF16 I/O and M24 support. It defaults to off; other row counts keep their existing paths. Experimental performance results are not Mach release measurements.
-
-Release `0.1.0a6` provides a [complete checkpoint/Temporal serving profile](profiles/vllm-0.28.0/README.md#checkpointtemporal-serving-configuration), including the [SM120 fused GDN backport](profiles/flashinfer-0.6.18-gdn/README.md), QK norm/MRoPE support and collective configuration. Obtain the profile files from the tagged source archive or checkout. Native extensions, runtime patches and environment settings must be installed together; upgrading the Python wheel alone does not enable this configuration. See the [alignment results](docs/champion-alignment.md) for the tested workload and first-round latency limitation.
+For standalone EXL3 or individual feature switches, see the [base EXL3 setup](docs/public-install.md), [checkpoint-hybrid routing](docs/checkpoint-hybrid.md), [Temporal M24](native/exl3_temporal_m24/README.md), and [GDN integration](profiles/flashinfer-0.6.18-gdn/README.md).
 
 ## MXFP6 integration
-
-Release `0.1.0a7` adds an optional [lossless BF16 prefill collective](native/lossless_prefill/README.md) for TP2 SM120 at M4096×H5120. It requires a separate CUDA 13.0 build and a vLLM caller patch; enable input compression with `VLLM_MACH_LOSSLESS_PREFILL=1`, and optionally SUM compression with `VLLM_MACH_LOSSLESS_PREFILL_SUM=1`. Other shapes keep the existing path. The direct SUM variant additionally uses `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1`. The separate [M32 BA overlap](docs/ba-overlap.md) defaults to off in a7. The [v0.1.0a8 long-prefill profile](docs/long-prefill.md) has completed GPU acceptance and explicitly enables BA32 together with 32 observed prefill shapes. See [port validation](docs/lossless-prefill.md).
-
-The [FP16 SSM profile](docs/fp16-ssm.md) in release `0.1.0a9` adds optional FP16 recurrent storage and M16/M24 BA scheduling to the checkpoint profile. FP16 state changes numerical precision; existing profiles retain their defaults.
 
 [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120) owns MXFP6 packing, MXFP8 activation quantization, W6A8 GEMM, and workspace management. vLLM Mach handles vLLM registration, checkpoint metadata, tensor-parallel slices, projection routing, CUDA Graph lifecycle, and the optional FlashInfer AllReduce/RMSNorm/MXFP8 boundary. The hybrid profile requires both packages.
 
 ## Validation
 
-The [validation record](docs/validation.md) lists package tests, real-weight kernel checks, changing-input CUDA Graph checks, and TP2 task regressions for each release. The [public installation guide](docs/public-install.md) records the dependency contract. These checks establish the documented integration boundaries, not general model accuracy or performance claims.
+The [validation record](docs/validation.md) lists package tests, real-weight kernel checks, changing-input CUDA Graph checks, and TP2 task regressions for each release. The [rank64 and owner-prefill integration](docs/champion-port.md) records the clean-image checks and C4/C16/C24/C32 short regression for the current source. The [installation guide](docs/installation.md) records the dependency contract and test commands.
 
 ## Limitations
 

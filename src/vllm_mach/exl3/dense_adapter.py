@@ -1762,6 +1762,8 @@ class Exl3LinearMethod(LinearMethodBase):
             hybrid = mxfp6_hybrid.prepare_layer(
                 layer, _load_exl3_ext(), checkpoint=self.quant_config._hybrid_checkpoint
             )
+        from . import rank64
+        rank64.attach_layer(layer)
         if hybrid is not None and hybrid.route is mxfp6_hybrid.HybridRoute.ALL_ROWS:
             return
         self._prepare_qkv_mgemm(layer)
