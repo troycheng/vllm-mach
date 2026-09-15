@@ -1,10 +1,12 @@
 # Benchmarks
 
-Qwen3.8-27B on two RTX 5090 GPUs, TP2. The comparison includes FP8 on accelerated vLLM 0.28 and official vLLM 0.29, the native MXFP6 Champion, K5/K6 and K4/K5-derived W6 source stacks, and locally calibrated NVFP4.
+The current native MXFP6 comparison is documented in [native fidelity and serving](native-fidelity.md). The tables below archive the earlier EXL3-era measurements, not the current README curves.
+
+Correction: the historical NVFP4 runtime included patched FlashInfer AllReduce on RTX 5090. Its throughput is **not a stock/native NVFP4 baseline**. The new comparison uses unpatched official vLLM 0.29 with `VLLM_ALLREDUCE_USE_FLASHINFER=0` and remeasures FP8 and MXFP6 under the same request settings.
 
 ## Throughput
 
-The [README figure](../README.md#3k1k-reference-comparison) reports generated tokens per second for fixed 3000-input/1000-output requests. Each configuration runs one full c32 conditioning round, followed by scored c32, c4, c16 and c24 points. Every invocation also includes four unscored 32-output-token warmups.
+This historical comparison reports generated tokens per second for fixed 3000-input/1000-output requests. Each configuration runs one full c32 conditioning round, followed by scored c32, c4, c16 and c24 points. Every invocation also includes four unscored 32-output-token warmups.
 
 Output tokens/s:
 

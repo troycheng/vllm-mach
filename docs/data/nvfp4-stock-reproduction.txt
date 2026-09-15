@@ -1,0 +1,49 @@
+2026-09-15 · unpatched official vLLM 0.29.0 · 2 × RTX 5090 (GPUs 6,7)
+VLLM_PLUGINS="" VLLM_ALLREDUCE_USE_FLASHINFER=0
+Observed communication: CUSTOM, PYNCCL (not FLASHINFER).
+
+Server arguments (default compilation; no Mach runtime patches):
+--model /data1/models/Qwen3.8-27B-NVFP4
+--host 127.0.0.1 --port 8267
+--tensor-parallel-size 2 --pipeline-parallel-size 1
+--max-num-batched-tokens 4096 --max-model-len 16384
+--reasoning-parser qwen3 --served-model-name Qwen3.8-27B-MXFP6
+--gpu-memory-utilization 0.9 --max-num-seqs 64
+--enable-logging-iteration-details --attention-backend TRITON_ATTN
+--no-enable-prefix-caching
+
+Client: user's local bench_vllm/benchmark_serving.py
+--backend openai --dataset-name random
+--tokenizer /data1/models/Qwen3.8-27B-official
+--random-prefix-len 0 --random-input-len 3000 --random-output-len 1000
+--model Qwen3.8-27B-MXFP6
+--base-url http://127.0.0.1:8267/v1/completions --endpoint ""
+--ignore-eos --num-prompts 160 --request-rate 100 --max-concurrency 32
+
+Original client result excerpt (decoded-text prompts; retokenized output counts):
+============ Serving Benchmark Result ============
+Successful requests:                     160       (160.00    )
+Benchmark duration (s):                  100.57
+Total input tokens:                      480000
+Total generated tokens:                  159996
+Total generated times:                   159794
+Tokens per chunk:                        1.001
+Request throughput (req/s):              1.59
+Output token throughput (tok/s):         1590.95
+Total Token throughput (tok/s):          6363.92
+---------------Time to First Token----------------
+Mean TTFT (ms):                          1416.35
+Median TTFT (ms):                        930.64
+P99 TTFT (ms):                           6407.46
+-----Time per Output Token (excl. 1st token)------
+Speed 1/μ(TPOT) (tokens/s):              53.60
+Mean TPOT (ms):                          18.66
+Median TPOT (ms):                        19.05
+P99 TPOT (ms):                           19.76
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           18.68
+Median ITL (ms):                         13.85
+P99 ITL (ms):                            264.10
+==================================================
+
+This reproduction is separate from native-serving.json's matched token-ID sweep.

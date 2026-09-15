@@ -37,4 +37,4 @@ Each row used a warmup of C requests with 128 output tokens, followed by the req
 
 These are short installation regressions, not replacements for the longer README reference curves or a paired speedup measurement against the source Champion. Use the [installation check command](installation.md#check-and-measure) to repeat the C32 row.
 
-The tested image ID was `sha256:097f00a9353feb348d58a86d0ef30b418636129915d803bca894d617d549a7d8`. Runtime build identities are recorded in `/opt/mach-build/installed.json` and `/opt/mach-build/mxfp6-source.json`.
+Runtime build identities are recorded in `/opt/mach-build/installed.json` and `/opt/mach-build/mxfp6-source.json`.

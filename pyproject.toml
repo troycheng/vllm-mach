@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vllm-mach"
 version = "0.1.0a11.dev0"
-description = "EXL3 and MXFP6 runtime paths for vLLM"
+description = "Accelerated native MXFP6 inference for vLLM on SM120"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -27,9 +27,17 @@ Releases = "https://github.com/troycheng/vllm-mach/releases"
 [project.entry-points."vllm.general_plugins"]
 mach = "vllm_mach.plugin:register"
 
+[project.scripts]
+vllm-mach-install = "vllm_mach.mxfp6.install:main"
+vllm-mach-serve = "vllm_mach.mxfp6.serve:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["vllm_mach*"]
+exclude = ["vllm_mach.exl3*"]
+
+[tool.setuptools.package-data]
+"vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/native_mxfp6", "tests/test_mxfp6_warmup.py", "tests/test_deployment.py"]

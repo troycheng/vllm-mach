@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
 import json
 import math
 import random
@@ -50,14 +49,8 @@ def make_contract(args: argparse.Namespace) -> tuple[dict[str, Any], list[list[i
             "ignore_eos": True,
             "per_request_seed_base": args.request_seed_base,
         },
-        "prompt_sha256": [
-            hashlib.sha256(json.dumps(prompt, separators=(",", ":")).encode()).hexdigest()
-            for prompt in prompts
-        ],
         "arrival_offsets_s": [0.0] * args.num_prompts,
     }
-    canonical = json.dumps(contract, sort_keys=True, separators=(",", ":")).encode()
-    contract["sha256"] = hashlib.sha256(canonical).hexdigest()
     return contract, prompts
 
 
@@ -158,7 +151,7 @@ async def request_one(
         "usage": usage,
         "token_event_count": len(token_event_times),
         "response_chars": len(text),
-        "response_sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "response_text": text,
     }
 
 

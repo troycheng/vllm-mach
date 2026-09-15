@@ -1,5 +1,5 @@
 # Build tools and optional runtime dependencies; vLLM/Torch come from the base image.
 build==1.3.0
 cmake==4.1.0
-b12x @ https://files.pythonhosted.org/packages/d2/bc/f28f6b3ade2522785f57caaebb2b02e35e7f189e647f47b0da8e7f581e36/b12x-1.3.0-py3-none-any.whl#sha256=c97d88635521a7fdd4f67717c1835a017d0dcea49d49cc7aa5b4299f290d19e3
-mxfp6-sm120 @ https://files.pythonhosted.org/packages/89/93/9f1525d6185ffb4fd8ebc5cb05f43467341cf0a73e7b6790518d423ebafe/mxfp6_sm120-0.2.1-cp312-cp312-manylinux_2_34_x86_64.whl#sha256=c293d56778684706bfa3744fc5e05906b17d3cd6f914600f59c87a2623b6cdca
+b12x==1.3.0
+mxfp6-sm120==0.2.1

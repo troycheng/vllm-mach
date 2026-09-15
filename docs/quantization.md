@@ -85,7 +85,7 @@ The output stores low-nibble/even-K and high-nibble/odd-K E2M1 codes, with Flash
 
 ### Compensation and static scales
 
-`fit_rank64.fit` takes `Δ = W_BF16 − dequantize(W_NVFP4)` and the 256 concatenated BF16 training rows. It computes `Y = XΔᵀ`, obtains the top 64 output-space singular directions through the FP64 Gram eigendecomposition, and stores `A = ΔᵀV` and `B = Vᵀ` in BF16. The existing function returns ranks 32 and 64; this profile uses only rank64. Its `tensor_sha256` argument is a caller-supplied checksum function, not a calibration parameter. TF32 was disabled during fitting.
+`fit_rank64.fit` takes `Δ = W_BF16 − dequantize(W_NVFP4)` and the 256 concatenated BF16 training rows. It computes `Y = XΔᵀ`, obtains the top 64 output-space singular directions through the FP64 Gram eigendecomposition, and stores `A = ΔᵀV` and `B = Vᵀ` in BF16. The existing function returns ranks 32 and 64; this profile uses only rank64. TF32 was disabled during fitting.
 
 The runtime combines dual-A4 NVFP4 execution with `XAB`. Factor shapes are `[5120,64]` and `[64,17408]`. This is a quantization-error correction, not a LoRA adapter or a lossless representation of the original BF16 model.
 

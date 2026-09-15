@@ -39,6 +39,8 @@ def save(fig, stem):
     OUT.mkdir(exist_ok=True)
     fig.savefig(OUT/(stem+'.png'), dpi=180)
     fig.savefig(OUT/(stem+'.svg'), metadata={'Date':None})
+    svg = OUT/(stem+'.svg')
+    svg.write_text('\n'.join(line.rstrip() for line in svg.read_text().splitlines())+'\n')
     plt.close(fig)
 
 def tradeoff_points(accuracy, performance):
@@ -95,11 +97,49 @@ def plot_tradeoff(accuracy, performance):
     frame(ax)
     save(fig,'quality-throughput-tradeoff')
 
+
+def plot_native_tradeoff(accuracy, performance):
+    baseline = performance['runs']['fp8']['points']
+    fig, ax = plt.subplots(figsize=(12.8, 6.0))
+    fig.subplots_adjust(left=.09, right=.97, top=.78, bottom=.16)
+    for name in ORDER:
+        run = accuracy['runs'][name]
+        gains = [100*(p['output_throughput_tokens_per_s']/b['output_throughput_tokens_per_s']-1)
+                 for p,b in zip(performance['runs'][name]['points'], baseline, strict=True)]
+        x, y = run['mae'], float(np.mean(gains))
+        lo, hi = run['ci95']
+        ax.errorbar(x, y, xerr=[[x-lo], [hi-x]], yerr=[[y-min(gains)], [max(gains)-y]],
+                    fmt=MARKERS[name], color=COLORS[name], capsize=4, markersize=8,
+                    label=f"{LABELS[name]} ({y:+.1f}%)")
+    ax.axhline(0, color='#AAB2BC', lw=1)
+    ax.grid(color='#E8EBEE', lw=.8)
+    ax.set_xlabel('Gold-token logprob MAE vs BF16 (lower is better)', labelpad=13)
+    ax.set_ylabel('Output-throughput gain vs stock FP8', labelpad=15)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
+    fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.06,.995),
+               ncol=2, frameon=False, fontsize=11.5)
+    frame(ax)
+    save(fig, 'quality-throughput-tradeoff')
+
 def main():
+    global ORDER, LABELS, COLORS, MARKERS, STYLES
     parser = argparse.ArgumentParser()
     parser.add_argument('--accuracy-only', action='store_true')
+    parser.add_argument('--legacy', action='store_true', help='Render archived EXL3 measurements to an archive directory')
     args = parser.parse_args()
-    accuracy = json.loads((HERE/'accuracy-comparison-m32-20260910.json').read_text())
+    if not args.legacy:
+        ORDER = ['fp8', 'default', 'full', 'nvfp4']
+        LABELS = {'fp8':'FP8 · stock vLLM 0.29',
+                  'default':'MXFP6 · Mach default', 'full':'MXFP6 · Mach full options',
+                  'nvfp4':'NVFP4 · stock vLLM 0.29'}
+        COLORS = dict(zip(ORDER, ['#87919D', '#3B69C8', '#B58A2B', '#D77B44']))
+        MARKERS = dict(zip(ORDER, ['o','s','^','P']))
+        STYLES = dict(zip(ORDER, ['--','-','-',':']))
+    else:
+        global OUT
+        OUT = OUT/'historical'
+        OUT.mkdir(parents=True, exist_ok=True)
+    accuracy = json.loads((HERE/('accuracy-comparison-m32-20260910.json' if args.legacy else 'native-fidelity.json')).read_text())
     assert set(ORDER) == set(accuracy['runs'])
     fig, ax = plt.subplots(figsize=(12.8,5.4))
     fig.subplots_adjust(left=.35,right=.96,top=.96,bottom=.17)
@@ -120,9 +160,9 @@ def main():
     save(fig,'accuracy-comparison')
 
     if args.accuracy_only:
-        print('Rendered six-arm accuracy comparison (PNG + SVG)')
+        print('Rendered accuracy comparison (PNG + SVG)')
         return
-    performance = json.loads((HERE/'quantization-comparison-3k1k-20260910.json').read_text())
+    performance = json.loads((HERE/('quantization-comparison-3k1k-20260910.json' if args.legacy else 'native-serving.json')).read_text())
     assert set(ORDER) == set(performance['runs'])
 
     fig, ax = plt.subplots(figsize=(12.8,6.0))
@@ -147,7 +187,7 @@ def main():
     ax.set_xlabel('Concurrent requests',labelpad=12)
     frame(ax)
     save(fig,'throughput-comparison')
-    plot_tradeoff(accuracy,performance)
+    (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
     print('Rendered three title-free comparison figures (PNG + SVG)')
 
 if __name__ == '__main__':

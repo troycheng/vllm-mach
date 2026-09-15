@@ -1,24 +1,13 @@
 vLLM Mach
 Copyright 2026 Tong Cheng and contributors
 
-The optional tools/quantization source collection includes NVFP4 scale-selection
-code adapted from NVIDIA Model Optimizer and frozen reference sources,
-Copyright 2026 NVIDIA CORPORATION & AFFILIATES, under Apache-2.0. Original
-file notices are preserved. These tools are not part of the Python wheel.
+The native MXFP6 integration, optional LM head search and source profile
+contain code derived from the vLLM project and the downstream optimization
+series ending at 8983c0369e, under Apache-2.0. Original file notices are retained.
 
-The EXL3 provider contains code derived from the vLLM project, which is
-licensed under the Apache License, Version 2.0.
-
-ExLlamaV3 and B12X are optional external runtime dependencies and retain
-their own licenses. The separately built native/exl3_m32 extension contains
-code derived from ExLlamaV3, Copyright 2025 Turboderp, under the MIT License.
-See native/exl3_m32/LICENSE. It is not included in the vllm-mach Python wheel.
-The separately built native/exl3_temporal_m24 extension also uses ExLlamaV3
-device helpers under the MIT License; see native/exl3_temporal_m24/LICENSE.
-It is excluded from the Python wheel.
-The profiles/exllamav3-1.4.8 BF16 patch is derived from ExLlamaV3 under the
-same MIT License; see profiles/exllamav3-1.4.8/LICENSE. It is also excluded
-from the Python wheel.
+B12X is an optional external runtime dependency and retains its own license.
+Earlier EXL3 implementations and their original notices are retained in Git
+history, not in the current source tree or wheel.
 
 MXFP6 SM120 is an optional external runtime dependency provided by the
 mxfp6-sm120 package. Its source code is not distributed in this package and
@@ -29,11 +18,6 @@ example and is adapted as Apache-2.0 framework glue for vLLM Mach.
 
 The version-locked FlashInfer profile contains a small patch derived from the
 FlashInfer project, which is licensed under the Apache License, Version 2.0.
-The optional profiles/flashinfer-0.6.18-gdn source overlay contains fused GDN
-code derived from FlashInfer (Copyright 2026 FlashInfer team) and framework
-integration derived from vLLM, both under the Apache License, Version 2.0.
-It is distributed separately from the Python wheel; original file notices
-are preserved.
 
 The optional native/lossless_prefill extension contains a frozen collective
 header and operations derived from FlashInfer under Apache-2.0, with a

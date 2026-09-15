@@ -1,114 +1,124 @@
-# Installation
+# Native MXFP6 installation
 
-The current source profile builds on vLLM 0.29.0, PyTorch 2.13.0, ExLlamaV3 1.5.0, FlashInfer 0.6.18, B12X 1.3.0 and MXFP6 SM120 0.2.1. The Python wheel alone does not include native kernels, runtime patches or model assets. Use the complete image build below.
+This profile starts from official vLLM 0.29.0. It requires no modified vLLM
+checkout, EXL3 checkpoint, ExLlamaV3, rank64 assets or GDN source overlay.
+The Python wheel excludes the historical EXL3 provider.
 
-## Build the image
+## Dependencies
 
-Requirements: Linux x86-64, Docker with Buildx and NVIDIA Container Toolkit, and the CUDA 13.2 toolkit at `/usr/local/cuda-13.2`. The build targets SM120. CUDA 13.0 for the older lossless collective is already in the official vLLM base image; the EXL3 and owner extensions use 13.2.
+Use Linux x86-64, Python 3.12 and two RTX 5090 GPUs (SM120, 32 GiB each).
+The runtime contract is vLLM 0.29.0, PyTorch 2.13.0, FlashInfer Python/cubin
+0.6.18, CUTLASS DSL 4.6.2, and mxfp6-sm120 0.2.1.
+The NVFP4 head additionally uses B12X 1.3.0.
+Native extension binaries must match the installed PyTorch/CUDA ABI.
+
+A source installation in a dedicated environment:
 
 ```bash
-git clone https://github.com/troycheng/vllm-mach.git
-cd vllm-mach
-git rev-parse HEAD  # record the source revision with your results
-docker buildx build --load \
-  --build-context cuda132=/usr/local/cuda-13.2 \
-  --build-arg MAX_JOBS=8 \
-  -f deploy/Dockerfile -t vllm-mach:local .
+uv venv --python 3.12 .venv
+source .venv/bin/activate
+uv pip install vllm==0.29.0
+# Follow mxfp6_sm120's build prerequisites, including its patched CUTLASS.
+# Build against the torch installed above, not against an isolated older torch.
+uv pip install --no-build-isolation /path/to/mxfp6_sm120
+uv pip install .
+vllm-mach-install
+vllm-mach-install --apply
 ```
 
-The Dockerfile installs the pinned optional packages, applies Mach's EXL3 BF16 patch, builds the native extensions, then installs the matching vLLM/FlashInfer patches. It also rebuilds MXFP6 0.2.1 from commit `7c891d07b65ce2f4e5e8e10a6934c1a298755b8d` with its pinned CUTLASS revision: the published PyPI wheel does not match PyTorch 2.13's dispatcher ABI. It starts from the official vLLM image, not an existing Mach installation. Do not apply the old vLLM 0.28 instructions on top. To use a local mirror of the same official image, pass `--build-arg VLLM_IMAGE=your-mirror/vllm-openai:v0.29.0`.
+Use the [mxfp6_sm120 build instructions](https://github.com/Nekofish-L/mxfp6_sm120)
+and its 0.2.1 release. A prebuilt wheel is acceptable only when its native ABI
+matches. `python -c 'import torch, mxfp6; mxfp6.load_library()'` checks loading.
+The provided [image build helper](../deploy/build-mxfp6.py) pins both MXFP6 and
+CUTLASS revisions and applies the required CUTLASS patches.
 
-Build identities are recorded at `/opt/mach-build/installed.json` in the image. The native wheels are retained in `/opt/mach-build/wheels`. Runtime libraries are compiled during the build; FlashInfer/B12X also specialize some kernels on the first service start.
+The first installer command is a dry run. It validates dependency versions,
+patch applicability for all 13 vLLM files, and the local FlashInfer IPC patch. The second applies
+the staged changes. Repeat installation is a no-op. Stop services before
+patching and restart them afterwards. Incompatible source edits or partial
+installations are rejected; unrelated edits outside patch hunks may remain.
+Use a fresh environment when migrating from EXL3.
+No source patch is applied at Python import time.
 
-## Prepare model assets
+The profile and its manifest are included in the Mach wheel under
+`vllm_mach/mxfp6/profile`. Neither a source checkout of Mach nor the optimization
+checkout of vLLM is needed after installation.
 
-The service uses three directories:
-
-| Directory | Content |
-| --- | --- |
-| `models/exl3` | Qwen3.8-27B K5/K6 EXL3 checkpoint, including tokenizer and config |
-| `models/mxfp6` | Matching original MXFP6 checkpoint; not a W6 cache reconstructed from EXL3 |
-| `models/rank64` | Selected 48-layer NVFP4 weights, aware64 coefficients, static scales and manifest |
-
-Get the EXL3 checkpoint at the tested revision:
-
-```bash
-mkdir -p models
-docker run --rm --entrypoint hf -v "$PWD/models:/models" vllm-mach:local \
-  download malaiwah/Qwen3.8-27B-EXL3-K5K6-hydrated \
-  --revision ab3a91a13813df8096cb4c1d560ed3669035d0cf \
-  --local-dir /models/exl3
-```
-
-Mach does not distribute the matching MXFP6 and rank64 assets. The [quantization guide](quantization.md) provides two generation commands, using the existing converter and calibration method. The assembled generation workflow has not been rerun end to end. Operators with existing assets can use the [export tools](#export-existing-assets), which package tensors without quantizing weights or fitting compensation parameters.
-
-The runtime validates each rank64 tensor, its layer/TP rank, the originating weight and static RMSNorm scale. It does not need the full official BF16 checkpoint at serving time. The selected route uses NVFP4 only for the 48 gate/up projections at physical M32; other rows and projections retain their EXL3/MXFP6 paths.
-
-## Start the complete profile
-
-Choose two idle RTX 5090 GPUs with working P2P access. This example uses devices 0 and 1. Models are read-only; the separate cache volume keeps startup compilations across restarts.
+## Base acceleration
 
 ```bash
-docker run --rm --name mach --gpus '"device=0,1"' \
-  --ipc=host --network=host \
-  -v "$PWD/models:/models:ro" \
-  -v mach-kernel-cache:/root/.cache \
-  vllm-mach:local \
-  --model /models/exl3 \
-  --mxfp6-checkpoint /models/mxfp6 \
-  --rank64-bundle /models/rank64 \
-  --owner-prefill --max-num-seqs 48 \
+CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
+  --model /models/Qwen3.8-27B-MXFP6 \
   --host 127.0.0.1 --port 8000
 ```
 
-This command selects TP2, BF16 activations and attention KV, FP16 recurrent state, 8192 context, 4096 chunked prefill, 8,218,214,400 KV bytes per GPU, and FULL_DECODE_ONLY graph sizes 1/2/4/8/16/24/32/48. Prefix caching is off. Temporal M24, existing BA overlap and the lossless-prefill fallback are enabled. The model is registered as `Qwen3.8-27B`, matching the benchmark client.
+The launcher selects Quark, BF16, TP2, the V2 runner, TRITON_ATTN, no prefix
+caching, a 4096 scheduled-token budget, and full decode graphs up to 32 rows.
+It enables native MXFP6, fused AllReduce/residual/RMSNorm, and compact BF16
+greedy argmax communication. The checkpoint's original recurrent-state dtype
+and BF16 LM head are preserved by default.
 
-Owner-local MLP replicates the other TP shard at 32 even-numbered layers, adding 3,342,336,000 weight bytes per GPU without reducing the KV budget. The selected owner route handles physical M3000–4096; other shapes retain the existing path. The separate M32 P1 candidate is not enabled.
+Use `--dry-run` to print flags without loading a model. Standard vLLM flags,
+such as `--max-model-len`, `--max-num-batched-tokens`, host and port, can be
+appended. The supported optimization geometry remains TP2/PP1 and 32 sequences.
 
-For the earlier checkpoint-hybrid path, omit `--rank64-bundle` and `--owner-prefill`, and use `--max-num-seqs 32`. Native dependencies and vLLM/FlashInfer patches remain the same. Add `--dry-run` to print the complete resolved command and profile flags without loading the model.
+## Optional acceleration
 
-## Check and measure
-
-Wait for service readiness:
-
-```bash
-curl --fail http://127.0.0.1:8000/health
-```
-
-Then run a short 3k/1k installation check:
+Only build the prefill extensions if you enable their corresponding flags:
 
 ```bash
-python3 -m pip install aiohttp
-python3 docs/data/benchmark_fixed_token_contract.py \
-  --base-url http://127.0.0.1:8000 --model Qwen3.8-27B \
-  --input-tokens 3000 --output-tokens 1000 \
-  --max-concurrency 32 --num-prompts 64 \
-  --warmup-requests 32 --warmup-output-tokens 128 \
-  --contract-seed 20260910 --request-seed-base 2026091000 \
-  --json-out mach-c32-short.json
+CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=8 \
+  uv pip install --no-build-isolation --no-deps ./native/lossless_prefill
+CUDA_HOME=/usr/local/cuda-13.2 MAX_JOBS=8 \
+  uv pip install --no-build-isolation --no-deps ./native/owner_prefill
+uv pip install b12x==1.3.0
 ```
 
-This is a short installation check. The README's reference curves use the longer [benchmark protocol](benchmarks.md#reproduce-and-verify); keep those request counts and conditioning when comparing against them.
-
-For local acceptance, `--diagnostics --host 127.0.0.1` enables explicit status and rank64-check endpoints. `--verify-owner-forwards 2` additionally compares two real owner prefill forwards against the original operations. Verification adds synchronization and must finish before timing. These options are not needed for normal serving.
-
-Take rank64 snapshots while all 32 requests are decoding, using two different input batches. Confirm that each snapshot falls after every request's first token and before any request completes. Do not sample after the requests drain: smaller graphs can reuse the M32 graph's intermediate buffers.
-
-## Export existing assets
-
-These commands package the already selected tensors; they do not fit new parameters or upload anything. Output directories must be new.
+These extensions retain their existing compiler contracts: CUDA 13.0 for
+lossless prefill and CUDA 13.2 for owner prefill, using FlashInfer 0.6.18 headers.
+They do not depend on EXL3.
 
 ```bash
-python3 tools/export_model_assets.py \
-  --model /path/to/paired-mxfp6 --output models/mxfp6 \
-  --source-model https://modelscope.cn/models/Qwen/Qwen3.8-27B \
-  --source-revision e823e888ae179eb3be02c1a48899c4f828371376
-python3 tools/import_rank64_bundle.py \
-  --weights /path/to/saved_weights/mask48_manifest.json \
-  --residuals /path/to/aware64/manifest.json \
-  --scales /path/to/rmsnorm_static_nvfp4_scales_v1.json \
-  --output "$PWD/models/rank64"
-python3 tools/export_model_assets.py --model models/mxfp6 --verify
+CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
+  --model /models/Qwen3.8-27B-MXFP6 \
+  --fp16-ssm --lossless-prefill --owner-prefill --nvfp4-lm-head \
+  --kv-cache-memory-bytes 8218214400 \
+  --host 127.0.0.1 --port 8000
 ```
 
-The rank64 importer requires CPU PyTorch. It preserves NVFP4 bytes and aware64 tensor values, removes unselected cols32 coefficients and writes a portable manifest. Keep the original model license with any redistributed model assets.
+FP16 SSM changes recurrent-state precision. NVFP4 uses a 128-candidate coarse
+search followed by BF16-weight refinement and is not guaranteed to preserve
+the full BF16 head's argmax. Greedy decode without processors/logprobs uses this
+path; stochastic sampling, penalties, masks, structured output, prefill/mixed
+batches and logprob requests use the ordinary sampling path.
+
+Owner prefill supports 512–4096 rows, with shape-dependent communication and
+MLP dispatch. M1024/M1052 retain the lossless codec when enabled. The selected
+32 MLP replicas add about 3.11 GiB per GPU; the NVFP4 head adds about 341 MiB.
+Use explicit equal KV bytes for comparisons.
+
+`--verify-prefill` enables the imported diagnostic checks. The normal launcher
+keeps lossless-prefill graph capture and breakable graphs disabled, matching
+the final serving profile. The warmed lossless graph implementation remains
+available through the imported environment switches for separate experiments.
+
+## Docker
+
+The image builds MXFP6 and both optional prefill extensions, without EXL3:
+
+```bash
+docker buildx build --load \
+  --build-context cuda132=/usr/local/cuda-13.2 \
+  --build-arg MAX_JOBS=8 -f deploy/Dockerfile -t vllm-mach:local .
+docker run --rm --gpus '"device=0,1"' --ipc=host --network=host \
+  -v /path/to/model:/models/mxfp6:ro \
+  -v mach-kernel-cache:/root/.cache vllm-mach:local \
+  --model /models/mxfp6 --fp16-ssm --lossless-prefill \
+  --owner-prefill --nvfp4-lm-head --kv-cache-memory-bytes 8218214400
+```
+
+Docker Buildx and a local CUDA 13.2 toolkit are required. The vLLM image supplies
+the CUDA 13.0 toolkit used by the lossless extension.
+
+See [integration and validation](native-mxfp6.md) before interpreting benchmark
+results. Historical EXL3 guides apply only to earlier releases.

@@ -20,17 +20,17 @@ The release wheel contains the same runtime source as this service check; final 
 
 The direct-checkpoint profile passed the existing 95 package tests (3 skipped) and a full CPU comparison with the frozen experimental loader: 256 rank-local projections per TP rank, identical packed weights and logical scales, and matching aggregate content digests. This establishes the port's loading contract for the tested checkpoint, not a public checkpoint download identity.
 
-ExLlamaV3 1.4.8 with the PR #330 BF16 patch was built in the official vLLM 0.28.0 image using Python 3.12, PyTorch 2.13.0+cu130, and the CUDA 13.2 development toolkit. The unmodified image lacked `cusparse.h`. Importing the built extension after PyTorch did not initialize CUDA. Its wheel SHA-256 is `90606feea9a28f5423b712bcec3468ea1dc31c18229744dbfb6019e7819f9586`.
+ExLlamaV3 1.4.8 with the PR #330 BF16 patch was built in the official vLLM 0.28.0 image using Python 3.12, PyTorch 2.13.0+cu130, and the CUDA 13.2 development toolkit. The unmodified image lacked `cusparse.h`. Importing the built extension after PyTorch did not initialize CUDA.
 
 The real-weight native check passed 52 cases on two RTX 5090 GPUs, with three changing inputs per case. EXL3 QKV/QKVZ covered M=1/16/24/32 with CPU Hadamard group IDs; the six MXFP6 projection families covered M=24/32/128. Eager and CUDA Graph outputs were bitwise identical to the respective reference call paths. The separate EXL3 M32 extension was disabled; the checkpoint profile uses MXFP6 at QKV M32.
 
 The first TP2 service check used the original development wheel, the patched 1.4.8 dependency, and `mxfp6-sm120==0.2.1`. All seven FULL_DECODE_ONLY graph sizes `[1, 2, 4, 8, 16, 24, 32]` captured. The existing 40-task suite at concurrency 32 passed 40/40 with no pass/fail regressions; 35/40 outputs matched the stored reference exactly. FlashInfer 0.6.16.post3 could not create its AllReduce workspace on the selected pair and used the fallback, so this run does not validate the fused collective path.
 
-A second configuration installed FlashInfer Python/cubin/JIT-cache 0.6.18. Its patched header had SHA-256 `049e8b8c0b9f866d1a49247399a17de0809f3779521753debcd648b7888b1a4e`, which the original guard rejected. A local experiment allowing that header activated the fused path and captured all seven Graph sizes, but passed 0/40 tasks, with repetitive malformed outputs.
+A second configuration installed FlashInfer Python/cubin/JIT-cache 0.6.18. Its patched header was rejected by the original guard. A local experiment allowing that header activated the fused path and captured all seven Graph sizes, but passed 0/40 tasks, with repetitive malformed outputs.
 
 The failure was isolated to the prebuilt communication module in `flashinfer-jit-cache`: FlashInfer loaded that binary instead of compiling the patched header. In the existing TP2 M=4 boundary check, both ranks' activation values and residuals matched the reference, but active scales and the following MXFP6 gate/up output differed. Removing only that cache package and compiling the same patched source restored bitwise equality for all four outputs on both ranks, with identical reference digests. Mach now verifies the selected build path as well as the header and rejects a prebuilt communication module. The package tests report 97 passed and 3 skipped. These observations do not indicate a PDL arithmetic regression.
 
-The corrected wheel then passed the same TP2 service suite with the source-built FlashInfer 0.6.18 module: 40/40 tasks, zero regressions, and 38/40 exact reference outputs. Both ranks selected fused AllReduce/GemmaRMSNorm/MXFP8, and all seven Graph sizes captured. The wheel SHA-256 is `74ef82fca512002d8255df49e948fa8a220f4b31d7a34b57a1da385dd1e2658b`; subsequent documentation edits do not change its runtime source. The service used the same patched ExLlamaV3 1.4.8 and direct-checkpoint profile as the failed configuration.
+The corrected wheel then passed the same TP2 service suite with the source-built FlashInfer 0.6.18 module: 40/40 tasks, zero regressions, and 38/40 exact reference outputs. Both ranks selected fused AllReduce/GemmaRMSNorm/MXFP8, and all seven Graph sizes captured. subsequent documentation edits do not change its runtime source. The service used the same patched ExLlamaV3 1.4.8 and direct-checkpoint profile as the failed configuration.
 
 These are functional checks, not full-model bitwise equivalence, business accuracy, or throughput measurements. Temporal M24 and private FLA arithmetic-layout patches were not installed. The experimental recipe's fidelity and performance results must not be attributed to this Mach build.
 
@@ -42,10 +42,6 @@ The fixed Mach wheel then served Qwen3.8-27B K5/K6 on two RTX 5090 GPUs with TP2
 
 All seven FULL_DECODE_ONLY graph sizes `[1, 2, 4, 8, 16, 24, 32]` captured successfully, and both workers loaded the M32 module. The existing 40-task suite ran at concurrency 32: 40/40 passed, zero pass/fail regressions, and 39/40 outputs matched the stored reference exactly. This is a functional compatibility check, not full-model bitwise equivalence or a throughput benchmark. Legacy GPU-metadata routing has unit coverage; the older experimental wheel was not rerun on GPUs in this check. The separate public MXFP6/FlashInfer dependency build remains outside this check.
 
-Native wheel SHA-256 values:
-
-- ExLlamaV3: `cc56e5cb4cb43c1b3cda5818ab25b723bca626a9c6cd1c8c8952e4cb181c210f`
-- M32 extension: `150abfaf996d1ec4bcc19a222fceb924a976c17e0396717cc027c3794c5530e5`
 
 ## 0.1.0a3
 

@@ -1,4 +1,6 @@
 """CPU checks for the public launch and model export entry points."""
+
+import argparse
 import importlib.util
 import json
 from pathlib import Path
@@ -9,35 +11,58 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(relative):
-    spec = importlib.util.spec_from_file_location("deployment_test_module", ROOT / relative)
+    spec = importlib.util.spec_from_file_location(
+        "deployment_test_module", ROOT / relative
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 def test_launch_is_complete():
-    serve = load("deploy/serve.py")
-    args = serve.arguments(["--model", "/models/exl3", "--mxfp6-checkpoint", "/models/mxfp6"])
-    cmd = serve.command(args)
-    for flag, value in {"--served-model-name": "Qwen3.8-27B", "--max-num-seqs": "48",
-                        "--mamba-ssm-cache-dtype": "float16", "--kv-cache-memory-bytes": "8218214400",
-                        "--generation-config": "vllm", "--tensor-parallel-size": "2"}.items():
+    from vllm_mach.mxfp6.serve import build_command
+
+    args = argparse.Namespace(
+        model="/models/mxfp6",
+        fp16_ssm=True,
+        owner_prefill=True,
+        lossless_prefill=True,
+        nvfp4_lm_head=True,
+        verify_prefill=False,
+    )
+    cmd, env = build_command(args, ["--kv-cache-memory-bytes", "8218214400"])
+    for flag, value in {
+        "--max-num-seqs": "32",
+        "--mamba-ssm-cache-dtype": "float16",
+        "--kv-cache-memory-bytes": "8218214400",
+        "--generation-config": "vllm",
+        "--tensor-parallel-size": "2",
+    }.items():
         assert cmd[cmd.index(flag) + 1] == value
-    assert json.loads(cmd[cmd.index("--compilation-config") + 1])["cudagraph_capture_sizes"][-1] == 48
+    assert (
+        json.loads(cmd[cmd.index("--compilation-config") + 1])[
+            "cudagraph_capture_sizes"
+        ][-1]
+        == 32
+    )
+    assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == "1"
+    assert env["VLLM_SM120_OWNER_PREFILL"] == "1"
 
 
-def test_legacy_32_launch():
+def test_checkout_launcher_uses_package_entrypoint():
     serve = load("deploy/serve.py")
-    args = serve.arguments(["--model", "/exl3", "--mxfp6-checkpoint", "/w6", "--max-num-seqs", "32"])
-    cmd = serve.command(args)
-    assert json.loads(cmd[cmd.index("--compilation-config") + 1])["cudagraph_capture_sizes"][-1] == 32
+    from vllm_mach.mxfp6.serve import main
+
+    assert serve.main is main
 
 
 def fixture_model(root, shard="model.safetensors"):
     root.mkdir()
     (root / "config.json").write_text("{}")
     (root / "model.safetensors").write_bytes(b"fixture weights")
-    (root / "model.safetensors.index.json").write_text(json.dumps({"weight_map": {"w": shard}}))
+    (root / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {"w": shard}})
+    )
 
 
 def test_export_and_verify(tmp_path):
@@ -71,11 +96,14 @@ def test_export_never_overwrites(tmp_path):
 
 def test_patch_applies_once_and_rejects_unknown_source(tmp_path):
     import subprocess
+
     tool = load("deploy/install.py")
     target = tmp_path / "hello.txt"
     target.write_text("original\n")
     patch = tmp_path / "change.patch"
-    patch.write_text("--- a/hello.txt\n+++ b/hello.txt\n@@ -1 +1 @@\n-original\n+patched\n")
+    patch.write_text(
+        "--- a/hello.txt\n+++ b/hello.txt\n@@ -1 +1 @@\n-original\n+patched\n"
+    )
     tool.patch_file(tmp_path, patch)
     assert target.read_text() == "patched\n"
     tool.patch_file(tmp_path, patch)

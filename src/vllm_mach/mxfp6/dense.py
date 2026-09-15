@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
-"""Native SM120 Dense MXFP6 backend for vLLM 0.28.
+"""Native SM120 Dense MXFP6 backend for vLLM 0.29.0.
 
 This is framework glue only.  The CUDA operators and checkpoint format remain
 owned by the optional ``mxfp6-sm120`` package.  The implementation follows the
-public vLLM 0.28 kernel contract and keeps vLLM's emulation kernel as the next
+public vLLM 0.29 kernel contract and keeps vLLM's emulation kernel as the next
 selector candidate when the optional package is unavailable.
 """
 
@@ -31,6 +31,11 @@ _REQUIRED_API = (
     "is_available",
     "load_library",
     "pack_scales",
+    "PackedMXFP6Tensor",
+    "warmup_w6a8",
+    "begin_workspace_planning",
+    "finalize_workspace_planning",
+    "workspace_stats",
 )
 _CUSTOM_OP_REGISTERED = False
 
@@ -210,11 +215,11 @@ class Mxfp6Sm120LinearKernel(MxFp6LinearKernel):
 
 
 def register_vllm_mxfp8_activation() -> bool:
-    """Teach vLLM 0.28's Quark OCP-MX scheme about ``mxfp8_e4m3``.
+    """Teach stock vLLM's Quark OCP-MX scheme about ``mxfp8_e4m3``.
 
     The public MXFP6 SM120 checkpoint records dynamic E4M3 activations as
     ``fp8_e4m3``. Quark normalizes that metadata to ``mxfp8_e4m3`` before
-    looking up the activation key. vLLM 0.28 has the corresponding
+    looking up the activation key. vLLM has the corresponding
     ``kMxfp8Dynamic`` key but does not map this spelling in ``QuarkOCP_MX``.
     Keep the compatibility patch conditional on the optional wheel so a stock
     installation retains its original fail-closed behavior.
@@ -232,17 +237,14 @@ def register_vllm_mxfp8_activation() -> bool:
             return False
         activation_map.setdefault("mxfp8_e4m3", key)
         return activation_map.get("mxfp8_e4m3") == key
-    except Exception:  # noqa: BLE001 - optional bridge must not block EXL3
-        # This is an optional compatibility bridge.  A missing mxfp6 wheel,
-        # an older vLLM layout, or a CPU-only controller must not prevent the
-        # EXL3 provider from registering.
+    except Exception:  # noqa: BLE001 - optional compatibility bridge
         return False
 
 
 def register_dense_kernel() -> bool:
     """Prepend the optional kernel to vLLM's CUDA MXFP6 selector.
 
-    vLLM 0.28's registration helper appends kernels, which would leave the
+    vLLM's registration helper appends kernels, which would leave the
     always-available emulation backend ahead of this native implementation.
     This pinned compatibility bridge updates the private selector list so the
     native class gets first refusal; all other quantization schemes and the
@@ -262,7 +264,7 @@ def register_dense_kernel() -> bool:
                 cuda_kernels.insert(0, Mxfp6Sm120LinearKernel)
                 registered = True
     except Exception:  # noqa: BLE001 - private vLLM bridge is best effort
-        # Keep plugin discovery usable when this private vLLM 0.28 bridge is
+        # Keep plugin discovery usable when this private vLLM bridge is
         # unavailable; the normal emulation path remains owned by vLLM.
         registered = False
 
