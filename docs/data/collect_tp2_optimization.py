@@ -20,8 +20,18 @@ def main():
     p.add_argument('--profile',type=Path,required=True)
     p.add_argument('--fidelity-prefix',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--control',type=Path)
+    p.add_argument('--control-profile',type=Path)
+    p.add_argument('--control-label',default='Matched fusion-off control')
     a=p.parse_args()
+    if bool(a.control) != bool(a.control_profile):
+        p.error('--control and --control-profile must be supplied together')
     data=dict(schema='mach-tp2-optimization/v1',label=a.label,decode=collect(a.baseline,a.profile),fidelity={})
+    if a.control:
+        control=collect(a.control,a.control_profile)
+        for key in ('config','extension_library_sha256','devices','input_tokens','output_tokens','repeats'):
+            assert control['contract'][key] == data['decode']['contract'][key], key
+        data['matched_control']=dict(label=a.control_label,decode=control)
     for m,filename in [(4,'gdn-m4-fidelity.json'),(32,'native-fidelity.json')]:
         reference=json.loads((HERE/filename).read_text())
         root=Path(str(a.fidelity_prefix)+f'-m{m}')

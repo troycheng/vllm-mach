@@ -40,6 +40,24 @@ splits; the main stream executes QKV and convolution, then joins before
 recurrence. Output norm/projection remain native. Allocator stream ownership
 is recorded for side-stream results; unsupported calls create no pending work.
 
+## Fused output norm and quantization
+
+`VLLM_MACH_FUSED_GDN_QUANT=auto` selects the extension-owned gated RMS norm
+and MXFP8 producer when the extension provides `gemm_from_gdn` and
+`gemm_w6a8_pdl`. It supports M1/2/4/8/16/24/32 with the native TP2 geometry,
+BF16 core/gate and BF16 or FP32 norm weights. Older extensions and unsupported
+norm/projection contracts retain the original route. Set `0` for a matched
+ablation, or `1` to require the new extension API on eligible layers.
+
+The producer directly reads the QKVZ gate slice, fixes the original norm's
+FP32 reduction layout, rounds to BF16, then emits MXFP8 codes and packed
+UE8M0 scales including padding in one launch. Inference does not write the
+intermediate BF16 tensor. The output projection retains the original GEMM
+schedule, workspace and PDL policy. State updates, collectives, and residual
+addition remain unchanged. The extension uses Gluon explicit layouts to
+prevent the FP8 store from changing norm reduction order; simply fusing the
+same source expressions in ordinary Triton was not bitwise equivalent.
+
 ## Validation protocol
 
 `tools/verify_gdn_gpu.py` tests both SD and DS convolution-state layouts at

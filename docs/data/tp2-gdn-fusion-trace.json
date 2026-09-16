@@ -1,0 +1,305 @@
+{
+  "schema": "mach-tp2-gdn-fusion-trace/v1",
+  "counts_order": [
+    "off",
+    "on"
+  ],
+  "records": [
+    {
+      "rows": 1,
+      "rank": 0,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          0,
+          0
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m1-trial0/rank0.json",
+          "sha256": "0619b53dcc00d590b3a6e78f97ddcb1721612e7e159fc342fcaf454d621b6d05"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m1-trial0/rank0.json",
+          "sha256": "dfc3c7e30f9db9aaf3f5e78a99c48761a324d7e6c0575ddba0e1a1fa6e881ec9"
+        }
+      }
+    },
+    {
+      "rows": 1,
+      "rank": 1,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          0,
+          0
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m1-trial0/rank1.json",
+          "sha256": "adc8a171e43c4f0aa9199a6770c0e1ffbd32760e75e9856c56f9a7bb9476401e"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m1-trial0/rank1.json",
+          "sha256": "1b81cbc8f769b2b4a8952df10736b41ba37b3c1f312edf82395aa567e67e3aaa"
+        }
+      }
+    },
+    {
+      "rows": 4,
+      "rank": 0,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          144,
+          0
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m4-trial0/rank0.json",
+          "sha256": "0dc3b92467f9d771c7e587d7339069eb86751aa47922d26d56d68455b09e2c82"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m4-trial0/rank0.json",
+          "sha256": "a5ea893da589e0b431228693764a15f9095664a726354ea73f61d86694a443c2"
+        }
+      }
+    },
+    {
+      "rows": 4,
+      "rank": 1,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          144,
+          0
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m4-trial0/rank1.json",
+          "sha256": "36ca74e95900b0e6dae5a4394a72cd2206fc32e6159a14a89f0a8b982aa91528"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m4-trial0/rank1.json",
+          "sha256": "6a25e496e3150732dd3f3fff4257cef511993c42b5423535063fbfc09373d9c0"
+        }
+      }
+    },
+    {
+      "rows": 16,
+      "rank": 0,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          432,
+          288
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m16-trial0/rank0.json",
+          "sha256": "251b2a7c8d942ead7a8c632c1b7d08ddf9a29f57cf35918209b3f62561865930"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m16-trial0/rank0.json",
+          "sha256": "779ad430c9ddb55b6f443520804c7b809eb707fcd0068cb3172483eb8ad0bbb3"
+        }
+      }
+    },
+    {
+      "rows": 16,
+      "rank": 1,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          432,
+          288
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m16-trial0/rank1.json",
+          "sha256": "3671abaf0acf0fb617aae43dadfb2b186cdd29668035d5b6c4496bb721274382"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m16-trial0/rank1.json",
+          "sha256": "5816a2ceef12f34b76fe5f8f56bc35fce1038118f3f99c96198a76ef3a0c1d8a"
+        }
+      }
+    },
+    {
+      "rows": 32,
+      "rank": 0,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          432,
+          288
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m32-trial0/rank0.json",
+          "sha256": "ceef8b48a48b17e1913653fbf4c0d5f21a83936591d0d019a5bdc85197119530"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m32-trial0/rank0.json",
+          "sha256": "780a32789e57506771a7be0124ec4b1dc23534f551e6cbc690894486c6672637"
+        }
+      }
+    },
+    {
+      "rows": 32,
+      "rank": 1,
+      "decode_steps": 3,
+      "counts": {
+        "gated_norm": [
+          144,
+          0
+        ],
+        "gdn_norm_quantization": [
+          0,
+          144
+        ],
+        "activation_quantization": [
+          576,
+          432
+        ],
+        "strided_tensor_copy": [
+          432,
+          288
+        ],
+        "allreduce_residual_norm": [
+          384,
+          384
+        ]
+      },
+      "sources": {
+        "off": {
+          "path": "../tp2-optimization-20260916/p2a-fused-off-profile/m32-trial0/rank1.json",
+          "sha256": "b2ebbfceaf18d7d12f2eee61215c8c80e427b6d4c1f76ebe6c5305d31419c67a"
+        },
+        "on": {
+          "path": "../tp2-optimization-20260916/p2a-fused-profile/m32-trial0/rank1.json",
+          "sha256": "59e5f2a2e7d103ec68ab0cdbc1dbe99a88e0f186f8bfae29fb068958543f71b3"
+        }
+      }
+    }
+  ]
+}

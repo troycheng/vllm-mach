@@ -24,8 +24,23 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@torch.inference_mode()
 def test_checkpoint_scales_and_changing_graph_input():
+    # Planning freezes a process-wide arena permanently, by design. A small
+    # checkpoint test must not constrain the later real-shape graph suites.
+    import multiprocessing
+
+    process = multiprocessing.get_context("spawn").Process(target=_check_checkpoint_graph)
+    process.start()
+    process.join(timeout=120)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        pytest.fail("checkpoint graph subprocess timed out")
+    assert process.exitcode == 0
+
+
+@torch.inference_mode()
+def _check_checkpoint_graph():
     """The loaded scale layout and captured workspace must survive new inputs."""
     from types import SimpleNamespace
 

@@ -1,0 +1,3538 @@
+{
+  "schema": "mach-tp2-gdn-quant-probe/v1",
+  "status": "initial prototype failed exactness; fixed explicit-layout producer passes",
+  "devices": [
+    4,
+    5
+  ],
+  "scope": "independent per-device TP2 local shape probe; no collectives or model throughput",
+  "runs": [
+    {
+      "schema": "mach-tp2-gdn-quant-probe/v1",
+      "seed": 20260916,
+      "producer_sha256": "846f73b7bcc71794418ca5c61d4568a5b2d9df9b01919c3d8115d23f8157d4ed",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "torch": "2.13.0+cu130",
+      "results": [
+        {
+          "rows": 1,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 9.935051937163963e-20
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0001367529139565532
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.014820980109315762
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015593398708028339
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2407696943744213
+            }
+          ],
+          "reference_ms": [
+            0.0029082397078725613,
+            0.00289086482741616,
+            0.002894082483444505,
+            0.002890373976222014,
+            0.0028868763046410247
+          ],
+          "candidate_ms": [
+            0.0011523469029802137,
+            0.0012644107914365843,
+            0.001261735791321425,
+            0.0012648385650706742,
+            0.0012604656631250116
+          ]
+        },
+        {
+          "rows": 1,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.8817906633510064e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002307695383567676
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.026959662433387876
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02852788460166167
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.22973673311740583
+            }
+          ],
+          "reference_ms": [
+            0.0032167822122573853,
+            0.0032280692904014287,
+            0.0032111942980213096,
+            0.0032159633763873853,
+            0.0032112635645195034
+          ],
+          "candidate_ms": [
+            0.0012518265864232203,
+            0.0012545250938753043,
+            0.0012232696427914242,
+            0.001251303468798769,
+            0.0012514872565896626
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.0872841588591587e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00012069513100167184
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01560071649608652
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015475867845020197
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2267862154937319
+            }
+          ],
+          "reference_ms": [
+            0.004822523604135145,
+            0.0048295965194702145,
+            0.0048293844205603755,
+            0.00482605913411016,
+            0.0048262907544946885
+          ],
+          "candidate_ms": [
+            0.00114772635996991,
+            0.0011451176144261774,
+            0.0011366057834009285,
+            0.0011044196540214977,
+            0.0011480718166693765
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.0471928108166446e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00045062163579057124
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.012804265112698054
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01560762468589516
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.1620516153890179
+            }
+          ],
+          "reference_ms": [
+            0.004696930602005835,
+            0.004721593089369746,
+            0.004715133259693781,
+            0.004647176584938081,
+            0.004646493800015629
+          ],
+          "candidate_ms": [
+            0.0010791901330398433,
+            0.001077953926240555,
+            0.000989576369398254,
+            0.0009676602083383148,
+            0.0009662982246747784
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.429924130409825e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0001905651781525658
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015522385888748325
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.025746714563064543
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24138293922800358
+            }
+          ],
+          "reference_ms": [
+            0.004363013356924057,
+            0.004372094925177299,
+            0.004365673936715647,
+            0.004361817836761475,
+            0.004358320364813587
+          ],
+          "candidate_ms": [
+            0.0010195416388501576,
+            0.0010181483782587513,
+            0.0011342713390428995,
+            0.0011284837133032576,
+            0.0011297279953956605
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.489540805895084e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003790123648138577
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015101842763465712
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0308885266555059
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.23660329366130384
+            }
+          ],
+          "reference_ms": [
+            0.004802516150859094,
+            0.00486793297502963,
+            0.004812426616748174,
+            0.004831919710007672,
+            0.0048123313792081054
+          ],
+          "candidate_ms": [
+            0.0010647095610266145,
+            0.001067274639620984,
+            0.0010839517260419912,
+            0.001083633418966942,
+            0.0010614277731244952
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.204810584860707e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023176467025926017
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029848354590553683
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02990328388533392
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24920923523406202
+            }
+          ],
+          "reference_ms": [
+            0.004949760096413749,
+            0.004948025845712231,
+            0.004870627562204997,
+            0.004945762733281669,
+            0.004945066693710954
+          ],
+          "candidate_ms": [
+            0.0012752600458284088,
+            0.0012720264432844052,
+            0.0012702036976570488,
+            0.0012732268983473157,
+            0.0011588619899344798
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.791171603443881e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003634085252060826
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02762258833607767
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.03086568307587534
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46881808087951526
+            }
+          ],
+          "reference_ms": [
+            0.004492426613966624,
+            0.0045423716834161135,
+            0.00452109126366332,
+            0.004520317192735343,
+            0.004475472280098689
+          ],
+          "candidate_ms": [
+            0.0010842446973163497,
+            0.0010860521600853583,
+            0.00110417108724613,
+            0.0011045551056764564,
+            0.0010904510477755933
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.793625880202794e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023792893419796735
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030525468057753358
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030161382068934373
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.45526016924335977
+            }
+          ],
+          "reference_ms": [
+            0.004480702062196369,
+            0.004550157015836691,
+            0.004531119250449814,
+            0.004517676571141119,
+            0.004521846159910544
+          ],
+          "candidate_ms": [
+            0.0012039702361209127,
+            0.0012116754988589918,
+            0.0012072937956242673,
+            0.0012114347641947038,
+            0.0012111807084945311
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.453972000400891e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00024325115526625807
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02874606828066817
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029374351918631803
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.41334854598275683
+            }
+          ],
+          "reference_ms": [
+            0.00454702517565559,
+            0.0046083823242018705,
+            0.0045954723561063724,
+            0.004590399919357975,
+            0.004547932238902076
+          ],
+          "candidate_ms": [
+            0.001160827077269285,
+            0.0011555850629489947,
+            0.0011537677458217067,
+            0.0011540543150018762,
+            0.0011387566126972795
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.827613394040855e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.000282513556288444
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030307903888914467
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0311612710252831
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4318527819677058
+            }
+          ],
+          "reference_ms": [
+            0.004517941054750662,
+            0.00456987942150066,
+            0.0045867025351324,
+            0.00454755407698611,
+            0.004551579740087865
+          ],
+          "candidate_ms": [
+            0.001202111862916541,
+            0.0011984065541478454,
+            0.001192894906310712,
+            0.0011809451924156898,
+            0.0011941674443864331
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.9879848760776527e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002994566129898013
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.04877384681173069
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029691930639980768
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.41997143390716474
+            }
+          ],
+          "reference_ms": [
+            0.0045834991206293516,
+            0.004600668355885437,
+            0.004528469052808039,
+            0.004536631928772485,
+            0.004531359970569611
+          ],
+          "candidate_ms": [
+            0.0011577487904863755,
+            0.0011780748572400822,
+            0.00117603839635849,
+            0.0011745269338372854,
+            0.0011783847723148338
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.064894441872742e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00047183384574445153
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030567908868402327
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 1,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030389097806333254
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46081934170783256
+            }
+          ],
+          "reference_ms": [
+            0.004650605698021091,
+            0.004669115778714291,
+            0.004697061777114868,
+            0.004668442936925929,
+            0.004658810418585072
+          ],
+          "candidate_ms": [
+            0.0013298574090003967,
+            0.0013425130532691515,
+            0.0013502691055368062,
+            0.001346029292761795,
+            0.0013449585779122845
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.008932112445885e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00034333878370168547
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 1,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.05493796190778255
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 1,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0312159131898877
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4955774536295223
+            }
+          ],
+          "reference_ms": [
+            0.004760114704003314,
+            0.004750983088703479,
+            0.004738333374261856,
+            0.0047386245246519125,
+            0.004711262557817542
+          ],
+          "candidate_ms": [
+            0.0013600976534292731,
+            0.0013520640197553133,
+            0.0013449986950381772,
+            0.0013491642927484853,
+            0.0013425316952874141
+          ]
+        }
+      ]
+    },
+    {
+      "schema": "mach-tp2-gdn-quant-probe/v1",
+      "seed": 20260916,
+      "producer_sha256": "846f73b7bcc71794418ca5c61d4568a5b2d9df9b01919c3d8115d23f8157d4ed",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "torch": "2.13.0+cu130",
+      "results": [
+        {
+          "rows": 1,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 9.935051937163963e-20
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0001367529139565532
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.014820980109315762
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015593398708028339
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2407696943744213
+            }
+          ],
+          "reference_ms": [
+            0.00292672997318817,
+            0.0029078769225340624,
+            0.002876788399436257,
+            0.002873791042548507,
+            0.0028721843510312217
+          ],
+          "candidate_ms": [
+            0.0011576936991365106,
+            0.0012698514364203627,
+            0.001270393617599609,
+            0.0012694213351973106,
+            0.0012674749945290388
+          ]
+        },
+        {
+          "rows": 1,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.8817906633510064e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002307695383567676
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.026959662433387876
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02852788460166167
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.22973673311740583
+            }
+          ],
+          "reference_ms": [
+            0.00320825992078127,
+            0.0032073454649159403,
+            0.003209181577493782,
+            0.003215110431078969,
+            0.0032146562248786576
+          ],
+          "candidate_ms": [
+            0.0012581986812812448,
+            0.001256121622423912,
+            0.0012337489057295393,
+            0.001255375843236942,
+            0.001260677412632973
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.0872841588591587e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00012069513100167184
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01560071649608652
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015475867845020197
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2267862154937319
+            }
+          ],
+          "reference_ms": [
+            0.00486246613431568,
+            0.004836308130454192,
+            0.004838835787265859,
+            0.00484056549853292,
+            0.004826234736718422
+          ],
+          "candidate_ms": [
+            0.0011508046543515199,
+            0.0011494803264385134,
+            0.0011449765376968838,
+            0.0011277560432358543,
+            0.0011509422602513843
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.0471928108166446e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00045062163579057124
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.012804265112698054
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01560762468589516
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.1620516153890179
+            }
+          ],
+          "reference_ms": [
+            0.004701687307918773,
+            0.004738860161958542,
+            0.004739855921916882,
+            0.004680346647898356,
+            0.004740653385718664
+          ],
+          "candidate_ms": [
+            0.0010890713340604853,
+            0.0010895058542913162,
+            0.0009963512178358992,
+            0.0009745142821754728,
+            0.0009740242892913972
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.429924130409825e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0001905651781525658
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015522385888748325
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.025746714563064543
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24138293922800358
+            }
+          ],
+          "reference_ms": [
+            0.004350515730837558,
+            0.004388131176839109,
+            0.004393642300551158,
+            0.0043848918598206315,
+            0.004389527272352409
+          ],
+          "candidate_ms": [
+            0.001025828586093017,
+            0.001023366219789079,
+            0.0011297021797317232,
+            0.001139158256675886,
+            0.0011386914655219676
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.489540805895084e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003790123648138577
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015101842763465712
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0308885266555059
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.23660329366130384
+            }
+          ],
+          "reference_ms": [
+            0.004859786679347356,
+            0.004882591716514146,
+            0.004857009795845532,
+            0.004867002564904973,
+            0.004836388278108106
+          ],
+          "candidate_ms": [
+            0.0010700972808869614,
+            0.0010744114150340591,
+            0.0010898411040670018,
+            0.001092266675197717,
+            0.0010688384573063058
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.204810584860707e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023176467025926017
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029848354590553683
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02990328388533392
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24920923523406202
+            }
+          ],
+          "reference_ms": [
+            0.004976368686299265,
+            0.004968216637857095,
+            0.004967466642459234,
+            0.004969639669765126,
+            0.00493265690842295
+          ],
+          "candidate_ms": [
+            0.0012816334743380048,
+            0.001280604009647446,
+            0.0012748826264349883,
+            0.0012803563049861362,
+            0.001166570618358896
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.791171603443881e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003634085252060826
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02762258833607767
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.03086568307587534
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46881808087951526
+            }
+          ],
+          "reference_ms": [
+            0.004510628544554418,
+            0.0045517694647029296,
+            0.004552572384113219,
+            0.004550106829381084,
+            0.0045089669331260344
+          ],
+          "candidate_ms": [
+            0.0011011353746772333,
+            0.0010911736714005961,
+            0.0011077207911248301,
+            0.0011105325682863917,
+            0.0010892337464903253
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.793625880202794e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023792893419796735
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030525468057753358
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030161382068934373
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.45526016924335977
+            }
+          ],
+          "reference_ms": [
+            0.004523049613349458,
+            0.004559552619012736,
+            0.004547402577058173,
+            0.004559716149683922,
+            0.004537468192018108
+          ],
+          "candidate_ms": [
+            0.0011951626359530568,
+            0.0011986249062909658,
+            0.0012161573792090182,
+            0.0012167389867669444,
+            0.0012176374904811383
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.453972000400891e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00024325115526625807
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02874606828066817
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029374351918631803
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.41334854598275683
+            }
+          ],
+          "reference_ms": [
+            0.004573511145242448,
+            0.004618961709610959,
+            0.00461230349951777,
+            0.004613512604176497,
+            0.004568296815118482
+          ],
+          "candidate_ms": [
+            0.001161047088919654,
+            0.0011582367274225974,
+            0.0011598516850781864,
+            0.0011600918699019027,
+            0.0011419349404581198
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.827613394040855e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.000282513556288444
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030307903888914467
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0311612710252831
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4318527819677058
+            }
+          ],
+          "reference_ms": [
+            0.004552273246330943,
+            0.004561560262333263,
+            0.004602550662212292,
+            0.004570215380089915,
+            0.004605105407999759
+          ],
+          "candidate_ms": [
+            0.001202145212211694,
+            0.0012012048530192511,
+            0.0011956118204422641,
+            0.001179990196714596,
+            0.0011907872936082265
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.9879848760776527e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002994566129898013
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.04877384681173069
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029691930639980768
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.41997143390716474
+            }
+          ],
+          "reference_ms": [
+            0.004554173670916918,
+            0.004602348081993334,
+            0.004641936105840346,
+            0.0045701843079689625,
+            0.00454106891856474
+          ],
+          "candidate_ms": [
+            0.0011852052175637447,
+            0.0011832032218036881,
+            0.001181476695735464,
+            0.0011832586137375028,
+            0.0011848404190757057
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.064894441872742e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00047183384574445153
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030567908868402327
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 1,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030389097806333254
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46081934170783256
+            }
+          ],
+          "reference_ms": [
+            0.004710047390996193,
+            0.0046817705279490985,
+            0.004720554861330217,
+            0.004681572873713607,
+            0.004669075422599667
+          ],
+          "candidate_ms": [
+            0.0013391125853322132,
+            0.0013531983743312389,
+            0.001354354812252906,
+            0.0013544353375951929,
+            0.0013553225689646304
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.008932112445885e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00034333878370168547
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 1,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.05493796190778255
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 1,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0312159131898877
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4955774536295223
+            }
+          ],
+          "reference_ms": [
+            0.004730776079699525,
+            0.004757517649803632,
+            0.004735793985522356,
+            0.00475822883378331,
+            0.004755812157755313
+          ],
+          "candidate_ms": [
+            0.0013604126823376903,
+            0.0013378903269767762,
+            0.001358015593562038,
+            0.001358701046123061,
+            0.0013590775474639346
+          ]
+        }
+      ]
+    }
+  ],
+  "fixed_devices": [
+    6,
+    7
+  ],
+  "fixed_runs": [
+    {
+      "schema": "mach-tp2-gdn-quant-probe/v1",
+      "seed": 20260916,
+      "extension_library_sha256": "c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9",
+      "producer_sha256": "3448961de3868a02f1185a462afc12273accc47f8a9267f081a860ddfcc7ddcd",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "torch": "2.13.0+cu130",
+      "results": [
+        {
+          "rows": 1,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 9.935051937163963e-20
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0001367529139565532
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.014820980109315762
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015593398708028339
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2407696943744213
+            }
+          ],
+          "reference_ms": [
+            0.0024807742045771693,
+            0.002475587488152087,
+            0.0024694089791667995,
+            0.0024604546938011116,
+            0.002442196226845223
+          ],
+          "candidate_ms": [
+            0.0012817403464986568,
+            0.0012836302445382297,
+            0.001277417695554268,
+            0.0012765471389573017,
+            0.0012812903251058312
+          ]
+        },
+        {
+          "rows": 1,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.8817906633510064e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002307695383567676
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.026959662433387876
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02852788460166167
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.22973673311740583
+            }
+          ],
+          "reference_ms": [
+            0.002671776492806042,
+            0.002671087445415018,
+            0.002659853790823277,
+            0.002663071760694489,
+            0.0026646187911880974
+          ],
+          "candidate_ms": [
+            0.0012553077372575558,
+            0.0012501155502266355,
+            0.0012180825389882244,
+            0.001249948928647853,
+            0.0012500095021441618
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.0872841588591587e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00012069513100167184
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01560071649608652
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015475867845020197
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2267862154937319
+            }
+          ],
+          "reference_ms": [
+            0.004305249086597509,
+            0.004300578332050538,
+            0.004281653289993604,
+            0.0042713884512583416,
+            0.004271697844558519
+          ],
+          "candidate_ms": [
+            0.0011494940939083904,
+            0.0011448868968028545,
+            0.0011244547367095948,
+            0.0011462468178348338,
+            0.0011431437811336002
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.0471928108166446e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00045062163579057124
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.012804265112698054
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01560762468589516
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.1620516153890179
+            }
+          ],
+          "reference_ms": [
+            0.004275608797955618,
+            0.004270733620258088,
+            0.0039299131454305445,
+            0.003948772666800735,
+            0.003943077992584746
+          ],
+          "candidate_ms": [
+            0.000988584800421843,
+            0.0009857034988480437,
+            0.0009874488910039266,
+            0.0009709538503007574,
+            0.0009547957856404154
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.429924130409825e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0001905651781525658
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015522385888748325
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.025746714563064543
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24138293922800358
+            }
+          ],
+          "reference_ms": [
+            0.0039325527878789944,
+            0.0039018399765094122,
+            0.0038922666719085294,
+            0.003934249562076014,
+            0.0038951965138381223
+          ],
+          "candidate_ms": [
+            0.0010191448375411417,
+            0.0010178717766722587,
+            0.001156778889155325,
+            0.0011297796977395042,
+            0.0011309121572782123
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.489540805895084e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003790123648138577
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015101842763465712
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0308885266555059
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.23660329366130384
+            }
+          ],
+          "reference_ms": [
+            0.0043062563890065905,
+            0.004301187873402715,
+            0.00430298951955942,
+            0.004302372636958065,
+            0.00430265128119918
+          ],
+          "candidate_ms": [
+            0.0011036404314335813,
+            0.0011037957319553861,
+            0.00109814881963906,
+            0.001100346592206721,
+            0.0011007750653601312
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.204810584860707e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023176467025926017
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029848354590553683
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02990328388533392
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24920923523406202
+            }
+          ],
+          "reference_ms": [
+            0.004424505625968371,
+            0.004384332456630029,
+            0.004425348723230283,
+            0.004429778157363292,
+            0.004380706648031871
+          ],
+          "candidate_ms": [
+            0.0012688357320577738,
+            0.0012645866721868516,
+            0.001273474522999355,
+            0.001267528646701091,
+            0.0011569391450156337
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.791171603443881e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003634085252060826
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02762258833607767
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.03086568307587534
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46881808087951526
+            }
+          ],
+          "reference_ms": [
+            0.004060813445079176,
+            0.004068835296294763,
+            0.004062088356389628,
+            0.0040663081847253394,
+            0.004067252884226397
+          ],
+          "candidate_ms": [
+            0.0011096359471256814,
+            0.0010953635388974985,
+            0.0011091049595227751,
+            0.0011073852683368482,
+            0.0011073259700314579
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.793625880202794e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023792893419796735
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030525468057753358
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030161382068934373
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.45526016924335977
+            }
+          ],
+          "reference_ms": [
+            0.0041733733564615245,
+            0.004175675781812962,
+            0.004171989685476082,
+            0.004169467731940844,
+            0.004170982705222236
+          ],
+          "candidate_ms": [
+            0.0011510445030642226,
+            0.001150576786771005,
+            0.0011497989454597392,
+            0.0011457486312246063,
+            0.0011489427778038767
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.453972000400891e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00024325115526625807
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02874606828066817
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029374351918631803
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.41334854598275683
+            }
+          ],
+          "reference_ms": [
+            0.0041847830123089725,
+            0.0041420641749974636,
+            0.0041913655040592985,
+            0.00418380903609005,
+            0.0041871263142908965
+          ],
+          "candidate_ms": [
+            0.001167041812576143,
+            0.0011681194702784221,
+            0.0011653550110535247,
+            0.0011626333308716616,
+            0.001165522578903424
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.827613394040855e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.000282513556288444
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030307903888914467
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0311612710252831
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4318527819677058
+            }
+          ],
+          "reference_ms": [
+            0.004127946220526174,
+            0.004130410075686467,
+            0.004128239999214808,
+            0.00412953332066536,
+            0.004174928691076196
+          ],
+          "candidate_ms": [
+            0.0011321994269929347,
+            0.0011319143576036857,
+            0.0011332595317233014,
+            0.0011183698141992574,
+            0.0011199654034666114
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.9879848760776527e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002994566129898013
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.04877384681173069
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.029691930639980768
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.41997143390716474
+            }
+          ],
+          "reference_ms": [
+            0.004150293724170859,
+            0.004173697591797123,
+            0.004207696585819639,
+            0.004203077948699563,
+            0.004148375501438063
+          ],
+          "candidate_ms": [
+            0.00117269692634668,
+            0.0011710922180679796,
+            0.0011684319450835552,
+            0.0011684272301758772,
+            0.0011723738973555358
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.064894441872742e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00047183384574445153
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030567908868402327
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030389097806333254
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46081934170783256
+            }
+          ],
+          "reference_ms": [
+            0.004252539044286048,
+            0.004253247132988476,
+            0.004297713783052232,
+            0.00430542225511665,
+            0.004298144655024752
+          ],
+          "candidate_ms": [
+            0.0012855240336343563,
+            0.001285610950156434,
+            0.0012860121231105374,
+            0.0012885241244716206,
+            0.0012886941827163494
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.008932112445885e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00034333878370168547
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.05493796190778255
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0312159131898877
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4955774536295223
+            }
+          ],
+          "reference_ms": [
+            0.004270240703186432,
+            0.004275337334866176,
+            0.004273513639616274,
+            0.004267774382208147,
+            0.004271113382273422
+          ],
+          "candidate_ms": [
+            0.0013494078340477117,
+            0.0013433031417578885,
+            0.001342679363079172,
+            0.0013498052408557912,
+            0.0013477627217300294
+          ]
+        }
+      ]
+    },
+    {
+      "schema": "mach-tp2-gdn-quant-probe/v1",
+      "seed": 20260917,
+      "extension_library_sha256": "c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9",
+      "producer_sha256": "3448961de3868a02f1185a462afc12273accc47f8a9267f081a860ddfcc7ddcd",
+      "gpu": "NVIDIA GeForce RTX 5090",
+      "torch": "2.13.0+cu130",
+      "results": [
+        {
+          "rows": 1,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.837210733510732e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00010644300299007814
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.012351744470322501
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.014440685409773835
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.4061571931156891
+            }
+          ],
+          "reference_ms": [
+            0.002512333096181593,
+            0.0025084717806442315,
+            0.002494372686835279,
+            0.002490798538381403,
+            0.002482921770517377
+          ],
+          "candidate_ms": [
+            0.0012966453945603357,
+            0.0013005419363898616,
+            0.0013005902114441585,
+            0.0012989029169715052,
+            0.0012986362675311033
+          ]
+        },
+        {
+          "rows": 1,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.7043216586794933e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00033238103194171975
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.01300462836815175
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.027271813858593674
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24625267679022045
+            }
+          ],
+          "reference_ms": [
+            0.0027078628540039063,
+            0.0027138889042867555,
+            0.002712377096925463,
+            0.0027134617895779025,
+            0.002717252552308619
+          ],
+          "candidate_ms": [
+            0.0012738556490785161,
+            0.001272634125444207,
+            0.0012441507428164644,
+            0.0012762333421657483,
+            0.001272784158734992
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.0833727311450154e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0002407264753273436
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.021293343438321344
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015288285783340072
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24258560048748734
+            }
+          ],
+          "reference_ms": [
+            0.004355658952933383,
+            0.004342203257513828,
+            0.004368571440378825,
+            0.004355724947527051,
+            0.004342714563394204
+          ],
+          "candidate_ms": [
+            0.0011590279478539702,
+            0.001161757924339988,
+            0.0011385154220002207,
+            0.001161719399008585,
+            0.0011613129232678375
+          ]
+        },
+        {
+          "rows": 2,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 1.9320367355537154e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023809056566329034
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.023668389191474404
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.015333453687206955
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.21054937099879112
+            }
+          ],
+          "reference_ms": [
+            0.004354936546749539,
+            0.004299277499798805,
+            0.0039723755388843774,
+            0.00400813278473413,
+            0.00401083780414283
+          ],
+          "candidate_ms": [
+            0.0009983568580324116,
+            0.0009908520765327998,
+            0.0009909147187658676,
+            0.0009548009840058692,
+            0.0009667020367116344
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.2563980443660914e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00032749619207611547
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030843027727067707
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02673279503426862
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24777403860217362
+            }
+          ],
+          "reference_ms": [
+            0.004002899588370809,
+            0.0040060664235855165,
+            0.004003003776301826,
+            0.003967453291018804,
+            0.004002977614237075
+          ],
+          "candidate_ms": [
+            0.0010328326952879696,
+            0.0010315513169323956,
+            0.0011785263215240678,
+            0.001152297654201202,
+            0.0011444887900165727
+          ]
+        },
+        {
+          "rows": 4,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.1447875087503382e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00047768036021222926
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.027785991717587777
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.025186891641579834
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.22713904173949118
+            }
+          ],
+          "reference_ms": [
+            0.004374488857057359,
+            0.004369985680335124,
+            0.004368970009285634,
+            0.004370380514036349,
+            0.00436847268631964
+          ],
+          "candidate_ms": [
+            0.0011135132816748891,
+            0.0011166437119628592,
+            0.0011201872701256633,
+            0.0011176836554550294,
+            0.001115328816624431
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 2.5656749704971445e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023069861587753093
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.026446367556792083
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02548726074431862
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24970801210734805
+            }
+          ],
+          "reference_ms": [
+            0.004461299517989662,
+            0.004423728055162392,
+            0.004482334461368498,
+            0.00442420482635498,
+            0.00442530120857031
+          ],
+          "candidate_ms": [
+            0.0012860636103828,
+            0.0012854217479266034,
+            0.0012876269422046878,
+            0.0012757000125323732,
+            0.0011738086048560807
+          ]
+        },
+        {
+          "rows": 8,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.9724280115499197e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00033372704252465635
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02422899793581479
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030547072592874258
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24577817139126523
+            }
+          ],
+          "reference_ms": [
+            0.004097812003399952,
+            0.004102520297344466,
+            0.004115481519699097,
+            0.004102839677388431,
+            0.004106741921041022
+          ],
+          "candidate_ms": [
+            0.0011327916086502276,
+            0.0011337383423831529,
+            0.0011324729797613882,
+            0.0011331652663185933,
+            0.0011293714269628666
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.9703225734814413e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00023280902301488215
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.04443026119237814
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02971709126136801
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.46044165072154897
+            }
+          ],
+          "reference_ms": [
+            0.004252875840711028,
+            0.004247652698856915,
+            0.004249312585713912,
+            0.004251275616367971,
+            0.004251980091914658
+          ],
+          "candidate_ms": [
+            0.0011799342199092834,
+            0.0011803804525679367,
+            0.0011844000002990166,
+            0.001168685132156153,
+            0.0011801191546181415
+          ]
+        },
+        {
+          "rows": 16,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.4993622944663085e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00024374279825192802
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030742497724968842
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.02991747361429553
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.38895004017189194
+            }
+          ],
+          "reference_ms": [
+            0.004278941745833149,
+            0.004219565154111237,
+            0.004232084268500448,
+            0.004219239029457898,
+            0.004278548789578815
+          ],
+          "candidate_ms": [
+            0.001189460392804027,
+            0.0011901446262797214,
+            0.0011915650822575253,
+            0.0011786327749709338,
+            0.0011837904339172978
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 3.205626778296801e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003462691103041926
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030788647620150655
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030503399656041097
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.2499845300480814
+            }
+          ],
+          "reference_ms": [
+            0.004232237760321682,
+            0.0042265117393349705,
+            0.004204676905248919,
+            0.004197316735635008,
+            0.004221054012813265
+          ],
+          "candidate_ms": [
+            0.001164637442259865,
+            0.0011472237803558311,
+            0.0011612074693044027,
+            0.0011653618275664235,
+            0.0011597152864723874
+          ]
+        },
+        {
+          "rows": 24,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.2060305896046475e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00024253687205669228
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.05805708508924212
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030621011915316743
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.24678543212823456
+            }
+          ],
+          "reference_ms": [
+            0.004292477426990386,
+            0.004294626731572188,
+            0.004295303215903621,
+            0.00429406114653045,
+            0.004293764936320977
+          ],
+          "candidate_ms": [
+            0.0011924735943476359,
+            0.0011944472866377057,
+            0.0011925044464947555,
+            0.0011952123482613453,
+            0.0011904238175517571
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.bfloat16",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 4.0862138421257154e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.00024342146299730083
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030064994455376137
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.05436830806752013
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.37413660756791955
+            }
+          ],
+          "reference_ms": [
+            0.0043121128656062845,
+            0.00431151264347136,
+            0.004364912491291761,
+            0.004309555958575151,
+            0.004311273831587571
+          ],
+          "candidate_ms": [
+            0.001304160442132614,
+            0.0013035238668042918,
+            0.0013044929414084464,
+            0.0013053748775367162,
+            0.0013013467417290461
+          ]
+        },
+        {
+          "rows": 32,
+          "weight_dtype": "torch.float32",
+          "checks": [
+            {
+              "factor": 0.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0
+            },
+            {
+              "factor": 1e-20,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 5.264412871481311e-19
+            },
+            {
+              "factor": 1e-05,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.0003765982294801906
+            },
+            {
+              "factor": 1.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.030722491698083942
+            },
+            {
+              "factor": 10.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.03516307831843335
+            },
+            {
+              "factor": 100.0,
+              "norm_mismatches": 0,
+              "code_mismatches": 0,
+              "scale_mismatches": 0,
+              "oracle_max_abs": 0.48811504623435553
+            }
+          ],
+          "reference_ms": [
+            0.004314337484538555,
+            0.004372344613075257,
+            0.0043777437112769305,
+            0.00432065538613193,
+            0.004330834629028801
+          ],
+          "candidate_ms": [
+            0.0013530782464405765,
+            0.0013620286468485623,
+            0.0013678363879719875,
+            0.0013632248411524482,
+            0.0013675216239752229
+          ]
+        }
+      ]
+    }
+  ],
+  "exactness_regression": {
+    "cases": 28,
+    "replays_per_case": 120,
+    "production_and_diagnostic": true,
+    "oracle": {
+      "norm_rtol": 0.004,
+      "norm_atol": 1e-07,
+      "quantization": "exact bytes including all padding"
+    }
+  },
+  "accepted_implementation_sha256": "4993f45ca2c568a4caa37ed0598e2e7b55806bed8ccf2615c01866920dde89ba"
+}

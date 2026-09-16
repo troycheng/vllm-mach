@@ -1,4 +1,4 @@
-"""Dedicated P0/P1 figures: decode workload is not the serving comparison."""
+"""Dedicated TP2 optimization figures: decode workload is not the serving comparison."""
 import argparse
 import json
 from pathlib import Path
@@ -25,7 +25,12 @@ def main():
     a=p.parse_args()
     stages=[json.loads(path.read_text()) for path in a.data]
     fig,axes=plt.subplots(1,2,figsize=(11,4.5),layout='constrained')
+    curves=[]
     for stage in stages:
+        if 'matched_control' in stage:
+            curves.append(stage['matched_control'])
+        curves.append(stage)
+    for stage in curves:
         rows=stage['decode']['rows']
         axes[0].errorbar([r['rows'] for r in rows],[r['mean_output_tokens_per_s'] for r in rows],
             yerr=[r['stdev_output_tokens_per_s'] for r in rows],marker='o',capsize=4,label=stage['label'])

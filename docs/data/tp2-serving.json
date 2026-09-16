@@ -488,7 +488,7 @@
             "mean_itl_ms": 11.313044378905335,
             "p99_itl_ms": 31.02472070022486
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-serving/gdn/c4.json",
+          "raw_path": "../tp2-optimization-20260916/p0-serving/gdn/c4.json",
           "raw_sha256": "cfacbc24b962103626b5f0a2c6d72eceefb0d00eeda181038f97c8c01d51e82f"
         },
         {
@@ -509,7 +509,7 @@
             "mean_itl_ms": 16.181602080095395,
             "p99_itl_ms": 79.43059620447457
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-serving/gdn/c16.json",
+          "raw_path": "../tp2-optimization-20260916/p0-serving/gdn/c16.json",
           "raw_sha256": "d923dab9f685e118741691d5e58534a4a2e24178b7d57a6a96023a58b2b3ad58"
         },
         {
@@ -530,7 +530,7 @@
             "mean_itl_ms": 17.843140269285115,
             "p99_itl_ms": 319.2492594709623
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-serving/gdn/c24.json",
+          "raw_path": "../tp2-optimization-20260916/p0-serving/gdn/c24.json",
           "raw_sha256": "058d12e50eb3fef7306b158ca8fd240e415f69fc10688fffab03bfbc14601afb"
         },
         {
@@ -551,7 +551,7 @@
             "mean_itl_ms": 21.18900816743704,
             "p99_itl_ms": 334.8659748013597
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-serving/gdn/c32.json",
+          "raw_path": "../tp2-optimization-20260916/p0-serving/gdn/c32.json",
           "raw_sha256": "ccc19fb95b53efdc09d6e1a2e5c5c6367deb52f36d73f3f05d91dd57f562158b"
         }
       ],
@@ -648,7 +648,7 @@
             "mean_itl_ms": 11.124008478564836,
             "p99_itl_ms": 30.4966727970168
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-serving/gdn/c4.json",
+          "raw_path": "../tp2-optimization-20260916/p1c-serving/gdn/c4.json",
           "raw_sha256": "093e5818dba2b30e77f3b7abc1764600e5c3dd38631fc15d895b971011726983"
         },
         {
@@ -669,7 +669,7 @@
             "mean_itl_ms": 15.995901703260287,
             "p99_itl_ms": 67.36585805187079
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-serving/gdn/c16.json",
+          "raw_path": "../tp2-optimization-20260916/p1c-serving/gdn/c16.json",
           "raw_sha256": "3caf8807fc03e863008dffa3cd50916b702e7c459e4e6d0601da472559fb8d3d"
         },
         {
@@ -690,7 +690,7 @@
             "mean_itl_ms": 17.74279639796761,
             "p99_itl_ms": 319.90426692645997
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-serving/gdn/c24.json",
+          "raw_path": "../tp2-optimization-20260916/p1c-serving/gdn/c24.json",
           "raw_sha256": "23a155c27878682d1932407fab6ecd0408db0fb30b723c6f6f7e9ae89c5cf42d"
         },
         {
@@ -711,7 +711,7 @@
             "mean_itl_ms": 21.085384441441736,
             "p99_itl_ms": 334.39315105904825
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-serving/gdn/c32.json",
+          "raw_path": "../tp2-optimization-20260916/p1c-serving/gdn/c32.json",
           "raw_sha256": "59cd7aa9a6589efcea742eff9ab1c0758b649a7f43ac5460ead1f145d0e6897f"
         }
       ],
@@ -809,7 +809,7 @@
             "mean_itl_ms": 10.986611458951376,
             "p99_itl_ms": 30.10316980071366
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-serving/gdn/c4.json",
+          "raw_path": "../tp2-optimization-20260916/p1b-serving/gdn/c4.json",
           "raw_sha256": "cf9cf4ff2d3f3563611243485b2f88e7520a236353f1c6f3aa5435b4c3025174"
         },
         {
@@ -830,7 +830,7 @@
             "mean_itl_ms": 15.872224525211845,
             "p99_itl_ms": 66.33796677919675
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-serving/gdn/c16.json",
+          "raw_path": "../tp2-optimization-20260916/p1b-serving/gdn/c16.json",
           "raw_sha256": "3868dd45069f60a0284736240cbfe22e368cda018caf4c4f9b3ea1ec10cd9aff"
         },
         {
@@ -851,7 +851,7 @@
             "mean_itl_ms": 17.668707236270606,
             "p99_itl_ms": 320.06047619506717
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-serving/gdn/c24.json",
+          "raw_path": "../tp2-optimization-20260916/p1b-serving/gdn/c24.json",
           "raw_sha256": "e881d117084bcf58619d9ece54f5f8614b04b8ef70a976260643039dacf42b6a"
         },
         {
@@ -872,7 +872,7 @@
             "mean_itl_ms": 20.983725649855486,
             "p99_itl_ms": 335.01222211052664
           },
-          "raw_path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-serving/gdn/c32.json",
+          "raw_path": "../tp2-optimization-20260916/p1b-serving/gdn/c32.json",
           "raw_sha256": "590c0cdbe26ae3f8020dfda5f2a604e846807e5bc7e66dcd8d9dd2af267ac189"
         }
       ],
@@ -923,6 +923,328 @@
           "VLLM_BUILD_PIPELINE": "019d130e-464e-4ff7-b84b-492992c0c06b",
           "VLLM_BUILD_COMMIT": "98dff2a81d747d1dba01a47f939f48c3526d4206",
           "MXFP6_LIBRARY_PATH": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-mxfp6_torch.so",
+          "VLLM_PLUGINS": "mach",
+          "VLLM_MACH_GDN_PERSISTENT": "1",
+          "VLLM_MACH_GDN_BA_OVERLAP": "1",
+          "MXFP6_AUTOTUNE": "off",
+          "VLLM_USE_V2_MODEL_RUNNER": "1",
+          "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
+          "VLLM_QWEN3_5_FUSED_AR_NORM": "1",
+          "VLLM_QWEN3_5_FP16_SSM": "0",
+          "VLLM_FLASHINFER_ALLREDUCE_BACKEND": "trtllm",
+          "VLLM_ALLREDUCE_USE_FLASHINFER": "0",
+          "VLLM_SM120_LOSSLESS_PREFILL": "0",
+          "VLLM_SM120_LOSSLESS_PREFILL_GRAPH": "0",
+          "VLLM_SM120_LOSSLESS_PREFILL_VERIFY": "0",
+          "VLLM_SM120_OWNER_PREFILL": "0",
+          "VLLM_SM120_OWNER_VERIFY": "0",
+          "VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED": "0",
+          "VLLM_SM120_OWNER_MLP_LAYERS": "[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62]",
+          "VLLM_VOCAB_PARALLEL_GREEDY": "1",
+          "VLLM_HYBRID_NVFP4_LM_HEAD": "0",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND": "b12x",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_CANDIDATES": "128",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": "32",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
+          "CUDA_VISIBLE_DEVICES": "6,7"
+        }
+      }
+    },
+    {
+      "label": "P1-B fresh control",
+      "points": [
+        {
+          "concurrency": 4,
+          "aggregate": {
+            "completed": 20,
+            "requested": 20,
+            "duration_s": 54.78732047195081,
+            "prompt_tokens": 60000,
+            "completion_tokens": 20000,
+            "request_throughput_per_s": 0.36504796780925436,
+            "output_throughput_tokens_per_s": 365.0479678092544,
+            "total_throughput_tokens_per_s": 1460.1918712370175,
+            "mean_ttft_ms": 536.8966946669389,
+            "p99_ttft_ms": 944.2939093080348,
+            "mean_tpot_ms": 10.42380853523118,
+            "p99_tpot_ms": 10.708261756121543,
+            "mean_itl_ms": 10.990023519239141,
+            "p99_itl_ms": 30.110582808265463
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-off/gdn/c4.json",
+          "raw_sha256": "3d2012f0edbbcfc47c35038e1be43db24d655760c43f21fa84ce9ead8a1b4ec4"
+        },
+        {
+          "concurrency": 16,
+          "aggregate": {
+            "completed": 80,
+            "requested": 80,
+            "duration_s": 80.91068468103185,
+            "prompt_tokens": 240000,
+            "completion_tokens": 80000,
+            "request_throughput_per_s": 0.9887445683518564,
+            "output_throughput_tokens_per_s": 988.7445683518564,
+            "total_throughput_tokens_per_s": 3954.9782734074256,
+            "mean_ttft_ms": 1173.5949858513777,
+            "p99_ttft_ms": 3875.180017801467,
+            "mean_tpot_ms": 14.998801622629605,
+            "p99_tpot_ms": 15.912560866568825,
+            "mean_itl_ms": 15.872840559840238,
+            "p99_itl_ms": 67.1109461457805
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-off/gdn/c16.json",
+          "raw_sha256": "2e249c55608cae911bb96cdfe09c330fca4294daf99194cb0bbc814e08f66c41"
+        },
+        {
+          "concurrency": 24,
+          "aggregate": {
+            "completed": 120,
+            "requested": 120,
+            "duration_s": 93.09333579707891,
+            "prompt_tokens": 360000,
+            "completion_tokens": 120000,
+            "request_throughput_per_s": 1.289028897423669,
+            "output_throughput_tokens_per_s": 1289.028897423669,
+            "total_throughput_tokens_per_s": 5156.115589694676,
+            "mean_ttft_ms": 1485.7886809991517,
+            "p99_ttft_ms": 5712.660575291375,
+            "mean_tpot_ms": 17.114747092706185,
+            "p99_tpot_ms": 18.324375559934307,
+            "mean_itl_ms": 17.60284108533413,
+            "p99_itl_ms": 320.8879244513809
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-off/gdn/c24.json",
+          "raw_sha256": "319f4fb3f2efd06e854b5242a756057d5260afd8b63b5d8e964cbdb4c4f3775e"
+        },
+        {
+          "concurrency": 32,
+          "aggregate": {
+            "completed": 160,
+            "requested": 160,
+            "duration_s": 110.06424475205131,
+            "prompt_tokens": 480000,
+            "completion_tokens": 160000,
+            "request_throughput_per_s": 1.453696433028202,
+            "output_throughput_tokens_per_s": 1453.6964330282021,
+            "total_throughput_tokens_per_s": 5814.785732112809,
+            "mean_ttft_ms": 1681.5801257180283,
+            "p99_ttft_ms": 7584.485053841489,
+            "mean_tpot_ms": 20.303992559561372,
+            "p99_tpot_ms": 21.69934466789785,
+            "mean_itl_ms": 20.983517885729253,
+            "p99_itl_ms": 334.76405671215616
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-off/gdn/c32.json",
+          "raw_sha256": "303b06ccaecec8a814def7273612100cb671e8217df5a9a0d1902161942c62b2"
+        }
+      ],
+      "launch": {
+        "command": [
+          "/tmp/mach-native-validation-WDlsU1/venv/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/data1/models/Qwen3.8-27B-MXFP6",
+          "--quantization",
+          "quark",
+          "--dtype",
+          "bfloat16",
+          "--tensor-parallel-size",
+          "2",
+          "--max-num-seqs",
+          "32",
+          "--max-model-len",
+          "16384",
+          "--max-num-batched-tokens",
+          "4096",
+          "--no-enable-prefix-caching",
+          "--attention-backend",
+          "TRITON_ATTN",
+          "--generation-config",
+          "vllm",
+          "--limit-mm-per-prompt",
+          "{\"image\":0,\"video\":0}",
+          "--compilation-config",
+          "{\"mode\": \"NONE\", \"cudagraph_mode\": \"FULL_DECODE_ONLY\", \"cudagraph_capture_sizes\": [1, 2, 4, 8, 16, 24, 32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8267",
+          "--served-model-name",
+          "comparison",
+          "--kv-cache-memory-bytes",
+          "8218214400"
+        ],
+        "environment": {
+          "VLLM_MACH_FUSED_GDN_QUANT": "0",
+          "PYTHONPATH": "/tmp/mach-p2a-fused-extension:src",
+          "VLLM_BUILD_URL": "https://buildkite.com/vllm/release-v2/builds/6292",
+          "VLLM_IMAGE_TAG": "vllm/vllm-openai:v0.29.0",
+          "VLLM_USAGE_SOURCE": "production-docker-image",
+          "VLLM_ENABLE_CUDA_COMPATIBILITY": "0",
+          "VLLM_BUILD_PIPELINE": "019d130e-464e-4ff7-b84b-492992c0c06b",
+          "VLLM_BUILD_COMMIT": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+          "VLLM_PLUGINS": "mach",
+          "VLLM_MACH_GDN_PERSISTENT": "1",
+          "VLLM_MACH_GDN_BA_OVERLAP": "1",
+          "MXFP6_AUTOTUNE": "off",
+          "VLLM_USE_V2_MODEL_RUNNER": "1",
+          "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
+          "VLLM_QWEN3_5_FUSED_AR_NORM": "1",
+          "VLLM_QWEN3_5_FP16_SSM": "0",
+          "VLLM_FLASHINFER_ALLREDUCE_BACKEND": "trtllm",
+          "VLLM_ALLREDUCE_USE_FLASHINFER": "0",
+          "VLLM_SM120_LOSSLESS_PREFILL": "0",
+          "VLLM_SM120_LOSSLESS_PREFILL_GRAPH": "0",
+          "VLLM_SM120_LOSSLESS_PREFILL_VERIFY": "0",
+          "VLLM_SM120_OWNER_PREFILL": "0",
+          "VLLM_SM120_OWNER_VERIFY": "0",
+          "VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED": "0",
+          "VLLM_SM120_OWNER_MLP_LAYERS": "[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62]",
+          "VLLM_VOCAB_PARALLEL_GREEDY": "1",
+          "VLLM_HYBRID_NVFP4_LM_HEAD": "0",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND": "b12x",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_CANDIDATES": "128",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": "32",
+          "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
+          "CUDA_VISIBLE_DEVICES": "6,7"
+        }
+      }
+    },
+    {
+      "label": "P2-A",
+      "points": [
+        {
+          "concurrency": 4,
+          "aggregate": {
+            "completed": 20,
+            "requested": 20,
+            "duration_s": 53.82971593202092,
+            "prompt_tokens": 60000,
+            "completion_tokens": 20000,
+            "request_throughput_per_s": 0.37154199411449773,
+            "output_throughput_tokens_per_s": 371.5419941144977,
+            "total_throughput_tokens_per_s": 1486.1679764579908,
+            "mean_ttft_ms": 535.2810834068805,
+            "p99_ttft_ms": 939.2225165886338,
+            "mean_tpot_ms": 10.233800942284494,
+            "p99_tpot_ms": 10.51928304571046,
+            "mean_itl_ms": 10.789261539986873,
+            "p99_itl_ms": 29.534457682166252
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-on/gdn/c4.json",
+          "raw_sha256": "8d0fee336b5603e8cbc32db399429587c4be95c68e3f40735e615e2cd86961e3"
+        },
+        {
+          "concurrency": 16,
+          "aggregate": {
+            "completed": 80,
+            "requested": 80,
+            "duration_s": 79.97459118696861,
+            "prompt_tokens": 240000,
+            "completion_tokens": 80000,
+            "request_throughput_per_s": 1.0003177110711574,
+            "output_throughput_tokens_per_s": 1000.3177110711574,
+            "total_throughput_tokens_per_s": 4001.2708442846297,
+            "mean_ttft_ms": 1172.5881755919545,
+            "p99_ttft_ms": 3870.7049688149705,
+            "mean_tpot_ms": 14.812713994139884,
+            "p99_tpot_ms": 15.723739792898137,
+            "mean_itl_ms": 15.675536704050058,
+            "p99_itl_ms": 65.93421339051852
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-on/gdn/c16.json",
+          "raw_sha256": "21c2f44c0496d926041d2889aa0c7ed1f0846198f2e40987f7a794b51ccf3577"
+        },
+        {
+          "concurrency": 24,
+          "aggregate": {
+            "completed": 120,
+            "requested": 120,
+            "duration_s": 92.25011798203923,
+            "prompt_tokens": 360000,
+            "completion_tokens": 120000,
+            "request_throughput_per_s": 1.300811344472899,
+            "output_throughput_tokens_per_s": 1300.811344472899,
+            "total_throughput_tokens_per_s": 5203.245377891596,
+            "mean_ttft_ms": 1444.8919181488843,
+            "p99_ttft_ms": 5705.5757970921695,
+            "mean_tpot_ms": 16.986387555635762,
+            "p99_tpot_ms": 18.157601569009177,
+            "mean_itl_ms": 17.509408113913356,
+            "p99_itl_ms": 318.04483665619045
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-on/gdn/c24.json",
+          "raw_sha256": "f0e1fe479cf49f1399c405c19b240caa561ec35208ca078f9e6752fada7c5196"
+        },
+        {
+          "concurrency": 32,
+          "aggregate": {
+            "completed": 160,
+            "requested": 160,
+            "duration_s": 109.30001300305594,
+            "prompt_tokens": 480000,
+            "completion_tokens": 160000,
+            "request_throughput_per_s": 1.4638607590607198,
+            "output_throughput_tokens_per_s": 1463.8607590607198,
+            "total_throughput_tokens_per_s": 5855.443036242879,
+            "mean_ttft_ms": 1678.788626260939,
+            "p99_ttft_ms": 7573.809173941844,
+            "mean_tpot_ms": 20.15413867139378,
+            "p99_tpot_ms": 21.549030582764765,
+            "mean_itl_ms": 20.828575262679625,
+            "p99_itl_ms": 334.19493827270344
+          },
+          "raw_path": "../tp2-optimization-20260916/p2a-serving-on/gdn/c32.json",
+          "raw_sha256": "2633eabb4a41e64f0d08dff42d91fc8484bf85452b5cd6f18d57459759ee67d5"
+        }
+      ],
+      "launch": {
+        "command": [
+          "/tmp/mach-native-validation-WDlsU1/venv/bin/python",
+          "-m",
+          "vllm.entrypoints.cli.main",
+          "serve",
+          "/data1/models/Qwen3.8-27B-MXFP6",
+          "--quantization",
+          "quark",
+          "--dtype",
+          "bfloat16",
+          "--tensor-parallel-size",
+          "2",
+          "--max-num-seqs",
+          "32",
+          "--max-model-len",
+          "16384",
+          "--max-num-batched-tokens",
+          "4096",
+          "--no-enable-prefix-caching",
+          "--attention-backend",
+          "TRITON_ATTN",
+          "--generation-config",
+          "vllm",
+          "--limit-mm-per-prompt",
+          "{\"image\":0,\"video\":0}",
+          "--compilation-config",
+          "{\"mode\": \"NONE\", \"cudagraph_mode\": \"FULL_DECODE_ONLY\", \"cudagraph_capture_sizes\": [1, 2, 4, 8, 16, 24, 32]}",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8267",
+          "--served-model-name",
+          "comparison",
+          "--kv-cache-memory-bytes",
+          "8218214400"
+        ],
+        "environment": {
+          "VLLM_MACH_FUSED_GDN_QUANT": "auto",
+          "PYTHONPATH": "/tmp/mach-p2a-fused-extension:src",
+          "VLLM_BUILD_URL": "https://buildkite.com/vllm/release-v2/builds/6292",
+          "VLLM_IMAGE_TAG": "vllm/vllm-openai:v0.29.0",
+          "VLLM_USAGE_SOURCE": "production-docker-image",
+          "VLLM_ENABLE_CUDA_COMPATIBILITY": "0",
+          "VLLM_BUILD_PIPELINE": "019d130e-464e-4ff7-b84b-492992c0c06b",
+          "VLLM_BUILD_COMMIT": "98dff2a81d747d1dba01a47f939f48c3526d4206",
           "VLLM_PLUGINS": "mach",
           "VLLM_MACH_GDN_PERSISTENT": "1",
           "VLLM_MACH_GDN_BA_OVERLAP": "1",

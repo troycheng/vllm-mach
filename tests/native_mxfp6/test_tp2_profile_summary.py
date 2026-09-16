@@ -20,3 +20,11 @@ def test_stream_activity_union():
 def test_memset_not_misidentified_as_gdn_barrier():
     assert summary.category('memset32') == 'buffer_initialization'
     assert summary.category('gdn_fused_decode_kernel') == 'persistent_gdn'
+
+
+def test_native_gemm_excludes_bf16_head_and_ba():
+    assert summary.category('cutlass::device_kernel<Sm120BlockScaled>') == 'mxfp6_gemm'
+    assert summary.category('cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm>') == 'bf16_gemm'
+    assert summary.category('cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm>') == 'bf16_gemm'
+    assert summary.category('cublasLt::splitKreduce_kernel<32, 16>') == 'bf16_splitk_reduction'
+    assert summary.category('fused_recurrent_gated_delta_rule_packed_decode_kernel') == 'gdn_recurrence'

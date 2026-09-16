@@ -2,8 +2,8 @@
 
 Accepted: scale initialization inside quantization (P1-C) and the exact
 rounded SwiGLU/MXFP8 producer (P1-B). Direct FlashInfer AR/quant reuse and
-two M32 GEMM schedule candidates were rejected. Additional GDN, attention
-and head rewrites remain deferred. Detailed stage evidence follows.
+two M32 GEMM schedule candidates were rejected. P2-A now repairs and validates
+the exact fused GDN output producer; attention and head rewrites remain deferred. Detailed stage evidence follows.
 
 ## P0: real-checkpoint baseline
 
@@ -231,8 +231,8 @@ After P1-B, rank 0's physical-M32 trace attributes 23.086 ms of GPU activity
 to native GEMMs across three measured decode steps, versus 0.236 ms for the
 remaining gated norm. These are per-rank category interval unions, not
 additive critical-path predictions. We selected GEMM dispatch for this
-bounded P2 experiment. Additional GDN output, attention producer, and head
-rewrites are deferred; existing persistent GDN, overlap, and compact argmax
+bounded P2 experiment. At that stage, additional GDN output, attention producer, and head
+rewrites were deferred; existing persistent GDN, overlap, and compact argmax
 remain in place.
 
 Two M32 candidates were installed before workspace planning and graph
@@ -286,3 +286,118 @@ tokens without corruption. These supplemental runs validate integration;
 no matched pre-change performance gain is inferred for these sizes.
 [Contracts and per-trial checks](data/tp2-final-regression.json).
 The related test suites total 265 passing tests.
+
+## P2-A: repair the fused output producer's reduction layout
+
+The first Triton norm/MXFP8 prototype was faster, but differed at a few BF16
+intermediate values for larger M. Generated TTGIR identified the cause:
+fusing the FP8 store changed automatic layout from 8 values/lane and 16
+lanes/head to 16 values/lane and 8 lanes/head. This changed the FP32 sum tree.
+Changing only the warp count did not fix it. The original failed probe remains
+in the data as a regression counterexample, not the final implementation.
+
+The repaired producer uses Gluon explicit layouts to preserve the original
+vLLM reduction tree (4 values/lane at R=1, 8 at R=2/4), including its original
+rows-per-block policy. It retains the BF16 rounding boundary, then writes
+FP8 codes and packed UE8M0 scales including every padding byte. It directly
+reads the strided QKVZ gate. Normal inference does not write the intermediate
+BF16 tensor; the diagnostic output is optional. The consumer uses the same
+GEMM dispatch, workspace and PDL policy as `gemm_from_float`.
+
+All 28 producer cases pass 120 changing-input graph replays each, on a
+nondefault stream, for seven M sizes, BF16/FP32 norm weights and both gate
+layouts. Tests include zero, signed zero, tiny values and saturation-scale
+inputs, poisoned scales, exact BF16 intermediates and independent packed
+quantization oracles. Production and diagnostic paths both produce identical
+codes/scales. An independent FP64 norm oracle uses rtol=0.004, atol=1e-7.
+Seven real-shape N5120/K3072 GEMM cases pass another 100 changing-input graph
+replays each, with exact projection outputs. Implementation: extension
+`976ae99`; the deployment patch reproduces the tested sources exactly.
+
+![Repaired producer throughput and exactness](images/tp2-gdn-quant-probe.png)
+
+[Initial counterexamples and repaired producer measurements](data/tp2-gdn-quant-probe.json).
+These are local TP2-shape operator probes, not model or serving throughput.
+On the fixed-layout M32 probe, the producer is approximately 1.3 µs versus
+4.2 µs for the separate path; whole-model measurements follow independently.
+The strided-norm-only experiment is a diagnostic control and is not shipped
+as the solution to the fused producer's numerical discrepancy.
+
+Fresh M4 and M32 teacher-forced runs each score all 256 frozen queries and
+10,479 target tokens. Every gold logprob is identical to the accepted P1-B
+result, including exact repeated-cohort replay. Both ranks report 48 fused GDN
+output layers. The combined GPU/loading/MLP/deployment suites pass 51 cases;
+71 CPU selection/install/routing/workspace/profile checks also pass. The
+small checkpoint test now runs in its own process because freezing a small
+arena must not constrain later real-shape tests; the runtime's prohibition
+on resizing captured workspace remains intact.
+
+Both-rank traces verify the intended integration. Per decode, 48 independent
+gated norm launches and 48 independent quantizers become 48 fused producers.
+At M4/16/32, 48 gate-copy launches also disappear; the 96 BA copies at M16/32
+remain. The 128 fused AR/residual/norm launches per decode are unchanged.
+[Counts and per-rank trace hashes](data/tp2-gdn-fusion-trace.json) cover three
+correctly sized samples for M1/4/16/32 on each rank. No cross-rank time sums or
+microbenchmark speedups are used as model throughput estimates.
+
+### P2-A full-model matched decode
+
+Both arms use the same rebuilt extension, GPU pair 4/5, checkpoint, graph sizes,
+KV budget and BF16/FP32-state/default-head configuration. Only
+`VLLM_MACH_FUSED_GDN_QUANT` differs. Each point has five unprofiled trials after
+workload warmup; separate profiles run on GPUs 6/7. The fresh control is
+shown explicitly on the throughput plot, rather than using an older stage as
+the denominator.
+
+| Requests | Fusion off, tokens/s ± SD | Fusion on, tokens/s ± SD | Mean change |
+|---|---:|---:|---:|
+| 1 | 79.064 ± 0.650 | 79.039 ± 1.028 | -0.03% |
+| 4 | 341.278 ± 0.181 | 346.888 ± 0.196 | +1.64% |
+| 16 | 841.103 ± 11.038 | 854.988 ± 1.075 | +1.65% |
+| 32 | 1141.130 ± 13.922 | 1154.591 ± 1.225 | +1.18% |
+
+M4 has a clear improvement beyond observed variation. M1 is unchanged within
+noise. M16's mean improves but its control varies more; M32's mean increase is
+smaller than the control's sample SD and is not claimed as a confirmed gain.
+No larger serving gain is inferred from the producer microbenchmark.
+[Full matched contracts, trials, both-rank traces and fresh fidelity](data/tp2-p2a.json).
+The extension binary SHA256 is
+`09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d`.
+Two preliminary starts with a different installed extension were stopped
+before completed measurements and excluded; an isolated archived wheel and
+then the newly rebuilt wheel were used instead. The strided-only control
+was diagnostic and is also excluded from these curves.
+
+P2-A also passes five complete graph trials each at M2/M8/M24 in default auto
+mode, with both ranks reporting 48 fused GDN outputs and 64 fused MLPs.
+All requests generate 1025 tokens without corruption; physical decode sizes
+are checked independently on both ranks. [Regression contracts](data/tp2-p2a-regression.json).
+
+The [detailed NInfer comparison](tp2-ninfer-fusion-analysis.md) revisits P1-B
+and P1-C as well as P2-A. P1-B has not reached NInfer's GEMM-epilogue fusion
+boundary. P2-A's output producer reaches a similar microsecond scale, but
+TP1/TP2 geometry differences prevent a matched-performance claim. The new
+trace classifier separates native MXFP6 from BF16 head/BA GEMMs and exposes
+large-M GDN recurrence; old archived category totals should be read with
+this correction. [Reclassified traces and hashes](data/tp2-fusion-analysis.json).
+
+
+### P2-A matched HTTP serving
+
+Fresh fusion-off and default-auto runs use the same rebuilt extension, GPUs
+6/7, port, command and environment except `VLLM_MACH_FUSED_GDN_QUANT`.
+The frozen 3000-input/1000-output protocol is unchanged. All 760 scored
+requests across both arms complete successfully with exact token counts.
+Each point is one run, so these differences do not establish a confidence
+interval or replace the five-trial decode results.
+
+| Concurrency | Fresh fusion off, tokens/s | P2-A auto, tokens/s | Change |
+|---|---:|---:|---:|
+| 4 | 365.048 | 371.542 | +1.78% |
+| 16 | 988.745 | 1000.318 | +1.17% |
+| 24 | 1289.029 | 1300.811 | +0.91% |
+| 32 | 1453.696 | 1463.861 | +0.70% |
+
+![Updated matched serving](images/tp2-serving-throughput.png)
+
+[Serving measurements, launch environments and raw-result hashes](data/tp2-serving.json).

@@ -18,15 +18,27 @@ def interval_union(intervals):
 
 
 def category(name):
+    if name == "_producer":
+        return "gdn_norm_quantization"
+    if "elementwise_kernel<128, 4" in name and "direct_copy_kernel_cuda" in name:
+        return "strided_tensor_copy"
     if "quantize_mx_kernel" in name and ", true>(" in name:
         return "swiglu_quantization"
+    if "cutlass" in name:
+        if "Sm120" in name or "sm120" in name:
+            return "mxfp6_gemm"
+        if "bf16" in name:
+            return "bf16_gemm"
+        return "other_cutlass"
     for fragment, group in [('quantize_mx_kernel', 'activation_quantization'),
                             ('memset', 'buffer_initialization'),
                             ('allreduce_fusion', 'allreduce_residual_norm'),
                             ('gdn_fused_decode', 'persistent_gdn'),
                             ('act_and_mul', 'swiglu'),
                             ('layer_norm_fwd', 'gated_norm'),
-                            ('cutlass', 'mxfp6_gemm'),
+                            ('fused_recurrent_gated_delta_rule', 'gdn_recurrence'),
+                            ('causal_conv1d_update', 'gdn_convolution'),
+                            ('splitKreduce_kernel', 'bf16_splitk_reduction'),
                             ('gemvx', 'bf16_gemv'),
                             ('unified_attention', 'attention')]:
         if fragment in name:
@@ -47,7 +59,8 @@ def summarize_trace(path):
 
 
 def collect(baseline, profile):
-    output = dict(contract=json.loads((baseline/'contract.json').read_text()), rows=[])
+    output = dict(contract=json.loads((baseline/'contract.json').read_text()),
+                  profile_contract=json.loads((profile/'contract.json').read_text()), rows=[])
     for row in json.loads((baseline/'summary.json').read_text()):
         m = row['rows']
         metrics = [v for t in row['trials'] for v in t['metrics']]
@@ -70,6 +83,7 @@ def collect(baseline, profile):
             ranks.append(dict(rank=rank['rank'], trace=summarize_trace(trial/f"rank{rank['rank']}.json"),
                 measured_decode_steps=3, physical_rows=m, logical_rows=m,
                 fused_ar_norm_modules=sum(v['fused_ar_norm'] is True for v in rank['inventory']),
+                fused_gdn_quant_layers=rank.get('fused_gdn_quant_layers',0),
                 shapes=dict(shapes), gdn=rank['gdn'], fused_swiglu_layers=rank.get('fused_swiglu_layers',0), peak_allocated_bytes=rank['peak_allocated_bytes'],
                 peak_reserved_bytes=rank['peak_reserved_bytes'],
                 mean_inclusive_module_ms={name:statistics.mean(s['inclusive_ms'][name] for s in samples)

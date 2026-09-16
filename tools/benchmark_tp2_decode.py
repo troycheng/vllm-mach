@@ -46,6 +46,7 @@ def main():
     (a.output/'contract.json').write_text(json.dumps(dict(config=config, profile=a.profile,
         repeats=a.repeats, gemm_overrides=overrides, input_tokens=2048, output_tokens={'1':129, 'other':1025},
         extension_library_sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
+        fused_gdn_quant=os.environ.get('VLLM_MACH_FUSED_GDN_QUANT','auto'),
         fused_swiglu_quant=os.environ.get('VLLM_MACH_FUSED_SWIGLU_QUANT','auto'),
         packages={n:importlib.metadata.version(n) for n in ('torch','vllm','mxfp6-sm120')}, devices=os.environ.get('CUDA_VISIBLE_DEVICES')), indent=2))
     llm = LLM(**config)

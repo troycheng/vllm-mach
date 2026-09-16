@@ -235,6 +235,7 @@ def main():
             manifest=str(a.manifest),
             physical_rows=a.physical_rows,
             extension_library_sha256=library_hash,
+            fused_gdn_quant=os.environ.get("VLLM_MACH_FUSED_GDN_QUANT", "auto"),
             fused_swiglu_quant=os.environ.get("VLLM_MACH_FUSED_SWIGLU_QUANT", "auto"),
             llm_args=args,
             environment=flags,

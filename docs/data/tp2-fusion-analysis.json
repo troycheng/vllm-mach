@@ -1,0 +1,2261 @@
+{
+  "ninfer_source_sha256": {
+    "src/ops/linear_swiglu/fp8/fp8_linear_swiglu_output.cuh": "69289ab8b1e75cb99ebde026b296fdfdd9ee71998e062b8a08c96f810bc54ba8",
+    "src/ops/linear_swiglu/q4/q4_linear_swiglu_gemv.cu": "80068f2451b5e0c159b30aec9043c469a15609828c3c0ef35321b702889e6952",
+    "src/ops/launcher/rmsnorm.cu": "7561d82de4083211ac875614811e519df4ddb651aae717740414cfca365ffad9",
+    "src/ops/kernel/rmsnorm.cuh": "5f9879f538fe6765ae74979b883ebc37bef30171d529c66ef245499a027cbc75",
+    "src/ops/gdn_gating_proj/bf16/bf16_gdn_norm_gating_proj_27.cu": "a5700082eff805b002a8f58b845dc116f5e9559b3e1c369a253905037098c3fc"
+  },
+  "schema": "mach-tp2-fusion-analysis/v1",
+  "stages": {
+    "p0-profile": [
+      {
+        "m": 1,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m1-trial0/rank0.json",
+        "sha256": "d6a9eb0e0bd537e76c7b72cdef67e114a23822017fbb64740175f78ea1f428fb",
+        "gpu_union_ms_per_step": 9.4052373046875,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.24138606770833335
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.2091103515625
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.2692884114583333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.582577799479167
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.31840657552083335
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0600517578125
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.562654296875
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14756998697916668
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.200060546875
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.8141315104166666
+          }
+        }
+      },
+      {
+        "m": 1,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m1-trial0/rank1.json",
+        "sha256": "cf9f772f097d0f4b3cf5bda52b95a6b8660f85cec1899cd2defcc08ef114125a",
+        "gpu_union_ms_per_step": 9.479882486979166,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.31647884114583336
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.20858528645833332
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.2721663411458333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.630814778645833
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.32346614583333333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06087337239583333
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5000693359375
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14987076822916667
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20270865885416667
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.8148489583333334
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m4-trial0/rank0.json",
+        "sha256": "d7a5280ae7ba241d12162dd54d27fcd009f3b57ed77403a10d029de9a468c796",
+        "gpu_union_ms_per_step": 9.829449544270833,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.2531298828125
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.20827376302083334
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.280236328125
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.621202473958333
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5026904296875
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.077314453125
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0638623046875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6505725911458333
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.15495703125
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24661881510416667
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7705914713541666
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m4-trial0/rank1.json",
+        "sha256": "eaa260f9a1104d0b3b47058f1ad38336494c217e18d05bbbb581afc8270aefb0",
+        "gpu_union_ms_per_step": 9.802375651041666,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.30437955729166666
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.20821907552083332
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.28333463541666665
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.642375
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5109931640625
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07769921875
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06443489583333334
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5326513671875
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.15688997395833335
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.25000325520833333
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7713955078125
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m16-trial0/rank0.json",
+        "sha256": "8baf4dfeddf6f15a7be0a4388193da1340148027b6bc97dd6f94baa23d40530b",
+        "gpu_union_ms_per_step": 11.915131184895833,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.2736686197916667
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9524140625
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.12239811197916667
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25274381510416666
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.21526171875
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.2949143880208333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.1429088541666665
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10270377604166667
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0246298828125
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0736474609375
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.9600426432291667
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.16058756510416666
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7549459635416667
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m16-trial0/rank1.json",
+        "sha256": "60fedd61287f69c1af84f827c75d94065ffcfa7272fafa7e878e7469e61eb66e",
+        "gpu_union_ms_per_step": 12.046128255208334,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.41860481770833335
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9556302083333333
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.14952311197916668
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25189485677083334
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.20728125
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.28673990885416667
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.181283854166667
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1025244140625
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.029890625
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.074396484375
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.8830188802083333
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.16248665364583334
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7575296223958333
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m32-trial0/rank0.json",
+        "sha256": "c27d61227a27ae0c9a155462a4a8d7b8b89f7aad4af5a28d1c53d1647f1fbadf",
+        "gpu_union_ms_per_step": 12.3113486328125,
+        "categories": {
+          "other": {
+            "count_per_step": 175.0,
+            "union_ms_per_step": 0.32597786458333333
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.8940817057291667
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1580556640625
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.31010709635416667
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.196859375
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3049833984375
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.786172200520833
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10602115885416667
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.2349069010416667
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.074685546875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.1621057942708333
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.216916015625
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.03783203125
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p0-profile/m32-trial0/rank1.json",
+        "sha256": "2d38cfbbaa75e701e83e904bfef6754385648e99e06adb5869e2f0abef70334b",
+        "gpu_union_ms_per_step": 12.310173828125,
+        "categories": {
+          "other": {
+            "count_per_step": 175.0,
+            "union_ms_per_step": 0.31838541666666664
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.8965068359375
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.16384700520833334
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.3113984375
+          },
+          "buffer_initialization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.1963115234375
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3085888671875
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.827260091145833
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10641048177083333
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.2369410807291668
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07484537760416667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.0926695963541666
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.220240234375
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.0446637369791667
+          }
+        }
+      }
+    ],
+    "p1c-profile": [
+      {
+        "m": 1,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m1-trial0/rank0.json",
+        "sha256": "46e4772bf5f9d2c9dc81f9cc691a1ab45fe70a5aeae36d3cf0a9ee7a3115d965",
+        "gpu_union_ms_per_step": 9.570143880208333,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.45397298177083334
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3766728515625
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.579889973958333
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.31977213541666666
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06058658854166667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6168024088541667
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14733854166666666
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.2002529296875
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.81485546875
+          }
+        }
+      },
+      {
+        "m": 1,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m1-trial0/rank1.json",
+        "sha256": "476d6044c881e4eed527d17904ee2963a9aa5b92602566fa574fc1582f2a414f",
+        "gpu_union_ms_per_step": 9.372806640625,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.3072841796875
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3802213541666667
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.633361653645833
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.3232392578125
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06079036458333333
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5011487630208333
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14909733072916667
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20239908854166666
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.8152646484375
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m4-trial0/rank0.json",
+        "sha256": "3c7966688b8e85cb3222f69b0bb0a057d83490af8714e4392c6ad96fb70a6539",
+        "gpu_union_ms_per_step": 9.793943684895833,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.2506627604166667
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3821162109375
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.621243489583334
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.502876953125
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07732356770833333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06588704427083333
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.7194990234375
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.15536197916666666
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24750618489583334
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7714664713541667
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m4-trial0/rank1.json",
+        "sha256": "1051182cf0c76f77f6fc563e18ec45e449ab5bb7bdcf5260aa774f5a7dbcf962",
+        "gpu_union_ms_per_step": 9.8209111328125,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.43763541666666667
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3864554036458333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.652193033854167
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5104000651041667
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07758821614583333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.066154296875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5131370442708333
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.15711295572916667
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24843424479166668
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7718004557291667
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m16-trial0/rank0.json",
+        "sha256": "19304e009a85dd409e910d4f8a1f5cf520b15f91b45b4c028bdc86946f8147b7",
+        "gpu_union_ms_per_step": 11.970780924479167,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.393228515625
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9571279296875
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1132470703125
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.253953125
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.400666015625
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.138981770833333
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1023017578125
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0247880859375
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07388216145833333
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.0042073567708334
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.16168684895833332
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.754185546875
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m16-trial0/rank1.json",
+        "sha256": "26d0f2ebfe998f429d6b5f3bf988b56faaeb1291734b8d3dbc4860d61e5745ab",
+        "gpu_union_ms_per_step": 11.780067708333334,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.27773990885416666
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9608024088541667
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1156279296875
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25371354166666665
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.405578125
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.177289713541667
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10254752604166667
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0310244140625
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07489908854166667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.8739000651041666
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.162369140625
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7571061197916666
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m32-trial0/rank0.json",
+        "sha256": "3d6d857620469ad7d1d2855ac5e371e6f7bca4b47b34f724040614f8cd3514d6",
+        "gpu_union_ms_per_step": 13.700265299479167,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.3447278645833333
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9229368489583333
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1551044921875
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.30762630208333336
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.3958518880208333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.805543294270834
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.12683658854166666
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9955589192708334
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07947330729166667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.3949270833333334
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.16223111979166666
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4715364583333332
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1c-profile/m32-trial0/rank1.json",
+        "sha256": "16ecb765494c72fd29e317f04f2b1fbe750adb4e04c6135b82e188d1fff7d58a",
+        "gpu_union_ms_per_step": 13.573432291666666,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.29315234375
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.936017578125
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1531787109375
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.3089580078125
+          },
+          "activation_quantization": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 0.40142122395833335
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.843785807291667
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.12715462239583333
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9958043619791668
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.08029654947916667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.2738408203125
+          },
+          "swiglu": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.16328515625
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4794348958333334
+          }
+        }
+      }
+    ],
+    "p1b-profile": [
+      {
+        "m": 1,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m1-trial0/rank0.json",
+        "sha256": "7cde141dc13f9289eb5cb28d582ff1ae154ba64bde25f9b5cd572c8393b2a251",
+        "gpu_union_ms_per_step": 9.405186848958333,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.3566796875
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.281716796875
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.581697916666666
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.31960546875
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.060638671875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6569241536458333
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13368782552083333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20033984375
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.813896484375
+          }
+        }
+      },
+      {
+        "m": 1,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m1-trial0/rank1.json",
+        "sha256": "ade98bdcc34e53bba81cf8c69c457d9d54949f4da80b5677597ede803ad2cef2",
+        "gpu_union_ms_per_step": 9.304683919270833,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.3375533854166667
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.28530013020833334
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.633377278645833
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.32373209635416667
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0609375
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.510802734375
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13547981770833334
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.2033251953125
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.81417578125
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m4-trial0/rank0.json",
+        "sha256": "96eb736d159e366c497ca6cfdb37e1c3af688204bbf3887ca957d8c5fedc88bb",
+        "gpu_union_ms_per_step": 9.623829427083333,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.2504925130208333
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.2889798177083333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.6247705078125
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5035354817708333
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07889908854166666
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06328287760416666
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6608727213541666
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13616927083333333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24672623697916668
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7701009114583334
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m4-trial0/rank1.json",
+        "sha256": "67f9a63d4479c7206695927be960b02e7a5d1d689944e6d4ec8737b8e37868d2",
+        "gpu_union_ms_per_step": 9.591466796875,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.2802294921875
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.2921370442708333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.6487154947916665
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5119609375
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07952864583333333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.063802734375
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5564488932291667
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13776692708333332
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24963118489583333
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7712454427083333
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m16-trial0/rank0.json",
+        "sha256": "7096512a7bdb8b821eebefb0319477433f343ed404300bf177566d993d870309",
+        "gpu_union_ms_per_step": 11.7743505859375,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.3081494140625
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9549772135416666
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.11400553385416666
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25802311197916666
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.3013040364583333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.144943359375
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10301692708333333
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.02483984375
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07347819010416666
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.0049928385416667
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14222102864583333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7556083984375
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m16-trial0/rank1.json",
+        "sha256": "d7960b8676a8ef736dabc31e0c7593e84b67a460f54d4e392a8dc8c3e62a4981",
+        "gpu_union_ms_per_step": 11.69208203125,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.3184703776041667
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9581175130208334
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.11643522135416666
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25488444010416667
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.30503743489583335
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.1824348958333335
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10288899739583333
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0286546223958333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.074365234375
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.85636328125
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1436806640625
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7613603515625
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m32-trial0/rank0.json",
+        "sha256": "95473a72481bcecd86140d784a106ce69b74640697adf42df548bc5f99c7f777",
+        "gpu_union_ms_per_step": 13.471491861979167,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.29137858072916667
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9270403645833334
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1543212890625
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.3060810546875
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.2981708984375
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.80687109375
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.12592024739583332
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9822587890625
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0786220703125
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.3644781901041667
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14311686197916668
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4723483072916668
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-profile/m32-trial0/rank1.json",
+        "sha256": "964c646d7bca7758a1730aacba4d276bcbca2871b390ad35bd62810903f969d5",
+        "gpu_union_ms_per_step": 13.4989697265625,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.3273444010416667
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9191520182291667
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1539404296875
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.30327278645833333
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.2985686848958333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.839300455729167
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1262734375
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9839869791666667
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0795087890625
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.2995035807291666
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1441044921875
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4779075520833334
+          }
+        }
+      }
+    ],
+    "p2a-fused-off-profile": [
+      {
+        "m": 1,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m1-trial0/rank0.json",
+        "sha256": "0619b53dcc00d590b3a6e78f97ddcb1721612e7e159fc342fcaf454d621b6d05",
+        "gpu_union_ms_per_step": 9.260597005208334,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.2360966796875
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.2822610677083333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.5847685546875
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.3200862630208333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06056412760416666
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6278919270833333
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13422135416666667
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20097884114583334
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.8137281901041666
+          }
+        }
+      },
+      {
+        "m": 1,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m1-trial0/rank1.json",
+        "sha256": "adc8a171e43c4f0aa9199a6770c0e1ffbd32760e75e9856c56f9a7bb9476401e",
+        "gpu_union_ms_per_step": 9.432132486979167,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.42960514322916665
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.28641178385416666
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.6420556640625
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.3252041015625
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.060736002604166665
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5338346354166666
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.135638671875
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20370963541666667
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.8149368489583333
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m4-trial0/rank0.json",
+        "sha256": "0dc3b92467f9d771c7e587d7339069eb86751aa47922d26d56d68455b09e2c82",
+        "gpu_union_ms_per_step": 9.633902669270833,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.253794921875
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.28846158854166665
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.626396158854167
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5029694010416667
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07907063802083333
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06324837239583334
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6641328125
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1366611328125
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24838216145833333
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7707854817708333
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m4-trial0/rank1.json",
+        "sha256": "36ca74e95900b0e6dae5a4394a72cd2206fc32e6159a14a89f0a8b982aa91528",
+        "gpu_union_ms_per_step": 9.6079580078125,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.28038541666666666
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.29285188802083334
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.656069986979166
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5115807291666666
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0794423828125
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06403873697916666
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5638515625
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13793326822916666
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.24992708333333333
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.771876953125
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m16-trial0/rank0.json",
+        "sha256": "251b2a7c8d942ead7a8c632c1b7d08ddf9a29f57cf35918209b3f62561865930",
+        "gpu_union_ms_per_step": 11.713250651041667,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.278703125
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9611318359375
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10853938802083334
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25135970052083334
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.30488216145833336
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.146765625
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10280305989583334
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0239156901041666
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0735517578125
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.98015625
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14221712239583334
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7553548177083333
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m16-trial0/rank1.json",
+        "sha256": "3671abaf0acf0fb617aae43dadfb2b186cdd29668035d5b6c4496bb721274382",
+        "gpu_union_ms_per_step": 11.6909892578125,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.2913525390625
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9657975260416667
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.11007747395833334
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.25496223958333336
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.30859830729166665
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.181416666666666
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10320833333333333
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0289212239583334
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0747392578125
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.8948753255208334
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1441083984375
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7585439453125
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m32-trial0/rank0.json",
+        "sha256": "ceef8b48a48b17e1913653fbf4c0d5f21a83936591d0d019a5bdc85197119530",
+        "gpu_union_ms_per_step": 13.4866630859375,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.28677571614583336
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.927244140625
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.153291015625
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.30444140625
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.2980032552083333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.805538736979167
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.12560774739583333
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9831350911458334
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0793994140625
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.3840322265625
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1419677734375
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4735003255208334
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-off-profile/m32-trial0/rank1.json",
+        "sha256": "b2ebbfceaf18d7d12f2eee61215c8c80e427b6d4c1f76ebe6c5305d31419c67a",
+        "gpu_union_ms_per_step": 13.474977864583334,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.30605045572916667
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9267789713541666
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.155572265625
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.30694140625
+          },
+          "activation_quantization": {
+            "count_per_step": 192.0,
+            "union_ms_per_step": 0.30141536458333335
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.849824544270834
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.125927734375
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9858990885416667
+          },
+          "gated_norm": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.07976171875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.2904150390625
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14485579427083334
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4808232421875
+          }
+        }
+      }
+    ],
+    "p2a-fused-profile": [
+      {
+        "m": 1,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m1-trial0/rank0.json",
+        "sha256": "dfc3c7e30f9db9aaf3f5e78a99c48761a324d7e6c0575ddba0e1a1fa6e881ec9",
+        "gpu_union_ms_per_step": 9.177344075520834,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.23441145833333332
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.21822037760416665
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.571637369791667
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.3166484375
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06335091145833334
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.624099609375
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13330989583333333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20069140625
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.814974609375
+          }
+        }
+      },
+      {
+        "m": 1,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m1-trial0/rank1.json",
+        "sha256": "1b81cbc8f769b2b4a8952df10736b41ba37b3c1f312edf82395aa567e67e3aaa",
+        "gpu_union_ms_per_step": 9.393593424479167,
+        "categories": {
+          "other": {
+            "count_per_step": 173.0,
+            "union_ms_per_step": 0.4857587890625
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.2206103515625
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.626823567708334
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.32197135416666667
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0638935546875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5220423177083333
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13459505208333333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.20305891927083333
+          },
+          "bf16_gemv": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.8148395182291667
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m4-trial0/rank0.json",
+        "sha256": "a5ea893da589e0b431228693764a15f9095664a726354ea73f61d86694a443c2",
+        "gpu_union_ms_per_step": 9.437819010416666,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.25039973958333334
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.2163408203125
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.619841796875
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5017652994791667
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.05264518229166667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.6446009114583333
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13555501302083334
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.2462578125
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7704124348958333
+          }
+        }
+      },
+      {
+        "m": 4,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m4-trial0/rank1.json",
+        "sha256": "6a25e496e3150732dd3f3fff4257cef511993c42b5423535063fbfc09373d9c0",
+        "gpu_union_ms_per_step": 9.5147060546875,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.34622819010416667
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.21936848958333333
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.644850260416667
+          },
+          "persistent_gdn": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.5091458333333333
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0525888671875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.5852659505208333
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.13660579427083333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.2488935546875
+          },
+          "bf16_gemm": {
+            "count_per_step": 1.0,
+            "union_ms_per_step": 0.7717591145833333
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m16-trial0/rank0.json",
+        "sha256": "779ad430c9ddb55b6f443520804c7b809eb707fcd0068cb3172483eb8ad0bbb3",
+        "gpu_union_ms_per_step": 11.556383138020834,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.27738802083333336
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9672552083333333
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1067939453125
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 96.0,
+            "union_ms_per_step": 0.17027604166666666
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.23279296875
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.1439827473958335
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10242057291666666
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0214046223958333
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.06293196614583334
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.006185546875
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1422373046875
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7566220703125
+          }
+        }
+      },
+      {
+        "m": 16,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m16-trial0/rank1.json",
+        "sha256": "5816a2ceef12f34b76fe5f8f56bc35fce1038118f3f99c96198a76ef3a0c1d8a",
+        "gpu_union_ms_per_step": 11.512526692708333,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.32003841145833334
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9592705078125
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.11582291666666666
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 96.0,
+            "union_ms_per_step": 0.17506868489583333
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.2315146484375
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 7.1734365234375
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.10311328125
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.0272584635416666
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.0639296875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 0.8517151692708333
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.14301790364583333
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 0.7591842447916667
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 0,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m32-trial0/rank0.json",
+        "sha256": "780a32789e57506771a7be0124ec4b1dc23534f551e6cbc690894486c6672637",
+        "gpu_union_ms_per_step": 13.349257161458333,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.29071809895833334
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9198193359375
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.150408203125
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 96.0,
+            "union_ms_per_step": 0.220029296875
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.222904296875
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.8124007161458335
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.12562141927083334
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9813346354166668
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.09441861979166667
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.3717327473958334
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1409287109375
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4717431640625
+          }
+        }
+      },
+      {
+        "m": 32,
+        "rank": 1,
+        "measured_steps": 3,
+        "path": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2a-fused-profile/m32-trial0/rank1.json",
+        "sha256": "59e5f2a2e7d103ec68ab0cdbc1dbe99a88e0f186f8bfae29fb068958543f71b3",
+        "gpu_union_ms_per_step": 13.366531575520833,
+        "categories": {
+          "other": {
+            "count_per_step": 174.0,
+            "union_ms_per_step": 0.3364482421875
+          },
+          "bf16_gemm": {
+            "count_per_step": 49.0,
+            "union_ms_per_step": 0.9195989583333334
+          },
+          "bf16_splitk_reduction": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.15151302083333335
+          },
+          "strided_tensor_copy": {
+            "count_per_step": 96.0,
+            "union_ms_per_step": 0.21951888020833332
+          },
+          "activation_quantization": {
+            "count_per_step": 144.0,
+            "union_ms_per_step": 0.22501627604166666
+          },
+          "mxfp6_gemm": {
+            "count_per_step": 256.0,
+            "union_ms_per_step": 6.834867513020833
+          },
+          "gdn_convolution": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.1257255859375
+          },
+          "gdn_recurrence": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 1.9845436197916666
+          },
+          "gdn_norm_quantization": {
+            "count_per_step": 48.0,
+            "union_ms_per_step": 0.094919921875
+          },
+          "allreduce_residual_norm": {
+            "count_per_step": 128.0,
+            "union_ms_per_step": 1.3051552734375
+          },
+          "swiglu_quantization": {
+            "count_per_step": 64.0,
+            "union_ms_per_step": 0.1417880859375
+          },
+          "attention": {
+            "count_per_step": 16.0,
+            "union_ms_per_step": 1.4799677734375
+          }
+        }
+      }
+    ]
+  },
+  "ninfer_reference": {
+    "path": "/data/lxy/detailed_benchmark/ninfer/profiles/bench/mxfp6_tp1/module_comparison.json",
+    "sha256": "0773dea810a377cfdc75880b3c6c1fa2827b5f7475ad3a3449fe2f2c951456ec",
+    "data": {
+      "groupwise": {
+        "modules_ms": {
+          "shared": 0.127416015625,
+          "linear": 3.1297636640625,
+          "mlp": 6.38508584375,
+          "full": 1.1729433984375,
+          "head": 0.7958857109375
+        },
+        "details_ms": {
+          "shared/embedding_gather": 0.0013282421875,
+          "linear/fused_ba_norm_gating": 0.137396890625,
+          "linear/matrix_kernels": 2.733457671875,
+          "linear/gdn_conv_recurrence": 0.1819029296875,
+          "linear/norm": 0.077006171875,
+          "shared/block_norm": 0.117940046875,
+          "mlp/matrix_kernels": 6.38508584375,
+          "full/matrix_kernels": 0.7707401171875,
+          "full/norm": 0.04007646875,
+          "full/other": 0.0590388671875,
+          "full/attention_core": 0.3030879453125,
+          "head/lm_head_matrix": 0.7958857109375,
+          "shared/other": 0.0023029921875,
+          "shared/sampling": 0.005148234375,
+          "shared/control_and_memory": 0.00080525
+        },
+        "gpu_union_ms": 11.6046161640625
+      },
+      "nvfp4": {
+        "modules_ms": {
+          "shared": 0.1384795390625,
+          "linear": 3.9105868828125,
+          "mlp": 6.95697721875,
+          "full": 1.4551231875,
+          "head": 0.749805375
+        },
+        "details_ms": {
+          "shared/embedding_gather": 0.0012984921875,
+          "linear/fused_ba_norm_gating": 0.136192109375,
+          "linear/matrix_kernels": 3.5152017734375,
+          "linear/gdn_conv_recurrence": 0.184333453125,
+          "linear/norm": 0.075132296875,
+          "shared/block_norm": 0.1181776875,
+          "mlp/matrix_kernels": 6.95697721875,
+          "full/matrix_kernels": 1.0580065390625,
+          "full/norm": 0.0392361953125,
+          "full/other": 0.0578846484375,
+          "full/attention_core": 0.2999958046875,
+          "shared/activation_quantization": 0.0110399375,
+          "head/lm_head_matrix": 0.749805375,
+          "shared/other": 0.0021107265625,
+          "shared/sampling": 0.005156703125,
+          "shared/control_and_memory": 0.0007877421875
+        },
+        "gpu_union_ms": 13.210107953125
+      },
+      "fp8": {
+        "modules_ms": {
+          "shared": 0.215792921875,
+          "linear": 3.90008415625,
+          "mlp": 11.097565953125,
+          "full": 1.4553518671875,
+          "head": 0.749722453125
+        },
+        "details_ms": {
+          "shared/embedding_gather": 0.00130925,
+          "linear/fused_ba_norm_gating": 0.1343906796875,
+          "linear/matrix_kernels": 3.5111360546875,
+          "linear/gdn_conv_recurrence": 0.180241171875,
+          "linear/norm": 0.07441125,
+          "shared/block_norm": 0.1178862421875,
+          "shared/activation_quantization": 0.0887081953125,
+          "mlp/matrix_kernels": 11.097565953125,
+          "full/matrix_kernels": 1.05791059375,
+          "full/norm": 0.0392716640625,
+          "full/other": 0.05799909375,
+          "full/attention_core": 0.300170515625,
+          "head/lm_head_matrix": 0.749722453125,
+          "shared/other": 0.0020605,
+          "shared/sampling": 0.005084484375,
+          "shared/control_and_memory": 0.00079675
+        },
+        "gpu_union_ms": 17.41192465625
+      }
+    }
+  },
+  "limitations": [
+    "NInfer reference is TP1 B1, different formats and fused boundaries.",
+    "Each rank is independent; category unions must not be added as end-to-end ITL.",
+    "BF16 GEMM contains head and BA; native Sm120 GEMMs are classified separately.",
+    "Historical profile timings are explanatory, not matched unprofiled speedups."
+  ]
+}
