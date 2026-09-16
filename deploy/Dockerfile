@@ -7,7 +7,7 @@ ARG MAX_JOBS=8
 ENV MAX_JOBS=${MAX_JOBS} CUDA_HOME=/opt/cuda-13.2 TORCH_CUDA_ARCH_LIST=12.0a
 COPY deploy/requirements-runtime.txt /opt/mach/deploy/requirements-runtime.txt
 RUN python3 -m pip install --no-deps -r /opt/mach/deploy/requirements-runtime.txt
-COPY deploy/install.py deploy/build-mxfp6.py /opt/mach/deploy/
+COPY deploy/install.py deploy/build-mxfp6.py deploy/mxfp6-tp2.patch /opt/mach/deploy/
 RUN python3 /opt/mach/deploy/build-mxfp6.py
 COPY native/lossless_prefill /opt/mach/native/lossless_prefill
 COPY native/owner_prefill /opt/mach/native/owner_prefill

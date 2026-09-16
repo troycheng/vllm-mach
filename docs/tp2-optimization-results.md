@@ -94,3 +94,35 @@ python docs/data/plot_tp2_optimization.py docs/data/tp2-p0.json
 The collector requires three correctly sized profile samples on both ranks.
 The overlap accounting tests pass. Runtime optimization acceptance and serving
 measurements follow independently; P0 alone makes no optimization-gain claim.
+
+## P1-C: initialize scale padding inside quantization
+
+The removed kernels initialize activation scales, not persistent workspaces.
+The extension quantizer now writes padding while the same launch computes
+logical values/scales. Padding and logical writes address disjoint bytes;
+every byte is written on each replay. No collective or barrier is removed.
+The original small grid made this prototype slower at M1/2/4; increasing grid
+coverage of padding eliminated that regression before full-model measurement.
+
+| Logical requests | P1-C output tokens/s, mean ± sample SD | Change vs P0 |
+|---|---:|---:|
+| 1 | 78.26 ± 0.94 | +1.13% (inconclusive) |
+| 4 | 336.84 ± 0.59 | +2.32% |
+| 16 | 840.28 ± 1.74 | +3.31% |
+| 32 | 1152.58 ± 2.13 | +3.48% |
+
+Both ranks' traces contain zero separate scale initialization kernels, versus
+256/decode before. Quantization still emits identical codes, logical scales
+and padding. Fresh M4/M32 fidelity equals P0 on every scored token, including
+exact cohort repeats. The charts above include both stages.
+
+[Full P1-C measurements](data/tp2-p1c.json). Validation: 120 oracle/poisoned-replay
+cases pass on both original and candidate extensions; codec/dynamic-quant/GEMM/
+nondefault-stream checks pass; the existing 10,000-random + 1,000-dual-stream
+workspace stress passes; 10 Mach loading/install/warmup checks pass. The
+extension wheel was rebuilt. The committed deployment patch applies the
+extension-owned change to the pinned public source before wheel construction;
+it does not require publishing a new upstream commit. Direct users must rebuild
+the extension from the matching source/patch: an unmodified PyPI 0.2.1 wheel
+does not contain this optimization. Original 3000/1000 serving results are not
+replaced by these decode-development measurements.

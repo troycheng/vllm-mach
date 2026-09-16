@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Rebuild the pinned MXFP6 release against the image's PyTorch ABI."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,8 @@ def archive(repo, revision, parent):
 
 def main():
     source = archive("Nekofish-L/mxfp6_sm120", REVISION, WORK)
+    tp2_patch = Path(__file__).with_name('mxfp6-tp2.patch')
+    patch_file(source, tp2_patch)
     cutlass = archive("NVIDIA/cutlass", CUTLASS, WORK / "cutlass-source")
     for name in ("0001-sm120-mxfp6-small-tile-runtime.patch", "0003-sm120-streamk-persistent-workspace.patch"):
         patch_file(cutlass, source / "patches/cutlass" / name)
@@ -41,7 +44,7 @@ def main():
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "--force-reinstall", str(wheel)], check=True)
     # This needs no GPU, but catches the dispatcher ABI mismatch of the PyPI wheel.
     subprocess.run([sys.executable, "-c", "import torch, mxfp6; mxfp6.load_library()"], check=True)
-    (WORK / "mxfp6-source.json").write_text(json.dumps({"revision": REVISION, "cutlass": CUTLASS}) + "\n")
+    (WORK / "mxfp6-source.json").write_text(json.dumps({"revision": REVISION, "cutlass": CUTLASS, "tp2_patch_sha256": hashlib.sha256(tp2_patch.read_bytes()).hexdigest()}) + "\n")
 
 
 if __name__ == "__main__":
