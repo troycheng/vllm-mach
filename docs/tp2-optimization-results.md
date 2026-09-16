@@ -599,3 +599,111 @@ validation; it is not enabled by this experiment.
 ![Serving including the recurrence probe](images/tp2-serving-throughput.png)
 
 [Serving contracts, launch environments, aggregates and raw hashes](data/tp2-serving.json).
+
+
+## P2-A: GDN output initialization experiment
+
+**Default remains zero initialization.** The exact empty-output candidate
+remains opt-in: a reverse-order M32 experiment does not reproduce the
+initial +3.14% result, and single-run serving gains are only 0.16–0.42%.
+The evidence does not establish a stable all-size default improvement.
+
+`VLLM_MACH_GDN_EMPTY_OUTPUT=1` allocates the eligible decode core with
+`torch.empty`. Persistent M1/2/4/8 and packed recurrence M16/24/32 overwrite
+every BF16 output element, including null/padded rows, before the output
+producer consumes it. The switch is captured during layer preparation;
+`0` retains zero initialization as a matched control. Request eligibility,
+state updates, output quantization and collective ordering are unchanged.
+
+Twenty-eight M1/2/4/8/16/24/32 × FP32/FP16 × SD/DS cases each pass 120
+changing-input CUDA Graph replays. A NaN-poisoned output exactly matches a
+zero-initialized output, with bitwise-identical recurrent and convolution
+states. Tests include rotated/recycled slots, 0/-1 padding, all-padding
+launches, and output/state canaries. Sixty routing/install/warmup/profile
+checks pass. The rebuilt wheel contains the tested host source and persistent
+CUDA source.
+
+Fresh physical-M4 and M32 real-checkpoint runs each score 256 queries and
+10,479 target tokens. Every gold logprob equals the accepted P2-A records;
+repeated-cohort maximum and mean differences are zero. Gold-logprob MAE
+against BF16 remains 0.08539566 / 0.09064302.
+
+Both ranks' M1/M4/M16/M32 traces confirm BF16 FillFunctor launches fall from
+48 to zero per decode. AR/residual/norm remains 128 launches per rank per
+step. Baseline rank-0 fill durations sum to 33–36 µs per step; these sums
+are diagnostic and are not an end-to-end latency saving.
+
+Each point below contains five unprofiled full-checkpoint trials on GPUs
+4/5, with BF16 activations/head and FP32 SSM state. The two arms use the
+same extension, prompts, KV budget and graph sizes.
+
+| Requests | Zero core, tokens/s ± SD | Empty core, tokens/s ± SD | Change |
+|---|---:|---:|---:|
+| 1 | 79.830 ± 0.401 | 80.404 ± 0.083 | +0.72% |
+| 4 | 343.634 ± 0.852 | 348.400 ± 0.335 | +1.39% |
+| 16 | 837.358 ± 4.289 | 848.955 ± 6.143 | +1.38% |
+| 32 | 1130.452 ± 3.904 | 1165.971 ± 2.752 | +3.14% |
+
+![Decode including empty output](images/tp2-optimization-throughput.png)
+![Fresh empty-output fidelity](images/tp2-optimization-fidelity.png)
+
+[Matched decode, profile summaries and fresh fidelity](data/tp2-p2a-empty.json).
+
+Raw artifacts: `../tp2-optimization-20260916/p2a-empty-output/`.
+Reproduce the two arms with the existing decode/fidelity/serving tools and
+`VLLM_MACH_GDN_EMPTY_OUTPUT=0` or `1`. Validate recorded contracts, both-rank
+traces and graph-size trials with
+`python docs/data/collect_tp2_gdn_output_validation.py --root RESULTS`.
+
+The additional affected sizes also have five matched trials per arm on
+GPUs 4/5, with verified physical rows and exact token counts:
+
+| Requests | Zero core, tokens/s ± SD | Empty core, tokens/s ± SD | Change |
+|---|---:|---:|---:|
+| 2 | 193.951 ± 0.129 | 195.009 ± 0.057 | +0.55% |
+| 8 | 569.607 ± 0.607 | 572.909 ± 0.909 | +0.58% |
+| 24 | 1048.253 ± 4.176 | 1057.031 ± 1.723 | +0.84% |
+
+### Empty-output matched HTTP serving
+
+Both arms use GPUs 6/7, the same port, frozen prompts, arrival schedules,
+checkpoint and 3000-input/1000-output protocol. Only the output-initialization
+switch differs. All 760 scored requests across both arms finish with exact
+token counts. Each point is one run, without a confidence interval.
+
+| Concurrency | Zero core, tokens/s | Empty core, tokens/s | Change |
+|---|---:|---:|---:|
+| 4 | 371.339 | 372.884 | +0.416% |
+| 16 | 999.533 | 1003.036 | +0.350% |
+| 24 | 1299.934 | 1302.122 | +0.168% |
+| 32 | 1462.960 | 1465.326 | +0.162% |
+
+![Serving including empty output](images/tp2-serving-throughput.png)
+
+[Serving contracts and raw-result hashes](data/tp2-serving.json).
+
+### Empty-output reverse-order validation and decision
+
+A second independent M32 experiment on GPUs 6/7 runs the candidate first,
+then the zero-initialized control, with five trials per arm and otherwise
+identical contracts. Empty output reaches **1153.166 ± 11.898 tokens/s**;
+zero output reaches **1153.032 ± 12.563 tokens/s**, only **+0.012%**.
+Both arms show similar within-run drift. These figures cannot be pooled
+with the GPUs 4/5 experiment; they demonstrate that its +3.14% M32 increase
+is not a reliable estimate of this change's throughput benefit.
+
+The M2/M8/M24 matched differences are positive, and the single-run serving
+points improve by 0.16–0.42%, but the repeated M32 check fails to establish
+an improvement beyond variation. **Do not enable this all-size candidate
+by default.** Keep `VLLM_MACH_GDN_EMPTY_OUTPUT=1` as a small diagnostic
+control; the default is `0`. A size-restricted policy would need its own
+end-to-end validation. No arithmetic or state ABI changes are introduced.
+
+![All sizes and independent M32 recheck](images/tp2-empty-output-validation.png)
+
+[Validated contracts, 80 decode trials, both-rank traces, wheel and test hashes](data/tp2-gdn-output-initialization-validation.json).
+The [collector](data/collect_tp2_gdn_output_validation.py) shares one
+trial validator across the main, changing-size and reverse-order runs.
+Regenerate the focused figure with the existing stage JSON inputs plus
+`--validation docs/data/tp2-gdn-output-initialization-validation.json`
+when running `docs/data/plot_tp2_optimization.py`.

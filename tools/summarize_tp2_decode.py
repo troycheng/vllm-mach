@@ -84,6 +84,7 @@ def collect(baseline, profile):
                 measured_decode_steps=3, physical_rows=m, logical_rows=m,
                 fused_ar_norm_modules=sum(v['fused_ar_norm'] is True for v in rank['inventory']),
                 fused_gdn_quant_layers=rank.get('fused_gdn_quant_layers',0),
+                empty_output_layers=rank.get('empty_output_layers',0),
                 recurrent_tile8_layers=rank.get('recurrent_tile8_layers',0),
                 shapes=dict(shapes), gdn=rank['gdn'], fused_swiglu_layers=rank.get('fused_swiglu_layers',0), peak_allocated_bytes=rank['peak_allocated_bytes'],
                 peak_reserved_bytes=rank['peak_reserved_bytes'],

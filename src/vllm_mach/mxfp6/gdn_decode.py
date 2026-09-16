@@ -118,7 +118,10 @@ def _forward(layer, original, persistent, aux, hidden_states):
         or indices.stride(0) != 1
     ):
         return original(hidden_states)
-    core = torch.zeros(
+    # Both eligible producers overwrite every element, including null/padded
+    # rows. Keep zero initialization as a matched performance control.
+    allocate = torch.empty if layer._mach_gdn_empty_output else torch.zeros
+    core = allocate(
         (rows, 24, 128), device=hidden_states.device, dtype=torch.bfloat16
     )
     if path == "persistent":
@@ -209,6 +212,9 @@ def prepare(model):
     persistent, overlap = enabled("PERSISTENT"), enabled("BA_OVERLAP")
     if not (persistent or overlap):
         return
+    empty_output = os.environ.get("VLLM_MACH_GDN_EMPTY_OUTPUT", "0")
+    if empty_output not in ("0", "1"):
+        raise ValueError("VLLM_MACH_GDN_EMPTY_OUTPUT must be 0 or 1")
     strided_ba = os.environ.get("VLLM_MACH_GDN_STRIDED_BA", "0")
     if strided_ba not in ("0", "1"):
         raise ValueError("VLLM_MACH_GDN_STRIDED_BA must be 0 or 1")
@@ -253,6 +259,7 @@ def prepare(model):
     for layer in layers:
         layer._mach_gdn_strided_ba = strided_ba == "1"
         layer._mach_gdn_recurrent_tile = int(recurrent_tile)
+        layer._mach_gdn_empty_output = empty_output == "1"
         prepare_output(layer)
         if persistent:
             layer._mach_gdn_ba = layer.in_proj_ba.weight.T.contiguous()
