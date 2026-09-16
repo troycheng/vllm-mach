@@ -29,7 +29,7 @@ The aim is higher throughput with controlled numerical error. FP16 recurrent sta
 | MXFP6 CUDA Graph | The native configuration above with the V2 runner and `FULL_DECODE_ONLY` capture sizes `1, 2, 4, 8, 16, 24, 32` |
 | Fused FlashInfer collective | The native configuration above with FlashInfer `0.6.18` and the matching runtime/local IPC patches |
 | Lossless / owner prefill | Optional `--lossless-prefill` / `--owner-prefill`; matching [lossless](native/lossless_prefill/README.md) and [owner](native/owner_prefill/README.md) extensions |
-| FP16 SSM / NVFP4 LM head | Optional `--fp16-ssm` / `--nvfp4-lm-head`; B12X `1.3.0` for the head; changes numerical behavior |
+| FP16 SSM / NVFP4 LM head | Optional `--fp16-ssm` / `--nvfp4-lm-head`; head uses FlashInfer's built-in B12X backend, without the standalone `b12x` package; changes numerical behavior |
 
 See the [current source installation](docs/installation.md) for native dependencies and [native MXFP6 integration](docs/native-mxfp6.md) for request eligibility and fallback behavior. Earlier EXL3 and checkpoint-hybrid releases are documented in [earlier installations](docs/public-install.md) and the [0.29 dependency upgrade](docs/dependency-upgrade.md).
 

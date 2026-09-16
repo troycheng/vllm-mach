@@ -9,7 +9,8 @@ The Python wheel excludes the historical EXL3 provider.
 Use Linux x86-64, Python 3.12 and two RTX 5090 GPUs (SM120, 32 GiB each).
 The runtime contract is vLLM 0.29.0, PyTorch 2.13.0, FlashInfer Python/cubin
 0.6.18, CUTLASS DSL 4.6.2, and mxfp6-sm120 0.2.1.
-The NVFP4 head additionally uses B12X 1.3.0.
+The NVFP4 head uses FlashInfer's built-in `b12x` backend; the standalone
+`b12x` package and the `vllm[b12x]` extra are not required.
 Native extension binaries must match the installed PyTorch/CUDA ABI.
 
 A source installation in a dedicated environment:
@@ -71,7 +72,6 @@ CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=8 \
   uv pip install --no-build-isolation --no-deps ./native/lossless_prefill
 CUDA_HOME=/usr/local/cuda-13.2 MAX_JOBS=8 \
   uv pip install --no-build-isolation --no-deps ./native/owner_prefill
-uv pip install b12x==1.3.0
 ```
 
 These extensions retain their existing compiler contracts: CUDA 13.0 for

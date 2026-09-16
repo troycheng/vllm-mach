@@ -103,7 +103,6 @@ def main() -> None:
     for enabled, package, expected in (
         (args.owner_prefill, "vllm-mach-owner-prefill", "0.1.0a1"),
         (args.lossless_prefill, "vllm-mach-lossless-prefill", "0.1.0a4"),
-        (args.nvfp4_lm_head, "b12x", "1.3.0"),
     ):
         if enabled:
             try:

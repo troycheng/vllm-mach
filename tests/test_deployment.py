@@ -56,6 +56,44 @@ def test_checkout_launcher_uses_package_entrypoint():
     assert serve.main is main
 
 
+@pytest.mark.parametrize("b12x_version", [None, "0.0.0"])
+def test_nvfp4_launcher_does_not_require_standalone_b12x(
+    monkeypatch, tmp_path, b12x_version
+):
+    from importlib import metadata
+    from types import SimpleNamespace
+
+    from vllm_mach.mxfp6 import install, serve
+
+    queried = []
+
+    def version(name):
+        queried.append(name)
+        if name == "b12x" and b12x_version is not None:
+            return b12x_version
+        raise metadata.PackageNotFoundError(name)
+
+    launched = []
+    monkeypatch.setattr(metadata, "version", version)
+    monkeypatch.setattr(
+        metadata,
+        "distribution",
+        lambda name: SimpleNamespace(locate_file=lambda path: tmp_path),
+    )
+    monkeypatch.setattr(install, "check_versions", lambda: None)
+    monkeypatch.setattr(install, "install_profile", lambda *args: {"changed_files": []})
+    monkeypatch.setattr(
+        serve.sys,
+        "argv",
+        ["vllm-mach-serve", "--model", "/models/mxfp6", "--nvfp4-lm-head"],
+    )
+    monkeypatch.setattr(serve.os, "execvpe", lambda *args: launched.append(args))
+    serve.main()
+    assert "b12x" not in queried
+    assert len(launched) == 1
+    assert launched[0][2]["VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND"] == "b12x"
+
+
 def fixture_model(root, shard="model.safetensors"):
     root.mkdir()
     (root / "config.json").write_text("{}")

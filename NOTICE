@@ -5,7 +5,9 @@ The native MXFP6 integration, optional LM head search and source profile
 contain code derived from the vLLM project and the downstream optimization
 series ending at 8983c0369e, under Apache-2.0. Original file notices are retained.
 
-B12X is an optional external runtime dependency and retains its own license.
+The optional NVFP4 head uses B12X-derived kernels vendored by FlashInfer.
+These kernels retain their upstream notices and licenses in FlashInfer;
+the standalone B12X package is not required by this runtime.
 Earlier EXL3 implementations and their original notices are retained in Git
 history, not in the current source tree or wheel.
 
