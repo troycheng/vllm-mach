@@ -6,6 +6,23 @@ Qwen3.8-27B on two RTX 5090 GPUs per run, TP2. Model checkpoint:
 [nekofish/Qwen3.8-27B-MXFP6](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
 The [September 15 measurements](native-fidelity-20260915.md) are archived separately.
 
+## TP2 producer follow-up (September 16)
+
+The subsequent scale-initialization and rounded SwiGLU/MXFP8 changes are
+measured separately in [TP2 optimization results](tp2-optimization-results.md).
+The fresh M4/M32 scores match the GDN default below token for token. The
+updated [fidelity figure](images/tp2-optimization-fidelity.png) and
+[matched serving figure](images/tp2-serving-throughput.png) use fresh stage
+comparisons; the original GDN/stock comparisons below remain historical.
+
+The deployment image now applies `deploy/mxfp6-tp2.patch` to the pinned
+MXFP6 0.2.1 source. With that extension, eligible native TP2 Qwen MLPs select
+the exact rounded SwiGLU producer automatically. Use
+`VLLM_MACH_FUSED_SWIGLU_QUANT=0` to isolate its contribution. An unpatched
+0.2.1 wheel continues to use the original producer; package version alone
+is insufficient to reproduce these newer performance measurements.
+The default remains BF16 activation/KV/head and FP32 recurrent state.
+
 ## Configurations and isolated comparisons
 
 The launcher now enables persistent at physical M1/2/4/8 with FP32 or FP16 recurrent
@@ -25,7 +42,8 @@ The raw arm names retain their experiment meaning:
 | full_gdn | Corrected full options, including FP16 persistent | on | on |
 
 This keeps the two optimizations independently measurable. `--no-gdn-persistent`
-and `--no-gdn-ba-overlap` reproduce the previous default. Stock FP8/NVFP4
+and `--no-gdn-ba-overlap` reproduce the previous GDN settings; reproducing
+the original performance also requires its recorded extension build. Stock FP8/NVFP4
 use unpatched official packages, no Mach plugin and FlashInfer AllReduce disabled.
 
 ## Serving throughput

@@ -1,5 +1,10 @@
 # TP2 optimization measurements — September 16, 2026
 
+Accepted: scale initialization inside quantization (P1-C) and the exact
+rounded SwiGLU/MXFP8 producer (P1-B). Direct FlashInfer AR/quant reuse and
+two M32 GEMM schedule candidates were rejected. Additional GDN, attention
+and head rewrites remain deferred. Detailed stage evidence follows.
+
 ## P0: real-checkpoint baseline
 
 Qwen3.8-27B native MXFP6, TP2/PP1, two RTX 5090s, BF16 activations/KV,
@@ -250,3 +255,34 @@ To reproduce a candidate, pass `--gemm-overrides candidate.json` to
 `tools/benchmark_tp2_decode.py --rows 32`; the JSON is a list of
 `[M,N,K,config_id,swizzle,raster]` entries (raster 1=AlongM, 2=AlongN).
 The overrides are diagnostic and are not read by the serving launcher.
+
+## Final matched serving validation
+
+The final default auto-selection mode prepared 64 fused MLPs on each rank.
+All 380 scored requests completed, with 3000 input and 1000 output tokens
+each. These are single runs per point; no confidence interval is claimed.
+
+| Concurrency | Fresh P0 | P1-C | P1-B final | vs P0 | vs P1-C |
+|---|---:|---:|---:|---:|---:|
+| 4 | 355.16 | 360.86 | 365.18 | +2.82% | +1.20% |
+| 16 | 971.28 | 981.68 | 988.80 | +1.80% | +0.73% |
+| 24 | 1278.34 | 1284.90 | 1289.81 | +0.90% | +0.38% |
+| 32 | 1440.67 | 1447.28 | 1453.64 | +0.90% | +0.44% |
+
+The cumulative development-workload gains over P0 at B1/4/16/32 are
+2.99%/3.60%/4.15%/3.58%, measured separately with five repeats. The smaller
+HTTP serving changes above are the appropriate deployment comparison.
+
+The current [serving figure](images/tp2-serving-throughput.png) includes all
+three measured stages; fresh fidelity and decode figures appear above.
+An additional 60 GEMM/GDN/argmax/optional-head regression tests pass, and
+the Mach wheel contains the current Python integration and GDN CUDA source.
+
+Final full-model graph regression additionally ran five unprofiled trials
+each at M2/M8/M24 with the default auto-selection mode, on the same engine
+across size changes. Both ranks reached each target physical decode size
+and retained all 64 fused MLPs; every request completed its 1025 generated
+tokens without corruption. These supplemental runs validate integration;
+no matched pre-change performance gain is inferred for these sizes.
+[Contracts and per-trial checks](data/tp2-final-regression.json).
+The related test suites total 265 passing tests.

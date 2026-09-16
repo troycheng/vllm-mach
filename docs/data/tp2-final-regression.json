@@ -1,0 +1,316 @@
+{
+  "schema": "mach-tp2-final-regression/v1",
+  "contract": {
+    "config": {
+      "model": "/data1/models/Qwen3.8-27B-MXFP6",
+      "quantization": "quark",
+      "dtype": "bfloat16",
+      "tensor_parallel_size": 2,
+      "max_model_len": 4096,
+      "max_num_seqs": 32,
+      "max_num_batched_tokens": 512,
+      "kv_cache_memory_bytes": 8218214400,
+      "enable_prefix_caching": false,
+      "attention_backend": "TRITON_ATTN",
+      "language_model_only": true,
+      "mamba_ssm_cache_dtype": "float32",
+      "seed": 20260916,
+      "disable_log_stats": false,
+      "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+      "compilation_config": {
+        "mode": "NONE",
+        "cudagraph_mode": "FULL_DECODE_ONLY",
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          24,
+          32
+        ]
+      }
+    },
+    "profile": false,
+    "repeats": 5,
+    "gemm_overrides": [],
+    "input_tokens": 2048,
+    "output_tokens": {
+      "1": 129,
+      "other": 1025
+    },
+    "extension_library_sha256": "c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9",
+    "fused_swiglu_quant": "auto",
+    "packages": {
+      "torch": "2.13.0+cu130",
+      "vllm": "0.29.0",
+      "mxfp6-sm120": "0.2.1"
+    },
+    "devices": "4,5"
+  },
+  "raw_directory": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/final-graph-regression",
+  "rows": [
+    {
+      "rows": 2,
+      "trials": [
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 2050,
+          "raw_sha256": "c54692c666b8eb679973c146e3d59ad0636b35658405f9eb752d76939ba2fba3"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 2050,
+          "raw_sha256": "c80fb0d5e0d721eef24a66ce6f90ca94302423373173c19b470fa70523a82806"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 2050,
+          "raw_sha256": "e9b578537febd611e9e846f1a2312b5ec5e4d8ca6908068e0c0e5c39ebb19596"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 2050,
+          "raw_sha256": "42d34f1c654c1f6c66565514c50c9c94f08e1fd49ef4d58964a28f1b7fce132b"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 1019,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 2050,
+          "raw_sha256": "2546bd024bd44b825fbd7cc09fe50cb5d98a344fe872641648c318968cc8adac"
+        }
+      ]
+    },
+    {
+      "rows": 8,
+      "trials": [
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 8200,
+          "raw_sha256": "933bfce7e3d2ab27c0d9eaa73abf4365ad95e86f1aee6422fd2e88188f7d1d05"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 8200,
+          "raw_sha256": "b1a4cc37aa0368cc0fbe2e522b25429c4c8ad997a1f4163d5af5260a3fea161b"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 8200,
+          "raw_sha256": "24ff10d8f71ba9a131d45a081dd12c099b640bfedfa4e70cd3b94aca7b89c688"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 8200,
+          "raw_sha256": "e3cea2f361e2958a522f9f46e406357bd22e19c771c7ab4da44a8a9f2327417a"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 995,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 8200,
+          "raw_sha256": "feda14130f808a16b1e6b42390bb211a5128f5a6cb2d385e4e54a085def01218"
+        }
+      ]
+    },
+    {
+      "rows": 24,
+      "trials": [
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 24600,
+          "raw_sha256": "a9d4b1ad93ab4d7ec0c8d5460754804496fee53cb69ad303ff5c756c3c619fea"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 24600,
+          "raw_sha256": "e6023f8e02e8d87fbce8491ce677d1ad25020bcbfe901001c651ff5592315c34"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 24600,
+          "raw_sha256": "6b9cabf458f0c34bd559211679c1ae9204ad480ff368e9b575b0d30068958043"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 24600,
+          "raw_sha256": "fa40b61caf905a6af72ef9bff59cdc38e11e124498ddb42e58e64142db497f7e"
+        },
+        {
+          "ranks": [
+            {
+              "rank": 0,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            },
+            {
+              "rank": 1,
+              "target_decode_batches": 929,
+              "fused_swiglu_layers": 64
+            }
+          ],
+          "output_tokens": 24600,
+          "raw_sha256": "87834cb789ea12b200db08745911a40f25ae3a573f455d781a0e4d9a74c6469c"
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "extension_producers": 176,
+    "fused_down_graph": 7,
+    "integration": 19,
+    "legacy_selection": 3,
+    "gemm_gdn_argmax_head": 60
+  }
+}
