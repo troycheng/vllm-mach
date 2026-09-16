@@ -3,7 +3,9 @@
 Accepted: scale initialization inside quantization (P1-C) and the exact
 rounded SwiGLU/MXFP8 producer (P1-B). Direct FlashInfer AR/quant reuse and
 two M32 GEMM schedule candidates were rejected. P2-A now repairs and validates
-the exact fused GDN output producer; attention and head rewrites remain deferred. Detailed stage evidence follows.
+the exact fused GDN output producer. A subsequent strided BA consumer is
+numerically exact but remains disabled after failing performance acceptance;
+attention and head rewrites remain deferred. Detailed stage evidence follows.
 
 ## P0: real-checkpoint baseline
 
@@ -401,3 +403,101 @@ interval or replace the five-trial decode results.
 ![Updated matched serving](images/tp2-serving-throughput.png)
 
 [Serving measurements, launch environments and raw-result hashes](data/tp2-serving.json).
+
+## P2-A: strided BA consumer experiment
+
+Removing the remaining BA copies is numerically exact, but is **not promoted**
+to the default path: the candidate fails the full-model performance gate.
+`VLLM_MACH_GDN_STRIDED_BA=1` retains the experiment for diagnosis; the default
+is `0`. This is separate from the accepted fused output producer, which
+remains enabled in both arms.
+
+The existing vLLM packed recurrent kernel already accepts independent A/B
+token strides. The candidate passes the BA GEMM's two BF16 views directly
+(token stride 48, inner stride 1) instead of materializing contiguous halves.
+It keeps the auxiliary-stream wait, main-stream join and storage lifetime
+records. No arithmetic, collective, state format or GEMM schedule changes.
+Both ranks' three-step traces verify 96 → 0 strided-copy launches per decode
+at M16/M32; 48 recurrence and 128 AR/residual/norm launches remain unchanged.
+Small-M persistent execution has no such copies in either arm.
+
+| Requests | Fresh copies, tokens/s ± SD | Views candidate, tokens/s ± SD | Mean change |
+|---|---:|---:|---:|
+| 1 | 79.638 ± 0.172 | 79.288 ± 0.132 | −0.44% |
+| 4 | 345.677 ± 0.246 | 344.373 ± 0.455 | −0.38% |
+| 16 | 849.195 ± 3.552 | 840.447 ± 0.808 | −1.03% |
+| 32 | 1150.655 ± 1.676 | 1131.762 ± 1.398 | −1.64% |
+
+Each point has five unprofiled trials on GPUs 4/5 after workload warmup,
+using the same extension binary, checkpoint, KV allocation and decode
+configuration. Copies run before views. The unchanged M1/M4 paths also
+vary between runs, so these differences are not a precise causal estimate
+of the layout cost. They provide no evidence supporting default promotion.
+The earlier-stage curves remain historical comparisons, not denominators.
+
+In the separate rank-0 profiles, the removed copies account for 0.169/0.222 ms
+at M16/M32, but their work overlaps QKV projection and convolution. Whole-step
+GPU activity unions are 11.509/13.380 ms with copies and 11.564/13.351 ms with
+views. These diagnostic intervals do not establish a latency gain; the
+copy-duration sums are not recoverable critical-path time.
+
+All 12 M16/24/32 × FP32/FP16 state × SD/DS convolution-layout cases pass
+120 changing-input auxiliary-stream graph replays each. Graph views, graph
+copies and eager views have bitwise-equal BF16 outputs, convolution state
+and recurrent state, with nonzero initialization, slot rotation/reuse and
+canaries. Recurrence checks both 0/-1 padding; the convolution reference
+uses its supported null slot 0. This reuses the existing arithmetic and adds
+no numerical approximation. Sixty routing/install/warmup/profile checks pass.
+
+Fresh physical-M4 and M32 runs each score 256 frozen queries and 10,479 target
+tokens. Every gold logprob equals the accepted P2-A result and repeated-cohort
+error is zero. MAE against the matched BF16 references stays 0.08539566 and
+0.09064302. The throughput and fidelity figures above include the candidate
+as a probe, not an accepted optimization.
+
+[Matched decode and fresh fidelity](data/tp2-p2a-ba.json).
+[Both-rank copy counts, raw hashes and validation](data/tp2-gdn-strided-ba-validation.json).
+
+Reproduce the two decode arms by setting `VLLM_MACH_GDN_STRIDED_BA=0` or `1`
+with `tools/benchmark_tp2_decode.py`; run `--profile` separately on GPUs 6/7.
+Use the same switch with `tools/fidelity_native_mxfp6.py --arm gdn
+--skip-head-probe --physical-rows 4` and `32`. The control started before its
+benchmark contract gained the switch field; its saved launch environment
+and both-rank `strided_ba_layers=0` records verify the disabled setting.
+
+The trace and regression assertions are reproducible with
+`python docs/data/collect_tp2_gdn_ba_validation.py --root RESULTS`.
+Regenerate the decode/fidelity stage using the existing
+`collect_tp2_optimization.py` with `--baseline RESULTS/on`,
+`--profile RESULTS/on-profile`, `--control RESULTS/off`,
+`--control-profile RESULTS/off-profile` and `--fidelity-prefix RESULTS/fidelity`.
+
+The candidate also passes five full-model trials each at M2/M8/M24 on one
+engine across size changes. Both ranks reach each requested physical decode
+size, and all requests produce 1025 tokens without corruption. These are
+integration checks without a matched performance claim for those sizes.
+The rebuilt Mach wheel contains the current host implementation and unchanged
+persistent CUDA source; the extension is unchanged from accepted P2-A.
+
+### Strided BA matched HTTP serving
+
+The 3000-input/1000-output frozen protocol uses the same GPUs 6/7, port,
+checkpoint, extension, launch settings, prompt seeds and arrival schedules.
+Only `VLLM_MACH_GDN_STRIDED_BA` differs. All 760 scored requests across both
+arms complete with exact token counts. Each point is a single run.
+
+| Concurrency | Fresh copies, tokens/s | Views candidate, tokens/s | Change |
+|---|---:|---:|---:|
+| 4 | 371.391 | 371.265 | −0.034% |
+| 16 | 999.722 | 1000.597 | +0.088% |
+| 24 | 1300.031 | 1300.091 | +0.005% |
+| 32 | 1462.589 | 1463.175 | +0.040% |
+
+These near-zero serving differences do not establish an improvement or
+rescue the failed decode-development acceptance. The default therefore
+retains contiguous BA copies. Neither removing 96 auxiliary-stream launches
+nor obtaining bitwise equality is sufficient evidence of a throughput gain.
+
+![Serving including the strided BA probe](images/tp2-serving-throughput.png)
+
+[All matched serving stages, contracts and raw-result hashes](data/tp2-serving.json).

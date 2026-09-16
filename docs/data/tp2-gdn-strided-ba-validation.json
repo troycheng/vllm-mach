@@ -1,0 +1,524 @@
+{
+  "schema": "mach-tp2-gdn-strided-ba-validation/v1",
+  "traces": [
+    {
+      "mode": "off",
+      "rows": 1,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m1-trial0/rank0.json",
+      "sha256": "f6618155ab15c04a5b2a70ab136c1216fb94aaa9015773af33c20653abc4c9ea"
+    },
+    {
+      "mode": "off",
+      "rows": 1,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m1-trial0/rank1.json",
+      "sha256": "335414039b31e30e9e2b0b291f4658f6c64f6d332caad597e29e3e56e0bf40ec"
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m4-trial0/rank0.json",
+      "sha256": "d9cce681d7363638fa6ae359634dff76b7c968aaa5882f87036e377526d1fd2e"
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m4-trial0/rank1.json",
+      "sha256": "596f4cc11eb881c496209e47d5c978de2d1238ccaa8dfe3eea0814652f861430"
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 96,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m16-trial0/rank0.json",
+      "sha256": "00678b1060cc8d773bc1dd4450f39fccd98639715ae07b67d879cbcbd9b3a462"
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 96,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m16-trial0/rank1.json",
+      "sha256": "9816c74f26497d64defd560498a20dfdcbc777b4ab194c8cdc0fcaf3f0264eef"
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 96,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m32-trial0/rank0.json",
+      "sha256": "9c7f2e1db962eaf04481d626cee7a646e29b498013e6f54b7b1d34f968354794"
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 96,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 0,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/off-profile/m32-trial0/rank1.json",
+      "sha256": "0e395da1f8ac34abaf15909e979e684f0c8fce5316750cac58b58f574ca5982e"
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m1-trial0/rank0.json",
+      "sha256": "60b3d9f6b8f8e9cc073df2c9f867aa3aab49c1dc9042891c8d18bff347f72487"
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m1-trial0/rank1.json",
+      "sha256": "057a5cd7441ab1c7bd702c9f4f5054930ce50c7a7a9b33b82537d35c88a867bc"
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m4-trial0/rank0.json",
+      "sha256": "57d79f1ca591e2e1094389a40de3363c844a3676333581ac2dd8cbaa744b1d28"
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m4-trial0/rank1.json",
+      "sha256": "d06b2e7622b929479527174e53243ae1f8e145ccd41207b987f8d8722ee8b805"
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m16-trial0/rank0.json",
+      "sha256": "e9f034622850c6ce193307304d96e15146f800b12b33911e2ded07458309945b"
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m16-trial0/rank1.json",
+      "sha256": "99ea61613f721c86cc1a0b19d73b44559405be51491ce24c2134370188644be6"
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "rank": 0,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m32-trial0/rank0.json",
+      "sha256": "853905941cbc685ca0810272bf362012afc41a238ee7ea049728356c821837ec"
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "rank": 1,
+      "samples": 3,
+      "copies_per_decode": 0,
+      "allreduce_residual_norm_per_decode": 128,
+      "strided_ba_layers": 48,
+      "raw_path": "../tp2-optimization-20260916/p2a-ba-direct/on-profile/m32-trial0/rank1.json",
+      "sha256": "6a733df625d7fdc854c3d89b64494054ce7af627435d241808064a1946189f43"
+    }
+  ],
+  "tests": {
+    "strided_ba": {
+      "cases": 12,
+      "replays_per_case": 120,
+      "state_dtypes": [
+        "float32",
+        "float16"
+      ],
+      "convolution_layouts": [
+        "SD",
+        "DS"
+      ],
+      "rows": [
+        16,
+        24,
+        32
+      ],
+      "output_and_states_bitwise_equal": true,
+      "convolution_null_index": 0,
+      "recurrent_null_indices": [
+        0,
+        -1
+      ],
+      "log_sha256": "50b50355b4e2e63af6063be51e3df03bf780e889b524ba103485a350e7ed4dc0"
+    },
+    "cpu": {
+      "passed": 60,
+      "log_sha256": "6e25b58288dfe4a45f3cb55f54d3ccbd58d1aae6dc7897290dc8117741c7490b"
+    }
+  },
+  "off_launch": {
+    "command": [
+      "tools/benchmark_tp2_decode.py",
+      "--model",
+      "/data1/models/Qwen3.8-27B-MXFP6",
+      "--output",
+      "../tp2-optimization-20260916/p2a-ba-direct/off"
+    ],
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "4,5",
+      "PYTHONPATH": "/tmp/mach-p2a-fused-extension:src",
+      "VLLM_MACH_GDN_STRIDED_BA": "0"
+    },
+    "note": "Started before the benchmark contract acquired its strided_gdn_ba field; explicit launch environment disables the candidate."
+  },
+  "wheel": {
+    "path": "../tp2-optimization-20260916/p2a-ba-direct/wheel/vllm_mach-0.1.0a11.dev0-py3-none-any.whl",
+    "sha256": "4f37b37891ebd0d76a286386c099d078bd52a1b4f46f269c4ec628c6703f009d"
+  },
+  "regression": {
+    "contract": {
+      "config": {
+        "model": "/data1/models/Qwen3.8-27B-MXFP6",
+        "quantization": "quark",
+        "dtype": "bfloat16",
+        "tensor_parallel_size": 2,
+        "max_model_len": 4096,
+        "max_num_seqs": 32,
+        "max_num_batched_tokens": 512,
+        "kv_cache_memory_bytes": 8218214400,
+        "enable_prefix_caching": false,
+        "attention_backend": "TRITON_ATTN",
+        "language_model_only": true,
+        "mamba_ssm_cache_dtype": "float32",
+        "seed": 20260916,
+        "disable_log_stats": false,
+        "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+        "compilation_config": {
+          "mode": "NONE",
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "cudagraph_capture_sizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      },
+      "profile": false,
+      "repeats": 5,
+      "gemm_overrides": [],
+      "input_tokens": 2048,
+      "output_tokens": {
+        "1": 129,
+        "other": 1025
+      },
+      "extension_library_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d",
+      "fused_gdn_quant": "auto",
+      "strided_gdn_ba": "1",
+      "fused_swiglu_quant": "auto",
+      "packages": {
+        "torch": "2.13.0+cu130",
+        "vllm": "0.29.0",
+        "mxfp6-sm120": "0.2.1"
+      },
+      "devices": "4,5"
+    },
+    "rows": [
+      {
+        "rows": 2,
+        "trials": [
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "6673c0ff4e1d048284dff4cc809157c184a4def4e339969976d68ad5c8e4b245"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "bf42d8d0ada5582b4b20fcc009603a30148868c467553f54e31ef6c5410d7769"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "cbaa09c18f434c414f57b4ae3ba40136734a7960970ec37e78d3f884df38e583"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "5fb53d787f2e2ca13554435e939646684d6c930acb6b367882c6e1304fb413a8"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 1019,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "ccbe4cf778d7211006fc24fc125f4e59eb25b26fa1b559499a2a6f8455d3e692"
+          }
+        ]
+      },
+      {
+        "rows": 8,
+        "trials": [
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "64e593bd8dc98aa6827db0e4084fab1c4ecf0b6f38ad11829909e1ffa2ad7e20"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "23f451d12f29b3399f2e8ab6981cd31af9bc69d3e803287da57bd01f31b7ae10"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "48f3dcc5086a5935efcc45827c78c4040932c2c7d9f2962dd8fd68231bec090f"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "14e8c4c20ca2b70461ea906442973679c8f5a15c1da2243ae6f26e432865a6c0"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 995,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "65c0d682d83e4115dcbe5f75e73b175386bcdc2e12632629ee86f86c8775eb24"
+          }
+        ]
+      },
+      {
+        "rows": 24,
+        "trials": [
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "0c0a7c37877f219f3642db46637aa80926eee2d050623cf9e355524668882680"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "814c32fe0943d7a1ae8a68ba32f66c6898e2c876433947f0ab1944684b024a3c"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "f2083d315edfa836285b9ebc36793435bf207c32941dbf7ea3020f3276aecf4b"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "88ad81bb3e99a1fcefd3649ed3774181bcbf9b705b94636b3eb4c3900d42a71e"
+          },
+          {
+            "ranks": [
+              {
+                "rank": 0,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              },
+              {
+                "rank": 1,
+                "target_decode_batches": 929,
+                "strided_ba_layers": 48
+              }
+            ],
+            "raw_sha256": "363bc57dad6bd639469f426350f0df35dd2e9b41eedf012179ecc353cb06b0ee"
+          }
+        ]
+      }
+    ]
+  }
+}

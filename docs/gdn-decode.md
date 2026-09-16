@@ -37,8 +37,18 @@ on independent streams is outside the supported contract.
 BA overlap retains the native BA GEMM, convolution and packed recurrent kernel.
 The auxiliary stream waits for hidden states, executes BA and contiguous a/b
 splits; the main stream executes QKV and convolution, then joins before
-recurrence. Output norm/projection remain native. Allocator stream ownership
-is recorded for side-stream results; unsupported calls create no pending work.
+recurrence. Allocator stream ownership is recorded for side-stream results;
+unsupported calls create no pending work. Output norm/projection use the
+capability-gated producer described below.
+
+`VLLM_MACH_GDN_STRIDED_BA=1` is a diagnostic candidate that passes the two BA
+views directly to the existing packed recurrent consumer (token stride 48,
+inner stride 1), removing two copies per layer. The main/auxiliary stream
+join and shared-storage lifetime records remain in place. It preserves the
+original arithmetic and state format, but is **disabled by default** (`0`):
+copy elimination alone has not passed the full-model performance gate.
+The switch is resolved before graph capture. See the
+[matched experiment](tp2-optimization-results.md#p2-a-strided-ba-consumer-experiment).
 
 ## Fused output norm and quantization
 

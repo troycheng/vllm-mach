@@ -153,7 +153,11 @@ def _forward(layer, original, persistent, aux, hidden_states):
         with torch.cuda.stream(aux):
             ba, _ = layer.in_proj_ba(hidden_states)
             b, a = layer.split_ba(ba)
-            b, a = b.contiguous(), a.contiguous()
+            # The packed recurrent consumer accepts independent token strides.
+            # These two unit-inner-stride views share BA's allocation; retain
+            # its cross-stream lifetime below, without materializing each half.
+            if not layer._mach_gdn_strided_ba:
+                b, a = b.contiguous(), a.contiguous()
         mixed, _ = layer.in_proj_qkvz(hidden_states)
         qkv, z = mixed.split([5120, 3072], -1)
         qkv = causal_conv1d_update(
@@ -201,6 +205,9 @@ def prepare(model):
     persistent, overlap = enabled("PERSISTENT"), enabled("BA_OVERLAP")
     if not (persistent or overlap):
         return
+    strided_ba = os.environ.get("VLLM_MACH_GDN_STRIDED_BA", "0")
+    if strided_ba not in ("0", "1"):
+        raise ValueError("VLLM_MACH_GDN_STRIDED_BA must be 0 or 1")
     from .dense import Mxfp6Sm120LinearKernel
     from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
     from vllm.logger import init_logger
@@ -237,6 +244,7 @@ def prepare(model):
     from .gdn_output import prepare as prepare_output
 
     for layer in layers:
+        layer._mach_gdn_strided_ba = strided_ba == "1"
         prepare_output(layer)
         if persistent:
             layer._mach_gdn_ba = layer.in_proj_ba.weight.T.contiguous()
@@ -289,6 +297,7 @@ def prepare(model):
         )
         layer._mach_gdn_prepared = True
     _STATS["prepared_layers"] += len(layers)
+    _STATS["strided_ba_layers"] += len(layers) if overlap and strided_ba == "1" else 0
     _STATS["fused_output_layers"] += sum(bool(getattr(l, "_mach_gdn_output_fused", False)) for l in layers)
     init_logger("vllm.mach.gdn").info(
         "Mach GDN prepared %d layers: persistent=%s rows=%s, BA overlap=%s rows=%s",

@@ -24,7 +24,7 @@ def main():
     p.add_argument('--output',type=Path,default=Path(__file__).resolve().parent.parent/'images')
     a=p.parse_args()
     stages=[json.loads(path.read_text()) for path in a.data]
-    fig,axes=plt.subplots(1,2,figsize=(11,4.5),layout='constrained')
+    fig,axes=plt.subplots(1,2,figsize=(12,5),layout='constrained')
     curves=[]
     for stage in stages:
         if 'matched_control' in stage:
@@ -39,16 +39,16 @@ def main():
     axes[1].set_ylabel('Mean request ITL (ms)')
     for ax in axes:
         ax.set_xlabel('Logical requests (physical size verified separately)')
-        ax.set_xticks([1,4,16,32]);ax.grid(alpha=.2);ax.legend()
+        ax.set_xticks([1,4,16,32]);ax.grid(alpha=.2);ax.legend(fontsize=8)
     fig.suptitle('TP2 / FP32 SSM / BF16 head · 2048 input tokens\nB1: 129 output; B4/16/32: 1025 output · five trials · includes prefill')
     save(fig,a.output,'tp2-optimization-throughput')
     plt.close(fig)
-    fig,axes=plt.subplots(1,2,figsize=(9,4),layout='constrained')
+    fig,axes=plt.subplots(1,2,figsize=(11,4.5),layout='constrained')
     for ax,m in zip(axes,(4,32)):
         for i,stage in enumerate(stages):
             row=stage['fidelity'][str(m)]
             ax.errorbar(i,row['mae'],yerr=np.array([[row['mae']-row['ci95'][0]],[row['ci95'][1]-row['mae']]]),fmt='o',capsize=5)
-        ax.set_xticks(range(len(stages)),[s['label'] for s in stages]);ax.set_title(f'Physical M{m}');ax.grid(axis='y',alpha=.2)
+        ax.set_xticks(range(len(stages)),[s['label'] for s in stages],rotation=20,ha='right');ax.set_title(f'Physical M{m}');ax.grid(axis='y',alpha=.2)
         ax.set_ylabel('Gold logprob MAE vs BF16 / 95% query CI')
     fig.suptitle('Fresh teacher-forced scoring · 256 queries / 10,479 target tokens')
     save(fig,a.output,'tp2-optimization-fidelity')
