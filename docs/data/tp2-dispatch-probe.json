@@ -1,0 +1,298 @@
+{
+  "schema": "mach-tp2-dispatch-probe/v1",
+  "stages": [
+    {
+      "name": "p1b-pdl-baseline",
+      "contract": {
+        "config": {
+          "model": "/data1/models/Qwen3.8-27B-MXFP6",
+          "quantization": "quark",
+          "dtype": "bfloat16",
+          "tensor_parallel_size": 2,
+          "max_model_len": 4096,
+          "max_num_seqs": 32,
+          "max_num_batched_tokens": 512,
+          "kv_cache_memory_bytes": 8218214400,
+          "enable_prefix_caching": false,
+          "attention_backend": "TRITON_ATTN",
+          "language_model_only": true,
+          "mamba_ssm_cache_dtype": "float32",
+          "seed": 20260916,
+          "disable_log_stats": false,
+          "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+          "compilation_config": {
+            "mode": "NONE",
+            "cudagraph_mode": "FULL_DECODE_ONLY",
+            "cudagraph_capture_sizes": [
+              1,
+              2,
+              4,
+              8,
+              16,
+              24,
+              32
+            ]
+          }
+        },
+        "profile": false,
+        "repeats": 5,
+        "input_tokens": 2048,
+        "output_tokens": {
+          "1": 129,
+          "other": 1025
+        },
+        "extension_library_sha256": "c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9",
+        "fused_swiglu_quant": "1",
+        "packages": {
+          "torch": "2.13.0+cu130",
+          "vllm": "0.29.0",
+          "mxfp6-sm120": "0.2.1"
+        },
+        "devices": "4,5"
+      },
+      "mean": 1153.6851787562753,
+      "sd": 1.2330281752935663,
+      "trials": [
+        1155.3190375032284,
+        1153.5135594742756,
+        1152.20456971713,
+        1152.9229640055519,
+        1154.46576308119
+      ],
+      "raw_summary_sha256": "49265169603cf5aa01410385ddb4a2bb688cb2f7b842fdb49b76090d09511a46",
+      "raw_directory": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p1b-pdl-baseline",
+      "ranks": [
+        {
+          "rank": 0,
+          "fused_swiglu_layers": 64,
+          "physical_rows": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "rank": 1,
+          "fused_swiglu_layers": 64,
+          "physical_rows": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      ],
+      "change_percent": 0.0,
+      "decision": "baseline"
+    },
+    {
+      "name": "p2-gate",
+      "contract": {
+        "config": {
+          "model": "/data1/models/Qwen3.8-27B-MXFP6",
+          "quantization": "quark",
+          "dtype": "bfloat16",
+          "tensor_parallel_size": 2,
+          "max_model_len": 4096,
+          "max_num_seqs": 32,
+          "max_num_batched_tokens": 512,
+          "kv_cache_memory_bytes": 8218214400,
+          "enable_prefix_caching": false,
+          "attention_backend": "TRITON_ATTN",
+          "language_model_only": true,
+          "mamba_ssm_cache_dtype": "float32",
+          "seed": 20260916,
+          "disable_log_stats": false,
+          "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+          "compilation_config": {
+            "mode": "NONE",
+            "cudagraph_mode": "FULL_DECODE_ONLY",
+            "cudagraph_capture_sizes": [
+              1,
+              2,
+              4,
+              8,
+              16,
+              24,
+              32
+            ]
+          }
+        },
+        "profile": false,
+        "repeats": 5,
+        "gemm_overrides": [
+          [
+            32,
+            17408,
+            5120,
+            25,
+            1,
+            2
+          ]
+        ],
+        "input_tokens": 2048,
+        "output_tokens": {
+          "1": 129,
+          "other": 1025
+        },
+        "extension_library_sha256": "c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9",
+        "fused_swiglu_quant": "1",
+        "packages": {
+          "torch": "2.13.0+cu130",
+          "vllm": "0.29.0",
+          "mxfp6-sm120": "0.2.1"
+        },
+        "devices": "4,5"
+      },
+      "mean": 1130.0704368619677,
+      "sd": 7.972897538087771,
+      "trials": [
+        1136.5344340135598,
+        1133.1757835736898,
+        1137.2174595374663,
+        1119.2583225644428,
+        1124.1661846206796
+      ],
+      "raw_summary_sha256": "66a94c2d8e6ee1ab281303603125e9140c71af1dbe7c3f7d034689557e5359f7",
+      "raw_directory": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2-gate",
+      "ranks": [
+        {
+          "rank": 0,
+          "fused_swiglu_layers": 64,
+          "physical_rows": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "rank": 1,
+          "fused_swiglu_layers": 64,
+          "physical_rows": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      ],
+      "change_percent": -2.0468965302791964,
+      "decision": "reject: regression or no gain beyond variation"
+    },
+    {
+      "name": "p2-down",
+      "contract": {
+        "config": {
+          "model": "/data1/models/Qwen3.8-27B-MXFP6",
+          "quantization": "quark",
+          "dtype": "bfloat16",
+          "tensor_parallel_size": 2,
+          "max_model_len": 4096,
+          "max_num_seqs": 32,
+          "max_num_batched_tokens": 512,
+          "kv_cache_memory_bytes": 8218214400,
+          "enable_prefix_caching": false,
+          "attention_backend": "TRITON_ATTN",
+          "language_model_only": true,
+          "mamba_ssm_cache_dtype": "float32",
+          "seed": 20260916,
+          "disable_log_stats": false,
+          "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+          "compilation_config": {
+            "mode": "NONE",
+            "cudagraph_mode": "FULL_DECODE_ONLY",
+            "cudagraph_capture_sizes": [
+              1,
+              2,
+              4,
+              8,
+              16,
+              24,
+              32
+            ]
+          }
+        },
+        "profile": false,
+        "repeats": 5,
+        "gemm_overrides": [
+          [
+            32,
+            5120,
+            8704,
+            17,
+            2,
+            1
+          ]
+        ],
+        "input_tokens": 2048,
+        "output_tokens": {
+          "1": 129,
+          "other": 1025
+        },
+        "extension_library_sha256": "c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9",
+        "fused_swiglu_quant": "1",
+        "packages": {
+          "torch": "2.13.0+cu130",
+          "vllm": "0.29.0",
+          "mxfp6-sm120": "0.2.1"
+        },
+        "devices": "4,5"
+      },
+      "mean": 1150.9588649236396,
+      "sd": 1.3964915926475847,
+      "trials": [
+        1151.1253937527422,
+        1152.0792122011158,
+        1151.2021423651024,
+        1151.8198226428651,
+        1148.5677536563724
+      ],
+      "raw_summary_sha256": "84d3969611235d168ba19a9365355d2725bf635bdaa57d6182820812fa24688a",
+      "raw_directory": "/data/lxy/detailed_benchmark/tp2-optimization-20260916/p2-down",
+      "ranks": [
+        {
+          "rank": 0,
+          "fused_swiglu_layers": 64,
+          "physical_rows": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "rank": 1,
+          "fused_swiglu_layers": 64,
+          "physical_rows": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      ],
+      "change_percent": -0.23631350067050416,
+      "decision": "reject: regression or no gain beyond variation"
+    }
+  ]
+}

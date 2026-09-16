@@ -219,3 +219,34 @@ extension selection tests pass. The rebuilt wheel contains the exact tested
 binary (SHA256 `c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9`);
 the deployment patch applies exactly and idempotently to pinned v0.2.1.
 Extension implementation commit: `1107328`.
+
+## P2-D: bounded full-checkpoint dispatch experiment
+
+After P1-B, rank 0's physical-M32 trace attributes 23.086 ms of GPU activity
+to native GEMMs across three measured decode steps, versus 0.236 ms for the
+remaining gated norm. These are per-rank category interval unions, not
+additive critical-path predictions. We selected GEMM dispatch for this
+bounded P2 experiment. Additional GDN output, attention producer, and head
+rewrites are deferred; existing persistent GDN, overlap, and compact argmax
+remain in place.
+
+Two M32 candidates were installed before workspace planning and graph
+capture, then measured through the real TP2 checkpoint with five unprofiled
+trials, the same prompts, and the accepted P1-B producer:
+
+| Candidate | Config / swizzle / raster | Output tokens/s | vs P1-B |
+|---|---|---:|---:|
+| Existing dispatch | unchanged | 1153.685 ± 1.233 | baseline |
+| Gate/up N17408 K5120 | 25 / 1 / AlongN | 1130.070 ± 7.973 | −2.05% |
+| Down N5120 K8704 | 17 / 2 / AlongM | 1150.959 ± 1.396 | −0.24% |
+
+Neither candidate improves the full-model workload; both are rejected.
+No new schedule enters production, and no rejected candidate's fidelity or
+serving results are promoted. This is a limited two-candidate experiment,
+not an exhaustive search. All other M/shape schedules remain unchanged.
+[Contracts, five trial values, physical-size checks, and artifact hashes](data/tp2-dispatch-probe.json).
+
+To reproduce a candidate, pass `--gemm-overrides candidate.json` to
+`tools/benchmark_tp2_decode.py --rows 32`; the JSON is a list of
+`[M,N,K,config_id,swizzle,raster]` entries (raster 1=AlongM, 2=AlongN).
+The overrides are diagnostic and are not read by the serving launcher.
