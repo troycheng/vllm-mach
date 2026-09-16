@@ -100,8 +100,8 @@ def plot_tradeoff(accuracy, performance):
 
 def plot_native_tradeoff(accuracy, performance):
     baseline = performance['runs']['fp8']['points']
-    fig, ax = plt.subplots(figsize=(12.8, 6.0))
-    fig.subplots_adjust(left=.09, right=.97, top=.78, bottom=.16)
+    fig, ax = plt.subplots(figsize=(12.8, 6.6))
+    fig.subplots_adjust(left=.09, right=.97, top=.82, bottom=.16)
     for name in ORDER:
         run = accuracy['runs'][name]
         gains = [100*(p['output_throughput_tokens_per_s']/b['output_throughput_tokens_per_s']-1)
@@ -113,7 +113,7 @@ def plot_native_tradeoff(accuracy, performance):
                     label=f"{LABELS[name]} ({y:+.1f}%)")
     ax.axhline(0, color='#AAB2BC', lw=1)
     ax.grid(color='#E8EBEE', lw=.8)
-    ax.set_xlabel('Gold-token logprob MAE vs BF16 (lower is better)', labelpad=13)
+    ax.set_xlabel('Physical M32 gold-token logprob MAE vs BF16', labelpad=13)
     ax.set_ylabel('Output-throughput gain vs stock FP8', labelpad=15)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
     fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.06,.995),
@@ -121,27 +121,83 @@ def plot_native_tradeoff(accuracy, performance):
     frame(ax)
     save(fig, 'quality-throughput-tradeoff')
 
+def plot_gdn_m4(data):
+    fig, ax = plt.subplots(figsize=(12.8,6.2))
+    fig.subplots_adjust(left=.40, right=.94, top=.83, bottom=.20)
+    for y, name in enumerate(['default', 'gdn', 'full_ba', 'full_gdn']):
+        run = data['runs'][name]
+        x = run['mae']; lo, hi = run['ci95']
+        ax.barh(y, x, height=.5, color=COLORS[name])
+        ax.errorbar(x,y,xerr=[[x-lo],[hi-x]],fmt='none',ecolor=INK,capsize=4)
+        ax.text(hi+.003,y,f'{x:.5f}',va='center')
+    ax.set_yticks([0,1,2,3], [LABELS[n] for n in ['default', 'gdn', 'full_ba', 'full_gdn']])
+    ax.invert_yaxis()
+    ax.set_xlim(0,max(r['ci95'][1] for r in data['runs'].values())+.025)
+    ax.set_xlabel('Physical M4: gold-token logprob MAE vs BF16',labelpad=13)
+    fig.suptitle("256 queries · 10,479 gold tokens · 95% query-bootstrap intervals", fontsize=12, y=.96)
+    ax.grid(axis='x',color='#E8EBEE',lw=.8)
+    frame(ax)
+    save(fig,'gdn-m4-fidelity')
+
+
+def plot_gdn_ablation(performance):
+    fig, ax = plt.subplots(figsize=(11.8,5.2))
+    fig.subplots_adjust(left=.10, right=.97, top=.72, bottom=.17)
+    x = np.arange(4)
+    for index, (arm, baseline, label) in enumerate([
+        ('persistent', 'default', 'Persistent only / previous default'),
+        ('full_ba', 'full', 'BA overlap / previous full (FP16)'),
+        ('gdn', 'default', 'Combined default / previous default'),
+        ('full_gdn', 'full_ba', 'FP16 persistent / full without persistent'),
+    ]):
+        values = [100*(p['output_throughput_tokens_per_s']/b['output_throughput_tokens_per_s']-1)
+                  for p,b in zip(performance['runs'][arm]['points'], performance['runs'][baseline]['points'], strict=True)]
+        bars = ax.bar(x+(index-1.5)*.21, values, width=.20, color=COLORS[arm], label=label)
+        ax.bar_label(bars, labels=[f'{v:+.1f}%' for v in values], padding=4, fontsize=10)
+    ax.axhline(0, color='#AAB2BC', lw=1)
+    ax.set_xticks(x, ['c4','c16','c24','c32'])
+    ax.set_xlabel('Concurrent requests', labelpad=12)
+    ax.set_ylabel('Output-throughput change', labelpad=12)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
+    ax.grid(axis='y', color='#E8EBEE', lw=.8)
+    ax.set_ylim(-2, 28)
+    ax.yaxis.set_major_locator(MultipleLocator(5))
+    fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.08,.99), frameon=False, fontsize=11)
+    frame(ax)
+    save(fig, 'gdn-throughput-ablation')
+
+
 def main():
     global ORDER, LABELS, COLORS, MARKERS, STYLES
     parser = argparse.ArgumentParser()
     parser.add_argument('--accuracy-only', action='store_true')
+    parser.add_argument('--gdn-m4-only', action='store_true')
     parser.add_argument('--legacy', action='store_true', help='Render archived EXL3 measurements to an archive directory')
     args = parser.parse_args()
     if not args.legacy:
-        ORDER = ['fp8', 'default', 'full', 'nvfp4']
-        LABELS = {'fp8':'FP8 · stock vLLM 0.29',
-                  'default':'MXFP6 · Mach default', 'full':'MXFP6 · Mach full options',
-                  'nvfp4':'NVFP4 · stock vLLM 0.29'}
-        COLORS = dict(zip(ORDER, ['#87919D', '#3B69C8', '#B58A2B', '#D77B44']))
-        MARKERS = dict(zip(ORDER, ['o','s','^','P']))
-        STYLES = dict(zip(ORDER, ['--','-','-',':']))
+        ORDER = ['fp8', 'default', 'persistent', 'gdn', 'full', 'full_ba', 'full_gdn', 'nvfp4']
+        LABELS = {'fp8':'FP8 · stock vLLM 0.29 (Sep 15)',
+                  'default':'MXFP6 · previous default', 'persistent':'MXFP6 · persistent only',
+                  'gdn':'MXFP6 · Mach default',
+                  'full':'MXFP6 · previous full', 'full_ba':'MXFP6 · full without persistent',
+                  'full_gdn':'MXFP6 · Mach full',
+                  'nvfp4':'NVFP4 · stock vLLM 0.29 (Sep 15)'}
+        COLORS = dict(zip(ORDER, ['#87919D', '#3B69C8', '#159A98', '#126149', '#B58A2B', '#9579A6', '#8050A0', '#D77B44']))
+        MARKERS = dict(zip(ORDER, ['o','s','D','X','^','v','*','P']))
+        STYLES = dict(zip(ORDER, ['--','--',':','-','--','--','-',':']))
+        ORDER = ['fp8', 'gdn', 'full_gdn', 'nvfp4']
     else:
         global OUT
         OUT = OUT/'historical'
         OUT.mkdir(parents=True, exist_ok=True)
+    if args.gdn_m4_only:
+        if args.legacy:
+            parser.error('--gdn-m4-only cannot use --legacy')
+        plot_gdn_m4(json.loads((HERE/'gdn-m4-fidelity.json').read_text()))
+        return
     accuracy = json.loads((HERE/('accuracy-comparison-m32-20260910.json' if args.legacy else 'native-fidelity.json')).read_text())
-    assert set(ORDER) == set(accuracy['runs'])
-    fig, ax = plt.subplots(figsize=(12.8,5.4))
+    assert set(ORDER).issubset(accuracy['runs'])
+    fig, ax = plt.subplots(figsize=(13.6,5.6))
     fig.subplots_adjust(left=.35,right=.96,top=.96,bottom=.17)
     for y, name in enumerate(ORDER):
         run = accuracy['runs'][name]
@@ -155,18 +211,21 @@ def main():
     ax.xaxis.set_major_locator(MultipleLocator(.05))
     ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
     ax.grid(axis='x',color='#E8EBEE',lw=.8)
-    ax.set_xlabel('Mean absolute error (lower is better)',labelpad=13)
+    ax.set_xlabel('Physical M32: gold-token logprob MAE vs BF16 (lower is better)',labelpad=13)
     frame(ax)
     save(fig,'accuracy-comparison')
+
+    if not args.legacy and (HERE/'gdn-m4-fidelity.json').exists():
+        plot_gdn_m4(json.loads((HERE/'gdn-m4-fidelity.json').read_text()))
 
     if args.accuracy_only:
         print('Rendered accuracy comparison (PNG + SVG)')
         return
     performance = json.loads((HERE/('quantization-comparison-3k1k-20260910.json' if args.legacy else 'native-serving.json')).read_text())
-    assert set(ORDER) == set(performance['runs'])
+    assert set(ORDER).issubset(performance['runs'])
 
-    fig, ax = plt.subplots(figsize=(12.8,6.0))
-    fig.subplots_adjust(left=.09,right=.97,top=.79,bottom=.15)
+    fig, ax = plt.subplots(figsize=(12.8,6.6))
+    fig.subplots_adjust(left=.09,right=.97,top=.82,bottom=.15)
     for name in ORDER:
         points = performance['runs'][name]['points']
         assert [p['concurrency'] for p in points] == [4,16,24,32]
@@ -188,6 +247,8 @@ def main():
     frame(ax)
     save(fig,'throughput-comparison')
     (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
+    if not args.legacy:
+        plot_gdn_ablation(performance)
     print('Rendered three title-free comparison figures (PNG + SVG)')
 
 if __name__ == '__main__':

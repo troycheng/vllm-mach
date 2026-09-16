@@ -29,3 +29,8 @@ The optional native/owner_prefill extension also contains a collective header
 derived from FlashInfer under Apache-2.0, with owner-row communication and
 local MLP operations. Original header notices are retained. It is built
 separately from the Python wheel.
+
+The optional mxfp6/gdn persistent CUDA kernel and host support are derived
+from FlashInfer (historical Mach snapshot 8c5021a), under Apache-2.0.
+Original notices are retained; the kernel now treats vLLM 0.29 null slot zero
+as padding. BA overlap scheduling is adapted from the earlier Mach profile.

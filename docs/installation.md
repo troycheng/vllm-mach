@@ -45,6 +45,8 @@ The profile and its manifest are included in the Mach wheel under
 `vllm_mach/mxfp6/profile`. Neither a source checkout of Mach nor the optimization
 checkout of vLLM is needed after installation.
 
+Model checkpoint: [nekofish/Qwen3.8-27B-MXFP6 on Hugging Face](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
+
 ## Base acceleration
 
 ```bash
@@ -56,7 +58,8 @@ CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
 The launcher selects Quark, BF16, TP2, the V2 runner, TRITON_ATTN, no prefix
 caching, a 4096 scheduled-token budget, and full decode graphs up to 32 rows.
 It enables native MXFP6, fused AllReduce/residual/RMSNorm, and compact BF16
-greedy argmax communication. The checkpoint's original recurrent-state dtype
+greedy argmax communication, plus small-batch persistent and large-batch BA
+overlap GDN decode. The checkpoint's original recurrent-state dtype
 and BF16 LM head are preserved by default.
 
 Use `--dry-run` to print flags without loading a model. Standard vLLM flags,
@@ -122,3 +125,26 @@ the CUDA 13.0 toolkit used by the lossless extension.
 
 See [integration and validation](native-mxfp6.md) before interpreting benchmark
 results. Historical EXL3 guides apply only to earlier releases.
+
+## Default GDN decode
+
+These paths ship in the Mach wheel; update the wheel and keep the current native
+runtime profile. Do not install the old FlashInfer/EXL3 overlay.
+
+```bash
+# FP32 state: persistent M1/2/4/8 and BA overlap M16/24/32
+vllm-mach-serve --model /models/Qwen3.8-27B-MXFP6
+
+# FP16 state: persistent M1/2/4/8 and BA overlap M16/24/32
+vllm-mach-serve --model /models/Qwen3.8-27B-MXFP6 --fp16-ssm
+```
+
+Persistent requires a CUDA development toolkit for its first JIT build. The
+source is packaged in `vllm_mach/mxfp6/gdn`; generated files use FlashInfer's
+normal cache. Native warmup compiles and allocates scratch before profiling
+and graph capture. Both flags default on and support FP32 or FP16 recurrent state.
+Persistent specializes its state loads/stores to the allocated cache dtype,
+retaining FP32 arithmetic; no state pool conversion occurs at batch boundaries. See [coverage and validation](gdn-decode.md).
+
+Disable the routes individually with `--no-gdn-persistent` and
+`--no-gdn-ba-overlap`.

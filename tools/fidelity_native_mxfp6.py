@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Frozen256 physical-M32 raw decode diagnostic; never used for throughput."""
+"""Frozen256 physical-M4/M32 raw decode diagnostic; never used for throughput."""
 
 import argparse
 import importlib.metadata
@@ -26,6 +26,12 @@ def manifest(path):
     for s in samples:
         assert s["full_token_ids"] == s["prompt_token_ids"] + s["target_token_ids"]
     return samples
+
+
+def gdn_stats(worker):
+    from vllm_mach.mxfp6.gdn_decode import stats
+
+    return {"rank": worker.rank, **stats()}
 
 
 def install_teacher(worker):
@@ -119,7 +125,17 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--arm",
-        choices=["bf16", "default", "full", "fp8", "nvfp4"],
+        choices=[
+            "bf16",
+            "default",
+            "gdn",
+            "persistent",
+            "full",
+            "full_ba",
+            "full_gdn",
+            "fp8",
+            "nvfp4",
+        ],
         required=True,
     )
     p.add_argument("--model", required=True)
@@ -127,6 +143,8 @@ def main():
     p.add_argument("--manifest", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--head-only", action="store_true")
+    p.add_argument("--physical-rows", type=int, choices=[4, 32], default=32)
+    p.add_argument("--skip-head-probe", action="store_true")
     p.add_argument(
         "--no-stock-compile",
         action="store_true",
@@ -136,12 +154,16 @@ def main():
     samples = manifest(a.manifest)
     from vllm_mach.mxfp6.serve import profile_environment
 
-    full = a.arm == "full"
+    full = a.arm in ("full", "full_ba", "full_gdn")
     if a.head_only and not full:
-        p.error("--head-only requires --arm full")
+        p.error("--head-only requires --arm full or full_ba")
+    if a.head_only and (a.skip_head_probe or a.physical_rows != 32):
+        p.error("--head-only requires M32 and cannot use --skip-head-probe")
     flags = profile_environment(
         argparse.Namespace(
             fp16_ssm=full,
+            gdn_persistent=a.arm in ("persistent", "gdn", "full_gdn"),
+            gdn_ba_overlap=a.arm in ("full_ba", "gdn", "full_gdn"),
             lossless_prefill=full,
             owner_prefill=full,
             nvfp4_lm_head=full,
@@ -191,7 +213,7 @@ def main():
             cudagraph_capture_sizes=[1, 2, 4, 8, 16, 24, 32],
         ),
     )
-    if a.arm in ("default", "full"):
+    if a.arm in ("default", "gdn", "persistent", "full", "full_ba", "full_gdn"):
         args["quantization"] = "quark"
     if a.arm in ("fp8", "nvfp4") and not a.no_stock_compile:
         # Keep stock compilation enabled, as in the stock throughput baselines.
@@ -206,6 +228,7 @@ def main():
         dict(
             arm=a.arm,
             manifest=str(a.manifest),
+            physical_rows=a.physical_rows,
             llm_args=args,
             environment=flags,
             packages={
@@ -223,9 +246,15 @@ def main():
     llm = LLM(**args)
     if not a.head_only:
         write(a.output / "hook.json", llm.collective_rpc(install_teacher))
+    rows_per_batch = a.physical_rows
+    cohorts = len(samples) // rows_per_batch
+    if not a.head_only and rows_per_batch != 32:
+        llm.collective_rpc(teacher_decode.set_physical_rows, args=(rows_per_batch,))
     records = []
-    for index in range(0 if a.head_only else 9):
-        batch = samples[(index % 8) * 32 : (index % 8 + 1) * 32]
+    for index in range(0 if a.head_only else cohorts + 1):
+        batch = samples[
+            (index % cohorts) * rows_per_batch : (index % cohorts + 1) * rows_per_batch
+        ]
         max_gold = max(s["target_tokens"] for s in batch)
         assert sum(len(s["prompt_token_ids"]) - 1 for s in batch) <= 8192
         prompts, params, sequences = [], [], []
@@ -259,7 +288,7 @@ def main():
         results = {
             str(r.request_id): r for r in llm.wait_for_completion(use_tqdm=False)
         }
-        assert len(results) == 32 and set(results) == set(external)
+        assert len(results) == rows_per_batch and set(results) == set(external)
         rows = []
         for s, seq, key in zip(batch, sequences, external, strict=True):
             output = results[key].outputs[0]
@@ -276,19 +305,19 @@ def main():
             assert len(scored) == max_gold
             assert {c["offset"] for c in scored} == set(range(1, max_gold + 1))
             assert all(
-                c["num_tokens"] == c["num_reqs"] == 32
+                c["num_tokens"] == c["num_reqs"] == rows_per_batch
                 and set(c["ids"]) == {s["id"] for s in batch}
                 for c in scored
             )
         write(
             a.output / f"batch{index:02}.json", dict(records=rows, runtime_calls=calls)
         )
-        if index < 8:
+        if index < cohorts:
             records.extend(rows)
         else:
             delta = [
                 abs(x - y)
-                for r, s in zip(records[:32], rows, strict=True)
+                for r, s in zip(records[:rows_per_batch], rows, strict=True)
                 for x, y in zip(r["gold_logprobs"], s["gold_logprobs"], strict=True)
             ]
             write(
@@ -298,7 +327,7 @@ def main():
         print("FIDELITY_BATCH", a.arm, index, flush=True)
     if not a.head_only:
         write(a.output / "records.json", records)
-    if full:
+    if full and not a.skip_head_probe:
         llm.collective_rpc(install_head_probe)
         for index in range(8):
             batch = samples[index * 32 : (index + 1) * 32]
@@ -313,6 +342,8 @@ def main():
                 len(o.outputs[0].token_ids) == 48 for o in outputs
             )
         write(a.output / "head.json", llm.collective_rpc(head_stats))
+    if a.arm in ("default", "gdn", "persistent", "full", "full_ba", "full_gdn"):
+        write(a.output / "gdn.json", llm.collective_rpc(gdn_stats))
     write(
         a.output / "COMPLETE.json",
         dict(

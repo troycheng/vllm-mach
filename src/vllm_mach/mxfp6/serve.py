@@ -15,6 +15,8 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
     # Explicit values prevent stale profile flags from changing this run.
     return {
         "VLLM_PLUGINS": "mach",
+        "VLLM_MACH_GDN_PERSISTENT": str(int(getattr(args, "gdn_persistent", True))),
+        "VLLM_MACH_GDN_BA_OVERLAP": str(int(getattr(args, "gdn_ba_overlap", True))),
         "MXFP6_AUTOTUNE": "off",
         "VLLM_USE_V2_MODEL_RUNNER": "1",
         "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
@@ -83,6 +85,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--fp16-ssm", action="store_true")
+    parser.add_argument(
+        "--gdn-persistent",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="FP32/FP16 SSM persistent decode at M1/2/4/8 (default on)",
+    )
+    parser.add_argument(
+        "--gdn-ba-overlap",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Overlap BA with QKV/conv at M16/24/32 (default on)",
+    )
     parser.add_argument("--lossless-prefill", action="store_true")
     parser.add_argument("--owner-prefill", action="store_true")
     parser.add_argument("--nvfp4-lm-head", action="store_true")

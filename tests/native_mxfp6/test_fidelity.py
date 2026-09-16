@@ -54,7 +54,16 @@ def test_published_fidelity():
     if not path.exists():
         pytest.skip("GPU experiment results not collected yet")
     data = json.loads(path.read_text())
-    assert set(data["runs"]) == {"fp8", "default", "full", "nvfp4"}
+    assert set(data["runs"]) == {
+        "fp8",
+        "default",
+        "persistent",
+        "gdn",
+        "full",
+        "full_ba",
+        "full_gdn",
+        "nvfp4",
+    }
     assert data["query_count"] == len(data["queries"]) == 256
     assert sum(len(q["bf16_logprobs"]) for q in data["queries"]) == 10479
     assert data["reference_repeat"] == {"max_abs": 0.0, "mean_abs": 0.0}
@@ -100,3 +109,62 @@ def test_published_head_probe():
         data["final_top1_agreement"]
         == 1 - ranks[0]["global_argmax_mismatches"] / ranks[0]["rows"]
     )
+
+
+def test_small_batch_persistent_fidelity_data():
+    path = ROOT / "docs/data/gdn-m4-fidelity.json"
+    if not path.exists():
+        pytest.skip("M4 GPU results not collected yet")
+    data = json.loads(path.read_text())
+    assert data["physical_rows"] == 4
+    assert data["query_count"] == len(data["queries"]) == 256
+    assert (
+        data["target_tokens"]
+        == sum(len(q["bf16_logprobs"]) for q in data["queries"])
+        == 10479
+    )
+    tool = module("docs/data/collect_native_comparison.py")
+    for arm, run in data["runs"].items():
+        errors = [
+            float(np.abs(np.asarray(row) - q["bf16_logprobs"]).mean())
+            for row, q in zip(run["gold_logprobs"], data["queries"], strict=True)
+        ]
+        assert run["mae"] == pytest.approx(np.mean(errors))
+        assert run["ci95"] == pytest.approx(tool.bootstrap(errors))
+        assert run["contract"]["physical_rows"] == 4
+        assert run["repeat"] == {"max_abs": 0.0, "mean_abs": 0.0}
+    assert all(
+        r["prepared_layers"] == 48 and r["persistent_m4"] > 0
+        for r in data["runs"]["persistent"]["dispatch"]
+    )
+
+
+def test_published_gdn_equivalence_and_dispatch():
+    data = json.loads((ROOT / "docs/data/native-fidelity.json").read_text())
+    for arm, reference in (
+        ("persistent", "default"),
+        ("gdn", "default"),
+        ("full_ba", "full"),
+        ("full_gdn", "full_ba"),
+    ):
+        result = data["gdn_ablation"][arm]
+        assert result["reference"] == reference
+        assert result["exact_gold_logprobs"]
+        assert (
+            data["runs"][arm]["gold_logprobs"]
+            == data["runs"][reference]["gold_logprobs"]
+        )
+        assert result["mean"] == 0.0 and result["ci95"] == [0.0, 0.0]
+        assert {rank["rank"] for rank in result["dispatch"]} == {0, 1}
+        for rank in result["dispatch"]:
+            assert rank["prepared_layers"] == 48
+            if arm in ("gdn", "full_ba", "full_gdn"):
+                assert all(rank[f"overlap_m{rows}"] > 0 for rows in (16, 24, 32))
+            if arm in ("gdn", "persistent", "full_gdn"):
+                assert all(rank[f"persistent_m{rows}"] > 0 for rows in (1, 2, 4, 8))
+    small = json.loads((ROOT / "docs/data/gdn-m4-fidelity.json").read_text())
+    assert (
+        small["runs"]["gdn"]["gold_logprobs"]
+        == small["runs"]["persistent"]["gold_logprobs"]
+    )
+    assert all(rank["persistent_m4"] > 0 for rank in small["runs"]["gdn"]["dispatch"])

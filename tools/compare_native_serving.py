@@ -16,11 +16,13 @@ from vllm_mach.mxfp6.serve import build_command
 
 def launch_configuration(a, arm):
     """Keep stock compiler defaults separate from the Mach profile."""
-    full = arm == "full"
+    full = arm in ("full", "full_ba", "full_gdn")
     suffix = {"fp8": "FP8-official", "nvfp4": "NVFP4"}.get(arm, "MXFP6")
     args = argparse.Namespace(
         model=a.models / f"Qwen3.8-27B-{suffix}",
         fp16_ssm=full,
+        gdn_persistent=arm in ("persistent", "gdn", "full_gdn"),
+        gdn_ba_overlap=arm in ("full_ba", "gdn", "full_gdn"),
         lossless_prefill=full,
         owner_prefill=full,
         nvfp4_lm_head=full,
@@ -69,7 +71,16 @@ def main():
     p.add_argument(
         "--arms",
         nargs="+",
-        choices=["default", "full", "fp8", "nvfp4"],
+        choices=[
+            "default",
+            "gdn",
+            "persistent",
+            "full",
+            "full_ba",
+            "full_gdn",
+            "fp8",
+            "nvfp4",
+        ],
         required=True,
     )
     p.add_argument("--models", type=Path, required=True)

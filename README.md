@@ -37,40 +37,40 @@ See the [current source installation](docs/installation.md) for native dependenc
 
 ### 3k/1k reference comparison
 
-Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, measured on September 15, 2026. The four profiles share frozen ShareGPT-derived token prompts and use 20/80/120/160 requests at c4/c16/c24/c32, with up to 32 warmup requests per point. Throughput counts generated tokens only; these are short, single-run measurements.
+Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, GDN measured September 16, 2026; stock FP8/NVFP4 reuse September 15 data. Frozen prompts, 20/80/120/160 requests at c4/c16/c24/c32, per-point warmups. These are short, single-run output-throughput measurements.
 
-![Serving throughput across four configurations](docs/images/throughput-comparison.png)
+![Serving throughput](docs/images/throughput-comparison.png)
 
-| Configuration | c32 output token/s |
-|---|---:|
-| FP8 · stock vLLM 0.29 | 1160.4 |
-| MXFP6 · Mach default | 1422.8 |
-| MXFP6 · Mach full options | 1646.6 |
-| NVFP4 · stock vLLM 0.29 | 1607.6 |
+| Configuration | c4 | c16 | c24 | c32 |
+|---|---:|---:|---:|---:|
+| FP8 · stock vLLM 0.29 | 267.0 | 806.1 | 1018.5 | 1160.4 |
+| MXFP6 · Mach default | 371.2 | 999.9 | 1278.4 | 1445.0 |
+| MXFP6 · Mach full | 384.9 | 1124.3 | 1453.6 | 1674.8 |
+| NVFP4 · stock vLLM 0.29 | 379.0 | 1142.9 | 1424.6 | 1607.6 |
 
-Weighting c4/c16/c24/c32 equally, Mach default improves throughput over stock FP8 by **22.3%**, and the full profile by **37.5%**. The full profile is slightly faster than NVFP4 at c32, but not at every concurrency.
+The new default improves throughput over stock FP8 by **28.3%**, and the new full profile by **42.7%**, weighting the four concurrency levels equally.
 
-Stock FP8/NVFP4 use unpatched vLLM 0.29 with default compilation and **FlashInfer AllReduce disabled**. Stock NVFP4 reaches **1607.6 token/s at c32**; a separate reproduction using the original benchmark client reached **1590.95**, consistent with the reported 1578.67. The previous 1268.8 result disabled compilation and is excluded.
-
-Mach default enables fused AR/Norm and compact BF16 greedy sampling. The full profile additionally enables FP16 SSM, lossless/owner prefill and NVFP4 head search. Both use equal KV bytes and the native profile's decode graphs; stock profiles retain their own compiler and memory defaults. This compares deployable profiles, not quantization alone. [Configuration, results and reproduction](docs/native-fidelity.md).
+Default now enables both GDN routes. Full options additionally enable FP16 SSM, lossless/owner prefill and NVFP4 head search; both state dtypes use persistent at small batches. Stock FP8/NVFP4 retain default compilation and disable FlashInfer AllReduce. Mach retains its decode graphs and fixed KV allocation. This compares deployable profiles; [exact settings, isolated comparisons and raw results](docs/native-fidelity.md) are retained.
 
 ### Numerical fidelity
 
-Gold-token logprob MAE against a freshly measured BF16 reference over the original 256 queries and 10,479 target tokens, using physical-M32 teacher-forced decode. Lower is better; whiskers show 95% query-bootstrap intervals (20,000 resamples).
+Gold-token logprob MAE against BF16 (the new and archived references match exactly) over 256 queries and 10,479 target tokens. Lower is better; whiskers are 95% query-bootstrap intervals.
 
-![Gold-token logprob MAE against BF16](docs/images/accuracy-comparison.png)
+![Physical-M32 fidelity](docs/images/accuracy-comparison.png)
 
-Mach default records **0.0906 MAE** and the full optional profile **0.0896**, compared with **0.0614 for stock FP8** and **0.1709 for stock NVFP4**, with stock compilation enabled. The two MXFP6 intervals overlap; the small difference does not establish a fidelity improvement. MAE measures numerical deviation, not task accuracy.
+At physical M32, new default MAE is **0.0906** and new full is **0.0896**, versus **0.0614** for stock FP8 and **0.1709** for stock NVFP4. BA overlap preserves every scored gold-token logprob in both state dtypes. Persistent is inactive at M32.
 
-Logprob requests use the BF16 head. A separate test of NVFP4 candidate search retained **100% of the global BF16 top-20 tokens** across 11,998 eligible rows (239,960 tokens), with **100% final top-1 agreement**. This is an observed result on these inputs, not a guarantee for all prompts or bitwise equality of logits. [Protocol, raw results and reproduction](docs/native-fidelity.md).
+At physical M4, the default profile records **0.08540 MAE** and full records **0.08620 MAE** against the matched BF16 reference. [Independent GDN ablations and M4 fidelity](docs/gdn-decode.md) cover the active persistent route. MAE measures numerical deviation, not task accuracy.
+
+The independent NVFP4 head probe retains **100% global BF16 top-20 recall** and **100% final top-1 agreement** across 11,996 eligible rows. [Protocol and limitations](docs/native-fidelity.md).
 
 ### Fidelity and throughput
 
-Upper-left is better: less logprob deviation from BF16 and higher throughput. Each point combines the M32 MAE above with the mean throughput gain over official vLLM 0.29 FP8, weighting c4/c16/c24/c32 equally. Horizontal bars show the MAE's 95% interval; vertical bars show the lowest and highest gains across those four concurrency levels.
+Each point combines M32 MAE with the equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. The linked GDN validation covers active persistent arithmetic at M4.
 
-![Logprob MAE and throughput gain against official FP8](docs/images/quality-throughput-tradeoff.png)
+![Fidelity and throughput](docs/images/quality-throughput-tradeoff.png)
 
-[Result tables, test setup and raw data](docs/native-fidelity.md) are available. Earlier EXL3 measurements remain in the [archive](docs/benchmarks.md).
+[September 15 native results](docs/native-fidelity-20260915.md) and [earlier EXL3 results](docs/benchmarks.md) remain archived.
 
 ### Deployment tradeoffs
 
@@ -106,6 +106,8 @@ Release `0.1.0a10` remains documented with ExLlamaV3 1.4.9; a9 uses vLLM 0.28. S
 
 ## Usage
 
+Model checkpoint: [nekofish/Qwen3.8-27B-MXFP6 on Hugging Face](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
+
 For the default native MXFP6 profile:
 
 ```bash
@@ -126,7 +128,9 @@ docker run --rm --name mach --gpus '"device=0,1"' \
   --kv-cache-memory-bytes 8218214400 --host 127.0.0.1 --port 8000
 ```
 
-The default launcher enables native MXFP6, fused AllReduce/residual/RMSNorm, compact BF16 greedy argmax communication and CUDA Graphs. `--dry-run` prints the resolved flags. FP16 SSM, lossless/owner prefill and NVFP4 LM head search are individually opt-in; `--verify-prefill` enables diagnostic prefill comparisons.
+The default launcher enables native MXFP6, fused AllReduce/residual/RMSNorm, compact BF16 greedy argmax communication, CUDA Graphs, small-batch persistent and large-batch BA overlap GDN decode. `--dry-run` prints the resolved flags. FP16 SSM, lossless/owner prefill and NVFP4 LM head search are individually opt-in; `--verify-prefill` enables diagnostic prefill comparisons.
+
+GDN decode enables two independent routes by default: `--gdn-persistent` uses the persistent CUDA kernel at physical M1/2/4/8 with FP32 or FP16 SSM; `--gdn-ba-overlap` overlaps BA with QKV/convolution at M16/24/32 and supports FP32 or FP16 SSM. Both retain the native path for prefill, speculative and unsupported calls. With `--fp16-ssm`, persistent reads and writes FP16 state while retaining FP32 accumulation. Use `--no-gdn-persistent` and `--no-gdn-ba-overlap` to disable them independently. See [GDN validation](docs/gdn-decode.md), including a separate physical-M4 fidelity diagnostic.
 
 Owner-prefill partitions rows between the two ranks and replicates MLP weights at 32 layers, costing approximately 3.11 GiB per GPU. The optional NVFP4 head adds approximately 341 MiB per GPU for candidate search followed by BF16 refinement. Keep KV bytes fixed when comparing throughput.
 

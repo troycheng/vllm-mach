@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-ARMS = ["fp8", "default", "full", "nvfp4"]
+ARMS = ["fp8", "default", "persistent", "gdn", "full", "full_ba", "full_gdn", "nvfp4"]
 
 
 def read(path):
@@ -21,13 +21,23 @@ def bootstrap(values):
     return [float(v) for v in np.quantile(means, [0.025, 0.975])]
 
 
-def fidelity(root):
+def fidelity(root, reuse_stock=False):
     reference = read(root / "fidelity/bf16/records.json")
     ids = [r["id"] for r in reference]
     assert len(ids) == len(set(ids)) == 256
     assert sum(len(r["gold_logprobs"]) for r in reference) == 10479
+    archived = read(HERE / "native-fidelity-20260915.json") if reuse_stock else None
+    if archived:
+        assert ids == [q["id"] for q in archived["queries"]]
+        assert [r["gold_logprobs"] for r in reference] == [
+            r["bf16_logprobs"] for r in archived["queries"]
+        ]
     runs = {}
     for arm in ARMS:
+        if archived and arm in ("fp8", "nvfp4"):
+            runs[arm] = archived["runs"][arm]
+            runs[arm]["source"] = "native-fidelity-20260915.json"
+            continue
         base = root / "fidelity" / arm
         assert read(base / "COMPLETE.json")["queries"] == 256
         records = read(base / "records.json")
@@ -68,6 +78,26 @@ def fidelity(root):
         ],
         runs=runs,
         full_minus_default=dict(mean=float(paired.mean()), ci95=bootstrap(paired)),
+        gdn_ablation={
+            arm: dict(
+                reference=ref,
+                mean=float(
+                    np.mean(np.asarray(runs[arm]["query_mae"]) - runs[ref]["query_mae"])
+                ),
+                ci95=bootstrap(
+                    np.asarray(runs[arm]["query_mae"]) - runs[ref]["query_mae"]
+                ),
+                exact_gold_logprobs=runs[arm]["gold_logprobs"]
+                == runs[ref]["gold_logprobs"],
+                dispatch=read(root / "fidelity" / arm / "gdn.json"),
+            )
+            for arm, ref in (
+                ("persistent", "default"),
+                ("gdn", "default"),
+                ("full_ba", "full"),
+                ("full_gdn", "full_ba"),
+            )
+        },
         head_probe=dict(
             scope="Free greedy decode, 256 corpus prompts × 48 tokens; same-hidden-state full BF16 reference",
             eligible_rows=head_rows,
@@ -80,10 +110,16 @@ def fidelity(root):
     )
 
 
-def performance(root):
+def performance(root, reuse_stock=False):
     runs = {}
     contracts = {}
+    archived = read(HERE / "native-serving-20260915.json") if reuse_stock else None
     for arm in ARMS:
+        if archived and arm in ("fp8", "nvfp4"):
+            runs[arm] = archived["runs"][arm]
+            runs[arm]["source"] = "native-serving-20260915.json"
+            contracts.update({int(c): v for c, v in archived["contracts"].items()})
+            continue
         points = []
         for c in [4, 16, 24, 32]:
             data = read(root / "serving" / arm / f"c{c}.json")
@@ -145,15 +181,24 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--results", type=Path, required=True)
     p.add_argument("--fidelity-only", action="store_true")
+    p.add_argument(
+        "--reuse-stock-baselines",
+        action="store_true",
+        help="Reuse archived September 15 FP8/NVFP4 data",
+    )
     a = p.parse_args()
-    data = fidelity(a.results)
+    data = fidelity(a.results, a.reuse_stock_baselines)
     (HERE / "native-fidelity.json").write_text(
         json.dumps(data, separators=(",", ":"), allow_nan=False) + "\n"
     )
     print({n: (r["mae"], r["ci95"]) for n, r in data["runs"].items()})
     if not a.fidelity_only:
         (HERE / "native-serving.json").write_text(
-            json.dumps(performance(a.results), separators=(",", ":"), allow_nan=False)
+            json.dumps(
+                performance(a.results, a.reuse_stock_baselines),
+                separators=(",", ":"),
+                allow_nan=False,
+            )
             + "\n"
         )
 

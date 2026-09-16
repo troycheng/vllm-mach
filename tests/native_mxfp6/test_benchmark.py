@@ -94,7 +94,16 @@ def test_stock_baseline_keeps_compilation_and_disables_flashinfer_ar(monkeypatch
 
 def test_published_serving_counts_and_throughput():
     data = json.loads((ROOT / "docs/data/native-serving.json").read_text())
-    assert set(data["runs"]) == {"fp8", "nvfp4", "default", "full"}
+    assert set(data["runs"]) == {
+        "fp8",
+        "nvfp4",
+        "default",
+        "persistent",
+        "gdn",
+        "full",
+        "full_ba",
+        "full_gdn",
+    }
     columns = data["request_columns"]
     for arm, run in data["runs"].items():
         assert [p["concurrency"] for p in run["points"]] == [4, 16, 24, 32]
@@ -124,3 +133,27 @@ def test_published_serving_counts_and_throughput():
             assert run["launch"]["environment"]["VLLM_ALLREDUCE_USE_FLASHINFER"] == "0"
             assert run["launch"]["environment"]["VLLM_PLUGINS"] == ""
             assert "--compilation-config" not in run["launch"]["command"]
+
+
+@pytest.mark.parametrize(
+    "arm,base,changed",
+    [
+        ("persistent", "default", "VLLM_MACH_GDN_PERSISTENT"),
+        ("full_ba", "full", "VLLM_MACH_GDN_BA_OVERLAP"),
+        ("full_gdn", "full_ba", "VLLM_MACH_GDN_PERSISTENT"),
+    ],
+)
+def test_gdn_serving_ablation_changes_only_one_flag(arm, base, changed):
+    spec = importlib.util.spec_from_file_location(
+        "serving_comparison", ROOT / "tools/compare_native_serving.py"
+    )
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    args = argparse.Namespace(
+        models=Path("/models"), stock_runtime=Path("/stock"), devices="0,1", port=8000
+    )
+    command, env = tool.launch_configuration(args, arm)
+    base_command, base_env = tool.launch_configuration(args, base)
+    assert command == base_command
+    assert {k for k in env if env[k] != base_env[k]} == {changed}
+    assert env[changed] == "1" and base_env[changed] == "0"

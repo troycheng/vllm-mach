@@ -11,6 +11,7 @@ The optimization checkout is not a runtime dependency.
 |---|---|
 | `b4ac4e3d7a`, `e77a2e5dc3` | Native dense kernel, Quark MXFP8 metadata, accurate backend reporting, both runners' graph/workspace lifecycle |
 | `6b57b3ba2d` | Qwen TP2 AllReduce/residual/GemmaRMSNorm, including final norm |
+| Mach `8c5021a` | Persistent small-batch GDN and BA overlap port, packaged with null-slot-zero compatibility |
 | `9fb75fd71c` | Narrow FP16 SSM admission for native packed GDN decode |
 | `9f1c8fec69`, `7c688885a7`, `b032cc235b` | Lossless prefill dispatch, GDN graph break, warmed opt-in codec graphs |
 | `b7b4fb089e`, `f7688f8907`, `a2ce755fde` | Owner row transport, replicated MLP, shape-dependent dispatch down to 512 rows |
@@ -18,9 +19,11 @@ The optimization checkout is not a runtime dependency.
 
 Mach reuses its existing native dense kernel and warmup implementation. The
 general plugin registers the kernel; the source patch does not import Mach from
-vLLM's linear registry, avoiding an import cycle. The six new framework modules
-live under `vllm_mach.mxfp6`. CUDA implementations remain in `mxfp6-sm120` and
-the existing optional `native/lossless_prefill` / `native/owner_prefill` wheels.
+vLLM's linear registry, avoiding an import cycle. The framework modules
+live under `vllm_mach.mxfp6`. GEMM CUDA implementations remain in `mxfp6-sm120`, with prefill code in
+the optional `native/lossless_prefill` / `native/owner_prefill` wheels.
+The persistent GDN source is packaged under `vllm_mach.mxfp6.gdn` and JIT-built
+through FlashInfer during warmup.
 
 The wheel includes a 13-file source patch, a version/file manifest and
 FlashInfer local IPC patch. `vllm-mach-install` checks the official dependency
@@ -39,6 +42,12 @@ The base path retains packed checkpoint weights and dynamically quantizes
 activations to MXFP8. Manual AR/Norm fusion changes reduction/rounding order.
 The launcher uses BF16 activations/KV, TP2/PP1, V2 runner, non-speculative
 text-only dense inference and full decode graphs at 1/2/4/8/16/24/32 rows.
+
+The default launcher also enables persistent GDN at physical M1/2/4/8 and
+BA overlap at M16/24/32. Persistent changes arithmetic and supports FP32 or FP16 SSM storage
+with FP32 accumulation. Both routes have independent opt-outs and
+retain native execution for unsupported calls. See [GDN validation](gdn-decode.md)
+and the [current measurements](native-fidelity.md).
 
 FP16 SSM is opt-in because it changes state precision. Owner prefill retains
 the source series' geometry checks and numerical verification mode; it chooses
@@ -66,6 +75,14 @@ EXL3-free plugin registration, checkpoint scale packing, changing-input graph
 replay, request eligibility, full-logit preservation, FP16 admission guards,
 prefill shape/workspace contracts, and optional native TP2 transport/codec
 comparisons. GPU and optional-extension tests skip when prerequisites are absent.
+
+The September 16 GDN port passed all **168 current tests**, checked in groups,
+including CPU routing/data checks and GPU graph/prefill checks. The standalone
+persistent harness additionally passed 16 FP32/FP16 × SD/DS × M1/2/4/8 cases with
+changing inputs, slot reuse, null-slot protection and bitwise graph/eager
+agreement. The rebuilt wheel includes the GDN CUDA source and matches the
+package source. [Measured serving/fidelity results](native-fidelity.md) and
+[individual GDN ablations](gdn-decode.md) are recorded separately.
 
 The final September 15 rerun passed **113/113 tests**, with no skips, including
 the published four-profile serving counts/throughput, fidelity bootstrap and
@@ -96,7 +113,7 @@ greedy, logprob, stochastic and token-bias requests successfully. These are
 smoke checks, not a broad model-quality evaluation or a bitwise-equivalence claim.
 
 This earlier integration acceptance uses uniform token-ID prompts; the README's
-current [four-profile comparison](native-fidelity.md) uses frozen ShareGPT
+current [profile comparison](native-fidelity.md) uses frozen ShareGPT
 prefixes and separately validated stock baselines. Do not combine the two
 workloads' throughput numbers.
 
@@ -122,8 +139,10 @@ One run per arm does not establish a confidence interval.
 [Machine-readable configuration and results](data/native-mxfp6-acceptance.json)
 use identical workload settings for both retained arms. The full profile ran
 before the default profile. To reproduce the default arm,
-use `vllm-mach-serve --model MODEL --kv-cache-memory-bytes 8218214400` without
-the optional acceleration flags.
+use `vllm-mach-serve --model MODEL --kv-cache-memory-bytes 8218214400
+--no-gdn-persistent --no-gdn-ba-overlap` without the optional acceleration flags.
+The opt-outs are needed to reproduce these September 15 measurements with
+the current launcher.
 
 To reproduce the scored workload against either service:
 

@@ -37,7 +37,7 @@ include = ["vllm_mach*"]
 exclude = ["vllm_mach.exl3*"]
 
 [tool.setuptools.package-data]
-"vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json"]
+"vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json", "gdn/*.cu"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/native_mxfp6", "tests/test_mxfp6_warmup.py", "tests/test_deployment.py"]

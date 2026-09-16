@@ -1,197 +1,190 @@
 # Native MXFP6 fidelity and serving comparison
 
-## Fidelity protocol
+GDN measurements: September 16, 2026; stock FP8/NVFP4 baselines reused
+from September 15 at the user’s request. Native vLLM 0.29.0, FlashInfer 0.6.18, mxfp6-sm120 0.2.1,
+Qwen3.8-27B on two RTX 5090 GPUs per run, TP2. Model checkpoint:
+[nekofish/Qwen3.8-27B-MXFP6](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
+The [September 15 measurements](native-fidelity-20260915.md) are archived separately.
 
-The September 15 rerun retains the original test logic: 256 fixed queries,
-64 each from GSM8K, HumanEval, HellaSwag and CMMLU Chinese history;
-10,479 gold target tokens; eight physical-M32 cohorts plus a repeat of cohort zero.
-The [token manifest](data/fidelity-samples.json) contains the exact inputs, without
-retokenization or a new chat template. Dataset revisions remain in its sources.
+## Configurations and isolated comparisons
 
-The teacher hook changes only token selection. The submitted prompt drops its
-last token; an unscored forced output reinstates it. Gold continuations are then
-scored from unchanged raw logits. Unscored padding keeps all 32 requests at the
-same decode offset. Scheduling is paused only during enqueue, then resumed;
-worker observations assert physical M32 for every scored step.
+The launcher now enables persistent at physical M1/2/4/8 with FP32 or FP16 recurrent
+state, and BA overlap at M16/24/32 with either state dtype. FP16 persistent
+retains FP32 accumulation and rounds only when storing updated state. Prefill, mixed/speculative and
+unsupported calls retain native execution. See [GDN implementation and validation](gdn-decode.md).
 
-For each query, average the absolute difference in gold-token logprob against
-fresh BF16. Average those 256 query errors equally. Intervals use 20,000 query
-bootstrap resamples with seed 20260910. This measures numerical fidelity,
-not benchmark task accuracy. No file or tensor fingerprint calculations are used.
+The raw arm names retain their experiment meaning:
 
-All five arms (including BF16) reproduced cohort zero's gold logprobs exactly. The paired full
-minus default MAE difference is −0.001020, with 95% interval
-[−0.003602, +0.001559]; it does not establish a fidelity improvement.
+| Arm | Meaning | Persistent | BA overlap |
+|---|---|---:|---:|
+| default | Previous default, fused AR/Norm and compact BF16 greedy sampling | off | off |
+| persistent | Previous default plus persistent only | on | off |
+| gdn | New launcher default | on | on |
+| full | Previous full: FP16 SSM, lossless/owner prefill, NVFP4 head | off | off |
+| full_ba | Full before the c4 fix: BA overlap only | off | on |
+| full_gdn | Corrected full options, including FP16 persistent | on | on |
 
-| Configuration | MAE | 95% query-bootstrap interval |
-|---|---:|---:|
-| FP8 · stock vLLM 0.29 | 0.061430 | 0.054315–0.069084 |
-| MXFP6 · Mach default | 0.090643 | 0.082647–0.098954 |
-| MXFP6 · Mach full options | 0.089624 | 0.082036–0.097311 |
-| NVFP4 · stock vLLM 0.29 | 0.170886 | 0.155098–0.187517 |
+This keeps the two optimizations independently measurable. `--no-gdn-persistent`
+and `--no-gdn-ba-overlap` reproduce the previous default. Stock FP8/NVFP4
+use unpatched official packages, no Mach plugin and FlashInfer AllReduce disabled.
 
-Settings: TP2, BF16 activations/KV, TRITON_ATTN, V2 runner, maximum sequence
-length 768, 32 requests, prefill budget 8192, 3,489,660,928 KV bytes per rank,
-no prefix caching. BF16 uses eager execution and 4 GiB CPU weight offload;
-MXFP6 arms use `FULL_DECODE_ONLY` graphs without compilation. Stock FP8/NVFP4
-retain default compilation and graph mode; all use capture sizes
-1/2/4/8/16/24/32. All scored
-logprobs remain on the ordinary raw-logprob path. FP8/NVFP4/BF16 use unpatched
-official vLLM 0.29.0; Mach is not registered for those arms. Mach default includes
-native kernel/workspace integration, fused AR/Norm and
-compact greedy sampling; full also enables FP16 SSM, lossless/owner prefill
-and the NVFP4 head option. The latter falls back to BF16 for logprob requests.
-
-The full profile's owner-prefill eligibility is unchanged: 512–4096 rows. The
-4343-row cohort takes the ordinary fallback; the diagnostic does not force
-owner execution outside its supported range. All other initial cohort token
-counts are between 1676 and 3948. Fidelity was run on GPUs 4/5; the head probe
-on GPUs 6/7. Other GPU work can coexist, so these are not throughput timings.
-
-## NVFP4 head accuracy
-
-The actual greedy head was tested separately on the same 256 prompt prefixes,
-generating 48 tokens per request. At each eligible head call, compare against
-the full BF16 head on **the same hidden states**. This isolates candidate search
-from backbone/state precision. Initial prefills and ineligible calls retain
-their normal fallback and are excluded from the candidate-search denominator.
-
-- 11,998 eligible rows; 128 initial candidates per TP rank.
-- Global BF16 top-20: 239,960 / 239,960 retained (**100%**).
-- Every tested row retained all 20 tokens; zero missing global winners.
-- Final greedy top-1: 11,998 / 11,998 agreement (**100%**).
-- Selected BF16 logits are not bitwise identical to the full GEMM: maximum
-  absolute difference 0.125, with 1407/1741 differing selected values on ranks 0/1.
-  This did not change the tested top-1 decisions.
-
-Global top-20 is formed from both ranks' local top-20 values, then checked
-against the corresponding rank's candidates. The two ranks observe the same
-global rows; they are not counted as twice as many independent samples.
-These observed recall/agreement results are not universal guarantees.
-
-## Serving baseline correction
-
-The historical NVFP4 result included patched FlashInfer AllReduce on RTX 5090
-and must not be presented as stock NVFP4. Its original data is retained as an
-accelerated historical configuration in [the archive](benchmarks.md).
-
-The first new short sweep forced `mode=NONE`, `FULL_DECODE_ONLY`, 32 maximum
-sequences and fixed KV allocation. It measured 1268.8 token/s at c32, but this
-does not match the user's ordinary open-source launch configuration (1578.67
-token/s, 160 requests). **That sweep is not the final stock comparison.**
-Using the user's local server and benchmark-client commands with unpatched
-vLLM reproduced **1590.95 token/s**, 160 successful requests and 18.66 ms mean
-TPOT. The server selected CUSTOM/PYNCCL communication, not FlashInfer AllReduce.
-This reproduction uses the original client's decoded-text prompts and
-retokenized output counts (159,996 tokens); its
-[configuration and result excerpt](data/nvfp4-stock-reproduction.txt) are retained.
-
-The final comparison freezes 160 ShareGPT prompt prefixes in the
-[serving manifest](data/serving-prompts.json). Each prefix is repeated/truncated
-to exactly 3000 token IDs and submitted directly, avoiding text retokenization.
-Every request generates exactly 1000 tokens, checked using the server's usage
-counts. All arms share the same prompts, request seeds and exponential arrival
-schedule (100 requests/s), with greedy sampling, top-k 20, top-p 0.95 and EOS
-ignored. Each c4/c16/c24/c32 point measures 20/80/120/160 requests after
-min(32, request count) warmups of 128 output tokens at that concurrency.
-
-Stock FP8/NVFP4 retain default compilation/graph settings, 64 maximum sequences
-and 90% GPU memory utilization. Both import unpatched official vLLM/FlashInfer,
-disable Mach registration and explicitly disable FlashInfer AllReduce.
-The two MXFP6 arms use the native profile's 32-sequence, non-compiled
-`FULL_DECODE_ONLY` configuration and equal KV allocation of 8,218,214,400 bytes
-per rank. All arms use TP2, TRITON_ATTN, no prefix caching, maximum model length
-16,384 and a 4096-token prefill budget, on the same RTX 5090 pair (GPUs 6/7).
-This is a comparison of deployable profiles, not an isolated quantization-only
-ablation. Default/full MXFP6 use common memory and graph settings; only the
-full profile enables the optional state, prefill and head optimizations.
-
-These are short, single-run sweeps, not sustained-load estimates or throughput
-confidence intervals. The final stock NVFP4 c32 result is **1607.56 token/s**;
-the difference from 1590.95 reflects the frozen-token client/workload and run
-variation, not enabling FlashInfer AllReduce.
-
-Output tokens/s:
+## Serving throughput
 
 | Configuration | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
 | FP8 · stock vLLM 0.29 | 266.97 | 806.06 | 1018.55 | 1160.44 |
-| MXFP6 · Mach default | 325.85 | 977.78 | 1255.42 | 1422.81 |
-| MXFP6 · Mach full options | 353.10 | 1098.74 | 1422.61 | 1646.61 |
+| MXFP6 · previous default | 325.91 | 978.17 | 1255.64 | 1423.86 |
+| MXFP6 · persistent only | 371.18 | 977.21 | 1254.91 | 1421.59 |
+| MXFP6 · Mach default | 371.18 | 999.87 | 1278.40 | 1444.99 |
+| MXFP6 · previous full | 353.19 | 1099.27 | 1422.97 | 1648.55 |
+| MXFP6 · full without persistent | 353.05 | 1126.29 | 1453.48 | 1679.71 |
+| MXFP6 · Mach full | 384.90 | 1124.27 | 1453.57 | 1674.83 |
 | NVFP4 · stock vLLM 0.29 | 378.97 | 1142.87 | 1424.61 | 1607.56 |
 
-Mean TPOT, milliseconds:
 
-| Configuration | c4 | c16 | c24 | c32 |
-|---|---:|---:|---:|---:|
-| FP8 · stock vLLM 0.29 | 14.29 | 18.35 | 21.69 | 25.41 |
-| MXFP6 · Mach default | 11.74 | 15.18 | 17.65 | 20.79 |
-| MXFP6 · Mach full options | 10.88 | 13.59 | 15.67 | 18.04 |
-| NVFP4 · stock vLLM 0.29 | 10.13 | 13.06 | 15.67 | 18.55 |
+Persistent alone improves c4 by **13.89%**; its inactive
+c16/c24/c32 points differ by at most 0.16%.
+BA overlap alone improves full-profile c16/c24/c32 by
+**2.46% / 2.14% / 1.89%**;
+its inactive c4 point differs by -0.04%.
+The combined new default improves c4/c16/c24/c32 over the previous default by
+**+13.89% / +2.22% / +1.81% / +1.48%**.
+Equal-weight mean gains over stock FP8 are **28.28%** for the new
+default and **42.67%** for the new full profile.
 
-All **1520/1520** scored requests completed with exactly 3000 input and 1000
-output tokens. The equal-weight mean gains over stock FP8 are **22.31%** for
-Mach default, **37.53%** for Mach full and **40.53%** for stock NVFP4.
-The tradeoff plot's vertical bars span the four gains; they are not confidence
-intervals. Full MXFP6 has lower measured logprob error than NVFP4, but does not
-have higher throughput at every concurrency.
+![Serving throughput](images/throughput-comparison.png)
 
-[Raw request counts, latencies, throughput, warmup settings and launch configurations](data/native-serving.json)
-support the serving tables. Only the default and full MXFP6 profiles are retained.
+All 3,040 measured requests completed with exactly 3000 input and 1000 output tokens.
+The frozen [ShareGPT-prefix manifest](data/serving-prompts.json) supplies identical
+token IDs, request seeds and a 100 requests/s exponential arrival schedule;
+greedy, top-k 20, top-p 0.95, ignore EOS. c4/c16/c24/c32 measure
+20/80/120/160 requests, each after min(32, request count) warmups of 128 tokens.
+
+Mach uses maximum 32 sequences, no compilation, FULL_DECODE_ONLY graphs and
+8,218,214,400 KV bytes per rank. Stock retains default compilation/graphs,
+64 maximum sequences and 90% GPU memory utilization. All use TRITON_ATTN,
+no prefix caching, 16,384 maximum context and a 4096-token prefill budget.
+The new serving arms run sequentially on GPUs 6/7; fidelity uses GPUs 4/5 on the
+same host. Clocks are not locked and other GPUs run unrelated work.
+These short single-run measurements have no throughput confidence interval.
+This compares deployable profiles, rather than isolating quantization alone.
+
+[Raw requests, latencies, warmups and launch settings](data/native-serving.json).
+
+## Numerical fidelity
+
+| Configuration | M32 MAE | 95% query-bootstrap interval |
+|---|---:|---:|
+| FP8 · stock vLLM 0.29 | 0.061430 | 0.054315–0.069084 |
+| MXFP6 · previous default | 0.090643 | 0.082647–0.098954 |
+| MXFP6 · persistent only | 0.090643 | 0.082647–0.098954 |
+| MXFP6 · Mach default | 0.090643 | 0.082647–0.098954 |
+| MXFP6 · previous full | 0.089624 | 0.082036–0.097311 |
+| MXFP6 · full without persistent | 0.089624 | 0.082036–0.097311 |
+| MXFP6 · Mach full | 0.089624 | 0.082036–0.097311 |
+| NVFP4 · stock vLLM 0.29 | 0.170886 | 0.155098–0.187517 |
+
+
+All arms and BF16 reproduce cohort zero exactly. The persistent-only M32 arm
+falls back to native and matches the previous default's gold-token logprobs
+exactly. Both FP32 BA overlap (new default) and FP16 BA overlap (new full)
+also match their respective previous profiles exactly on all scored tokens.
+The corrected full_gdn arm also exactly matches full_ba at M32, where
+persistent is inactive. This establishes measured equivalence for BA scheduling
+on this corpus.
+
+![Physical-M32 fidelity](images/accuracy-comparison.png)
+
+The separate physical-M4 diagnostic activates persistent: previous default
+MAE **0.089853**, persistent-only and combined new default
+MAE **0.085396**. The combined and persistent-only gold
+logprobs match exactly. Paired Δ MAE is **-0.004457**,
+95% query-bootstrap interval **[-0.007531,
+-0.001629]**. All M4 arms repeat exactly.
+Persistent changes arithmetic; this lower numerical error on the frozen corpus
+is not evidence of improved task accuracy or a universal quality guarantee.
+
+The corrected FP16 full profile records M4 MAE **0.086200**, compared
+with **0.084917** without persistent. Paired Δ **+0.001282**,
+95% interval **[-0.002213, +0.004822]**, crosses zero;
+this does not establish a fidelity improvement or degradation on this corpus.
+Both repeated cohorts match exactly.
+
+![Physical-M4 fidelity](images/gdn-m4-fidelity.png)
+
+Both diagnostics use the original [256-query manifest](data/fidelity-samples.json),
+64 queries each from GSM8K, HumanEval, HellaSwag and CMMLU Chinese history,
+and 10,479 gold target tokens. The new M32 BF16 reference exactly matches
+the archived reference; the archived FP8/NVFP4 query errors can be reused
+without changing the reference. M32 uses eight cohorts plus a repeat; M4 uses
+64 cohorts plus a repeat, with separately measured BF16 references. Every
+scored step asserts its physical row count. The teacher hook changes only
+selected tokens, reinstating the last prompt token in an unscored step and
+then scoring frozen continuations from raw logits, with unscored tail padding.
+Each query's mean absolute gold-logprob difference is weighted equally;
+95% intervals use 20,000 query bootstrap resamples, seed 20260910.
+
+Fidelity uses BF16 activations/KV, maximum context 768, 8192 prefill tokens,
+3,489,660,928 KV bytes/rank, no prefix caching, V2 runner and TRITON_ATTN.
+BF16 uses eager execution and 4 GiB CPU offload; stock quantized arms retain
+compilation. Mach uses full decode graphs at 1/2/4/8/16/24/32. Full profile
+owner-prefill admission remains 512–4096 rows; larger cohorts use its fallback.
+Logprob requests use the full BF16 head rather than candidate search.
+
+The separate same-hidden-state head probe with new full options reports
+**11,996 eligible rows**, global BF16 top-20 recall
+**100.00%** (239,920/239,920)
+and final greedy top-1 agreement **100.00%**.
+It generates 48 tokens for each of the same 256 prompt prefixes, excluding
+ineligible calls. The two ranks see the same rows, so their denominators are
+not added. These observations do not imply bitwise logit equality.
+
+[Raw M32 fidelity and head observations](data/native-fidelity.json),
+[raw M4 fidelity and dispatch counts](data/gdn-m4-fidelity.json), and
+[kernel graph/eager, null-slot and slot-reuse validation](data/gdn-kernel-validation.json)
+are retained. Dispatch counts describe host calls/captures, not graph replays.
+
+## Fidelity and throughput
+
+![Numerical fidelity and throughput](images/quality-throughput-tradeoff.png)
+
+Horizontal bars are M32 MAE 95% intervals. Vertical bars span the four
+throughput gains over stock FP8; they are not confidence intervals. M32
+fidelity does not exercise persistent; consult the separate M4 plot.
 
 ## Reproduction
 
-Install the [current native profile](installation.md). Use a separate clean
-official vLLM 0.29 environment for BF16/FP8/NVFP4, with no runtime patches and
-`VLLM_ALLREDUCE_USE_FLASHINFER=0`. The offline diagnostic needs access to this
-checkout's Python package and teacher hook, but disables the Mach plugin for
-those stock arms. It enables local callable RPC serialization only inside the
-offline process; do not enable this on a public service.
+Install the [native profile](installation.md). Use clean official vLLM/FlashInfer
+for BF16/FP8/NVFP4 and disable Mach registration and FlashInfer AllReduce.
+Offline callable RPC serialization is for the local diagnostic only.
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python tools/fidelity_native_mxfp6.py \
-  --arm default --model /models/Qwen3.8-27B-MXFP6 \
+CUDA_VISIBLE_DEVICES=4,5 python tools/fidelity_native_mxfp6.py \
+  --arm gdn --skip-head-probe --model /models/Qwen3.8-27B-MXFP6 \
   --tokenizer /models/Qwen3.8-27B-official \
-  --manifest docs/data/fidelity-samples.json --output RESULTS/fidelity/default
+  --manifest docs/data/fidelity-samples.json --output RESULTS/fidelity/gdn
 ```
 
-Repeat with `--arm full` and, in the unpatched environment, `bf16`,
-`fp8`, `nvfp4` with their respective checkpoints and output directories
-`RESULTS/fidelity/ARM`. Each output directory must
-be new. The full arm also runs the head probe; run `--arm full --head-only`
-with output `RESULTS/head` to reproduce the separate head measurement.
-
-Stock compiler settings matter: the initial no-compilation diagnostic measured
-0.051708 MAE for FP8 and 0.165461 for NVFP4. The plotted points above were rerun
-with stock compilation enabled to match the throughput profiles. Use
-`--no-stock-compile` only to reproduce that diagnostic ablation, not as the
-stock serving baseline.
-
-```bash
-python docs/data/collect_native_comparison.py --results RESULTS --fidelity-only
-python docs/data/plot_comparison.py --accuracy-only
-python -m pytest tests/native_mxfp6/test_fidelity.py -q
-```
-
-For serving, supply a directory containing the clean official `vllm/` and
-`flashinfer/` packages from a separate stock environment. Keep its native
-dependencies compatible with the current environment; do not point this at
-the patched package directory.
+Repeat for default, persistent, full, full_ba and full_gdn; in the stock environment
+repeat for bf16. The collection command below reuses archived stock FP8/NVFP4
+results; omit `--reuse-stock-baselines` and measure those arms only for a fresh
+complete comparison. Keep default
+stock compilation enabled. Repeat bf16/default/persistent/gdn/full_ba/full_gdn with
+`--physical-rows 4` into `RESULTS/fidelity-m4/ARM`. Run `--arm full_gdn --head-only`
+into `RESULTS/head` for the independent greedy head probe.
 
 ```bash
 python tools/compare_native_serving.py \
-  --arms nvfp4 fp8 default full \
+  --arms persistent full_ba default full gdn full_gdn \
   --models /models --stock-runtime /path/to/stock/site-packages \
-  --output RESULTS/serving --devices 0,1 \
+  --output RESULTS/serving --devices 6,7 \
   --prompt-manifest docs/data/serving-prompts.json --concurrencies 32 4 16 24
-python docs/data/collect_native_comparison.py --results RESULTS
+python docs/data/collect_native_comparison.py --results RESULTS --reuse-stock-baselines
+python docs/data/collect_gdn_m4.py --results RESULTS/fidelity-m4
 python docs/data/plot_comparison.py
+python -m pytest -q
 ```
 
-The model root contains `Qwen3.8-27B-MXFP6`, `Qwen3.8-27B-FP8-official` and
-`Qwen3.8-27B-NVFP4`. Plotting requires NumPy and Matplotlib; install plotting
-dependencies from `docs/data/requirements-plot.txt` in a separate environment
-to avoid changing inference dependencies.
-
-[Raw per-query logprobs, bootstrap inputs, runtime settings and head observations](data/native-fidelity.json)
-are sufficient to recompute every published fidelity number.
+Model directory names are Qwen3.8-27B-MXFP6, Qwen3.8-27B-FP8-official,
+Qwen3.8-27B-NVFP4 and Qwen3.8-27B-official (BF16/tokenizer).
+Use a separate plotting environment with `docs/data/requirements-plot.txt`.
