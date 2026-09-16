@@ -147,6 +147,10 @@ def _forward(layer, original, persistent, aux, hidden_states):
         from vllm.third_party.flash_linear_attention.ops import (
             fused_recurrent_gated_delta_rule_packed_decode,
         )
+        if layer._mach_gdn_recurrent_tile == 8:
+            from .gdn.recurrent import packed_decode
+
+            fused_recurrent_gated_delta_rule_packed_decode = packed_decode
 
         main = torch.cuda.current_stream(hidden_states.device)
         aux.wait_stream(main)
@@ -208,6 +212,9 @@ def prepare(model):
     strided_ba = os.environ.get("VLLM_MACH_GDN_STRIDED_BA", "0")
     if strided_ba not in ("0", "1"):
         raise ValueError("VLLM_MACH_GDN_STRIDED_BA must be 0 or 1")
+    recurrent_tile = os.environ.get("VLLM_MACH_GDN_RECURRENT_TILE", "32")
+    if recurrent_tile not in ("8", "32"):
+        raise ValueError("VLLM_MACH_GDN_RECURRENT_TILE must be 8 or 32")
     from .dense import Mxfp6Sm120LinearKernel
     from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
     from vllm.logger import init_logger
@@ -245,6 +252,7 @@ def prepare(model):
 
     for layer in layers:
         layer._mach_gdn_strided_ba = strided_ba == "1"
+        layer._mach_gdn_recurrent_tile = int(recurrent_tile)
         prepare_output(layer)
         if persistent:
             layer._mach_gdn_ba = layer.in_proj_ba.weight.T.contiguous()

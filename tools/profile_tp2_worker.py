@@ -96,6 +96,8 @@ class TP2Probe:
             PROFILER = None
         from vllm_mach.mxfp6.gdn_decode import stats
         return dict(rank=self.rank, samples=SAMPLES, batches=BATCHES, inventory=INVENTORY, gdn=stats(),
+                    recurrent_tile8_layers=sum(getattr(m, "_mach_gdn_recurrent_tile", 32) == 8
+                                               for m in self.model_runner.model.modules()),
                     fused_gdn_quant_layers=sum(hasattr(m, "_mach_gdn_output_fused")
                                                 for m in self.model_runner.model.modules()),
                     fused_swiglu_layers=sum(bool(getattr(m, "_mach_swiglu_prepared", False))

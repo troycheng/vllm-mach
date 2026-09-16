@@ -237,6 +237,7 @@ def main():
             extension_library_sha256=library_hash,
             fused_gdn_quant=os.environ.get("VLLM_MACH_FUSED_GDN_QUANT", "auto"),
             strided_gdn_ba=os.environ.get("VLLM_MACH_GDN_STRIDED_BA", "0"),
+            gdn_recurrent_tile=os.environ.get("VLLM_MACH_GDN_RECURRENT_TILE", "32"),
             fused_swiglu_quant=os.environ.get("VLLM_MACH_FUSED_SWIGLU_QUANT", "auto"),
             llm_args=args,
             environment=flags,

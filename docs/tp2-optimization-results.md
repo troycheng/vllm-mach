@@ -5,7 +5,8 @@ rounded SwiGLU/MXFP8 producer (P1-B). Direct FlashInfer AR/quant reuse and
 two M32 GEMM schedule candidates were rejected. P2-A now repairs and validates
 the exact fused GDN output producer. A subsequent strided BA consumer is
 numerically exact but remains disabled after failing performance acceptance;
-attention and head rewrites remain deferred. Detailed stage evidence follows.
+a subsequent BV8 recurrence schedule also fails default acceptance.
+Attention and head rewrites remain deferred. Detailed stage evidence follows.
 
 ## P0: real-checkpoint baseline
 
@@ -501,3 +502,100 @@ nor obtaining bitwise equality is sufficient evidence of a throughput gain.
 ![Serving including the strided BA probe](images/tp2-serving-throughput.png)
 
 [All matched serving stages, contracts and raw-result hashes](data/tp2-serving.json).
+
+## P2-A: smaller recurrence value-tile experiment
+
+The existing packed recurrence uses BV32 with one warp. A bounded schedule
+screen retained the same vLLM kernel and changed only launch parameters.
+Increasing to two/four warps changed FP32 state values and sometimes BF16
+outputs, so those schedules were rejected before model testing. Single-warp
+BV8 preserves the reduction arithmetic and was evaluated through the real
+TP2 path. The [screening data](data/tp2-gdn-recurrent-screen.json) deliberately
+uses one cached state allocation and is not a model-throughput estimate.
+
+`VLLM_MACH_GDN_RECURRENT_TILE=8` selects the diagnostic schedule only for the
+existing M16/24/32 BA-overlap path. The default remains `32`. The wrapper
+reuses vLLM's packed recurrence kernel, state strides, padding handling and
+in-place state update. It adds no quantization, collective or workspace;
+BA copies, convolution and the accepted output producer are unchanged.
+Persistent M1/2/4/8 and unsupported request fallbacks retain their routes.
+
+Twenty-four FP32/FP16 × SD/DS × M16/24/32 × contiguous/strided BA cases
+each pass 120 changing-input
+CUDA Graph replays on auxiliary/main streams. Outputs, recurrence states and
+convolution states are bitwise identical to the original path, including
+0/-1 padding, recycled slots and canaries. Fresh M4/M32 real-checkpoint
+teacher-forced runs each score 256 queries and 10,479 target tokens; all
+records equal the accepted P2-A records, including exact cohort repeats.
+The BF16-reference gold-logprob MAEs remain 0.08539566 and 0.09064302.
+
+Both ranks' traces verify a grid change from `[4, M*24, 1]` to
+`[16, M*24, 1]`, with one warp and 48 recurrence launches per decode.
+Registers/thread fall from 212 to 80. Rank 0 recurrence time falls from
+1.021 to 0.882 ms at M16, but only from 1.985 to 1.962 ms at M32. These
+are diagnostic per-rank times and cannot be added across GPUs or substituted
+for whole-request measurements.
+
+| Requests | Fresh BV32, tokens/s ± SD | BV8, tokens/s ± SD | Change |
+|---|---:|---:|---:|
+| 1 | 79.847 ± 0.068 | 80.244 ± 0.025 | +0.50% |
+| 4 | 345.611 ± 1.130 | 346.912 ± 0.161 | +0.38% |
+| 16 | 852.456 ± 2.714 | 857.626 ± 2.584 | +0.61% |
+| 32 | 1158.388 ± 4.739 | 1144.788 ± 11.227 | −1.17% |
+
+Each point contains five unprofiled full-checkpoint trials on GPUs 4/5 with
+the same extension, prompts, KV allocation, graph sizes, BF16 activations/head
+and FP32 state. The M1/M4 paths do not use this schedule, yet improve by
+0.4–0.5%; that drift limits interpretation of the small M16 change. The M32
+result is worse and more variable. **The candidate fails default acceptance**;
+smaller register counts and exact outputs do not establish an engine
+improvement across the supported sizes. The default remains BV32 for all sizes.
+
+![Decode including the recurrence probe](images/tp2-optimization-throughput.png)
+![Fresh recurrence-probe fidelity](images/tp2-optimization-fidelity.png)
+
+[Matched decode, trace summaries and fidelity](data/tp2-p2a-recurrent.json).
+The source wrapper is included in the rebuilt Mach wheel; the
+MXFP6 extension and runtime patch are unchanged. The 57 routing/install/profile
+checks pass. Raw artifacts are in
+`../tp2-optimization-20260916/p2a-recurrent/`.
+
+M2/M8/M24 additionally pass five full-checkpoint trials each on the same
+engine across graph-size changes. Both ranks reach each requested physical
+size and every request completes 1025 output tokens without corruption.
+These are integration checks, not matched performance gains for those sizes.
+[Launch geometry, both-rank checks, raw artifact hashes and regression records](data/tp2-gdn-recurrent-validation.json)
+are reproduced with:
+
+```bash
+python docs/data/collect_tp2_gdn_recurrent_validation.py --root RESULTS
+CUDA_VISIBLE_DEVICES=4 PYTHONPATH=src python -m pytest \
+  tests/native_mxfp6/test_gdn_recurrent.py -q
+# Repeat the existing decode/fidelity/serving tools with
+# VLLM_MACH_GDN_RECURRENT_TILE=32 and =8 for the two arms.
+```
+
+### Recurrence schedule matched HTTP serving
+
+Both arms use GPUs 6/7, the same port, checkpoint, extension, frozen prompts,
+arrival schedules and 3000-input/1000-output configuration. Only the
+recurrence-tile environment setting differs. All 760 scored requests across
+both arms complete with exact token counts. Each point is one run, without
+a confidence interval.
+
+| Concurrency | Fresh BV32, tokens/s | BV8, tokens/s | Change |
+|---|---:|---:|---:|
+| 4 | 371.314 | 371.275 | -0.010% |
+| 16 | 999.635 | 1009.426 | +0.980% |
+| 24 | 1299.947 | 1302.497 | +0.196% |
+| 32 | 1463.030 | 1465.198 | +0.148% |
+
+The c16 point improves by approximately 0.98%; c24/c32 differ by less than
+0.2% and c4 is unchanged. This single-run serving result does not establish
+a stable improvement for the all-size candidate or overturn the M32 decode
+acceptance failure. A future M16-only policy would require its own matched
+validation; it is not enabled by this experiment.
+
+![Serving including the recurrence probe](images/tp2-serving-throughput.png)
+
+[Serving contracts, launch environments, aggregates and raw hashes](data/tp2-serving.json).

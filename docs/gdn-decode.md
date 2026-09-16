@@ -50,6 +50,12 @@ copy elimination alone has not passed the full-model performance gate.
 The switch is resolved before graph capture. See the
 [matched experiment](tp2-optimization-results.md#p2-a-strided-ba-consumer-experiment).
 
+`VLLM_MACH_GDN_RECURRENT_TILE=8` is a separate diagnostic schedule for the
+M16/24/32 packed recurrence. It retains one warp and exact state/output
+arithmetic, but failed whole-model performance acceptance. The default
+remains `32`; see the [matched recurrence experiment](tp2-optimization-results.md#p2-a-smaller-recurrence-value-tile-experiment).
+
+
 ## Fused output norm and quantization
 
 `VLLM_MACH_FUSED_GDN_QUANT=auto` selects the extension-owned gated RMS norm
