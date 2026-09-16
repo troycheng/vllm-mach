@@ -126,3 +126,25 @@ it does not require publishing a new upstream commit. Direct users must rebuild
 the extension from the matching source/patch: an unmodified PyPI 0.2.1 wheel
 does not contain this optimization. Original 3000/1000 serving results are not
 replaced by these decode-development measurements.
+
+## P1-A: reject direct reuse of the existing packed-group provider
+
+A two-rank probe exercised FlashInfer 0.6.18's pattern 9 at
+M1/2/4/8/16/24/32, group size 32, Gemma weight bias 1, FP32 accumulation and
+one-shot collectives. Its BF16 norm and residual outputs match pattern 1
+exactly. Random unit-scale inputs also match the existing MXFP8 quantizer after
+unpacking the provider's different scale layout. However, every all-zero group
+has a different scale, and tiny nonzero inputs produce different FP8 codes on
+both ranks (5,114/5,120 codes at M1 on rank 0).
+
+The provider clamps its raw scale to `1e-10`; Mach clamps to `1e-30`.
+The provider also emits column-packed int32 scale words rather than SM120's
+128x4-swizzled bytes. Consequently, **direct pattern-9 reuse is rejected**.
+Adding a scale repack alone cannot fix the tiny-value quantization mismatch,
+and would retain an extra preparation launch. A custom provider format/API
+would be additional work; it is not implemented or claimed as a gain here.
+The existing AR/residual/norm and final-head routes remain unchanged.
+
+[Both-rank counterexamples](data/tp2-ar-quant-probe.json) are reproduced by
+`CUDA_VISIBLE_DEVICES=4,5 python tools/probe_tp2_ar_quant.py --output RESULTS`.
+This failed numerical candidate is stopped before performance promotion.

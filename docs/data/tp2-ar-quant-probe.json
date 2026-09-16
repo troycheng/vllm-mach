@@ -1,0 +1,346 @@
+{
+  "schema": "mach-tp2-ar-quant-probe/v1",
+  "provider": "FlashInfer 0.6.18 pattern 9, group 32, oneshot, FP32 accumulation",
+  "ranks": [
+    [
+      {
+        "rows": 1,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 160
+      },
+      {
+        "rows": 1,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 5114,
+        "scale_mismatches": 160
+      },
+      {
+        "rows": 1,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 2,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 320
+      },
+      {
+        "rows": 2,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 10229,
+        "scale_mismatches": 320
+      },
+      {
+        "rows": 2,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 4,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 640
+      },
+      {
+        "rows": 4,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 20460,
+        "scale_mismatches": 640
+      },
+      {
+        "rows": 4,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 8,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 1280
+      },
+      {
+        "rows": 8,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 40912,
+        "scale_mismatches": 1280
+      },
+      {
+        "rows": 8,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 16,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 2560
+      },
+      {
+        "rows": 16,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 81821,
+        "scale_mismatches": 2560
+      },
+      {
+        "rows": 16,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 24,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 3840
+      },
+      {
+        "rows": 24,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 122741,
+        "scale_mismatches": 3840
+      },
+      {
+        "rows": 24,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 32,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 5120
+      },
+      {
+        "rows": 32,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 163644,
+        "scale_mismatches": 5120
+      },
+      {
+        "rows": 32,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      }
+    ],
+    [
+      {
+        "rows": 1,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 160
+      },
+      {
+        "rows": 1,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 5114,
+        "scale_mismatches": 160
+      },
+      {
+        "rows": 1,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 2,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 320
+      },
+      {
+        "rows": 2,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 10229,
+        "scale_mismatches": 320
+      },
+      {
+        "rows": 2,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 4,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 640
+      },
+      {
+        "rows": 4,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 20460,
+        "scale_mismatches": 640
+      },
+      {
+        "rows": 4,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 8,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 1280
+      },
+      {
+        "rows": 8,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 40912,
+        "scale_mismatches": 1280
+      },
+      {
+        "rows": 8,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 16,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 2560
+      },
+      {
+        "rows": 16,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 81821,
+        "scale_mismatches": 2560
+      },
+      {
+        "rows": 16,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 24,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 3840
+      },
+      {
+        "rows": 24,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 122741,
+        "scale_mismatches": 3840
+      },
+      {
+        "rows": 24,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      },
+      {
+        "rows": 32,
+        "magnitude": 0.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 5120
+      },
+      {
+        "rows": 32,
+        "magnitude": 1e-20,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 163644,
+        "scale_mismatches": 5120
+      },
+      {
+        "rows": 32,
+        "magnitude": 1.0,
+        "norm_equal": true,
+        "residual_equal": true,
+        "code_mismatches": 0,
+        "scale_mismatches": 0
+      }
+    ]
+  ]
+}
