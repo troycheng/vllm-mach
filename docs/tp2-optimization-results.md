@@ -148,3 +148,28 @@ The existing AR/residual/norm and final-head routes remain unchanged.
 [Both-rank counterexamples](data/tp2-ar-quant-probe.json) are reproduced by
 `CUDA_VISIBLE_DEVICES=4,5 python tools/probe_tp2_ar_quant.py --output RESULTS`.
 This failed numerical candidate is stopped before performance promotion.
+
+## P1-C: matched HTTP serving follow-up
+
+The original 3000-input/1000-output frozen ShareGPT protocol was rerun on GPUs
+6/7, sequentially, using the same port, checkpoint, request seeds, arrivals,
+KV allocation, graph sizes and launch settings. These runs use the published
+4096 scheduled-token / 16384 maximum-length serving configuration, separately
+from the 512/4096 development workload above.
+
+| Concurrency | Fresh P0 | P1-C | Change |
+|---|---:|---:|---:|
+| 4 | 355.16 | 360.86 | +1.61% |
+| 16 | 971.28 | 981.68 | +1.07% |
+| 24 | 1278.34 | 1284.90 | +0.51% |
+| 32 | 1440.67 | 1447.28 | +0.46% |
+
+All 760 scored requests completed with exactly 3000 input / 1000 output tokens.
+Each point has one run, without a confidence interval. The smaller serving
+changes must not be replaced with the larger development-workload gains.
+Older published measurements are retained as historical results, not used as
+this comparison's denominator.
+
+![Matched TP2 serving](images/tp2-serving-throughput.png)
+
+[Contracts, aggregate metrics, launch settings and raw artifact hashes](data/tp2-serving.json).
