@@ -3,6 +3,7 @@
 
 import argparse
 import importlib.metadata
+import hashlib
 import json
 import math
 import os
@@ -223,12 +224,18 @@ def main():
     if eager:
         args["cpu_offload_gb"] = 4
         os.environ["VLLM_WEIGHT_OFFLOADING_DISABLE_UVA"] = "1"
+    library_hash = None
+    if a.arm not in ("bf16", "fp8", "nvfp4"):
+        import mxfp6
+        library_hash = hashlib.sha256(Path(mxfp6.load_library()).read_bytes()).hexdigest()
     write(
         a.output / "contract.json",
         dict(
             arm=a.arm,
             manifest=str(a.manifest),
             physical_rows=a.physical_rows,
+            extension_library_sha256=library_hash,
+            fused_swiglu_quant=os.environ.get("VLLM_MACH_FUSED_SWIGLU_QUANT", "auto"),
             llm_args=args,
             environment=flags,
             packages={

@@ -1,8 +1,39 @@
+diff --git a/csrc/include/mxfp6_gemm/quantization.hpp b/csrc/include/mxfp6_gemm/quantization.hpp
+index af684c0..ea72abc 100644
+--- a/csrc/include/mxfp6_gemm/quantization.hpp
++++ b/csrc/include/mxfp6_gemm/quantization.hpp
+@@ -6,6 +6,9 @@
+ 
+ namespace mxfp6_gemm::torch_ext {
+ 
++std::tuple<at::Tensor, at::Tensor> silu_and_mul_mxfp8_cuda(
++    at::Tensor const& input);
++
+ // Dynamically quantize a contiguous FP16/BF16 [M,K] matrix with one
+ // power-of-two UE8M0 scale per 32 K values. Scales are emitted directly in the
+ // physical SM120 CUTLASS layout, including the required M padding.
 diff --git a/csrc/quantization.cu b/csrc/quantization.cu
-index a16ee0a..3ef4bd0 100644
+index a16ee0a..c49ba1b 100644
 --- a/csrc/quantization.cu
 +++ b/csrc/quantization.cu
-@@ -75,7 +75,8 @@ __global__ void quantize_mx_kernel(Source const* input,
+@@ -1,6 +1,8 @@
+ #include "mxfp6_gemm/quantization.hpp"
+ 
++#include <algorithm>
+ #include <cstdint>
++#include <torch/library.h>
+ #include <limits>
+ #include <tuple>
+ 
+@@ -68,14 +70,15 @@ __device__ __forceinline__ uint16_t quantize_pair(float first,
+ }
+ 
+ template <class Source, int OutputBits, bool PackedScaleLayout,
+-          class ScaleLayout>
++          class ScaleLayout, bool SiluAndMul = false>
+ __global__ void quantize_mx_kernel(Source const* input,
+                                    uint8_t* output,
+                                    uint8_t* scales,
                                     uint8_t* logical_scales,
                                     int groups_per_row,
                                     int64_t total_groups,
@@ -12,7 +43,7 @@ index a16ee0a..3ef4bd0 100644
    static_assert(OutputBits == 6 || OutputBits == 8);
    int const thread_in_group = threadIdx.x % kThreadsPerGroup;
    int const group_in_block = threadIdx.x / kThreadsPerGroup;
-@@ -83,6 +84,28 @@ __global__ void quantize_mx_kernel(Source const* input,
+@@ -83,13 +86,49 @@ __global__ void quantize_mx_kernel(Source const* input,
        static_cast<int64_t>(blockIdx.x) * kGroupsPerBlock + group_in_block;
    bool const valid = group < total_groups;
  
@@ -41,7 +72,46 @@ index a16ee0a..3ef4bd0 100644
    float values[kElementsPerThread]{};
    int64_t const value_offset =
        group * kScaleVectorSize + thread_in_group * kElementsPerThread;
-@@ -212,16 +235,14 @@ std::tuple<at::Tensor, at::Tensor> quantize_mx(
+   if (valid) {
+ #pragma unroll
+     for (int index = 0; index < kElementsPerThread; ++index) {
+-      values[index] = static_cast<float>(input[value_offset + index]);
++      if constexpr (SiluAndMul) {
++        int64_t const k = static_cast<int64_t>(groups_per_row) * kScaleVectorSize;
++        int64_t const row = group / groups_per_row;
++        int64_t const column = value_offset + index - row * k;
++        float const gate = static_cast<float>(input[row * 2 * k + column]);
++        float const up = static_cast<float>(input[row * 2 * k + k + column]);
++        float const activated = static_cast<float>(static_cast<Source>(
++            gate / (1.0f + expf(-gate))));
++        // The separate activation's up + beta (beta=+0) canonicalizes -0.
++        // Make that boundary explicit rather than depending on fast-math.
++        float const shifted_up = up == 0.0f ? 0.0f : up;
++        values[index] = static_cast<float>(static_cast<Source>(activated * shifted_up));
++      } else {
++        values[index] = static_cast<float>(input[value_offset + index]);
++      }
+     }
+   }
+ 
+@@ -190,13 +229,14 @@ __global__ void quantize_mx_kernel(Source const* input,
+   }
+ }
+ 
+-template <int OutputBits, bool PackedScaleLayout = true>
++template <int OutputBits, bool PackedScaleLayout = true, bool SiluAndMul = false>
+ std::tuple<at::Tensor, at::Tensor> quantize_mx(
+     at::Tensor const& input) {
+   check_quant_input(input);
+   c10::cuda::CUDAGuard guard(input.device());
+   int64_t const m = input.size(0);
+-  int64_t const k = input.size(1);
++  int64_t const k = input.size(1) / (SiluAndMul ? 2 : 1);
++  TORCH_CHECK(k > 0 && k % kScaleVectorSize == 0, "output K must be divisible by 32");
+   int64_t const values = m * k;
+   int64_t const groups_per_row = k / kScaleVectorSize;
+   int64_t const packed_groups_per_row = round_up(groups_per_row, 4);
+@@ -212,31 +252,29 @@ std::tuple<at::Tensor, at::Tensor> quantize_mx(
        : at::empty({m, groups_per_row}, byte_options);
  
    auto stream = c10::cuda::getCurrentCUDAStream(input.get_device());
@@ -62,14 +132,17 @@ index a16ee0a..3ef4bd0 100644
    TORCH_CHECK(block_count <= std::numeric_limits<int>::max(),
                "quantization launch grid is too large");
  
-@@ -230,13 +251,13 @@ std::tuple<at::Tensor, at::Tensor> quantize_mx(
+   if (input.scalar_type() == at::kHalf) {
+-    quantize_mx_kernel<at::Half, OutputBits, PackedScaleLayout><<<
++    quantize_mx_kernel<at::Half, OutputBits, PackedScaleLayout, decltype(scale_layout), SiluAndMul><<<
          static_cast<int>(block_count), kThreads, 0, stream.stream()>>>(
          input.data_ptr<at::Half>(), output.data_ptr<uint8_t>(),
          scales.data_ptr<uint8_t>(), nullptr,
 -        static_cast<int>(groups_per_row), total_groups, scale_layout);
 +        static_cast<int>(groups_per_row), total_groups, scale_layout, PackedScaleLayout);
    } else {
-     quantize_mx_kernel<at::BFloat16, OutputBits, PackedScaleLayout><<<
+-    quantize_mx_kernel<at::BFloat16, OutputBits, PackedScaleLayout><<<
++    quantize_mx_kernel<at::BFloat16, OutputBits, PackedScaleLayout, decltype(scale_layout), SiluAndMul><<<
          static_cast<int>(block_count), kThreads, 0, stream.stream()>>>(
          input.data_ptr<at::BFloat16>(), output.data_ptr<uint8_t>(),
          scales.data_ptr<uint8_t>(), nullptr,
@@ -78,3 +151,174 @@ index a16ee0a..3ef4bd0 100644
    }
    C10_CUDA_KERNEL_LAUNCH_CHECK();
    return {output, scales};
+@@ -409,3 +447,18 @@ std::tuple<at::Tensor, at::Tensor> quantize_mxfp6_cuda(
+ }
+ 
+ }  // namespace mxfp6_gemm::torch_ext
++
++namespace mxfp6_gemm::torch_ext {
++std::tuple<at::Tensor, at::Tensor> silu_and_mul_mxfp8_cuda(at::Tensor const& input) {
++  TORCH_CHECK(input.dim() == 2 && input.size(1) % 64 == 0,
++              "SwiGLU input must be [M,2K] with K divisible by 32");
++  return quantize_mx<8, true, true>(input);
++}
++}  // namespace mxfp6_gemm::torch_ext
++
++TORCH_LIBRARY_FRAGMENT(mxfp6, m) {
++  m.def("silu_and_mul_mxfp8(Tensor input) -> (Tensor values, Tensor scales)");
++}
++TORCH_LIBRARY_IMPL(mxfp6, CUDA, m) {
++  m.impl("silu_and_mul_mxfp8", &mxfp6_gemm::torch_ext::silu_and_mul_mxfp8_cuda);
++}
+diff --git a/csrc/torch_extension.cu b/csrc/torch_extension.cu
+index 715a2c4..33b0fa7 100644
+--- a/csrc/torch_extension.cu
++++ b/csrc/torch_extension.cu
+@@ -1874,7 +1874,8 @@ at::Tensor gemm_from_float_cuda_impl(at::Tensor const& input,
+                                      int64_t config_id,
+                                      int64_t swizzle,
+                                      int64_t raster_order,
+-                                     at::ScalarType output_dtype) {
++                                     at::ScalarType output_dtype,
++                                     bool silu_and_mul = false) {
+ #if !defined(CUTLASS_ARCH_MMA_SM120_SUPPORTED)
+   TORCH_CHECK(false, "mxfp6_torch must be compiled for sm_120a");
+ #else
+@@ -1882,7 +1883,9 @@ at::Tensor gemm_from_float_cuda_impl(at::Tensor const& input,
+   TORCH_CHECK(input.is_cuda(), "input must be a CUDA tensor");
+   TORCH_CHECK(input.dim() == 2, "input must have shape [M,K]");
+   int64_t const m = input.size(0);
+-  int64_t const k = input.size(1);
++  int64_t const k = input.size(1) / (silu_and_mul ? 2 : 1);
++  TORCH_CHECK(!silu_and_mul || input.size(1) % 256 == 0,
++              "SwiGLU input must have 2K columns with K divisible by 128");
+   TORCH_CHECK(m > 0, "M must be positive; got ", m);
+   TORCH_CHECK(n > 0 && n % 8 == 0,
+               "N must be a positive multiple of 8; got ", n);
+@@ -1911,7 +1914,9 @@ at::Tensor gemm_from_float_cuda_impl(at::Tensor const& input,
+               "mxfp6::gemm_from_float requires SM120; current device is SM",
+               properties.major, properties.minor);
+ 
+-  auto quantized = mxfp6_gemm::torch_ext::quantize_mxfp8_cuda(input);
++  auto quantized = silu_and_mul
++      ? mxfp6_gemm::torch_ext::silu_and_mul_mxfp8_cuda(input)
++      : mxfp6_gemm::torch_ext::quantize_mxfp8_cuda(input);
+   if (config_id >= 0) {
+     return launch_w6a8_config(
+         std::get<0>(quantized), b, std::get<1>(quantized), sfb,
+@@ -1924,6 +1929,16 @@ at::Tensor gemm_from_float_cuda_impl(at::Tensor const& input,
+ #endif
+ }
+ 
++at::Tensor gemm_from_swiglu_cuda(at::Tensor const& input,
++                                at::Tensor const& b,
++                                at::Tensor const& sfb,
++                                int64_t n,
++                                double alpha,
++                                std::optional<at::ScalarType> output_dtype) {
++  return gemm_from_float_cuda_impl(
++      input, b, sfb, n, alpha, -1, 1, 0, resolve_output_dtype(output_dtype), true);
++}
++
+ at::Tensor gemm_from_float_cuda(at::Tensor const& input,
+                                 at::Tensor const& b,
+                                 at::Tensor const& sfb,
+@@ -2127,6 +2142,8 @@ TORCH_LIBRARY(mxfp6, m) {
+   m.def("gemm_w6a8_config(Tensor a, Tensor b, Tensor sfa, Tensor sfb, "
+         "int m, int n, int k, float alpha, int config_id, int swizzle, "
+         "int raster_order, ScalarType? out_dtype=None) -> Tensor");
++  m.def("gemm_from_swiglu(Tensor input, Tensor b, Tensor sfb, "
++        "int n, float alpha=1.0, ScalarType? out_dtype=None) -> Tensor");
+   m.def("gemm_from_float(Tensor input, Tensor b, Tensor sfb, "
+         "int n, float alpha=1.0, ScalarType? out_dtype=None) -> Tensor");
+   m.def("gemm_from_float_config(Tensor input, Tensor b, Tensor sfb, "
+@@ -2161,6 +2178,7 @@ TORCH_LIBRARY_IMPL(mxfp6, CUDA, m) {
+   m.impl("gemm_w6a8", &gemm_w6a8_cuda);
+   m.impl("gemm_w6a8_config", &gemm_w6a8_config_cuda);
+   m.impl("gemm_from_float", &gemm_from_float_cuda);
++  m.impl("gemm_from_swiglu", &gemm_from_swiglu_cuda);
+   m.impl("gemm_from_float_config", &gemm_from_float_config_cuda);
+   m.impl("set_w6a8_config", &set_w6a8_config_cuda);
+   m.impl("w6a8_config_abi", &w6a8_config_abi_cuda);
+diff --git a/python/mxfp6/__init__.py b/python/mxfp6/__init__.py
+index 42b1f15..a20f4ba 100644
+--- a/python/mxfp6/__init__.py
++++ b/python/mxfp6/__init__.py
+@@ -24,6 +24,7 @@ from .ops import (
+     gemm,
+     gemm_from_codes,
+     gemm_from_float,
++    gemm_from_swiglu,
+     gemm_packed,
+     gemm_w6a8,
+     grouped_gemm_w6a8,
+@@ -52,6 +53,7 @@ from .ops import (
+     qwen35_w1_splitk_silu_mxfp8_out,
+     qwen35_w2_splitk_reduce_out,
+     route_mxfp8_out,
++    silu_and_mul_mxfp8,
+     silu_and_mul_mxfp8_grouped,
+     silu_and_mul_mxfp8_grouped_out,
+     silu_and_mul_mxfp8_logical,
+@@ -98,6 +100,7 @@ __all__ = [
+     "gemm",
+     "gemm_from_codes",
+     "gemm_from_float",
++    "gemm_from_swiglu",
+     "gemm_packed",
+     "gemm_w6a8",
+     "grouped_gemm_w6a8",
+@@ -136,6 +139,7 @@ __all__ = [
+     "qwen35_w1_splitk_silu_mxfp8_out",
+     "qwen35_w2_splitk_reduce_out",
+     "route_mxfp8_out",
++    "silu_and_mul_mxfp8",
+     "silu_and_mul_mxfp8_grouped",
+     "silu_and_mul_mxfp8_grouped_out",
+     "silu_and_mul_mxfp8_logical",
+diff --git a/python/mxfp6/ops.py b/python/mxfp6/ops.py
+index 6cc4e32..5144f09 100644
+--- a/python/mxfp6/ops.py
++++ b/python/mxfp6/ops.py
+@@ -2311,3 +2311,41 @@ def is_available() -> bool:
+         return torch.cuda.get_device_capability() == (12, 0)
+     except (ImportError, OSError, RuntimeError):
+         return False
++
++
++def silu_and_mul_mxfp8(input: torch.Tensor) -> MXFP8Tensor:
++    """Quantize BF16/FP16 SwiGLU with rounded SiLU/product and up + positive zero.
++
++    Unlike the MoE packed-out producer, this dense interface also initializes
++    every padding scale on each call and matches the separate activation's
++    signed-zero boundary. Input is contiguous [M,2K], gate followed by up.
++    """
++    _require_sm120(input.device)
++    load_library()
++    values, scales = torch.ops.mxfp6.silu_and_mul_mxfp8(input)
++    return MXFP8Tensor(values=values, scales=scales, rows=input.shape[0], k=input.shape[1]//2)
++
++
++def gemm_from_swiglu(
++    a: torch.Tensor,
++    b: PackedMXFP6Tensor,
++    alpha: float = 1.0,
++    *,
++    out_dtype: torch.dtype = torch.float16,
++) -> torch.Tensor:
++    """Fused rounded SwiGLU/MXFP8 producer followed by PDL-enabled W6A8.
++
++    Uses the existing installed static dispatch/overrides and workspace plan.
++    Warm the matching [M,K] down-projection before graph capture. This entry
++    point does not run a second activation quantizer or perform a collective.
++    """
++    out_dtype = _validate_output_dtype(out_dtype)
++    rows, twice_k = _validate_float_activation(a)
++    if not isinstance(b, PackedMXFP6Tensor):
++        raise TypeError("b must be a PackedMXFP6Tensor instance")
++    if twice_k != 2*b.k or a.device != b.device:
++        raise ValueError("SwiGLU input must match weight device and have 2K columns")
++    _validate_problem(rows, b.rows, b.k)
++    _require_sm120(a.device)
++    load_library()
++    return torch.ops.mxfp6.gemm_from_swiglu(a,b.values,b.scales,b.rows,alpha,out_dtype)

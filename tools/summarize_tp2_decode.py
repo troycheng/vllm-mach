@@ -18,6 +18,8 @@ def interval_union(intervals):
 
 
 def category(name):
+    if "quantize_mx_kernel" in name and ", true>(" in name:
+        return "swiglu_quantization"
     for fragment, group in [('quantize_mx_kernel', 'activation_quantization'),
                             ('memset', 'buffer_initialization'),
                             ('allreduce_fusion', 'allreduce_residual_norm'),
@@ -68,7 +70,7 @@ def collect(baseline, profile):
             ranks.append(dict(rank=rank['rank'], trace=summarize_trace(trial/f"rank{rank['rank']}.json"),
                 measured_decode_steps=3, physical_rows=m, logical_rows=m,
                 fused_ar_norm_modules=sum(v['fused_ar_norm'] is True for v in rank['inventory']),
-                shapes=dict(shapes), gdn=rank['gdn'], peak_allocated_bytes=rank['peak_allocated_bytes'],
+                shapes=dict(shapes), gdn=rank['gdn'], fused_swiglu_layers=rank.get('fused_swiglu_layers',0), peak_allocated_bytes=rank['peak_allocated_bytes'],
                 peak_reserved_bytes=rank['peak_reserved_bytes'],
                 mean_inclusive_module_ms={name:statistics.mean(s['inclusive_ms'][name] for s in samples)
                                           for name in samples[0]['inclusive_ms']}))

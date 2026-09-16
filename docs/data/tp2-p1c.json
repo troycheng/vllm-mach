@@ -9316,5 +9316,7 @@
         }
       }
     }
-  }
+  },
+  "extension_library_sha256": "6f7a28d357a923db8cd056dcababdf16ffa3ae1a4c8c947a292404e65fe6c10a",
+  "extension_source_commit": "7ce497c"
 }

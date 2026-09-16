@@ -173,3 +173,49 @@ this comparison's denominator.
 ![Matched TP2 serving](images/tp2-serving-throughput.png)
 
 [Contracts, aggregate metrics, launch settings and raw artifact hashes](data/tp2-serving.json).
+
+## P1-B: rounded SwiGLU/MXFP8 producer
+
+The TP2 dense MLP now combines the independent SwiGLU and dynamic MXFP8
+producer. Gate/up GEMM output, the intermediate SiLU value, and the product
+retain their BF16 rounding boundaries; FP8 codes, UE8M0 scales, and signed
+zeros match the separate vLLM activation. The existing down-projection
+workspace, static dispatch, and PDL launch are reused. No collective or
+residual addition moves into the MLP.
+
+The first prototype used the separate packed GEMM API, which disabled PDL
+and regressed B32; it was rejected. The accepted entry uses the same PDL
+policy as `gemm_from_float`. Both ranks prepare 64 MLPs, removing 64 standalone
+SwiGLU kernels per decode step. Scale padding remains initialized by the
+producer on every invocation.
+
+| Requests | P1-C tokens/s | P1-B tokens/s | Change |
+|---|---:|---:|---:|
+| 1 | 78.259 ± 0.944 | 79.704 ± 0.082 | +1.85% |
+| 4 | 336.841 ± 0.585 | 341.065 ± 0.172 | +1.25% |
+| 16 | 840.283 ± 1.739 | 847.135 ± 0.741 | +0.82% |
+| 32 | 1152.576 ± 2.134 | 1153.685 ± 1.233 | +0.10% |
+
+These are five unprofiled full-checkpoint trials. The B32 change is within
+measurement variation and is not claimed as a gain. B1 remains sensitive to
+the higher variance of its P1-C baseline.
+
+`VLLM_MACH_FUSED_SWIGLU_QUANT=auto` (the default) selects this path only when
+the extension exposes `gemm_from_swiglu` and the exact native TP2 Qwen MLP
+contract matches. Existing unpatched 0.2.1 extensions retain the old path.
+Set `0` to disable the fusion, or `1` to require the new entry for eligible
+MLPs. Other shapes, dtypes and MLP implementations retain their original
+forward. The deployment patch builds the new entry against the pinned
+extension source; the release version alone does not identify this patch.
+
+Fresh M4 and M32 teacher-forced scores are token-for-token identical to P0
+and P1-C, including exact repeated-cohort replay. Their gold-logprob MAE
+against the matched BF16 references remains 0.08539566 and 0.09064302.
+The [P1-B data](data/tp2-p1b.json) records the fresh contracts and hashes.
+
+Validation: 176 extension producer tests, seven real-shape fused-down graph
+tests, 19 installation/workspace/deployment/profile tests, and three legacy
+extension selection tests pass. The rebuilt wheel contains the exact tested
+binary (SHA256 `c76ceaae4a8f3a3382e90e15e1078bfb52d7aca3c7ea64b671b94a6007abe9f9`);
+the deployment patch applies exactly and idempotently to pinned v0.2.1.
+Extension implementation commit: `1107328`.

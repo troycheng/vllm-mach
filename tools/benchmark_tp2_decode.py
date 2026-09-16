@@ -2,6 +2,8 @@
 """Real-checkpoint TP2 P0 baseline; profiling is a separate process/run."""
 import argparse
 import dataclasses
+import hashlib
+import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -16,6 +18,7 @@ def main():
     p.add_argument('--rows', type=int, nargs='+', default=[1, 4, 16, 32])
     p.add_argument('--repeats', type=int, default=5)
     p.add_argument('--profile', action='store_true')
+    p.add_argument('--gemm-overrides', type=Path, help='Diagnostic full-model dispatch candidates; JSON list')
     a = p.parse_args()
     if a.repeats < 5 and not a.profile:
         p.error('At least five unprofiled repeats are required')
@@ -24,9 +27,13 @@ def main():
     from vllm_mach.mxfp6.serve import profile_environment
     os.environ.update(profile_environment(argparse.Namespace(fp16_ssm=False, lossless_prefill=False,
         owner_prefill=False, nvfp4_lm_head=False, verify_prefill=False)))
+    overrides=json.loads(a.gemm_overrides.read_text()) if a.gemm_overrides else []
+    os.environ['MACH_TP2_GEMM_OVERRIDES']=json.dumps(overrides)
     os.environ['MACH_TP2_PROFILE'] = str(int(a.profile))
     os.environ['VLLM_ALLOW_INSECURE_SERIALIZATION'] = '1'
     os.environ['PYTHONPATH'] = str(Path(__file__).parent.resolve()) + os.pathsep + os.environ.get('PYTHONPATH', '')
+    import mxfp6
+    library = Path(mxfp6.load_library())
     from vllm import LLM, SamplingParams
     a.output.mkdir(parents=True, exist_ok=False)
     config = dict(model=a.model, quantization='quark', dtype='bfloat16', tensor_parallel_size=2,
@@ -37,7 +44,10 @@ def main():
         compilation_config=dict(mode='NONE', cudagraph_mode='FULL_DECODE_ONLY',
                                 cudagraph_capture_sizes=[1, 2, 4, 8, 16, 24, 32]))
     (a.output/'contract.json').write_text(json.dumps(dict(config=config, profile=a.profile,
-        repeats=a.repeats, input_tokens=2048, output_tokens={'1':129, 'other':1025}, devices=os.environ.get('CUDA_VISIBLE_DEVICES')), indent=2))
+        repeats=a.repeats, gemm_overrides=overrides, input_tokens=2048, output_tokens={'1':129, 'other':1025},
+        extension_library_sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
+        fused_swiglu_quant=os.environ.get('VLLM_MACH_FUSED_SWIGLU_QUANT','auto'),
+        packages={n:importlib.metadata.version(n) for n in ('torch','vllm','mxfp6-sm120')}, devices=os.environ.get('CUDA_VISIBLE_DEVICES')), indent=2))
     llm = LLM(**config)
     results = []
     for m in a.rows:

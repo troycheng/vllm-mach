@@ -83,6 +83,9 @@ def warmup_mxfp6_sm120(
     from .gdn_decode import prepare
 
     prepare(model)
+    from .fused_mlp import prepare as prepare_mlp
+
+    prepare_mlp(model)
     problems = _collect_w6a8_problems(model)
     sizes = _normalize_sizes(token_sizes, reverse=True)
     if not problems or not sizes:

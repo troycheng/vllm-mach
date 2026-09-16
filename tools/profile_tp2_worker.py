@@ -1,5 +1,6 @@
 """Diagnostic-only graph event probes. Imported by vLLM workers before load."""
 import functools
+import json
 import os
 
 import torch
@@ -45,6 +46,19 @@ def wrap(obj, attr, name, root=False):
 
 
 def instrument(model):
+    # Install shape/M overrides before workspace planning and graph capture.
+    # Each candidate still rotates the entire checkpoint through real TP2 calls.
+    overrides=json.loads(os.environ.get('MACH_TP2_GEMM_OVERRIDES','[]'))
+    if overrides:
+        import mxfp6
+        mxfp6.load_library()
+        weights={(int(layer.weight.shape[0]),int(layer.weight.shape[1])*4//3):layer.weight
+                 for layer in model.modules()
+                 if type(getattr(getattr(layer,'scheme',None),'ocp_mx_linear',None)).__name__=='Mxfp6Sm120LinearKernel'}
+        for candidate in overrides:
+            m,n,k,config,swizzle,raster=candidate
+            assert m in (1,2,4,8,16,24,32) and (n,k) in weights
+            torch.ops.mxfp6.set_w6a8_config(weights[n,k],m,n,k,config,swizzle,raster,torch.bfloat16)
     for name, module in model.named_modules():
         weight = getattr(module, 'weight', None)
         kernel = getattr(getattr(module, 'scheme', None), 'ocp_mx_linear', None)
@@ -82,6 +96,8 @@ class TP2Probe:
             PROFILER = None
         from vllm_mach.mxfp6.gdn_decode import stats
         return dict(rank=self.rank, samples=SAMPLES, batches=BATCHES, inventory=INVENTORY, gdn=stats(),
+                    fused_swiglu_layers=sum(bool(getattr(m, "_mach_swiglu_prepared", False))
+                                            for m in self.model_runner.model.modules()),
                     peak_allocated_bytes=torch.cuda.max_memory_allocated(),
                     peak_reserved_bytes=torch.cuda.max_memory_reserved())
 
