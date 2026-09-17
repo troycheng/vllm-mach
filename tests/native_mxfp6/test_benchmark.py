@@ -157,3 +157,62 @@ def test_gdn_serving_ablation_changes_only_one_flag(arm, base, changed):
     assert command == base_command
     assert {k for k in env if env[k] != base_env[k]} == {changed}
     assert env[changed] == "1" and base_env[changed] == "0"
+
+
+@pytest.mark.parametrize("token_text", ["hello", ""])
+def test_single_token_prefill_benchmark_serializes_without_decode_intervals(token_text):
+    import asyncio
+
+    from aiohttp import web
+
+    tool = load()
+
+    async def exercise():
+        async def completion(request):
+            payload = await request.json()
+            events = [
+                {"choices": [{"text": token_text, "finish_reason": "length"}]},
+                {
+                    "choices": [],
+                    "usage": {
+                        "prompt_tokens": len(payload["prompt"]),
+                        "completion_tokens": 1,
+                    },
+                },
+            ]
+            body = "".join("data: " + json.dumps(event) + "\n\n" for event in events)
+            return web.Response(
+                text=body + "data: [DONE]\n\n", content_type="text/event-stream"
+            )
+
+        app = web.Application()
+        app.router.add_post("/v1/completions", completion)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 0)
+        await site.start()
+        port = site._server.sockets[0].getsockname()[1]
+        try:
+            result = await tool.run(
+                args(
+                    base_url=f"http://127.0.0.1:{port}",
+                    model="test",
+                    timeout_s=10,
+                    prompt_manifest=None,
+                    input_tokens=4,
+                    output_tokens=1,
+                    num_prompts=2,
+                    request_rate=0,
+                    warmup_requests=1,
+                    warmup_output_tokens=1,
+                )
+            )
+        finally:
+            await runner.cleanup()
+        json.dumps(result, allow_nan=False)
+        assert result["aggregate"]["completed"] == 2
+        assert result["aggregate"]["mean_ttft_ms"] >= 0
+        for metric in ("mean_tpot_ms", "p99_tpot_ms", "mean_itl_ms", "p99_itl_ms"):
+            assert result["aggregate"][metric] is None
+
+    asyncio.run(exercise())

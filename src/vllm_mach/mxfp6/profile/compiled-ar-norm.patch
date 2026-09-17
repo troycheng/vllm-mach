@@ -1,0 +1,35 @@
+--- a/vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py
++++ b/vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py
+@@ -16,6 +16,8 @@
+ """
+ 
+ import torch
++
++from vllm_mach.mxfp6.compiled_ar_norm import compiled_allreduce_gemma_rms_norm
+ 
+ from vllm import envs
+ from vllm.distributed.communication_op import tensor_model_parallel_all_reduce
+@@ -125,6 +127,10 @@
+     Returns ``(normed_output, new_residual)``, equivalent to
+     ``norm(all_reduce(hidden_states), residual)``.
+     """
++    if torch.compiler.is_compiling():
++        return compiled_allreduce_gemma_rms_norm(
++            hidden_states, residual, norm.weight, norm.variance_epsilon
++        )
+     tp_size = get_tensor_model_parallel_world_size()
+     if tp_size == 1:
+         # No all-reduce needed; identical to the unfused path.
+--- a/vllm/model_executor/models/qwen3_5.py
++++ b/vllm/model_executor/models/qwen3_5.py
+@@ -348,6 +348,10 @@
+ 
+         self.use_fused_ar_gemma_norm = _use_mxfp6_ar_norm(vllm_config)
+         if self.use_fused_ar_gemma_norm:
++            if config.model_type == "qwen3_5_moe_text":
++                from vllm_mach.mxfp6.moe_ar_norm import prepare_compiled_ar_norm
++
++                prepare_compiled_ar_norm(vllm_config)
+             logger.info_once("Qwen3.5 manual AllReduce/residual/RMSNorm fusion enabled")
+         self.aux_hidden_state_layers: tuple[int, ...] = ()
+ 

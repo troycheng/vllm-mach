@@ -17,7 +17,9 @@ from typing import Any
 import aiohttp
 
 
-def percentile(values: list[float], quantile: float) -> float:
+def percentile(values: list[float], quantile: float) -> float | None:
+    if not values:
+        return None
     ordered = sorted(values)
     rank = (len(ordered) - 1) * quantile
     low = math.floor(rank)
@@ -140,12 +142,19 @@ async def request_one(
                                 if data.get("usage") is not None:
                                     usage = data["usage"]
                                 choices = data.get("choices") or []
-                                if choices and choices[0].get("text"):
+                                if choices and (
+                                    choices[0].get("text")
+                                    or (
+                                        output_tokens == 1
+                                        and choices[0].get("finish_reason") is not None
+                                        and first_token_at is None
+                                    )
+                                ):
                                     now = time.perf_counter()
                                     if first_token_at is None:
                                         first_token_at = now
                                     token_event_times.append(now)
-                                    text_parts.append(choices[0]["text"])
+                                    text_parts.append(choices[0].get("text") or "")
         except Exception as exc:  # preserve failures in the evidence artifact
             error = repr(exc)
         ended_at = time.perf_counter()
@@ -164,7 +173,7 @@ async def request_one(
     tpot = (
         (ended_at - first_token_at) / (completion_tokens - 1)
         if first_token_at is not None and completion_tokens > 1
-        else math.nan
+        else None
     )
     text = "".join(text_parts)
     return {
@@ -241,7 +250,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         int(item["usage"]["completion_tokens"]) for item in successful
     )
     ttfts = [item["ttft_s"] * 1000 for item in successful]
-    tpots = [item["tpot_s"] * 1000 for item in successful]
+    tpots = [item["tpot_s"] * 1000 for item in successful if item["tpot_s"] is not None]
     itls = [interval * 1000 for item in successful for interval in item["itl_s"]]
     aggregate = {
         "completed": len(successful),
@@ -254,9 +263,9 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         "total_throughput_tokens_per_s": (prompt_tokens + completion_tokens) / duration,
         "mean_ttft_ms": statistics.fmean(ttfts),
         "p99_ttft_ms": percentile(ttfts, 0.99),
-        "mean_tpot_ms": statistics.fmean(tpots),
+        "mean_tpot_ms": statistics.fmean(tpots) if tpots else None,
         "p99_tpot_ms": percentile(tpots, 0.99),
-        "mean_itl_ms": statistics.fmean(itls),
+        "mean_itl_ms": statistics.fmean(itls) if itls else None,
         "p99_itl_ms": percentile(itls, 0.99),
     }
     return {

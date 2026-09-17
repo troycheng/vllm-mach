@@ -21,6 +21,11 @@ def pristine(tmp_path):
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(site / name, target)
+    if (
+        _patch(tmp_path, "compiled-ar-norm.patch", reverse=True, dry=True).returncode
+        == 0
+    ):
+        assert _patch(tmp_path, "compiled-ar-norm.patch", reverse=True).returncode == 0
     if _patch(tmp_path, "moe-ar-norm.patch", reverse=True, dry=True).returncode == 0:
         assert _patch(tmp_path, "moe-ar-norm.patch", reverse=True).returncode == 0
     if _patch(tmp_path, "runtime.patch", reverse=True, dry=True).returncode == 0:
@@ -152,3 +157,23 @@ def test_existing_moe_profile_upgrade_and_incompatible_fusion_are_atomic(pristin
     with pytest.raises(RuntimeError):
         install_profile(site, site, apply=True)
     assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before
+
+
+def test_existing_manual_moe_fusion_upgrades_to_compiled_support(pristine):
+    site, _ = pristine
+    for patch in (
+        "runtime.patch",
+        "moe.patch",
+        "moe-ar-norm.patch",
+        "flashinfer-local-ipc.patch",
+    ):
+        assert _patch(site, patch).returncode == 0
+    before = {str(p): p.read_bytes() for p in site.rglob("*.py")}
+    result = install_profile(site, site)
+    assert set(result["changed_files"]) == {
+        "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py",
+        "vllm/model_executor/models/qwen3_5.py",
+    }
+    assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before
+    install_profile(site, site, apply=True)
+    assert not install_profile(site, site, apply=True)["changed_files"]

@@ -195,12 +195,11 @@ def plot_throughput(performance, order, labels, colors, markers, styles, stem, f
 
 
 def plot_moe_throughput():
-    baseline = json.loads((HERE/'qwen35-moe-20260917.json').read_text())
-    optimized = json.loads((HERE/'qwen35-ar-head-20260917.json').read_text())
-    order = ['fp8', 'gdn_ar', 'gdn_ar_head']
+    optimized = json.loads((HERE/'qwen35-default-full-20260917.json').read_text())
+    order = ['fp8', 'nvfp4', 'default', 'full']
     runs = {}
     for name in order:
-        source = baseline if name == 'fp8' else optimized
+        source = optimized
         runs[name] = {'points': [
             {'concurrency': row['concurrency'],
              'output_throughput_tokens_per_s': row[name]['aggregate']['output_throughput_tokens_per_s']}
@@ -208,15 +207,17 @@ def plot_moe_throughput():
         ]}
     plot_throughput(
         {'runs': runs}, order,
-        {'fp8': 'FP8 · official vLLM 0.29',
-         'gdn_ar': 'MXFP6 · Mach default',
-         'gdn_ar_head': 'MXFP6 · Mach full'},
-        {'fp8': '#87919D', 'gdn_ar': '#126149', 'gdn_ar_head': '#8050A0'},
-        {'fp8': 'o', 'gdn_ar': 'X', 'gdn_ar_head': '*'},
-        {'fp8': '--', 'gdn_ar': '-', 'gdn_ar_head': '-'},
+        {'fp8': 'FP8 · vLLM 0.29 baseline',
+         'nvfp4': 'NVFP4 · vLLM 0.29 baseline',
+         'default': 'MXFP6 · Mach default',
+         'full': 'MXFP6 · Mach full'},
+        {'fp8': '#87919D', 'nvfp4': '#D77B44', 'default': '#126149', 'full': '#8050A0'},
+        {'fp8': 'o', 'nvfp4': 's', 'default': 'X', 'full': '*'},
+        {'fp8': '--', 'nvfp4': ':', 'default': '-', 'full': '-'},
         'qwen35-moe-throughput',
-        footnote='Qwen3.5-35B-A3B · 2 × RTX 5090 · TP2 · 3000 input / 1000 output tokens · September 17, 2026\n'
-                 'Single run per point; uniform token IDs. FP8 reuses the earlier same-day official-runtime measurement.')
+        footnote='Qwen3.5-35B-A3B · 3000 input / 1000 output tokens · 2-run means · September 17, 2026\n'
+                 'FP8 / NVFP4: user-provided vLLM baseline services, remeasured at c4 / c16 / c24 / c32.\n'
+                 'Mach: 2 × RTX 5090 · TP2 · 2048 batched tokens · max sequences 64.')
 
 
 def main():

@@ -33,7 +33,8 @@ def use_moe_ar_norm(vllm_config) -> bool:
         and not parallel.use_ubatching
         and vllm_config.speculative_config is None
         and vllm_config.lora_config is None
-        and vllm_config.compilation_config.mode == CompilationMode.NONE
+        and vllm_config.compilation_config.mode
+        in (CompilationMode.NONE, CompilationMode.VLLM_COMPILE)
         and quant is not None
         and quant.get_name() == "quark"
         and scheme.get("weight", {}).get("dtype") == "fp6_e3m2"
@@ -62,3 +63,15 @@ def defer_moe_allreduce(block) -> None:
     runner.moe_config.skip_final_all_reduce = True
     # Authorize the existing small-batch schedules for this reduction owner.
     runner.routed_experts._mach_fused_ar_norm = True
+
+
+def prepare_compiled_ar_norm(vllm_config) -> None:
+    """Keep rank-specialized compiled model artifacts in separate namespaces."""
+    if vllm_config.compilation_config.mode == CompilationMode.VLLM_COMPILE:
+        # vLLM's AOT Inductor directory is shared above rank-specific wrappers.
+        # Manual model execution specializes embedding bounds and CUDA devices;
+        # sharing this directory can load another rank's runnable on a cold run.
+        vllm_config.additional_config["mach_compiled_ar_norm"] = {
+            "version": 1,
+            "rank": vllm_config.parallel_config.rank,
+        }

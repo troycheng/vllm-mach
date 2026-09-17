@@ -11,6 +11,12 @@ import sys
 from pathlib import Path
 
 
+def _is_qwen35_moe(model: str | Path) -> bool:
+    config_path = Path(model) / "config.json"
+    config = json.loads(config_path.read_text()) if config_path.is_file() else {}
+    return config.get("model_type") in ("qwen3_5_moe", "qwen3_5_moe_text")
+
+
 def profile_environment(args: argparse.Namespace) -> dict[str, str]:
     # Explicit values prevent stale profile flags from changing this run.
     env = {
@@ -38,19 +44,12 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": "32",
         "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
     }
-    config_path = Path(args.model) / "config.json"
-    config = json.loads(config_path.read_text()) if config_path.is_file() else {}
-    if config.get("model_type") == "qwen3_5_moe":
-        if any(
-            (
-                args.fp16_ssm,
-                args.lossless_prefill,
-                args.owner_prefill,
-            )
-        ):
-            raise ValueError(
-                "Qwen3.5 MoE does not support the dense-only FP16 SSM or prefill options"
-            )
+    if _is_qwen35_moe(args.model) and any(
+        (args.fp16_ssm, args.lossless_prefill, args.owner_prefill)
+    ):
+        raise ValueError(
+            "Qwen3.5 MoE does not support the dense-only FP16 SSM or prefill options"
+        )
     return env
 
 
@@ -79,7 +78,7 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "--max-model-len",
         "16384",
         "--max-num-batched-tokens",
-        "4096",
+        "2048" if _is_qwen35_moe(args.model) else "4096",
         "--no-enable-prefix-caching",
         "--attention-backend",
         "TRITON_ATTN",
@@ -87,9 +86,11 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "vllm",
         "--limit-mm-per-prompt",
         '{"image":0,"video":0}',
-        "--compilation-config",
-        json.dumps(config),
     ]
+    # MoE uses vLLM's default compilation and graph policy, including piecewise
+    # prefill capture. Keep the validated dense decode-only profile unchanged.
+    if not _is_qwen35_moe(args.model):
+        command += ["--compilation-config", json.dumps(config)]
     if args.fp16_ssm:
         command += ["--mamba-ssm-cache-dtype", "float16"]
     return command + extra, env

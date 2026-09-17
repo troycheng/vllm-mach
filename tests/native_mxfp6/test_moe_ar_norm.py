@@ -93,6 +93,12 @@ def test_model_quantization_and_request_admission(config, monkeypatch):
     assert not use_moe_ar_norm(config)
 
 
+@pytest.mark.parametrize("mode", [CompilationMode.NONE, CompilationMode.VLLM_COMPILE])
+def test_compilation_admission(config, mode):
+    config.compilation_config.mode = mode
+    assert use_moe_ar_norm(config)
+
+
 def test_deferred_reduce_requires_native_runner_and_partitioned_shared_expert(
     monkeypatch,
 ):
@@ -123,7 +129,8 @@ def test_deferred_reduce_requires_native_runner_and_partitioned_shared_expert(
         defer_moe_allreduce(block)
 
 
-def _worker_ar_norm(rank, port):
+@torch.inference_mode()
+def _worker_ar_norm(rank, port, compiled=False):
     import os
 
     from vllm.config import VllmConfig, set_current_vllm_config
@@ -149,7 +156,13 @@ def _worker_ar_norm(rank, port):
         torch.manual_seed(100)
         norm = GemmaRMSNorm(2048, eps=1e-6).to(device=rank, dtype=torch.bfloat16)
         norm.weight.data.normal_(0, 0.1)
-        for rows in (1, 4, 16, 24, 32, 3001, 4096):
+
+        def execute(x, residual):
+            return fused_allreduce_gemma_rms_norm(x, residual, norm)
+
+        if compiled:
+            execute = torch.compile(execute, fullgraph=True, dynamic=True)
+        for rows in (1, 4, 16, 24, 32, 1536, 2048, 3001, 4096):
             x = torch.empty(rows, 2048, device=rank, dtype=torch.bfloat16)
             residual = torch.empty_like(x)
             static = torch.empty_like(x)
@@ -157,10 +170,10 @@ def _worker_ar_norm(rank, port):
             x.normal_()
             residual.normal_()
             static.copy_(x)
-            fused_allreduce_gemma_rms_norm(static, residual, norm)
+            execute(static, residual)
             graph = torch.cuda.CUDAGraph()
             with torch.cuda.graph(graph):
-                out, updated = fused_allreduce_gemma_rms_norm(static, residual, norm)
+                out, updated = execute(static, residual)
             for step in range(3):
                 # Residual and norm are replicated; rank-local partials differ.
                 torch.manual_seed(1000 + rows + step)
@@ -171,7 +184,12 @@ def _worker_ar_norm(rank, port):
                     tensor_model_parallel_all_reduce(x.clone()), residual.clone()
                 )
                 static.copy_(x)
+                residual_before = residual.clone()
                 graph.replay()
+                if compiled:
+                    assert torch.equal(static, x)
+                    assert torch.equal(residual, residual_before)
+                    assert out.data_ptr() != updated.data_ptr()
                 eager = fused_allreduce_gemma_rms_norm(x.clone(), residual, norm)
                 for result, expected, direct in zip(
                     (out, updated), reference, eager, strict=True
@@ -181,6 +199,26 @@ def _worker_ar_norm(rank, port):
                         result.float() - expected.float()
                     ).norm() / expected.float().norm()
                     assert relative < 0.01
+        if compiled:
+            from unittest.mock import patch
+
+            # Runtime workspace/topology failure must preserve the functional
+            # contract and perform exactly one ordinary TP reduction.
+            x = torch.randn(24, 2048, device=rank, dtype=torch.bfloat16)
+            residual = torch.randn_like(x)
+            x_before, residual_before = x.clone(), residual.clone()
+            reference = norm(
+                tensor_model_parallel_all_reduce(x.clone()), residual.clone()
+            )
+            with patch(
+                "vllm.model_executor.layers.fused_allreduce_gemma_rms_norm._can_use_flashinfer",
+                return_value=(False, 0),
+            ):
+                fallback = execute(x, residual)
+            for actual, expected in zip(fallback, reference, strict=True):
+                torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+            assert torch.equal(x, x_before)
+            assert torch.equal(residual, residual_before)
         cleanup_dist_env_and_memory()
 
 
@@ -191,3 +229,31 @@ def test_tp2_ar_norm_2048_changing_graphs():
     from vllm.utils.network_utils import get_open_port
 
     spawn(_worker_ar_norm, args=(get_open_port(),), nprocs=2, join=True)
+
+
+def test_tp2_compiled_ar_norm_changing_graphs():
+    if torch.cuda.device_count() < 2 or torch.cuda.get_device_capability() != (12, 0):
+        pytest.skip("requires two SM120 GPUs")
+    from torch.multiprocessing import spawn
+    from vllm.utils.network_utils import get_open_port
+
+    spawn(_worker_ar_norm, args=(get_open_port(), True), nprocs=2, join=True)
+
+
+def test_compiled_manual_fusion_partitions_vllm_cache_by_rank():
+    from vllm.config import VllmConfig
+
+    from vllm_mach.mxfp6.moe_ar_norm import prepare_compiled_ar_norm
+
+    configs = [VllmConfig(), VllmConfig()]
+    for rank, config in enumerate(configs):
+        config.parallel_config.rank = rank
+        config.compilation_config.mode = CompilationMode.VLLM_COMPILE
+    # vLLM normally shares this hash across TP ranks.
+    assert configs[0].compute_hash() == configs[1].compute_hash()
+    for config in configs:
+        prepare_compiled_ar_norm(config)
+    assert configs[0].compute_hash() != configs[1].compute_hash()
+    original = configs[0].compute_hash()
+    prepare_compiled_ar_norm(configs[0])
+    assert configs[0].compute_hash() == original

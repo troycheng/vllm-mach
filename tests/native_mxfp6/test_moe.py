@@ -22,6 +22,8 @@ def test_moe_launcher_enables_gdn_ar_norm_and_optional_head(tmp_path):
     )
     command, env = build_command(args, [])
     assert command[command.index("--tensor-parallel-size") + 1] == "2"
+    assert "--compilation-config" not in command
+    assert command[command.index("--max-num-batched-tokens") + 1] == "2048"
     assert env["VLLM_QWEN3_5_FUSED_AR_NORM"] == "1"
     assert env["VLLM_MACH_GDN_PERSISTENT"] == "1"
     assert env["VLLM_MACH_GDN_BA_OVERLAP"] == "1"
@@ -137,3 +139,70 @@ def test_routed_experts_changing_graph_inputs():
             for k in range(topk)
         ).to(x.dtype)
         torch.testing.assert_close(out, ref, rtol=0.03, atol=0.03)
+
+
+@pytest.mark.parametrize("model_type", ["qwen3_5_moe", "qwen3_5_moe_text"])
+def test_moe_preserves_explicit_graph_sizes_and_vllm_defaults(tmp_path, model_type):
+    (tmp_path / "config.json").write_text(json.dumps({"model_type": model_type}))
+    args = argparse.Namespace(
+        model=tmp_path,
+        fp16_ssm=False,
+        lossless_prefill=False,
+        owner_prefill=False,
+        nvfp4_lm_head=True,
+        verify_prefill=False,
+    )
+    sizes = [
+        "1",
+        "2",
+        "4",
+        "8",
+        "10",
+        "12",
+        "14",
+        "16",
+        "20",
+        "24",
+        "28",
+        "32",
+        "36",
+        "40",
+        "48",
+        "56",
+        "64",
+        "72",
+        "80",
+        "96",
+        "112",
+        "128",
+        "160",
+        "192",
+        "224",
+        "256",
+        "320",
+        "384",
+        "448",
+        "512",
+        "640",
+        "768",
+        "784",
+        "896",
+        "1024",
+        "1280",
+        "1536",
+        "1792",
+        "2048",
+    ]
+    extra = ["--max-num-seqs", "64", "--cudagraph-capture-sizes", *sizes]
+    command, _ = build_command(args, extra)
+    assert command[-len(extra) :] == extra
+    assert "--compilation-config" not in command
+    assert command[command.index("--max-num-batched-tokens") + 1] == "2048"
+    # Explicit overrides still work, including reproducing the old profile.
+    override = [
+        "--compilation-config",
+        '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY"}',
+    ]
+    command, _ = build_command(args, extra + override)
+    assert command.count("--compilation-config") == 1
+    assert command[-len(override) :] == override

@@ -2,7 +2,14 @@
 
 Mach supports the Quark packed E3M2 checkpoint with dynamic per-32 E4M3
 activations on two SM120 GPUs. The default launcher uses TP2, BF16 activations,
-FP32 recurrent state and full decode CUDA graphs at 1/2/4/8/16/24/32 tokens.
+FP32 recurrent state and vLLM's default compilation/CUDA Graph configuration.
+On vLLM 0.29.0 this resolves to `VLLM_COMPILE` with `FULL_AND_PIECEWISE`:
+full graphs for decode and piecewise graphs for eligible prefill batches.
+The launcher no longer forces `NONE` / `FULL_DECODE_ONLY` for MoE.
+The default MoE batched-token budget is 2048. Explicit
+`--cudagraph-capture-sizes`, `--max-num-seqs` and scheduler overrides are forwarded
+to vLLM.
+Dense models retain their existing decode-only configuration.
 
 Build `mxfp6-sm120` from revision
 `7c891d07b65ce2f4e5e8e10a6934c1a298755b8d` (v0.2.1) against the serving
@@ -36,9 +43,15 @@ for 5–96 tokens. Larger batches use the generic routed path. With AR/Norm
 fusion disabled, the standard vLLM runner performs the final TP reduction;
 with fusion enabled, the following norm owns it.
 
-The launcher recognizes `qwen3_5_moe` in the local model configuration and
-enables native TP2 AllReduce/residual/RMSNorm fusion. The routed and shared
-expert output stays local until the following fused norm performs the TP sum;
+The launcher recognizes `qwen3_5_moe` and `qwen3_5_moe_text` in the local model
+configuration. Native TP2 AllReduce/residual/RMSNorm fusion supports both
+`NONE` and the default `VLLM_COMPILE` execution. The compiled path uses a
+functional custom op with FakeTensor support: workspace checks run on real
+tensors, and the normalized output and updated residual use separate buffers.
+This preserves the inputs and avoids alias-driven copies during compilation.
+Compiled fusion includes the TP rank in its cache namespace so rank-specific
+embedding bounds and device allocations cannot be loaded by another rank.
+The routed and shared expert output stays local until the following fused norm performs the TP sum;
 this preserves the small-batch expert schedules. GDN decode reuses the dense
 profile's
 persistent route at physical M1/2/4/8 and BA projection overlap at M16/24/32.
@@ -64,7 +77,11 @@ Startup should report `Using native mxfp6-sm120 grouped MoE backend` and,
 when weight geometry matches, `Enabled Qwen3.5-35B TP2 MXFP6 fused small-batch
 router/shared-expert schedule`.
 
-## FP8 baseline
+## Earlier FP8 baseline setup (superseded)
+
+This setup and the earlier baseline measurements below are historical. The current
+README uses the [user-provided baseline retest](#updated-defaultfull-chart-and-user-provided-baselines);
+its launch configuration was not inspected.
 
 Use the sibling checkpoint `/data1/models/Qwen3.5-35B-A3B-FP8` in an
 **unpatched official vLLM 0.29.0 environment**. FP8 keeps the official compiler,
@@ -200,7 +217,9 @@ also retain the kernel acceptance measurements.
 
 ## AllReduce and NVFP4 head
 
-The README uses the same default/full naming as the 27B profile:
+The earlier README measurements used the same default/full naming as the
+27B profile. Those measurements used explicit `NONE` / `FULL_DECODE_ONLY`,
+which is no longer the MoE launcher's default graph configuration:
 
 | Profile | Enabled optimizations | Launch options |
 |---|---|---|
@@ -209,10 +228,10 @@ The README uses the same default/full naming as the 27B profile:
 
 Both 35B profiles retain FP32 SSM. The 27B full profile's FP16 SSM and
 owner/lossless prefill options remain unsupported on 35B. The tables below
-retain individual ablations; the README chart shows only default and full
-alongside the official FP8 baseline.
+retain individual ablations. The current README chart uses the compiled
+default/full profiles alongside the user-provided FP8 and NVFP4 baselines.
 
-The current default also fuses TP2 AllReduce, residual addition and RMSNorm.
+The measured decode-only profile also fuses TP2 AllReduce, residual addition and RMSNorm.
 Attention projections and the combined routed/shared MoE output return local
 partial sums. Each following norm owns exactly one reduction, including the
 model's final norm. The native small-batch and grouped MoE schedules remain
@@ -231,13 +250,14 @@ this path. The BF16 head is retained for full-logit and sampling fallbacks.
 The candidate search is approximate; keeping BF16 refinement does not guarantee
 that every BF16 winner enters the candidate set on arbitrary workloads.
 
-Upgrade the installed runtime and launch with both optimizations:
+Upgrade the installed runtime and reproduce that decode-only profile:
 
 ```bash
 vllm-mach-install --apply
 CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
   --model /models/Qwen3.5-35B-A3B-MXFP6 --nvfp4-lm-head \
-  --kv-cache-memory-bytes 8589934592
+  --compilation-config '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY","cudagraph_capture_sizes":[1,2,4,8,16,24,32]}' \
+  --kv-cache-memory-bytes 8589934592 --max-num-batched-tokens 4096
 ```
 
 Omit `--nvfp4-lm-head` for the default BF16 head; add `--no-fused-ar-norm` to
@@ -282,3 +302,131 @@ native expert schedules. These short diagnostics do not establish broad quality.
 
 [Results, per-request data and numerical diagnostics](data/qwen35-ar-head-20260917.json)
 retain the measurements; the built wheel was checked for the new adapter and patch.
+
+## Default compilation and prefill graphs
+
+MoE now leaves `--compilation-config` unset. To use the expanded capture sizes:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 OMP_NUM_THREADS=4 vllm-mach-serve \
+  --model /models/Qwen3.5-35B-A3B-MXFP6 --nvfp4-lm-head \
+  --kv-cache-memory-bytes 8589934592 --max-num-seqs 64 \
+  --cudagraph-capture-sizes \
+  1 2 4 8 10 12 14 16 20 24 28 32 36 40 48 56 64 \
+  72 80 96 112 128 160 192 224 256 320 384 448 512 \
+  640 768 784 896 1024 1280 1536 1792 2048
+```
+
+On vLLM 0.29.0, startup confirmed `VLLM_COMPILE` / `FULL_AND_PIECEWISE`,
+39 piecewise captures and 17 full decode captures. With compiled manual AR/Norm enabled, capture took 16 seconds
+and 0.72 GiB per rank in this run. The GDN backend supports full graphs only
+for uniform decode; prefill uses piecewise graphs. The maximum capture size
+is 2048 tokens, matching the launcher's default MoE batched-token budget.
+Longer prompts are split into chunks within this budget.
+
+The comparison uses the same command with
+`--compilation-config '{"mode":"NONE","cudagraph_mode":"FULL_DECODE_ONLY"}'`
+for the previous execution policy. Both arms keep CUDA Graphs enabled and use
+identical capture sizes, sequence limit, KV budget, GDN settings and optional
+NVFP4 head. The compiled profile now preserves native AR/Norm fusion. The
+compiled-without-AR measurements were collected before this compatibility
+change, when the admission guard disabled fusion. The equivalent current
+option is `--no-fused-ar-norm`. Comparing decode-only with default graphs still
+changes compilation and prefill chunk execution, so it does not measure
+isolated graph-launch costs.
+
+Measured on the same pair of RTX 5090 GPUs with TP2, 8 GiB/rank KV allocation,
+FP32 SSM and the optional NVFP4 head enabled throughout. Each point has two
+repetitions; the tables report their arithmetic mean. Requests use identical
+uniform token IDs, seeds, greedy sampling and `ignore_eos`. Each arm has one
+server lifecycle, run in the order compiled without AR, decode-only with AR,
+then compiled with AR. These runs measure serving performance, not model quality.
+
+For 3000 input tokens and **one output token**, client-observed mean TTFT:
+
+| Concurrency | Decode-only + AR (ms) | Default graphs + AR (ms) | Reduction |
+|---:|---:|---:|---:|
+| 1 | 196.1 | 84.0 | 57.2% |
+| 4 | 552.5 | 252.3 | 54.3% |
+| 32 | 3452.0 | 1585.1 | 54.1% |
+| 64 | 6974.9 | 3137.1 | 55.0% |
+
+For **3000 input / 1000 output tokens**, aggregate output throughput:
+
+| Concurrency | Decode-only + AR (tok/s) | Default graphs, no AR (tok/s) | Default graphs + AR (tok/s) | AR gain within default graphs |
+|---:|---:|---:|---:|---:|
+| 4 | 1028.1 | 996.6 | 1072.9 | 7.7% |
+| 32 | 2579.0 | 2914.2 | 3292.8 | 13.0% |
+| 64 | 3046.6 | 3783.8 | 4127.2 | 9.1% |
+
+Thus the tested default compiled graph profile substantially improves prefill
+versus the old decode-only policy, and manual fusion adds another 7.7–13.0%
+to 3k/1k throughput within the default graph configuration. Compilation and
+graph policy change together in the first comparison; no `enforce_eager` arm
+is used. The README chart now uses the compiled default/full profiles at c4/c16/c24/c32,
+with remeasured user-provided FP8 and NVFP4 baselines. The previous decode-only results
+remain available in the tables above.
+
+[Settings, both repetitions and per-request timings](data/qwen35-cudagraph-20260917.json)
+also include 1536-token prefill. Prefill points use `max(64, 2*C)` requests;
+3k/1k points use `max(16, 2*C)`. Warmup uses `C` requests and up to 128 output
+tokens, excluded from timing. Single-token TPOT/ITL are undefined and stored as
+`null`; an empty-text single-token completion is timed at its finish event.
+
+Validation passed 50 focused tests, including compiled dynamic shapes,
+two-GPU changing-input graph replay at 1/4/16/24/32/1536/2048/3001/4096 rows,
+unchanged inputs, exact agreement with the existing fused kernel, forced
+workspace fallback, rank-isolated compile hashes, and atomic installer upgrades.
+
+## Updated default/full chart and user-provided baselines
+
+The current [README chart](../README.md#qwen35-35b-a3b-moe) uses c4/c16/c24/c32.
+All four profiles have two measurements per point. Mach full c4/c32 reuse the
+compiled-AR runs above; Mach default and full c16/c24 were measured afterward
+on the same GPU pair. The Mach measurements are unchanged by the baseline retest.
+
+Both earlier baseline series have been replaced with measurements against the
+user-provided existing services:
+
+| Baseline | Completion endpoint | Checkpoint reported by `/v1/models` |
+|---|---|---|
+| FP8 | `http://127.0.0.1:8252/v1/completions` | `/data1/models/Qwen3.5-35B-A3B-FP8/` |
+| NVFP4 | `http://127.0.0.1:8253/v1/completions` | `/data1/models/Qwen3.5-35B-A3B-NVFP4-ScaleSweep/` |
+
+Both endpoints use the request model alias `Qwen3.8-27B-MXFP6`, report vLLM
+0.29.0 through `/version`, and report a 16384-token model limit. The alias does
+not identify the loaded checkpoint: both model roots are 35B MoE models.
+The services were not restarted or reconfigured. Their hardware, TP size,
+compiler/graph settings, scheduler limits, kernel selection, KV allocation and
+plugin configuration were not inspected; earlier self-launched baseline settings
+must not be attributed to these services.
+
+All profiles use identical uniform token-ID requests: 3000 input tokens,
+1000 output tokens, temperature 0, `ignore_eos=true`, contract seed 20260917
+and request seed base 2026091700. There are 16/32/48/64 scored requests at
+c4/c16/c24/c32, preceded at each point by c requests of 128 output tokens.
+Warmup is excluded from the measured throughput. Each plotted value is the
+arithmetic mean of the two per-run output throughputs.
+
+For example, the FP8 c32 client command is:
+
+```bash
+python tools/benchmark_native_mxfp6.py \
+  --base-url http://127.0.0.1:8252 --model Qwen3.8-27B-MXFP6 \
+  --num-prompts 64 --max-concurrency 32 \
+  --input-tokens 3000 --output-tokens 1000 \
+  --warmup-requests 32 --warmup-output-tokens 128 \
+  --contract-seed 20260917 --request-seed-base 2026091700 \
+  --json-out fp8-c32.json
+```
+
+Use port 8253 for NVFP4, retaining the same request model alias.
+
+Baseline runs are sequential to avoid overlap between the two benchmark clients:
+FP8 repeat 1, NVFP4 repeat 1, NVFP4 repeat 2, then FP8 repeat 2, with
+c4/c16/c24/c32 within each group. This retest contains 640 scored requests.
+[Chart data and per-request timings](data/qwen35-default-full-20260917.json)
+record endpoint provenance, request contracts, individual repetitions and timings
+for all four profiles. The comparison measures serving deployments; it does not
+isolate quantization effects or evaluate checkpoint accuracy. Two repetitions
+do not establish confidence intervals.

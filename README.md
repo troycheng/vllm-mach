@@ -27,7 +27,7 @@ The aim is higher throughput with controlled numerical error. FP16 recurrent sta
 |---|---|
 | Native MXFP6 | vLLM `0.29.0`; Qwen3.8-27B-MXFP6; `mxfp6-sm120==0.2.1`; TP2/PP1; SM120; BF16 activations/KV; text-only, non-speculative decoding |
 | Native MXFP6 MoE | Qwen3.5-35B-A3B-MXFP6; TP2/PP1; SM120; [setup and kernel revision](docs/qwen35-moe.md) |
-| MXFP6 CUDA Graph | The native configuration above with the V2 runner and `FULL_DECODE_ONLY` capture sizes `1, 2, 4, 8, 16, 24, 32` |
+| MXFP6 CUDA Graph | V2 runner; Dense uses `FULL_DECODE_ONLY` at `1, 2, 4, 8, 16, 24, 32`; MoE inherits vLLM's default graph configuration |
 | Fused FlashInfer collective | The native configuration above with FlashInfer `0.6.18` and the matching runtime/local IPC patches |
 | Lossless / owner prefill | Optional `--lossless-prefill` / `--owner-prefill`; matching [lossless](native/lossless_prefill/README.md) and [owner](native/owner_prefill/README.md) extensions |
 | FP16 SSM / NVFP4 LM head | Optional `--fp16-ssm` / `--nvfp4-lm-head`; head uses FlashInfer's built-in B12X backend, without the standalone `b12x` package; changes numerical behavior |
@@ -57,25 +57,24 @@ Default now enables both GDN routes. Full options additionally enable FP16 SSM, 
 
 #### Qwen3.5-35B-A3B MoE
 
-Qwen3.5-35B-A3B, two RTX 5090 GPUs, TP2, measured September 17, 2026. The baseline is `Qwen3.5-35B-A3B-FP8`; Mach uses the sibling `Qwen3.5-35B-A3B-MXFP6` checkpoint. Each point uses 3000 input / 1000 output tokens, 16/32/48/64 scored requests at c4/c16/c24/c32, and a concurrency-sized 128-output-token warmup. These single-run measurements use uniform token IDs; the 27B comparison above uses ShareGPT prompts.
+Qwen3.5-35B-A3B, measured September 17, 2026. Each point is a **two-run mean**, using 3000 input / 1000 output tokens, 16/32/48/64 scored requests at c4/c16/c24/c32, and a concurrency-sized 128-output-token warmup. All four profiles use identical uniform token IDs and seeds. Mach runs on two RTX 5090 GPUs with TP2. The FP8 and NVFP4 baselines use open-source vLLM 0.29.0. The 27B comparison above uses ShareGPT prompts.
 
 ![Qwen3.5-35B-A3B MoE serving throughput](docs/images/qwen35-moe-throughput.png)
 
 | Configuration (output tokens/s) | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
-| FP8 · official vLLM 0.29 | 694.1 | 1627.7 | 2046.9 | 2335.0 |
-| MXFP6 · Mach default | 1012.1 | 2224.1 | 2807.9 | 3169.2 |
-| MXFP6 · Mach full | 1068.4 | 2288.5 | 2914.5 | 3241.9 |
+| FP8 · vLLM 0.29.0 baseline | 679.9 | 1471.6 | 1774.6 | 1962.1 |
+| NVFP4 · vLLM 0.29.0 baseline | 730.6 | 1654.2 | 1985.3 | 2202.1 |
+| MXFP6 · Mach default | 1010.2 | 2324.2 | 2869.5 | 3237.6 |
+| MXFP6 · Mach full | 1072.9 | 2444.4 | 2992.3 | 3292.8 |
 
-The default profile improves throughput over official FP8 by **38.8%**, and the full profile by **43.9%**, weighting the four concurrency levels equally.
+The default profile improves throughput over the remeasured FP8 baseline by **58.3%**, and the full profile by **65.1%**, weighting the four concurrency levels equally.
 
-FP8 reuses the earlier same-day measurement with the unpatched official runtime, default compilation/attention/CUDA Graph settings, and `VLLM_ALLREDUCE_USE_FLASHINFER=0`. Mach default and full use native MoE schedules, full decode graphs, FP32 recurrent state and an 8 GiB/rank KV budget. This is a serving-profile comparison, not an isolated precision comparison.
+Mach default and full now use `VLLM_COMPILE` / `FULL_AND_PIECEWISE`, the expanded capture sizes through 2048, `--max-num-batched-tokens 2048` and `--max-num-seqs 64`. Both retain native MoE schedules, GDN decode, hand-written AllReduce/residual/RMSNorm fusion, FP32 recurrent state and an 8 GiB/rank KV budget. Full additionally enables `--nvfp4-lm-head`: NVFP4 candidate search with BF16 refinement; default uses the BF16 head. FP16 SSM and owner/lossless prefill remain unsupported on 35B.
 
-Default enables GDN decode, fused AllReduce/residual/RMSNorm and compact BF16 greedy sampling. Full additionally enables `--nvfp4-lm-head`: NVFP4 candidate search followed by BF16 refinement, retaining the BF16 head for full-logit and sampling fallbacks at about **136.4 MiB/rank** extra memory. Unlike the 27B full profile, 35B full does not enable FP16 SSM or owner/lossless prefill; those options remain unsupported for this model.
+The graph/fusion update passed **50 focused tests** and **5088 measured requests**. Earlier LM-head validation covered **1640 real decode positions**, retaining all global BF16 top-20 candidates and matching every final BF16 top-1. Candidate search and fused reduction can change numerical behavior; these checks do not establish broad model quality or BF16 fidelity.
 
-The update passed **139 focused tests** and **35/35 service smoke checks**. On **1640 real decode positions**, the optional head retained all global BF16 top-20 candidates and matched every final BF16 top-1. Candidate search and fused reduction can change numerical behavior; these checks do not establish broad model quality or BF16 fidelity.
-
-[Deployment, ablations and validation](docs/qwen35-moe.md#allreduce-and-nvfp4-head) · [New results and per-request raw data](docs/data/qwen35-ar-head-20260917.json) · [Retained FP8 baseline](docs/data/qwen35-moe-20260917.json). One run per point does not establish confidence intervals.
+[Deployment and graph/fusion measurements](docs/qwen35-moe.md#default-compilation-and-prefill-graphs) · [Chart data and per-request timings](docs/data/qwen35-default-full-20260917.json) · [Baseline protocol](docs/qwen35-moe.md#updated-defaultfull-chart-and-user-provided-baselines). Two repetitions do not establish confidence intervals.
 
 ### Numerical fidelity
 
