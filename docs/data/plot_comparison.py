@@ -167,13 +167,60 @@ def plot_gdn_ablation(performance):
     save(fig, 'gdn-throughput-ablation')
 
 
+def plot_throughput(performance, order, labels, colors, markers, styles, stem):
+    fig, ax = plt.subplots(figsize=(12.8,6.6))
+    fig.subplots_adjust(left=.09,right=.97,top=.82,bottom=.15)
+    for name in order:
+        points = performance['runs'][name]['points']
+        assert [p['concurrency'] for p in points] == [4,16,24,32]
+        ax.plot([p['concurrency'] for p in points],
+                [p['output_throughput_tokens_per_s'] for p in points],
+                label=labels[name],color=colors[name],marker=markers[name],
+                linestyle=styles[name],lw=2.0,ms=7,
+                markerfacecolor='white' if name in ('fp8_stock029','k4k5_derived_w6_fp16') else colors[name])
+    fig.legend(*ax.get_legend_handles_labels(),loc='upper left',bbox_to_anchor=(.06,.995),
+               ncol=2,frameon=False,fontsize=12,columnspacing=2.8,handlelength=2.8,labelspacing=.55)
+    peak = max(p['output_throughput_tokens_per_s'] for run in performance['runs'].values() for p in run['points'])
+    ax.set_xlim(2.8,33.2); ax.set_ylim(0,max(1800,200*np.ceil(peak*1.08/200)))
+    ax.set_xticks([4,16,24,32],['c4','c16','c24','c32'])
+    ax.yaxis.set_major_locator(MultipleLocator(400))
+    ax.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+    ax.grid(axis='y',color='#E8EBEE',lw=.8)
+    ax.set_ylabel('Output tokens/s',labelpad=15)
+    ax.set_xlabel('Concurrent requests',labelpad=12)
+    frame(ax)
+    save(fig, stem)
+
+
+def plot_moe_throughput():
+    data = json.loads((HERE/'qwen35-moe-20260917.json').read_text())
+    order = ['fp8', 'mxfp6']
+    performance = {'runs': {name: {'points': [
+        {'concurrency': row['concurrency'],
+         'output_throughput_tokens_per_s': row[name]['aggregate']['output_throughput_tokens_per_s']}
+        for row in data['comparisons'] if row['concurrency'] in (4, 16, 24, 32)
+    ]} for name in order}}
+    plot_throughput(
+        performance, order,
+        {'fp8': 'FP8 · official vLLM 0.29', 'mxfp6': 'MXFP6 · Mach'},
+        {'fp8': '#87919D', 'mxfp6': '#126149'},
+        {'fp8': 'o', 'mxfp6': 'X'},
+        {'fp8': '--', 'mxfp6': '-'}, 'qwen35-moe-throughput')
+
+
 def main():
     global ORDER, LABELS, COLORS, MARKERS, STYLES
     parser = argparse.ArgumentParser()
+    parser.add_argument('--moe-only', action='store_true', help='Render the 35B MoE throughput chart only')
     parser.add_argument('--accuracy-only', action='store_true')
     parser.add_argument('--gdn-m4-only', action='store_true')
     parser.add_argument('--legacy', action='store_true', help='Render archived EXL3 measurements to an archive directory')
     args = parser.parse_args()
+    if args.moe_only:
+        if args.legacy or args.accuracy_only or args.gdn_m4_only:
+            parser.error('--moe-only cannot be combined with other rendering modes')
+        plot_moe_throughput()
+        return
     if not args.legacy:
         ORDER = ['fp8', 'default', 'persistent', 'gdn', 'full', 'full_ba', 'full_gdn', 'nvfp4']
         LABELS = {'fp8':'FP8 · stock vLLM 0.29 (Sep 15)',
@@ -224,31 +271,11 @@ def main():
     performance = json.loads((HERE/('quantization-comparison-3k1k-20260910.json' if args.legacy else 'native-serving.json')).read_text())
     assert set(ORDER).issubset(performance['runs'])
 
-    fig, ax = plt.subplots(figsize=(12.8,6.6))
-    fig.subplots_adjust(left=.09,right=.97,top=.82,bottom=.15)
-    for name in ORDER:
-        points = performance['runs'][name]['points']
-        assert [p['concurrency'] for p in points] == [4,16,24,32]
-        ax.plot([p['concurrency'] for p in points],
-                [p['output_throughput_tokens_per_s'] for p in points],
-                label=LABELS[name],color=COLORS[name],marker=MARKERS[name],
-                linestyle=STYLES[name],lw=2.0,ms=7,
-                markerfacecolor='white' if name in ('fp8_stock029','k4k5_derived_w6_fp16') else COLORS[name])
-    fig.legend(*ax.get_legend_handles_labels(),loc='upper left',bbox_to_anchor=(.06,.995),
-               ncol=2,frameon=False,fontsize=12,columnspacing=2.8,handlelength=2.8,labelspacing=.55)
-    peak = max(p['output_throughput_tokens_per_s'] for run in performance['runs'].values() for p in run['points'])
-    ax.set_xlim(2.8,33.2); ax.set_ylim(0,max(1800,200*np.ceil(peak*1.08/200)))
-    ax.set_xticks([4,16,24,32],['c4','c16','c24','c32'])
-    ax.yaxis.set_major_locator(MultipleLocator(400))
-    ax.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
-    ax.grid(axis='y',color='#E8EBEE',lw=.8)
-    ax.set_ylabel('Output tokens/s',labelpad=15)
-    ax.set_xlabel('Concurrent requests',labelpad=12)
-    frame(ax)
-    save(fig,'throughput-comparison')
+    plot_throughput(performance, ORDER, LABELS, COLORS, MARKERS, STYLES, 'throughput-comparison')
     (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
     if not args.legacy:
         plot_gdn_ablation(performance)
+        plot_moe_throughput()
     print('Rendered three title-free comparison figures (PNG + SVG)')
 
 if __name__ == '__main__':

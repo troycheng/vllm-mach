@@ -1,0 +1,397 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "model": "Qwen3.5-35B-A3B",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "count": 2,
+    "physical_devices": [
+      6,
+      7
+    ]
+  },
+  "runtime": {
+    "vllm": "0.29.0",
+    "torch": "2.13.0+cu130",
+    "flashinfer": "0.6.18",
+    "mxfp6_sm120": "0.2.1",
+    "kernel_build_pin": "7c891d07b65ce2f4e5e8e10a6934c1a298755b8d",
+    "adapter_source_revision": "cd4e964c391fcb8aaf1a27d28a63d778e3a38ece",
+    "fp8_runtime": "unpatched official vLLM and FlashInfer; VLLM_PLUGINS empty",
+    "fp8_moe_backend": "DEEPGEMM (automatic selection)",
+    "mxfp6_moe_backend": "native SM120: fused small batch / indirect grouped / generic routed"
+  },
+  "configuration": {
+    "tp": 2,
+    "pp": 1,
+    "dtype": "bfloat16",
+    "kv_dtype": "bfloat16",
+    "ssm_dtype": "float32",
+    "kv_cache_bytes_per_rank": 8589934592,
+    "max_model_len": 16384,
+    "max_num_seqs": 32,
+    "max_num_batched_tokens": 4096,
+    "prefix_caching": false,
+    "text_only": true,
+    "attention_backend": {
+      "mxfp6": "TRITON_ATTN",
+      "fp8": "FLASH_ATTN v2 (automatic selection)"
+    },
+    "fp8_execution": {
+      "policy": "official defaults",
+      "v2_runner": true,
+      "compilation_mode": "VLLM_COMPILE",
+      "cudagraph_mode": "FULL_AND_PIECEWISE",
+      "capture_sizes": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        24,
+        32,
+        40,
+        48,
+        56,
+        64
+      ]
+    },
+    "mxfp6_execution": {
+      "v2_runner": true,
+      "compilation_mode": "NONE",
+      "cudagraph_mode": "FULL_DECODE_ONLY",
+      "capture_sizes": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        24,
+        32
+      ]
+    },
+    "omp_num_threads": 4,
+    "flashinfer_allreduce": false,
+    "mach_gdn_optimizations": false,
+    "mach_ar_norm": false,
+    "mxfp6_compact_greedy": true,
+    "fp8_compact_greedy": false
+  },
+  "workload": {
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "prompt_source": "uniform token IDs [1000,240000)",
+    "contract_seed": 20260917,
+    "request_seed_base": 2026091700,
+    "temperature": 0,
+    "ignore_eos": true,
+    "repeats": 1,
+    "warmup_requests": "equal to concurrency",
+    "warmup_output_tokens": 128
+  },
+  "comparisons": [
+    {
+      "concurrency": 1,
+      "requests_per_arm": 4,
+      "fp8": {
+        "aggregate": {
+          "completed": 4,
+          "requested": 4,
+          "duration_s": 15.569000861956738,
+          "prompt_tokens": 12000,
+          "completion_tokens": 4000,
+          "request_throughput_per_s": 0.2569207899380432,
+          "output_throughput_tokens_per_s": 256.9207899380432,
+          "total_throughput_tokens_per_s": 1027.6831597521727,
+          "mean_ttft_ms": 121.91446201177314,
+          "p99_ttft_ms": 122.70016630296595,
+          "mean_tpot_ms": 3.773987607879413,
+          "p99_tpot_ms": 3.7756909115111323,
+          "mean_itl_ms": 3.7739601256479665,
+          "p99_itl_ms": 3.895598236704248
+        },
+        "started_epoch": 1789626953.694958,
+        "warmup": {
+          "requests": 1,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/fp8-c1.json.gz",
+        "sha256": "617c8dc2a88d08ec88bd79167f9a0fa2dc6d38b0f2384308782850235eef77ae"
+      },
+      "mxfp6": {
+        "aggregate": {
+          "completed": 4,
+          "requested": 4,
+          "duration_s": 15.68436831003055,
+          "prompt_tokens": 12000,
+          "completion_tokens": 4000,
+          "request_throughput_per_s": 0.25503099142615127,
+          "output_throughput_tokens_per_s": 255.03099142615127,
+          "total_throughput_tokens_per_s": 1020.1239657046051,
+          "mean_ttft_ms": 113.32617080188356,
+          "p99_ttft_ms": 115.35639885463752,
+          "mean_tpot_ms": 3.811454503725677,
+          "p99_tpot_ms": 3.8122571124082283,
+          "mean_itl_ms": 3.8114263395789556,
+          "p99_itl_ms": 3.9445577480364595
+        },
+        "started_epoch": 1789627287.957143,
+        "warmup": {
+          "requests": 1,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/mxfp6-c1.json.gz",
+        "sha256": "73478595b8486c67292781960360c234589b41019038cb7b289aa991df91ce32"
+      },
+      "mxfp6_gain_pct": -0.735556866514242
+    },
+    {
+      "concurrency": 4,
+      "requests_per_arm": 16,
+      "fp8": {
+        "aggregate": {
+          "completed": 16,
+          "requested": 16,
+          "duration_s": 23.051035149022937,
+          "prompt_tokens": 48000,
+          "completion_tokens": 16000,
+          "request_throughput_per_s": 0.6941119952558049,
+          "output_throughput_tokens_per_s": 694.1119952558049,
+          "total_throughput_tokens_per_s": 2776.4479810232197,
+          "mean_ttft_ms": 267.86080130841583,
+          "p99_ttft_ms": 481.5660309744998,
+          "mean_tpot_ms": 5.4982281993847115,
+          "p99_tpot_ms": 5.822975917010092,
+          "mean_itl_ms": 5.5009609603018275,
+          "p99_itl_ms": 5.639709765091538
+        },
+        "started_epoch": 1789626970.6264524,
+        "warmup": {
+          "requests": 4,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/fp8-c4.json.gz",
+        "sha256": "76f942511fb4ff0791b1229ddb88cd74131ec01980f18f94a605b0f9adce4c97"
+      },
+      "mxfp6": {
+        "aggregate": {
+          "completed": 16,
+          "requested": 16,
+          "duration_s": 22.041031426982954,
+          "prompt_tokens": 48000,
+          "completion_tokens": 16000,
+          "request_throughput_per_s": 0.7259188415480669,
+          "output_throughput_tokens_per_s": 725.9188415480668,
+          "total_throughput_tokens_per_s": 2903.675366192267,
+          "mean_ttft_ms": 232.11309225735022,
+          "p99_ttft_ms": 428.780958848074,
+          "mean_tpot_ms": 5.279977739868067,
+          "p99_tpot_ms": 5.51124556027157,
+          "mean_itl_ms": 5.345893968215707,
+          "p99_itl_ms": 10.316298590041697
+        },
+        "started_epoch": 1789627304.971104,
+        "warmup": {
+          "requests": 4,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/mxfp6-c4.json.gz",
+        "sha256": "e33d3df520b8805841b5d4b241f24e10e02401502486d367643d7d9e8c6cb529"
+      },
+      "mxfp6_gain_pct": 4.582379574140605
+    },
+    {
+      "concurrency": 16,
+      "requests_per_arm": 32,
+      "fp8": {
+        "aggregate": {
+          "completed": 32,
+          "requested": 32,
+          "duration_s": 19.65984024805948,
+          "prompt_tokens": 96000,
+          "completion_tokens": 32000,
+          "request_throughput_per_s": 1.6276836228696492,
+          "output_throughput_tokens_per_s": 1627.6836228696493,
+          "total_throughput_tokens_per_s": 6510.734491478597,
+          "mean_ttft_ms": 632.0564715060755,
+          "p99_ttft_ms": 1528.152358258376,
+          "mean_tpot_ms": 9.189193587356552,
+          "p99_tpot_ms": 9.717477068211323,
+          "mean_itl_ms": 9.203282634074748,
+          "p99_itl_ms": 9.013404720462859
+        },
+        "started_epoch": 1789626996.4659424,
+        "warmup": {
+          "requests": 16,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/fp8-c16.json.gz",
+        "sha256": "4af14ae2373d49e87ca234cd992c849eea8d6bc23a349b6aacfd1bb8ed7a6fad"
+      },
+      "mxfp6": {
+        "aggregate": {
+          "completed": 32,
+          "requested": 32,
+          "duration_s": 17.534490842022933,
+          "prompt_tokens": 96000,
+          "completion_tokens": 32000,
+          "request_throughput_per_s": 1.8249745765818997,
+          "output_throughput_tokens_per_s": 1824.9745765818998,
+          "total_throughput_tokens_per_s": 7299.898306327599,
+          "mean_ttft_ms": 574.8174805667077,
+          "p99_ttft_ms": 1423.1835983449128,
+          "mean_tpot_ms": 8.183369929363588,
+          "p99_tpot_ms": 8.688879067565802,
+          "mean_itl_ms": 8.32687333424166,
+          "p99_itl_ms": 15.156922731548548
+        },
+        "started_epoch": 1789627329.6183538,
+        "warmup": {
+          "requests": 16,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/mxfp6-c16.json.gz",
+        "sha256": "22014fa7a428721f725eb54e26762306b4965b01ec99b76cb4d2401b0d74ea3a"
+      },
+      "mxfp6_gain_pct": 12.120964476156693
+    },
+    {
+      "concurrency": 24,
+      "requests_per_arm": 48,
+      "fp8": {
+        "aggregate": {
+          "completed": 48,
+          "requested": 48,
+          "duration_s": 23.45001685200259,
+          "prompt_tokens": 144000,
+          "completion_tokens": 48000,
+          "request_throughput_per_s": 2.046906844585098,
+          "output_throughput_tokens_per_s": 2046.906844585098,
+          "total_throughput_tokens_per_s": 8187.627378340392,
+          "mean_ttft_ms": 833.5427544322253,
+          "p99_ttft_ms": 2259.3197261320893,
+          "mean_tpot_ms": 10.87204578808121,
+          "p99_tpot_ms": 11.621226805283943,
+          "mean_itl_ms": 10.9221376962679,
+          "p99_itl_ms": 122.52627955982469
+        },
+        "started_epoch": 1789627019.7553275,
+        "warmup": {
+          "requests": 24,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/fp8-c24.json.gz",
+        "sha256": "79ae9db1a3185f2be5032080fd30a599e8dffb0cb4391db4021cf5a0e9b62b41"
+      },
+      "mxfp6": {
+        "aggregate": {
+          "completed": 48,
+          "requested": 48,
+          "duration_s": 20.950828083092347,
+          "prompt_tokens": 144000,
+          "completion_tokens": 48000,
+          "request_throughput_per_s": 2.291078892425105,
+          "output_throughput_tokens_per_s": 2291.078892425105,
+          "total_throughput_tokens_per_s": 9164.31556970042,
+          "mean_ttft_ms": 760.9758388134651,
+          "p99_ttft_ms": 2051.712693403242,
+          "mean_tpot_ms": 9.69588513128422,
+          "p99_tpot_ms": 10.424352713044382,
+          "mean_itl_ms": 9.748150014325594,
+          "p99_itl_ms": 110.48526623868383
+        },
+        "started_epoch": 1789627350.5178702,
+        "warmup": {
+          "requests": 24,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/mxfp6-c24.json.gz",
+        "sha256": "62b2ef040ee2381f8177a84ed82f07ecc8e49569e448c879783098f36393e23c"
+      },
+      "mxfp6_gain_pct": 11.928830492991981
+    },
+    {
+      "concurrency": 32,
+      "requests_per_arm": 64,
+      "fp8": {
+        "aggregate": {
+          "completed": 64,
+          "requested": 64,
+          "duration_s": 27.40956435992848,
+          "prompt_tokens": 192000,
+          "completion_tokens": 64000,
+          "request_throughput_per_s": 2.334951375351483,
+          "output_throughput_tokens_per_s": 2334.951375351483,
+          "total_throughput_tokens_per_s": 9339.805501405932,
+          "mean_ttft_ms": 1027.856172500833,
+          "p99_ttft_ms": 2996.967814582167,
+          "mean_tpot_ms": 12.64620864404916,
+          "p99_tpot_ms": 13.576071477328261,
+          "mean_itl_ms": 12.662034316927212,
+          "p99_itl_ms": 123.32691008923574
+        },
+        "started_epoch": 1789627047.767617,
+        "warmup": {
+          "requests": 32,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/fp8-c32.json.gz",
+        "sha256": "33d5cd08ce77abfe88704f25fcc813ead799e558573df5ebcb66617e8c0a9c5c"
+      },
+      "mxfp6": {
+        "aggregate": {
+          "completed": 64,
+          "requested": 64,
+          "duration_s": 24.404069670010358,
+          "prompt_tokens": 192000,
+          "completion_tokens": 64000,
+          "request_throughput_per_s": 2.622513411304027,
+          "output_throughput_tokens_per_s": 2622.5134113040267,
+          "total_throughput_tokens_per_s": 10490.053645216107,
+          "mean_ttft_ms": 944.3768930286751,
+          "p99_ttft_ms": 2746.4599762507714,
+          "mean_tpot_ms": 11.227446889755377,
+          "p99_tpot_ms": 12.149825976995817,
+          "mean_itl_ms": 11.338623610879782,
+          "p99_itl_ms": 115.04464981611817
+        },
+        "started_epoch": 1789627375.6736374,
+        "warmup": {
+          "requests": 32,
+          "output_tokens": 128
+        },
+        "raw_result": "data/qwen35-moe-20260917/mxfp6-c32.json.gz",
+        "sha256": "7cb177f2ae1171b738c1d3606db44f609f1e43379849076329818eb2549224c3"
+      },
+      "mxfp6_gain_pct": 12.315547081114552
+    }
+  ],
+  "mean_gain_c4_c16_c24_c32_pct": 10.236930406100958,
+  "model_memory_gib_per_rank": {
+    "fp8": 16.97,
+    "mxfp6": 13.55
+  },
+  "smoke": {
+    "fp8": {
+      "passed": 35,
+      "total": 35,
+      "results": "data/qwen35-moe-20260917/fp8-smoke.json"
+    },
+    "mxfp6": {
+      "passed": 35,
+      "total": 35,
+      "results": "data/qwen35-moe-20260917/mxfp6-smoke.json"
+    }
+  },
+  "tests": {
+    "unique_passed": 173,
+    "notes": "Run in groups. Owner-prefill NCCL initialization failed once, then passed in an isolated retry. Docker image and native kernel source were not rebuilt."
+  },
+  "limitations": [
+    "Single run per configuration; no confidence intervals.",
+    "Uniform-token throughput workload differs from the dense ShareGPT comparison.",
+    "Functional probes are not model-quality or BF16 fidelity evaluation.",
+    "Profiles retain different greedy samplers; results do not isolate the MoE kernel.",
+    "FP8 keeps official compiler, graph and runner defaults; FlashInfer AllReduce is disabled."
+  ]
+}

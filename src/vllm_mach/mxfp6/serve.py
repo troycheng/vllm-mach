@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Launch the Qwen3.8-27B native MXFP6 TP2 profile."""
+"""Launch Qwen dense or Qwen3.5-35B-A3B native MXFP6 inference (default TP2)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 def profile_environment(args: argparse.Namespace) -> dict[str, str]:
     # Explicit values prevent stale profile flags from changing this run.
-    return {
+    env = {
         "VLLM_PLUGINS": "mach",
         "VLLM_MACH_GDN_PERSISTENT": str(int(getattr(args, "gdn_persistent", True))),
         "VLLM_MACH_GDN_BA_OVERLAP": str(int(getattr(args, "gdn_ba_overlap", True))),
@@ -38,6 +38,27 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": "32",
         "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
     }
+    config_path = Path(args.model) / "config.json"
+    config = json.loads(config_path.read_text()) if config_path.is_file() else {}
+    if config.get("model_type") == "qwen3_5_moe":
+        if any(
+            (
+                args.fp16_ssm,
+                args.lossless_prefill,
+                args.owner_prefill,
+                args.nvfp4_lm_head,
+            )
+        ):
+            raise ValueError(
+                "Qwen3.5 MoE does not support the dense-only FP16 SSM, prefill or NVFP4 head options"
+            )
+        for name in (
+            "VLLM_MACH_GDN_PERSISTENT",
+            "VLLM_MACH_GDN_BA_OVERLAP",
+            "VLLM_QWEN3_5_FUSED_AR_NORM",
+        ):
+            env[name] = "0"
+    return env
 
 
 def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str], dict]:
@@ -103,7 +124,10 @@ def main() -> None:
     parser.add_argument("--verify-prefill", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args, extra = parser.parse_known_args()
-    command, environment = build_command(args, extra)
+    try:
+        command, environment = build_command(args, extra)
+    except ValueError as error:
+        parser.error(str(error))
     if args.dry_run:
         selected = profile_environment(args)
         print(

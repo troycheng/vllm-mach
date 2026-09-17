@@ -28,7 +28,7 @@ vllm-mach-install --apply
 ```
 
 Use the [mxfp6_sm120 build instructions](https://github.com/Nekofish-L/mxfp6_sm120)
-and its 0.2.1 release. A prebuilt wheel is acceptable only when its native ABI
+and its 0.2.1 release, which includes the Qwen35 MoE API. A prebuilt wheel is acceptable only when its native ABI
 matches. `python -c 'import torch, mxfp6; mxfp6.load_library()'` checks loading.
 The provided [image build helper](../deploy/build-mxfp6.py) pins both MXFP6 and
 CUTLASS revisions and applies the required CUTLASS patches.
@@ -148,3 +148,5 @@ retaining FP32 arithmetic; no state pool conversion occurs at batch boundaries. 
 
 Disable the routes individually with `--no-gdn-persistent` and
 `--no-gdn-ba-overlap`.
+
+For Qwen3.5-35B-A3B-MXFP6, use the [MoE TP2 profile](qwen35-moe.md).

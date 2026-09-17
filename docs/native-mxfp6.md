@@ -25,7 +25,8 @@ the optional `native/lossless_prefill` / `native/owner_prefill` wheels.
 The persistent GDN source is packaged under `vllm_mach.mxfp6.gdn` and JIT-built
 through FlashInfer during warmup.
 
-The wheel includes a 13-file source patch, a version/file manifest and
+The wheel includes a 13-file dense source patch, a separate Quark MoE patch,
+a version/file manifest and
 FlashInfer local IPC patch. `vllm-mach-install` checks the official dependency
 versions, stages both patches and checks patch applicability before writing.
 Incompatible or partially patched installations are rejected. Repeat installation
@@ -162,3 +163,6 @@ the same KV allocation.
 The native extension wheels used for acceptance matched the existing compiler
 and ABI contracts; this turn did not rebuild them. Docker was unavailable in
 the validation environment, so the revised Dockerfile was not built here.
+
+Qwen3.5-35B-A3B uses the separate [MoE TP2 integration](qwen35-moe.md),
+with adapters imported from `mxfp6_sm120` revision `cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`.

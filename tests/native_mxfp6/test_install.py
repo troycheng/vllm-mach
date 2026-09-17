@@ -17,12 +17,14 @@ def pristine(tmp_path):
     manifest = json.loads((PROFILE / "manifest.json").read_text())
     site = Path(metadata.distribution("vllm").locate_file(""))
     flash_site = Path(metadata.distribution("flashinfer-python").locate_file(""))
-    for name in manifest["files"]:
+    for name in manifest["files"] + manifest["moe_source"]["files"]:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(site / name, target)
     if _patch(tmp_path, "runtime.patch", reverse=True, dry=True).returncode == 0:
         assert _patch(tmp_path, "runtime.patch", reverse=True).returncode == 0
+    if _patch(tmp_path, "moe.patch", reverse=True, dry=True).returncode == 0:
+        assert _patch(tmp_path, "moe.patch", reverse=True).returncode == 0
     for name in ("flashinfer/comm/mnnvl.py", "flashinfer/comm/trtllm_ar.py"):
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -108,3 +110,25 @@ assert not any(m.startswith(('exllama', 'vllm_mach.exl3')) for m in sys.modules)
         ],
         check=True,
     )
+
+
+def test_existing_dense_profile_upgrade_is_atomic(pristine):
+    site, manifest = pristine
+    assert _patch(site, "runtime.patch").returncode == 0
+    before = {str(p): p.read_bytes() for p in site.rglob("*.py")}
+    result = install_profile(site, site)
+    assert manifest["moe_source"]["files"][0] in result["changed_files"]
+    assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before
+    assert install_profile(site, site, apply=True)["changed_files"]
+    assert not install_profile(site, site, apply=True)["changed_files"]
+
+
+def test_incompatible_moe_source_rejected_without_writes(pristine):
+    site, manifest = pristine
+    (site / manifest["moe_source"]["files"][0]).write_text(
+        "# foreign MoE implementation\n"
+    )
+    before = {str(p): p.read_bytes() for p in site.rglob("*.py")}
+    with pytest.raises(RuntimeError, match="MoE patch failed"):
+        install_profile(site, site, apply=True)
+    assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before

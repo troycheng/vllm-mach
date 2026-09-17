@@ -12,7 +12,7 @@ Earlier EXL3 implementations and their original notices are retained in Git
 history, not in the current source tree or wheel.
 
 MXFP6 SM120 is an optional external runtime dependency provided by the
-mxfp6-sm120 package. Its source code is not distributed in this package and
+mxfp6-sm120 package. Its CUDA source code is not distributed in this package and
 remains subject to the BSD 3-Clause License.
 
 The MXFP6 workspace warmup integration follows the public mxfp6_sm120 vLLM
@@ -34,3 +34,8 @@ The optional mxfp6/gdn persistent CUDA kernel and host support are derived
 from FlashInfer (historical Mach snapshot 8c5021a), under Apache-2.0.
 Original notices are retained; the kernel now treats vLLM 0.29 null slot zero
 as padding. BA overlap scheduling is adapted from the earlier Mach profile.
+
+The MXFP6 MoE adapter and Quark MoE patch are adapted from the Apache-2.0
+vLLM example in Nekofish-L/mxfp6_sm120, revision
+cd4e964c391fcb8aaf1a27d28a63d778e3a38ece. Original notices are retained.
+The CUDA kernels remain in the external mxfp6-sm120 dependency.

@@ -1,1 +1,28 @@
-{"vllm":"0.29.0","base":"98dff2a81d747d1dba01a47f939f48c3526d4206","source":"8983c0369e","files":["vllm/compilation/passes/fusion/allreduce_rms_fusion.py","vllm/envs.py","vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py","vllm/model_executor/layers/logits_processor.py","vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py","vllm/model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py","vllm/model_executor/models/qwen3_5.py","vllm/utils/flashinfer.py","vllm/v1/worker/gpu/cudagraph_utils.py","vllm/v1/worker/gpu/model_runner.py","vllm/v1/worker/gpu/sample/sampler.py","vllm/v1/worker/gpu_model_runner.py","vllm/v1/worker/gpu_worker.py"]}
+{
+  "vllm": "0.29.0",
+  "base": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+  "source": "8983c0369e",
+  "files": [
+    "vllm/compilation/passes/fusion/allreduce_rms_fusion.py",
+    "vllm/envs.py",
+    "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py",
+    "vllm/model_executor/layers/logits_processor.py",
+    "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+    "vllm/model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py",
+    "vllm/model_executor/models/qwen3_5.py",
+    "vllm/utils/flashinfer.py",
+    "vllm/v1/worker/gpu/cudagraph_utils.py",
+    "vllm/v1/worker/gpu/model_runner.py",
+    "vllm/v1/worker/gpu/sample/sampler.py",
+    "vllm/v1/worker/gpu_model_runner.py",
+    "vllm/v1/worker/gpu_worker.py"
+  ],
+  "moe_source": {
+    "repository": "Nekofish-L/mxfp6_sm120",
+    "adapter": "examples/vllm/adapter",
+    "files": [
+      "vllm/model_executor/layers/quantization/quark/quark_moe.py"
+    ],
+    "revision": "cd4e964c391fcb8aaf1a27d28a63d778e3a38ece"
+  }
+}

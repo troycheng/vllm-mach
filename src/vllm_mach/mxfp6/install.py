@@ -33,9 +33,9 @@ def _patch(root: Path, name: str, *, reverse: bool = False, dry: bool = False):
 
 
 def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -> dict:
-    """Stage both patches before writing; reject incomplete/incompatible patches."""
+    """Stage all patches before writing; reject incomplete/incompatible patches."""
     manifest = json.loads((PROFILE / "manifest.json").read_text())
-    files = manifest["files"]
+    files = manifest["files"] + manifest["moe_source"]["files"]
     for name in files:
         target = site / name
         if not target.is_file():
@@ -57,6 +57,13 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
             result = _patch(stage, "runtime.patch")
             if result.returncode:
                 raise RuntimeError(result.stdout + result.stderr)
+        # Separate patch permits upgrading an already installed dense profile.
+        if _patch(stage, "moe.patch", reverse=True, dry=True).returncode != 0:
+            result = _patch(stage, "moe.patch")
+            if result.returncode:
+                raise RuntimeError(
+                    "MXFP6 MoE patch failed: " + result.stdout + result.stderr
+                )
         ipc_installed = (
             _patch(
                 stage, "flashinfer-local-ipc.patch", reverse=True, dry=True
@@ -76,7 +83,7 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
         ]
         if apply:
             # Preserve exact bytes for rollback if any write fails. No files are
-            # touched until both dependency profiles pass their staged checks.
+            # touched until all dependency profiles pass their staged checks.
             originals = {name: targets[name].read_bytes() for name in changes}
             written = []
             try:

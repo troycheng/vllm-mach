@@ -13,7 +13,7 @@
   <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.29.0-6C5CE7">
 </p>
 
-vLLM Mach adds accelerated native MXFP6 execution paths to vLLM. Its validated model-specific profile targets Qwen3.8-27B Dense on vLLM 0.29.0. Mach integrates checkpoint loading, tensor-parallel execution, fused communication and CUDA Graph workspace management. Native MXFP6 kernels are provided by [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120). The current wheel no longer registers or ships the EXL3 provider; earlier results remain in the [benchmark archive](docs/benchmarks.md).
+vLLM Mach adds accelerated native MXFP6 execution paths to vLLM. Its model-specific profiles target Qwen3.8-27B Dense and Qwen3.5-35B-A3B MoE on vLLM 0.29.0. Mach integrates checkpoint loading, tensor-parallel execution, fused communication and CUDA Graph workspace management. Native MXFP6 kernels are provided by [`mxfp6_sm120`](https://github.com/Nekofish-L/mxfp6_sm120). The current wheel no longer registers or ships the EXL3 provider; earlier results remain in the [benchmark archive](docs/benchmarks.md).
 
 ## Why Mach
 
@@ -26,6 +26,7 @@ The aim is higher throughput with controlled numerical error. FP16 recurrent sta
 | Path | Validated configuration |
 |---|---|
 | Native MXFP6 | vLLM `0.29.0`; Qwen3.8-27B-MXFP6; `mxfp6-sm120==0.2.1`; TP2/PP1; SM120; BF16 activations/KV; text-only, non-speculative decoding |
+| Native MXFP6 MoE | Qwen3.5-35B-A3B-MXFP6; TP2/PP1; SM120; [setup and kernel revision](docs/qwen35-moe.md) |
 | MXFP6 CUDA Graph | The native configuration above with the V2 runner and `FULL_DECODE_ONLY` capture sizes `1, 2, 4, 8, 16, 24, 32` |
 | Fused FlashInfer collective | The native configuration above with FlashInfer `0.6.18` and the matching runtime/local IPC patches |
 | Lossless / owner prefill | Optional `--lossless-prefill` / `--owner-prefill`; matching [lossless](native/lossless_prefill/README.md) and [owner](native/owner_prefill/README.md) extensions |
@@ -36,6 +37,8 @@ See the [current source installation](docs/installation.md) for native dependenc
 ## Performance
 
 ### 3k/1k reference comparison
+
+#### Qwen3.8-27B Dense
 
 Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, GDN measured September 16, 2026; stock FP8/NVFP4 reuse September 15 data. Frozen prompts, 20/80/120/160 requests at c4/c16/c24/c32, per-point warmups. These are short, single-run output-throughput measurements.
 
@@ -51,6 +54,24 @@ Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, GDN measur
 The new default improves throughput over stock FP8 by **28.3%**, and the new full profile by **42.7%**, weighting the four concurrency levels equally.
 
 Default now enables both GDN routes. Full options additionally enable FP16 SSM, lossless/owner prefill and NVFP4 head search; both state dtypes use persistent at small batches. Stock FP8/NVFP4 retain default compilation and disable FlashInfer AllReduce. Mach retains its decode graphs and fixed KV allocation. This compares deployable profiles; [exact settings, isolated comparisons and raw results](docs/native-fidelity.md) are retained.
+
+#### Qwen3.5-35B-A3B MoE
+
+Qwen3.5-35B-A3B, two RTX 5090 GPUs, TP2, measured September 17, 2026. The baseline is `Qwen3.5-35B-A3B-FP8`; Mach uses the sibling `Qwen3.5-35B-A3B-MXFP6` checkpoint. Each point uses 3000 input / 1000 output tokens, 16/32/48/64 scored requests at c4/c16/c24/c32, and a concurrency-sized 128-output-token warmup. These single-run measurements use uniform token IDs; the 27B comparison above uses ShareGPT prompts.
+
+![Qwen3.5-35B-A3B MoE serving throughput](docs/images/qwen35-moe-throughput.png)
+
+| Configuration | c4 | c16 | c24 | c32 |
+|---|---:|---:|---:|---:|
+| FP8 · official vLLM 0.29 | 694.1 | 1627.7 | 2046.9 | 2335.0 |
+| MXFP6 · Mach | 725.9 | 1825.0 | 2291.1 | 2622.5 |
+| MXFP6 throughput change | +4.6% | +12.1% | +11.9% | +12.3% |
+
+Throughput changes by **+10.2%** relative to FP8 when weighting the four concurrency levels equally. Loaded model memory is **13.55 GiB/rank** for MXFP6 and **16.97 GiB/rank** for FP8; both receive an 8 GiB/rank KV budget.
+
+FP8 uses the unpatched official runtime, default compilation/attention/CUDA Graph settings, and `VLLM_ALLREDUCE_USE_FLASHINFER=0`. All Mach optimizations are confined to MXFP6: native MoE schedules, full decode graphs and compact BF16 greedy sampling. This is a serving-profile comparison. Functional checks passed 35/35 for each model; these are smoke checks, with no broad quality or BF16 fidelity evaluation. The integration passed 173 regression tests in groups.
+
+[Deployment, protocol and validation](docs/qwen35-moe.md) · [Machine-readable results and per-request raw data](docs/data/qwen35-moe-20260917.json). One run per point does not establish confidence intervals.
 
 ### Numerical fidelity
 
@@ -74,7 +95,7 @@ Each point combines M32 MAE with the equally weighted mean throughput gain over 
 
 ### Deployment tradeoffs
 
-The fastest profiles require matching native extensions and pinned vLLM/FlashInfer patches, so deployment takes more setup than a stock vLLM installation. The default native profile requires no EXL3 runtime or optional prefill extensions. FP16 recurrent state and NVFP4 LM head search change numerical behavior and remain opt-in. Current validation covers Qwen3.8-27B Dense, TP2 and SM120. Other models, MoE and GPU architectures need their own integration and validation.
+The fastest profiles require matching native extensions and pinned vLLM/FlashInfer patches, so deployment takes more setup than a stock vLLM installation. The default native profile requires no EXL3 runtime or optional prefill extensions. FP16 recurrent state and NVFP4 LM head search change numerical behavior and remain opt-in. Dense performance validation covers Qwen3.8-27B, TP2 and SM120. Qwen3.5-35B-A3B has a separate [MoE profile](docs/qwen35-moe.md). Other models and GPU architectures need their own integration and validation.
 
 ## Installation
 

@@ -1,0 +1,607 @@
+[
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "请只回答：17乘以19等于多少？",
+    "answer": "323",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 24,
+      "total_tokens": 28,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "中国的首都是哪里？只回答城市名称。",
+    "answer": "北京",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "把 apple 翻译成中文，只回答译文。",
+    "answer": "苹果",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 24,
+      "completion_tokens": 2,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "prompt": "水的化学式是什么？只回答化学式。",
+    "answer": "H₂O",
+    "passed": true,
+    "usage": {
+      "prompt_tokens": 22,
+      "total_tokens": 26,
+      "completion_tokens": 4,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    }
+  },
+  {
+    "options": {
+      "logprobs": 3,
+      "temperature": 0
+    },
+    "choices": [
+      {
+        "index": 0,
+        "text": " Paris.\nThe capital of France is Paris.\nThe capital of France is",
+        "logprobs": {
+          "text_offset": [
+            0,
+            6,
+            7,
+            8,
+            11,
+            19,
+            22,
+            29,
+            32,
+            38,
+            39,
+            40,
+            43,
+            51,
+            54,
+            61
+          ],
+          "token_logprobs": [
+            -0.9287161827087402,
+            -0.4197045862674713,
+            -1.3028545379638672,
+            -0.9232043623924255,
+            -0.5150673389434814,
+            -0.018413908779621124,
+            -0.856251060962677,
+            -0.059882838279008865,
+            -1.101003646850586,
+            -0.1173463687300682,
+            -0.26258859038352966,
+            -0.33370640873908997,
+            -0.022912053391337395,
+            -0.003303548786789179,
+            -0.010850830934941769,
+            -0.0032613680232316256
+          ],
+          "tokens": [
+            " Paris",
+            ".",
+            "\n",
+            "The",
+            " capital",
+            " of",
+            " France",
+            " is",
+            " Paris",
+            ".",
+            "\n",
+            "The",
+            " capital",
+            " of",
+            " France",
+            " is"
+          ],
+          "top_logprobs": [
+            {
+              " Paris": -0.9287161827087402,
+              " a": -1.6787161827087402,
+              "\n": -2.9287161827087402
+            },
+            {
+              ".": -0.4197045862674713,
+              ",": -1.419704556465149,
+              "\n": -3.9822046756744385
+            },
+            {
+              "\n": -1.3028545379638672,
+              " The": -1.9278545379638672,
+              " Paris": -2.552854537963867
+            },
+            {
+              "The": -0.9232043623924255,
+              "A": -2.8607044219970703,
+              "What": -3.1732044219970703
+            },
+            {
+              " capital": -0.5150673389434814,
+              " above": -4.015067100524902,
+              " population": -4.202567100524902
+            },
+            {
+              " of": -0.018413908779621124,
+              " city": -5.01841402053833,
+              " is": -5.01841402053833
+            },
+            {
+              " France": -0.856251060962677,
+              " Germany": -1.9812510013580322,
+              " Italy": -2.4812510013580322
+            },
+            {
+              " is": -0.059882838279008865,
+              ".": -4.622382640838623,
+              "\n": -4.997382640838623
+            },
+            {
+              " Paris": -1.101003646850586,
+              " London": -1.851003646850586,
+              " Berlin": -2.913503646850586
+            },
+            {
+              ".": -0.1173463687300682,
+              ",": -3.3673462867736816,
+              "\n": -4.054846286773682
+            },
+            {
+              "\n": -0.26258859038352966,
+              "\n\n": -1.887588620185852,
+              " The": -4.4500885009765625
+            },
+            {
+              "The": -0.33370640873908997,
+              "What": -3.7712063789367676,
+              "Is": -3.9587063789367676
+            },
+            {
+              " capital": -0.022912053391337395,
+              " city": -7.33541202545166,
+              " sun": -7.71041202545166
+            },
+            {
+              " of": -0.003303548786789179,
+              " is": -6.378303527832031,
+              " city": -7.503303527832031
+            },
+            {
+              " France": -0.010850830934941769,
+              " Germany": -6.13585090637207,
+              " Paris": -6.51085090637207
+            },
+            {
+              " is": -0.0032613680232316256,
+              "\n": -7.503261566162109,
+              ".": -7.628261566162109
+            }
+          ]
+        },
+        "finish_reason": "length",
+        "stop_reason": null,
+        "token_ids": null,
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 5,
+      "total_tokens": 21,
+      "completion_tokens": 16,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    "passed": true
+  },
+  {
+    "options": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "seed": 123
+    },
+    "choices": [
+      {
+        "index": 0,
+        "text": " Paris. The capital of Germany is Berlin. The capital of Italy is Rome.",
+        "logprobs": null,
+        "finish_reason": "length",
+        "stop_reason": null,
+        "token_ids": null,
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 5,
+      "total_tokens": 21,
+      "completion_tokens": 16,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    "passed": true
+  },
+  {
+    "options": {
+      "temperature": 0,
+      "logit_bias": {
+        "1000": 1.0
+      }
+    },
+    "choices": [
+      {
+        "index": 0,
+        "text": " Paris.\nThe capital of France is Paris.\nThe capital of France is",
+        "logprobs": null,
+        "finish_reason": "length",
+        "stop_reason": null,
+        "token_ids": null,
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 5,
+      "total_tokens": 21,
+      "completion_tokens": 16,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    "passed": true
+  }
+]
