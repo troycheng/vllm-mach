@@ -59,16 +59,20 @@ The launcher selects Quark, BF16, TP2, the V2 runner, TRITON_ATTN, no prefix
 caching, a 4096 scheduled-token budget, and full decode graphs up to 32 rows.
 It enables native MXFP6, fused AllReduce/residual/RMSNorm, and compact BF16
 greedy argmax communication, plus small-batch persistent and large-batch BA
-overlap GDN decode. The checkpoint's original recurrent-state dtype
+overlap GDN decode, plus lossless/owner prefill. Install both extensions below
+before launching Dense, or pass `--no-lossless-prefill --no-owner-prefill`. The checkpoint's original recurrent-state dtype
 and BF16 LM head are preserved by default.
 
 Use `--dry-run` to print flags without loading a model. Standard vLLM flags,
 such as `--max-model-len`, `--max-num-batched-tokens`, host and port, can be
 appended. The supported optimization geometry remains TP2/PP1 and 32 sequences.
 
-## Optional acceleration
+## Dense prefill dependencies and full options
 
-Only build the prefill extensions if you enable their corresponding flags:
+Dense default and full both enable lossless/owner prefill and require these extensions.
+MoE does not use them. To opt out on Dense, pass
+`--no-lossless-prefill --no-owner-prefill`:
+
 
 ```bash
 CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=8 \
@@ -84,7 +88,7 @@ They do not depend on EXL3.
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
   --model /models/Qwen3.8-27B-MXFP6 \
-  --fp16-ssm --lossless-prefill --owner-prefill --nvfp4-lm-head \
+  --fp16-ssm --nvfp4-lm-head \
   --kv-cache-memory-bytes 8218214400 \
   --host 127.0.0.1 --port 8000
 ```
@@ -107,7 +111,7 @@ available through the imported environment switches for separate experiments.
 
 ## Docker
 
-The image builds MXFP6 and both optional prefill extensions, without EXL3:
+The image builds MXFP6 and both Dense default prefill extensions, without EXL3:
 
 ```bash
 docker buildx build --load \

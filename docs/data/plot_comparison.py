@@ -110,14 +110,14 @@ def plot_native_tradeoff(accuracy, performance):
         lo, hi = run['ci95']
         ax.errorbar(x, y, xerr=[[x-lo], [hi-x]], yerr=[[y-min(gains)], [max(gains)-y]],
                     fmt=MARKERS[name], color=COLORS[name], capsize=4, markersize=8,
-                    label=f"{LABELS[name]} ({y:+.1f}%)")
+                    label=LABELS[name])
     ax.axhline(0, color='#AAB2BC', lw=1)
     ax.grid(color='#E8EBEE', lw=.8)
     ax.set_xlabel('Physical M32 gold-token logprob MAE vs BF16', labelpad=13)
     ax.set_ylabel('Output-throughput gain vs stock FP8', labelpad=15)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
     fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.06,.995),
-               ncol=2, frameon=False, fontsize=11.5)
+               ncol=4, frameon=False, fontsize=10)
     frame(ax)
     save(fig, 'quality-throughput-tradeoff')
 
@@ -181,7 +181,8 @@ def plot_throughput(performance, order, labels, colors, markers, styles, stem, f
                 linestyle=styles[name],lw=2.0,ms=7,
                 markerfacecolor='white' if name in ('fp8_stock029','k4k5_derived_w6_fp16') else colors[name])
     fig.legend(*ax.get_legend_handles_labels(),loc='upper left',bbox_to_anchor=(.06,.995),
-               ncol=2,frameon=False,fontsize=12,columnspacing=2.8,handlelength=2.8,labelspacing=.55)
+               ncol=4 if len(order) == 4 else 2,frameon=False,fontsize=10.5 if len(order) == 4 else 12,
+               columnspacing=1.5,handlelength=2.2,labelspacing=.55)
     peak = max(p['output_throughput_tokens_per_s'] for run in performance['runs'].values() for p in run['points'])
     ax.set_xlim(2.8,33.2); ax.set_ylim(0,max(1800,200*np.ceil(peak*1.08/200)))
     ax.set_xticks([4,16,24,32],['c4','c16','c24','c32'])
@@ -227,7 +228,11 @@ def main():
     parser.add_argument('--accuracy-only', action='store_true')
     parser.add_argument('--gdn-m4-only', action='store_true')
     parser.add_argument('--legacy', action='store_true', help='Render archived EXL3 measurements to an archive directory')
+    parser.add_argument('--throughput-only', action='store_true',
+                        help='Render current Dense and MoE throughput without historical fidelity figures')
     args = parser.parse_args()
+    if args.throughput_only and (args.legacy or args.accuracy_only or args.gdn_m4_only or args.moe_only):
+        parser.error('--throughput-only cannot be combined with other rendering modes')
     if args.moe_only:
         if args.legacy or args.accuracy_only or args.gdn_m4_only:
             parser.error('--moe-only cannot be combined with other rendering modes')
@@ -235,16 +240,16 @@ def main():
         return
     if not args.legacy:
         ORDER = ['fp8', 'default', 'persistent', 'gdn', 'full', 'full_ba', 'full_gdn', 'nvfp4']
-        LABELS = {'fp8':'FP8 · stock vLLM 0.29 (Sep 15)',
+        LABELS = {'fp8':'FP8 · vLLM 0.29 baseline',
                   'default':'MXFP6 · previous default', 'persistent':'MXFP6 · persistent only',
                   'gdn':'MXFP6 · Mach default',
                   'full':'MXFP6 · previous full', 'full_ba':'MXFP6 · full without persistent',
                   'full_gdn':'MXFP6 · Mach full',
-                  'nvfp4':'NVFP4 · stock vLLM 0.29 (Sep 15)'}
+                  'nvfp4':'NVFP4 · vLLM 0.29 baseline'}
         COLORS = dict(zip(ORDER, ['#87919D', '#3B69C8', '#159A98', '#126149', '#B58A2B', '#9579A6', '#8050A0', '#D77B44']))
         MARKERS = dict(zip(ORDER, ['o','s','D','X','^','v','*','P']))
         STYLES = dict(zip(ORDER, ['--','--',':','-','--','--','-',':']))
-        ORDER = ['fp8', 'gdn', 'full_gdn', 'nvfp4']
+        ORDER = ['fp8', 'nvfp4', 'gdn', 'full_gdn']
     else:
         global OUT
         OUT = OUT/'historical'
@@ -253,6 +258,14 @@ def main():
         if args.legacy:
             parser.error('--gdn-m4-only cannot use --legacy')
         plot_gdn_m4(json.loads((HERE/'gdn-m4-fidelity.json').read_text()))
+        return
+    if args.throughput_only:
+        performance = json.loads((HERE/'native-serving.json').read_text())
+        if 'prefill_default' in performance['runs']:
+            performance['runs']['gdn'] = performance['runs']['prefill_default']
+        plot_throughput(performance, ORDER, LABELS, COLORS, MARKERS, STYLES,
+                        'throughput-comparison')
+        plot_moe_throughput()
         return
     accuracy = json.loads((HERE/('accuracy-comparison-m32-20260910.json' if args.legacy else 'native-fidelity.json')).read_text())
     assert set(ORDER).issubset(accuracy['runs'])
@@ -283,7 +296,10 @@ def main():
     performance = json.loads((HERE/('quantization-comparison-3k1k-20260910.json' if args.legacy else 'native-serving.json')).read_text())
     assert set(ORDER).issubset(performance['runs'])
 
-    plot_throughput(performance, ORDER, LABELS, COLORS, MARKERS, STYLES, 'throughput-comparison')
+    current = {'runs': dict(performance['runs'])}
+    if not args.legacy and 'prefill_default' in current['runs']:
+        current['runs']['gdn'] = current['runs']['prefill_default']
+    plot_throughput(current, ORDER, LABELS, COLORS, MARKERS, STYLES, 'throughput-comparison')
     (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
     if not args.legacy:
         plot_gdn_ablation(performance)

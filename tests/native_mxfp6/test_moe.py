@@ -37,8 +37,18 @@ def test_moe_launcher_enables_gdn_ar_norm_and_optional_head(tmp_path):
     assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == "1"
     assert env["VLLM_QWEN3_5_FUSED_AR_NORM"] == "0"
     args.fp16_ssm = True
-    with pytest.raises(ValueError, match="dense-only"):
-        build_command(args, [])
+    command, env = build_command(args, [])
+    assert command[command.index("--mamba-ssm-cache-dtype") + 1] == "float16"
+    assert env["VLLM_QWEN3_5_FP16_SSM"] == "1"
+    args.lossless_prefill = args.owner_prefill = None
+    _, env = build_command(args, [])
+    assert env["VLLM_SM120_LOSSLESS_PREFILL"] == "0"
+    assert env["VLLM_SM120_OWNER_PREFILL"] == "0"
+    for flag in ("lossless_prefill", "owner_prefill"):
+        setattr(args, flag, True)
+        with pytest.raises(ValueError, match="dense-only"):
+            build_command(args, [])
+        setattr(args, flag, None)
 
 
 def test_schedule_boundaries():

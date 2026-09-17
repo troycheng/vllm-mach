@@ -17,7 +17,7 @@ vLLM Mach adds accelerated native MXFP6 execution paths to vLLM. Its model-speci
 
 ## Why Mach
 
-Mach targets fast serving at small and medium batch sizes, with most tuning focused on 4 to 32 concurrent requests. Its native MXFP6 profile combines packed weights with fused tensor-parallel communication and CUDA Graph support. Optional owner-prefill and LM head paths further accelerate prefill and eligible greedy decode while retaining vLLM's serving interface.
+Mach targets fast serving at small and medium batch sizes, with most tuning focused on 4 to 32 concurrent requests. Its native MXFP6 profile combines packed weights with fused tensor-parallel communication and CUDA Graph support. Dense owner-prefill and optional LM head paths further accelerate prefill and eligible greedy decode while retaining vLLM's serving interface.
 
 The aim is higher throughput with controlled numerical error. FP16 recurrent state and NVFP4 LM head candidate search remain explicit options; the default profile retains FP32 recurrent state and the BF16 LM head.
 
@@ -29,7 +29,7 @@ The aim is higher throughput with controlled numerical error. FP16 recurrent sta
 | Native MXFP6 MoE | Qwen3.5-35B-A3B-MXFP6; TP2/PP1; SM120; [setup and kernel revision](docs/qwen35-moe.md) |
 | MXFP6 CUDA Graph | V2 runner; Dense uses `FULL_DECODE_ONLY` at `1, 2, 4, 8, 16, 24, 32`; MoE inherits vLLM's default graph configuration |
 | Fused FlashInfer collective | The native configuration above with FlashInfer `0.6.18` and the matching runtime/local IPC patches |
-| Lossless / owner prefill | Optional `--lossless-prefill` / `--owner-prefill`; matching [lossless](native/lossless_prefill/README.md) and [owner](native/owner_prefill/README.md) extensions |
+| Lossless / owner prefill | Enabled by default for Dense; opt out with `--no-lossless-prefill` / `--no-owner-prefill`; requires matching [lossless](native/lossless_prefill/README.md) and [owner](native/owner_prefill/README.md) extensions |
 | FP16 SSM / NVFP4 LM head | Optional `--fp16-ssm` / `--nvfp4-lm-head`; head uses FlashInfer's built-in B12X backend, without the standalone `b12x` package; changes numerical behavior |
 
 See the [current source installation](docs/installation.md) for native dependencies and [native MXFP6 integration](docs/native-mxfp6.md) for request eligibility and fallback behavior. Earlier EXL3 and checkpoint-hybrid releases are documented in [earlier installations](docs/public-install.md) and the [0.29 dependency upgrade](docs/dependency-upgrade.md).
@@ -40,24 +40,24 @@ See the [current source installation](docs/installation.md) for native dependenc
 
 #### Qwen3.8-27B Dense
 
-Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, GDN measured September 16, 2026; stock FP8/NVFP4 reuse September 15 data. Frozen prompts, 20/80/120/160 requests at c4/c16/c24/c32, per-point warmups. These are short, single-run output-throughput measurements.
+Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, default remeasured September 17, 2026 with lossless/owner prefill; full retains September 16 data, and stock FP8/NVFP4 retain September 15 data. Frozen prompts, 20/80/120/160 requests at c4/c16/c24/c32, per-point warmups. These are short, single-run output-throughput measurements.
 
 ![Serving throughput](docs/images/throughput-comparison.png)
 
 | Configuration | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
-| FP8 · stock vLLM 0.29 | 267.0 | 806.1 | 1018.5 | 1160.4 |
-| MXFP6 · Mach default | 371.2 | 999.9 | 1278.4 | 1445.0 |
+| FP8 · vLLM 0.29.0 baseline | 267.0 | 806.1 | 1018.5 | 1160.4 |
+| NVFP4 · vLLM 0.29.0 baseline | 379.0 | 1142.9 | 1424.6 | 1607.6 |
+| MXFP6 · Mach default | 377.2 | 1043.1 | 1352.5 | 1537.0 |
 | MXFP6 · Mach full | 384.9 | 1124.3 | 1453.6 | 1674.8 |
-| NVFP4 · stock vLLM 0.29 | 379.0 | 1142.9 | 1424.6 | 1607.6 |
 
-The new default improves throughput over stock FP8 by **28.3%**, and the new full profile by **42.7%**, weighting the four concurrency levels equally.
+The new default improves throughput over stock FP8 by **34.0%**, and the new full profile by **42.7%**, weighting the four concurrency levels equally.
 
-Default now enables both GDN routes. Full options additionally enable FP16 SSM, lossless/owner prefill and NVFP4 head search; both state dtypes use persistent at small batches. Stock FP8/NVFP4 retain default compilation and disable FlashInfer AllReduce. Mach retains its decode graphs and fixed KV allocation. This compares deployable profiles; [exact settings, isolated comparisons and raw results](docs/native-fidelity.md) are retained.
+Default enables both GDN routes and lossless/owner prefill. Full additionally enables FP16 SSM and NVFP4 head search; both state dtypes use persistent at small batches. Stock FP8/NVFP4 retain default compilation and disable FlashInfer AllReduce. Mach retains its decode graphs and fixed KV allocation. This compares deployable profiles; [exact settings, isolated comparisons and raw results](docs/native-fidelity.md) are retained.
 
 #### Qwen3.5-35B-A3B MoE
 
-Qwen3.5-35B-A3B, measured September 17, 2026. Each point is a **two-run mean**, using 3000 input / 1000 output tokens, 16/32/48/64 scored requests at c4/c16/c24/c32, and a concurrency-sized 128-output-token warmup. All four profiles use identical uniform token IDs and seeds. Mach runs on two RTX 5090 GPUs with TP2. The FP8 and NVFP4 baselines use open-source vLLM 0.29.0. The 27B comparison above uses ShareGPT prompts.
+Qwen3.5-35B-A3B, measured September 17, 2026; full remeasured with FP16 SSM. Each point is a **two-run mean**, using 3000 input / 1000 output tokens, 16/32/48/64 scored requests at c4/c16/c24/c32, and a concurrency-sized 128-output-token warmup. All four profiles use identical uniform token IDs and seeds. Mach runs on two RTX 5090 GPUs with TP2. The FP8 and NVFP4 baselines use open-source vLLM 0.29.0. The 27B comparison above uses ShareGPT prompts.
 
 ![Qwen3.5-35B-A3B MoE serving throughput](docs/images/qwen35-moe-throughput.png)
 
@@ -66,13 +66,15 @@ Qwen3.5-35B-A3B, measured September 17, 2026. Each point is a **two-run mean**, 
 | FP8 · vLLM 0.29.0 baseline | 679.9 | 1471.6 | 1774.6 | 1962.1 |
 | NVFP4 · vLLM 0.29.0 baseline | 730.6 | 1654.2 | 1985.3 | 2202.1 |
 | MXFP6 · Mach default | 1010.2 | 2324.2 | 2869.5 | 3237.6 |
-| MXFP6 · Mach full | 1072.9 | 2444.4 | 2992.3 | 3292.8 |
+| MXFP6 · Mach full | 1094.8 | 2493.8 | 3070.6 | 3417.9 |
 
-The default profile improves throughput over the remeasured FP8 baseline by **58.3%**, and the full profile by **65.1%**, weighting the four concurrency levels equally.
+The default profile improves throughput over the remeasured FP8 baseline by **58.3%**, and the full profile by **69.4%**, weighting the four concurrency levels equally.
 
-Mach default and full now use `VLLM_COMPILE` / `FULL_AND_PIECEWISE`, the expanded capture sizes through 2048, `--max-num-batched-tokens 2048` and `--max-num-seqs 64`. Both retain native MoE schedules, GDN decode, hand-written AllReduce/residual/RMSNorm fusion, FP32 recurrent state and an 8 GiB/rank KV budget. Full additionally enables `--nvfp4-lm-head`: NVFP4 candidate search with BF16 refinement; default uses the BF16 head. FP16 SSM and owner/lossless prefill remain unsupported on 35B.
+Mach default and full now use `VLLM_COMPILE` / `FULL_AND_PIECEWISE`, the expanded capture sizes through 2048, `--max-num-batched-tokens 2048` and `--max-num-seqs 64`. Both retain native MoE schedules, GDN decode, hand-written AllReduce/residual/RMSNorm fusion and an 8 GiB/rank KV budget. Full enables `--fp16-ssm --nvfp4-lm-head`: FP16 recurrent state and NVFP4 candidate search with BF16 refinement. Default retains FP32 recurrent state and the BF16 head. Owner/lossless prefill remain Dense-only.
 
-The graph/fusion update passed **50 focused tests** and **5088 measured requests**. Earlier LM-head validation covered **1640 real decode positions**, retaining all global BF16 top-20 candidates and matching every final BF16 top-1. Candidate search and fused reduction can change numerical behavior; these checks do not establish broad model quality or BF16 fidelity.
+The profile update passed **131 focused tests** and 700 scored benchmark requests. The MoE FP16 diagnostic verified FP16 SSM and BF16 convolution state at all 30 GDN layers per rank, with all final top-1 outputs matching the same-hidden-state BF16 head across 1638 decode positions. [FP16 retest and validation](docs/qwen35-moe.md#fp16-ssm-full-profile-retest).
+
+The earlier graph/fusion update passed **50 focused tests** and **5088 measured requests**. Earlier LM-head validation covered **1640 real decode positions**, retaining all global BF16 top-20 candidates and matching every final BF16 top-1. Candidate search and fused reduction can change numerical behavior; these checks do not establish broad model quality or BF16 fidelity.
 
 [Deployment and graph/fusion measurements](docs/qwen35-moe.md#default-compilation-and-prefill-graphs) · [Chart data and per-request timings](docs/data/qwen35-default-full-20260917.json) · [Baseline protocol](docs/qwen35-moe.md#updated-defaultfull-chart-and-user-provided-baselines). Two repetitions do not establish confidence intervals.
 
@@ -82,15 +84,15 @@ Gold-token logprob MAE against BF16 (the new and archived references match exact
 
 ![Physical-M32 fidelity](docs/images/accuracy-comparison.png)
 
-At physical M32, new default MAE is **0.0906** and new full is **0.0896**, versus **0.0614** for stock FP8 and **0.1709** for stock NVFP4. BA overlap preserves every scored gold-token logprob in both state dtypes. Persistent is inactive at M32.
+For the September 16 profiles (Dense default before enabling lossless/owner prefill), physical M32 default MAE is **0.0906** and full is **0.0896**, versus **0.0614** for stock FP8 and **0.1709** for stock NVFP4. BA overlap preserves every scored gold-token logprob in both state dtypes. Persistent is inactive at M32.
 
-At physical M4, the default profile records **0.08540 MAE** and full records **0.08620 MAE** against the matched BF16 reference. [Independent GDN ablations and M4 fidelity](docs/gdn-decode.md) cover the active persistent route. MAE measures numerical deviation, not task accuracy.
+At physical M4, that September 16 default profile records **0.08540 MAE** and full records **0.08620 MAE** against the matched BF16 reference. [Independent GDN ablations and M4 fidelity](docs/gdn-decode.md) cover the active persistent route. MAE measures numerical deviation, not task accuracy.
 
 The independent NVFP4 head probe retains **100% global BF16 top-20 recall** and **100% final top-1 agreement** across 11,996 eligible rows. [Protocol and limitations](docs/native-fidelity.md).
 
 ### Fidelity and throughput
 
-Each point combines M32 MAE with the equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. The linked GDN validation covers active persistent arithmetic at M4.
+This September 16 comparison retains the pre-prefill-default configuration. Each point combines M32 MAE with the equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. The linked GDN validation covers active persistent arithmetic at M4.
 
 ![Fidelity and throughput](docs/images/quality-throughput-tradeoff.png)
 
@@ -98,7 +100,7 @@ Each point combines M32 MAE with the equally weighted mean throughput gain over 
 
 ### Deployment tradeoffs
 
-The fastest profiles require matching native extensions and pinned vLLM/FlashInfer patches, so deployment takes more setup than a stock vLLM installation. The default native profile requires no EXL3 runtime or optional prefill extensions. FP16 recurrent state and NVFP4 LM head search change numerical behavior and remain opt-in. Dense performance validation covers Qwen3.8-27B, TP2 and SM120. Qwen3.5-35B-A3B has a separate [MoE profile](docs/qwen35-moe.md). Other models and GPU architectures need their own integration and validation.
+The fastest profiles require matching native extensions and pinned vLLM/FlashInfer patches, so deployment takes more setup than a stock vLLM installation. The default native profile requires no EXL3 runtime; Dense default requires the lossless and owner prefill extensions. FP16 recurrent state and NVFP4 LM head search change numerical behavior and remain opt-in. Dense performance validation covers Qwen3.8-27B, TP2 and SM120. Qwen3.5-35B-A3B has a separate [MoE profile](docs/qwen35-moe.md). Other models and GPU architectures need their own integration and validation.
 
 ## Installation
 
@@ -115,7 +117,7 @@ vllm-mach-install --apply
 
 The installer checks dependency versions and patch applicability, stages all changes before writing and is idempotent. Use a clean environment; do not combine this profile with the old EXL3 runtime/GDN patches.
 
-To build the image with the optional prefill extensions:
+To build the image with the Dense default prefill extensions:
 
 ```bash
 docker buildx build --load \
@@ -132,7 +134,7 @@ Release `0.1.0a10` remains documented with ExLlamaV3 1.4.9; a9 uses vLLM 0.28. S
 
 Model checkpoint: [nekofish/Qwen3.8-27B-MXFP6 on Hugging Face](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
 
-For the default native MXFP6 profile:
+For the default native MXFP6 profile (install both prefill extensions for Dense):
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
@@ -148,7 +150,7 @@ docker run --rm --name mach --gpus '"device=0,1"' \
   -v mach-kernel-cache:/root/.cache \
   vllm-mach:local \
   --model /models/mxfp6 \
-  --fp16-ssm --lossless-prefill --owner-prefill --nvfp4-lm-head \
+  --fp16-ssm --nvfp4-lm-head \
   --kv-cache-memory-bytes 8218214400 --host 127.0.0.1 --port 8000
 ```
 

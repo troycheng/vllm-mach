@@ -49,6 +49,11 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
             destination = stage / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(target, destination)
+        # Peel FP16 admission before checking the unchanged base profile.
+        if _patch(stage, "moe-fp16-ssm.patch", reverse=True, dry=True).returncode == 0:
+            result = _patch(stage, "moe-fp16-ssm.patch", reverse=True)
+            if result.returncode:
+                raise RuntimeError(result.stdout + result.stderr)
         # Peel additive compilation support before checking the base profile.
         if (
             _patch(stage, "compiled-ar-norm.patch", reverse=True, dry=True).returncode
@@ -87,6 +92,11 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
         if result.returncode:
             raise RuntimeError(
                 "MXFP6 compiled AR/Norm patch failed: " + result.stdout + result.stderr
+            )
+        result = _patch(stage, "moe-fp16-ssm.patch")
+        if result.returncode:
+            raise RuntimeError(
+                "MoE FP16 SSM patch failed: " + result.stdout + result.stderr
             )
         ipc_installed = (
             _patch(

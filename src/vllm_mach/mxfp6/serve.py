@@ -18,6 +18,9 @@ def _is_qwen35_moe(model: str | Path) -> bool:
 
 
 def profile_environment(args: argparse.Namespace) -> dict[str, str]:
+    dense = not _is_qwen35_moe(args.model)
+    lossless = dense if args.lossless_prefill is None else args.lossless_prefill
+    owner = dense if args.owner_prefill is None else args.owner_prefill
     # Explicit values prevent stale profile flags from changing this run.
     env = {
         "VLLM_PLUGINS": "mach",
@@ -30,10 +33,10 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_QWEN3_5_FP16_SSM": str(int(args.fp16_ssm)),
         "VLLM_FLASHINFER_ALLREDUCE_BACKEND": "trtllm",
         "VLLM_ALLREDUCE_USE_FLASHINFER": "0",
-        "VLLM_SM120_LOSSLESS_PREFILL": str(int(args.lossless_prefill)),
+        "VLLM_SM120_LOSSLESS_PREFILL": str(int(lossless)),
         "VLLM_SM120_LOSSLESS_PREFILL_GRAPH": "0",
         "VLLM_SM120_LOSSLESS_PREFILL_VERIFY": str(int(args.verify_prefill)),
-        "VLLM_SM120_OWNER_PREFILL": str(int(args.owner_prefill)),
+        "VLLM_SM120_OWNER_PREFILL": str(int(owner)),
         "VLLM_SM120_OWNER_VERIFY": str(int(args.verify_prefill)),
         "VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED": "0",
         "VLLM_SM120_OWNER_MLP_LAYERS": json.dumps(list(range(0, 64, 2))),
@@ -44,12 +47,8 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": "32",
         "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
     }
-    if _is_qwen35_moe(args.model) and any(
-        (args.fp16_ssm, args.lossless_prefill, args.owner_prefill)
-    ):
-        raise ValueError(
-            "Qwen3.5 MoE does not support the dense-only FP16 SSM or prefill options"
-        )
+    if not dense and (lossless or owner):
+        raise ValueError("Qwen3.5 MoE does not support the dense-only prefill options")
     return env
 
 
@@ -118,8 +117,18 @@ def main() -> None:
         default=True,
         help="Overlap BA with QKV/conv at M16/24/32 (default on)",
     )
-    parser.add_argument("--lossless-prefill", action="store_true")
-    parser.add_argument("--owner-prefill", action="store_true")
+    parser.add_argument(
+        "--lossless-prefill",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Lossless prefill (default on for Dense)",
+    )
+    parser.add_argument(
+        "--owner-prefill",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Owner prefill (default on for Dense)",
+    )
     parser.add_argument("--nvfp4-lm-head", action="store_true")
     parser.add_argument("--verify-prefill", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -139,8 +148,16 @@ def main() -> None:
     from importlib import metadata
 
     for enabled, package, expected in (
-        (args.owner_prefill, "vllm-mach-owner-prefill", "0.1.0a1"),
-        (args.lossless_prefill, "vllm-mach-lossless-prefill", "0.1.0a4"),
+        (
+            environment["VLLM_SM120_OWNER_PREFILL"] == "1",
+            "vllm-mach-owner-prefill",
+            "0.1.0a1",
+        ),
+        (
+            environment["VLLM_SM120_LOSSLESS_PREFILL"] == "1",
+            "vllm-mach-lossless-prefill",
+            "0.1.0a4",
+        ),
     ):
         if enabled:
             try:

@@ -152,11 +152,16 @@ def test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out(monkeypat
         assert guard(layer, config) is not None
         monkeypatch.setenv("VLLM_QWEN3_5_FP16_SSM", "1")
         assert guard(layer, config) is None
+        layer.hidden_size, layer.num_v_heads = 2048, 32
+        assert guard(layer, config) is None
+        layer.hidden_size, layer.num_v_heads = 5120, 48
         assert torch.float16 not in gdn.FUSED_GDN_STATE_DTYPES
         for obj, attr, value in (
             (config, "speculative_config", object()),
             (layer, "tp_size", 1),
             (layer, "hidden_size", 4096),
+            (layer, "hidden_size", 2048),
+            (layer, "num_v_heads", 32),
             (layer, "gqa_interleaved_layout", True),
             (layer, "enable_packed_recurrent_decode", False),
             (layer, "get_state_dtype", lambda: (torch.float16, torch.float16)),

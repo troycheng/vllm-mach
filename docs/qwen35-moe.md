@@ -68,8 +68,8 @@ an approximate candidate search, not a replacement of the stored BF16 head.
 It adds approximately 136.4 MiB per GPU at this model's TP2 vocabulary size.
 Use `--no-fused-ar-norm` to independently disable communication fusion.
 
-FP16 SSM and owner/lossless prefill switches remain rejected for this model;
-serving retains FP32 recurrent state. This profile targets text-only,
+The default retains FP32 recurrent state. Full adds `--fp16-ssm` and
+`--nvfp4-lm-head`; owner/lossless prefill switches remain Dense-only. This profile targets text-only,
 non-speculative TP2/PP1 inference;
 dense-model benchmark numbers do not describe its performance.
 
@@ -179,7 +179,8 @@ Validation for the migration:
   FP32/FP16), including changing-input graph replay, null slots and canaries.
   For 35B the maximum relative output L2 error against the native composition
   was 0.002230; maximum state error was 0.000124. Graph/eager results match
-  bitwise. FP16 is a kernel test here, not an enabled 35B serving option.
+  bitwise. FP16 was a kernel-only test in this earlier validation; the later full-profile
+retest below enables it in serving.
 - The TP2 server prepared 30 GDN layers per rank and captured all seven decode
   sizes. It passed 35/35 concurrent chat and request-fallback smoke checks.
   These checks do not establish broad model quality or BF16 fidelity.
@@ -226,8 +227,8 @@ which is no longer the MoE launcher's default graph configuration:
 | Mach default | Native MoE schedules, decode graphs, GDN, fused AR/Norm, compact BF16 greedy sampling | No extra optimization flags |
 | Mach full | Default plus NVFP4 head candidate search with BF16 refinement | `--nvfp4-lm-head` |
 
-Both 35B profiles retain FP32 SSM. The 27B full profile's FP16 SSM and
-owner/lossless prefill options remain unsupported on 35B. The tables below
+These historical 35B profiles both retained FP32 SSM; the current full profile
+adds FP16 SSM. Owner/lossless prefill remain Dense-only. The tables below
 retain individual ablations. The current README chart uses the compiled
 default/full profiles alongside the user-provided FP8 and NVFP4 baselines.
 
@@ -381,9 +382,10 @@ workspace fallback, rank-isolated compile hashes, and atomic installer upgrades.
 ## Updated default/full chart and user-provided baselines
 
 The current [README chart](../README.md#qwen35-35b-a3b-moe) uses c4/c16/c24/c32.
-All four profiles have two measurements per point. Mach full c4/c32 reuse the
-compiled-AR runs above; Mach default and full c16/c24 were measured afterward
-on the same GPU pair. The Mach measurements are unchanged by the baseline retest.
+All four profiles have two measurements per point. The current full profile
+adds FP16 SSM and is remeasured at all four concurrency levels in the retest
+below. Mach default and the user-provided baselines retain their earlier
+measurements; the earlier FP32 full series is archived as `full_fp32` in the raw data.
 
 Both earlier baseline series have been replaced with measurements against the
 user-provided existing services:
@@ -430,3 +432,47 @@ record endpoint provenance, request contracts, individual repetitions and timing
 for all four profiles. The comparison measures serving deployments; it does not
 isolate quantization effects or evaluate checkpoint accuracy. Two repetitions
 do not establish confidence intervals.
+
+## FP16 SSM full-profile retest
+
+Current full uses `--fp16-ssm --nvfp4-lm-head`. Default keeps FP32 SSM
+and the BF16 head. Lossless/owner prefill remain Dense-only. The installer
+adds the 35B GDN geometry to the narrow FP16 admission guard; TP2, SM120,
+BF16 convolution/activation, packed recurrence and non-speculative restrictions
+remain enforced. Reinstall the runtime with `vllm-mach-install --apply`.
+
+The full profile was remeasured on September 17 on RTX 5090 GPUs 6/7 with
+two complete c4/c16/c24/c32 sweeps. All 320 scored requests completed with
+exactly 3000 input and 1000 output tokens. Request contracts match the
+existing default and baseline measurements, including seeds and warmups.
+Compilation, capture sizes, 2048 batched tokens, 64 sequences and 8 GiB/rank
+KV allocation are unchanged. Previous FP32 full results remain in the
+`full_fp32` arm of the [raw chart data](data/qwen35-default-full-20260917.json).
+
+| Configuration (output tokens/s, two-run mean) | c4 | c16 | c24 | c32 |
+|---|---:|---:|---:|---:|
+| FP8 · vLLM 0.29 baseline | 679.9 | 1471.6 | 1774.6 | 1962.1 |
+| NVFP4 · vLLM 0.29 baseline | 730.6 | 1654.2 | 1985.3 | 2202.1 |
+| MXFP6 · Mach default | 1010.2 | 2324.2 | 2869.5 | 3237.6 |
+| MXFP6 · Mach full | 1094.8 | 2493.8 | 3070.6 | 3417.9 |
+
+Equal-weight mean throughput gain over the retained FP8 baseline is
+**69.43%**. These deployment measurements
+are not an isolated FP16 kernel comparison.
+
+Validation passed 88 launcher/installer/quantization/MoE/GDN tests and 43
+Dense prefill tests. The [35B GPU harness](data/profile-fp16-gdn-20260917.json)
+passed all 16 FP32/FP16 × SD/DS × M1/2/4/8 cases, including changing-input
+graphs, null slots and canaries. The separate
+[real-model diagnostic](data/profile-fp16-diagnostic-20260917.json) confirmed
+FP16 recurrent state and BF16 convolution at all 30 GDN layers on each rank,
+with finite state after generation. All 1638 real decode positions retained
+every global BF16 top-20 candidate and matched the final BF16 top-1. This
+compares head paths on the same hidden states; it does not establish full-model
+FP16-versus-FP32 numerical equivalence or broad task accuracy.
+
+```bash
+CUDA_VISIBLE_DEVICES=4,5 PYTHONPATH=src:tools python tools/verify_qwen35_optimizations.py \
+  --model /data1/models/Qwen3.5-35B-A3B-MXFP6 --fp16-ssm --output fp16-diagnostic.json
+PYTHONPATH=src python tools/retest_profile_defaults.py --output RESULTS --devices 6,7
+```

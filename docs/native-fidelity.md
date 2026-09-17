@@ -19,23 +19,60 @@ The raw arm names retain their experiment meaning:
 |---|---|---:|---:|
 | default | Previous default, fused AR/Norm and compact BF16 greedy sampling | off | off |
 | persistent | Previous default plus persistent only | on | off |
-| gdn | New launcher default | on | on |
+| gdn | September 16 default, before lossless/owner prefill | on | on |
 | full | Previous full: FP16 SSM, lossless/owner prefill, NVFP4 head | off | off |
 | full_ba | Full before the c4 fix: BA overlap only | off | on |
 | full_gdn | Corrected full options, including FP16 persistent | on | on |
 
 This keeps the two optimizations independently measurable. `--no-gdn-persistent`
-and `--no-gdn-ba-overlap` reproduce the previous default. Stock FP8/NVFP4
+and `--no-gdn-ba-overlap`, together with `--no-lossless-prefill` and
+`--no-owner-prefill`, reproduce the previous default. Stock FP8/NVFP4
 use unpatched official packages, no Mach plugin and FlashInfer AllReduce disabled.
 
-## Serving throughput
+## September 17 Dense default retest
+
+Dense default now enables lossless/owner prefill alongside both GDN routes,
+while retaining FP32 SSM and the BF16 head. Full adds only FP16 SSM and
+NVFP4 candidate search; its execution settings are unchanged.
+
+The changed default was remeasured on RTX 5090 GPUs 6/7 with TP2, fixed
+8,218,214,400-byte KV allocation, 4096 batched tokens and the original decode
+graphs. All 380 scored requests completed with exactly 3000 input and 1000
+output tokens. Prompts, seeds, arrivals, sampling and warmups match the
+archived per-concurrency contracts. Full and stock baselines are retained.
+
+| Configuration | c4 | c16 | c24 | c32 |
+|---|---:|---:|---:|---:|
+| FP8 · vLLM 0.29 baseline | 266.97 | 806.06 | 1018.55 | 1160.44 |
+| NVFP4 · vLLM 0.29 baseline | 378.97 | 1142.87 | 1424.61 | 1607.56 |
+| MXFP6 · Mach default | 377.17 | 1043.08 | 1352.54 | 1537.00 |
+| MXFP6 · Mach full | 384.90 | 1124.27 | 1453.57 | 1674.83 |
+
+Equal-weight mean gain over the retained stock FP8 baseline: **33.98%**.
+This is a single-run throughput sweep. The September 16 fidelity and GDN
+ablation results below retain their original configurations.
+
+The `prefill_default` arm in [raw serving results](data/native-serving.json)
+contains launch settings and request-level timings; `gdn` retains the prior
+default. Both-rank owner initialization was observed. All 43 prefill tests
+passed, including native lossless/owner transport and graph checks.
+
+Reproduce both affected profiles and collect their data:
+
+```bash
+PYTHONPATH=src python tools/retest_profile_defaults.py --output RESULTS --devices 6,7
+python docs/data/collect_profile_defaults.py --results RESULTS
+python docs/data/plot_comparison.py --throughput-only
+```
+
+## September 16 serving throughput
 
 | Configuration | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
 | FP8 · stock vLLM 0.29 | 266.97 | 806.06 | 1018.55 | 1160.44 |
 | MXFP6 · previous default | 325.91 | 978.17 | 1255.64 | 1423.86 |
 | MXFP6 · persistent only | 371.18 | 977.21 | 1254.91 | 1421.59 |
-| MXFP6 · Mach default | 371.18 | 999.87 | 1278.40 | 1444.99 |
+| MXFP6 · September 16 default | 371.18 | 999.87 | 1278.40 | 1444.99 |
 | MXFP6 · previous full | 353.19 | 1099.27 | 1422.97 | 1648.55 |
 | MXFP6 · full without persistent | 353.05 | 1126.29 | 1453.48 | 1679.71 |
 | MXFP6 · Mach full | 384.90 | 1124.27 | 1453.57 | 1674.83 |
@@ -78,7 +115,7 @@ This compares deployable profiles, rather than isolating quantization alone.
 | FP8 · stock vLLM 0.29 | 0.061430 | 0.054315–0.069084 |
 | MXFP6 · previous default | 0.090643 | 0.082647–0.098954 |
 | MXFP6 · persistent only | 0.090643 | 0.082647–0.098954 |
-| MXFP6 · Mach default | 0.090643 | 0.082647–0.098954 |
+| MXFP6 · September 16 default | 0.090643 | 0.082647–0.098954 |
 | MXFP6 · previous full | 0.089624 | 0.082036–0.097311 |
 | MXFP6 · full without persistent | 0.089624 | 0.082036–0.097311 |
 | MXFP6 · Mach full | 0.089624 | 0.082036–0.097311 |

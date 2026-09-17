@@ -105,7 +105,8 @@ python docs/data/plot_comparison.py --gdn-m4-only
 
 The [complete result table](native-fidelity.md#serving-throughput) retains the
 previous default/full, persistent-only and combined profiles. The README's
-main comparison shows only the current MXFP6 default/full and stock references.
+main comparison now includes the September 17 Dense prefill-default retest;
+the ablation data below retain the September 16 configurations.
 
 ![GDN throughput ablations](images/gdn-throughput-ablation.png)
 

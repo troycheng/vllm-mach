@@ -21,7 +21,8 @@ Mach reuses its existing native dense kernel and warmup implementation. The
 general plugin registers the kernel; the source patch does not import Mach from
 vLLM's linear registry, avoiding an import cycle. The framework modules
 live under `vllm_mach.mxfp6`. GEMM CUDA implementations remain in `mxfp6-sm120`, with prefill code in
-the optional `native/lossless_prefill` / `native/owner_prefill` wheels.
+the `native/lossless_prefill` / `native/owner_prefill` wheels, now required
+for Dense default (unless both prefill options are explicitly disabled).
 The persistent GDN source is packaged under `vllm_mach.mxfp6.gdn` and JIT-built
 through FlashInfer during warmup.
 
@@ -131,8 +132,9 @@ preemption warnings. Runs were sequential on the same GPU pair, once per arm.
 | Default Mach profile: AR/Norm + compact BF16 greedy TP argmax | 1419.6 | 19.81 ms | 13.97 ms |
 | Full Mach profile: AR/Norm, FP16 SSM, lossless/owner prefill, NVFP4 head | 1646.8 | 17.20 ms | 12.25 ms |
 
-The default profile retains FP32 recurrent state without enabling the optional
-prefill extensions or NVFP4 search. The full profile uses FP16 and approximate
+The historical default profile above retained FP32 recurrent state without
+prefill extensions or NVFP4 search. The current Dense default enables both
+prefill extensions. The full profile uses FP16 and approximate
 NVFP4 head search. This measures the combined profile, not an isolated kernel
 gain. Iteration medians include warmup; request throughput and TPOT exclude it.
 One run per arm does not establish a confidence interval.
@@ -141,7 +143,8 @@ One run per arm does not establish a confidence interval.
 use identical workload settings for both retained arms. The full profile ran
 before the default profile. To reproduce the default arm,
 use `vllm-mach-serve --model MODEL --kv-cache-memory-bytes 8218214400
---no-gdn-persistent --no-gdn-ba-overlap` without the optional acceleration flags.
+--no-gdn-persistent --no-gdn-ba-overlap
+--no-lossless-prefill --no-owner-prefill` without the optional acceleration flags.
 The opt-outs are needed to reproduce these September 15 measurements with
 the current launcher.
 
@@ -157,7 +160,7 @@ python tools/benchmark_native_mxfp6.py \
 ```
 
 Start the optimized service with the full command in the installation guide.
-For the default profile, omit the optional acceleration switches and keep
+For the historical default profile, use the opt-outs above and keep
 the same KV allocation.
 
 The native extension wheels used for acceptance matched the existing compiler

@@ -1,0 +1,13 @@
+--- a/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
++++ b/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
+@@ -536,9 +536,8 @@
+             and current_platform.is_cuda()
+             and current_platform.is_device_capability(120)
+             and self.tp_size == 2
+-            and self.hidden_size == 5120
++            and (self.hidden_size, self.num_v_heads) in ((5120, 48), (2048, 32))
+             and self.num_k_heads == 16
+-            and self.num_v_heads == 48
+             and self.head_k_dim == 128
+             and self.head_v_dim == 128
+             and vllm_config.model_config.dtype == torch.bfloat16

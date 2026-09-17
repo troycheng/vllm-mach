@@ -84,12 +84,42 @@ class WorkerExtension:
     def mach_ar_stats(self):
         return ar_stats(self)
 
+    def mach_state_stats(self):
+        import torch
+        from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import (
+            QwenGatedDeltaNetAttention,
+        )
+
+        layers = [
+            m
+            for m in self.model_runner.model.modules()
+            if isinstance(m, QwenGatedDeltaNetAttention)
+        ]
+        expected = (
+            torch.float16
+            if os.environ.get("VLLM_QWEN3_5_FP16_SSM") == "1"
+            else torch.float32
+        )
+        assert layers
+        for layer in layers:
+            assert layer.kv_cache[0].dtype == torch.bfloat16
+            assert layer.kv_cache[1].dtype == expected
+            assert torch.isfinite(layer.kv_cache[1]).all()
+        return {
+            "rank": self.rank,
+            "gdn_layers": len(layers),
+            "conv_dtype": "torch.bfloat16",
+            "ssm_dtype": str(expected),
+            "finite_state": True,
+        }
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--output-tokens", type=int, default=32)
+    parser.add_argument("--fp16-ssm", action="store_true")
     args = parser.parse_args()
     from vllm_mach.mxfp6.serve import profile_environment
 
@@ -97,7 +127,7 @@ def main():
         profile_environment(
             SimpleNamespace(
                 model=args.model,
-                fp16_ssm=False,
+                fp16_ssm=args.fp16_ssm,
                 lossless_prefill=False,
                 owner_prefill=False,
                 nvfp4_lm_head=True,
@@ -112,6 +142,7 @@ def main():
         model=str(args.model),
         tensor_parallel_size=2,
         dtype="bfloat16",
+        mamba_ssm_cache_dtype="float16" if args.fp16_ssm else "float32",
         quantization="quark",
         max_model_len=4096,
         max_num_seqs=32,
@@ -161,6 +192,7 @@ def main():
         "batches": [1, 4, 16, 32],
         "output_tokens": args.output_tokens,
         "head": heads,
+        "state": llm.collective_rpc("mach_state_stats"),
         "allreduce_norm": llm.collective_rpc("mach_ar_stats"),
     }
     args.output.write_text(json.dumps(result, indent=2) + "\n")

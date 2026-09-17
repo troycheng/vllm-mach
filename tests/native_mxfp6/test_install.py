@@ -21,6 +21,8 @@ def pristine(tmp_path):
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(site / name, target)
+    if _patch(tmp_path, "moe-fp16-ssm.patch", reverse=True, dry=True).returncode == 0:
+        assert _patch(tmp_path, "moe-fp16-ssm.patch", reverse=True).returncode == 0
     if (
         _patch(tmp_path, "compiled-ar-norm.patch", reverse=True, dry=True).returncode
         == 0
@@ -173,7 +175,26 @@ def test_existing_manual_moe_fusion_upgrades_to_compiled_support(pristine):
     assert set(result["changed_files"]) == {
         "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py",
         "vllm/model_executor/models/qwen3_5.py",
+        "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
     }
     assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before
     install_profile(site, site, apply=True)
     assert not install_profile(site, site, apply=True)["changed_files"]
+
+
+def test_dense_prefill_defaults_and_explicit_opt_out():
+    args = argparse.Namespace(
+        model="dense",
+        fp16_ssm=False,
+        lossless_prefill=None,
+        owner_prefill=None,
+        nvfp4_lm_head=False,
+        verify_prefill=False,
+    )
+    _, env = build_command(args, [])
+    assert env["VLLM_SM120_LOSSLESS_PREFILL"] == "1"
+    assert env["VLLM_SM120_OWNER_PREFILL"] == "1"
+    args.lossless_prefill = args.owner_prefill = False
+    _, env = build_command(args, [])
+    assert env["VLLM_SM120_LOSSLESS_PREFILL"] == "0"
+    assert env["VLLM_SM120_OWNER_PREFILL"] == "0"
