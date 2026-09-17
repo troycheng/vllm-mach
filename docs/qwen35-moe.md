@@ -1,5 +1,10 @@
 # Qwen3.5-35B-A3B MXFP6
 
+[Current default/full numerical fidelity](profile-fidelity-20260917.md) covers
+matched BF16 references at physical M4 and M32, with FP8/NVFP4 comparisons and
+repeatability checks. These precision diagnostics are separate from the serving
+throughput measurements below.
+
 Mach supports the Quark packed E3M2 checkpoint with dynamic per-32 E4M3
 activations on two SM120 GPUs. The default launcher uses TP2, BF16 activations,
 FP32 recurrent state and vLLM's default compilation/CUDA Graph configuration.

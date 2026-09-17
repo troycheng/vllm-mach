@@ -100,8 +100,8 @@ def plot_tradeoff(accuracy, performance):
 
 def plot_native_tradeoff(accuracy, performance):
     baseline = performance['runs']['fp8']['points']
-    fig, ax = plt.subplots(figsize=(12.8, 6.6))
-    fig.subplots_adjust(left=.09, right=.97, top=.82, bottom=.16)
+    fig, ax = plt.subplots(figsize=(10.8, 7.2))
+    fig.subplots_adjust(left=.13, right=.97, top=.85, bottom=.13)
     for name in ORDER:
         run = accuracy['runs'][name]
         gains = [100*(p['output_throughput_tokens_per_s']/b['output_throughput_tokens_per_s']-1)
@@ -113,24 +113,25 @@ def plot_native_tradeoff(accuracy, performance):
                     label=LABELS[name])
     ax.axhline(0, color='#AAB2BC', lw=1)
     ax.grid(color='#E8EBEE', lw=.8)
+    ax.set_title('Dense · Qwen3.8-27B', loc='left', fontsize=12, fontweight='bold', pad=14)
     ax.set_xlabel('Physical M32 gold-token logprob MAE vs BF16', labelpad=13)
     ax.set_ylabel('Output-throughput gain vs stock FP8', labelpad=15)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
     fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.06,.995),
-               ncol=4, frameon=False, fontsize=10)
+               ncol=2, frameon=False, fontsize=10)
     frame(ax)
     save(fig, 'quality-throughput-tradeoff')
 
 def plot_gdn_m4(data):
     fig, ax = plt.subplots(figsize=(12.8,6.2))
     fig.subplots_adjust(left=.40, right=.94, top=.83, bottom=.20)
-    for y, name in enumerate(['default', 'gdn', 'full_ba', 'full_gdn']):
+    order = ['default', 'gdn', 'full_ba', 'full_gdn']
+    for y, name in enumerate(order):
         run = data['runs'][name]
         x = run['mae']; lo, hi = run['ci95']
-        ax.barh(y, x, height=.5, color=COLORS[name])
-        ax.errorbar(x,y,xerr=[[x-lo],[hi-x]],fmt='none',ecolor=INK,capsize=4)
+        ax.errorbar(x,y,xerr=[[x-lo],[hi-x]],fmt='o',color=COLORS[name],capsize=4,markersize=8)
         ax.text(hi+.003,y,f'{x:.5f}',va='center')
-    ax.set_yticks([0,1,2,3], [LABELS[n] for n in ['default', 'gdn', 'full_ba', 'full_gdn']])
+    ax.set_yticks([0,1,2,3], [LABELS[n] for n in order])
     ax.invert_yaxis()
     ax.set_xlim(0,max(r['ci95'][1] for r in data['runs'].values())+.025)
     ax.set_xlabel('Physical M4: gold-token logprob MAE vs BF16',labelpad=13)
@@ -138,6 +139,44 @@ def plot_gdn_m4(data):
     ax.grid(axis='x',color='#E8EBEE',lw=.8)
     frame(ax)
     save(fig,'gdn-m4-fidelity')
+
+
+def plot_profile_fidelity(data, rows=32):
+    labels = {'fp8': 'FP8 · vLLM 0.29.0 baseline', 'nvfp4': 'NVFP4 · vLLM 0.29.0 baseline',
+              'default': 'MXFP6 · Mach default', 'full': 'MXFP6 · Mach full'}
+    colors = {'fp8': '#87919D', 'nvfp4': '#D77B44',
+              'default': '#126149', 'full': '#8050A0'}
+    fig, axes = plt.subplots(1, 2, figsize=(13.6, 6.4), sharey=True)
+    fig.subplots_adjust(left=.28, right=.98, top=.84, bottom=.16, wspace=.18)
+    shapes = [data['models'][family][f'm{rows}'] for family in ('dense', 'moe')]
+    xmax = max(shape['runs'][arm]['ci95'][1] for shape in shapes for arm in labels) * 1.25
+    for ax, shape, title in zip(axes, shapes, ('Dense · Qwen3.8-27B', 'MoE · Qwen3.5-35B-A3B'), strict=True):
+        order = ['fp8', 'default', 'full', 'nvfp4']
+        for y, arm in enumerate(order):
+            run = shape['runs'][arm]
+            x = run['mae']; lo, hi = run['ci95']
+            ax.errorbar(x, y, xerr=[[x-lo], [hi-x]], fmt='o', color=colors[arm],
+                        markersize=8, capsize=4, elinewidth=1.5, zorder=3)
+            mark = '†' if run.get('repeat', {}).get('max_abs', 0) > 0 else ''
+            ax.text(hi+xmax*.022, y, f'{x:.5f}{mark}', va='center', fontsize=11)
+        ax.set_yticks(range(len(order)), [labels[arm] for arm in order])
+        ax.tick_params(axis='y', labelleft=ax is axes[0])
+        ax.set_ylim(len(order)-.5, -.5)
+        ax.set_xlim(0, xmax)
+        ax.set_box_aspect(1)
+        ax.axvline(0, color='#87919D', lw=1)
+        ax.grid(axis='x', color='#E8EBEE', lw=.8)
+        ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+        ax.set_title(title, loc='left', fontsize=12, fontweight='bold', pad=18)
+        frame(ax)
+    fig.text(.63, .075, 'Gold-token logprob MAE vs BF16 (lower is better)', ha='center', fontsize=11)
+    fig.text(.28, .955, f'Physical M{rows} · 256 queries · 10,479 gold tokens', fontsize=11)
+    variation = any(run.get('repeat', {}).get('max_abs', 0) > 0 for shape in shapes for run in shape['runs'].values())
+    note = '95% query-bootstrap intervals'
+    if variation:
+        note += ' · † Repeat variation observed; intervals exclude run-to-run variation.'
+    fig.text(.06, .028, note, fontsize=9.5, color='#657180')
+    save(fig, 'accuracy-comparison' if rows == 32 else 'profile-m4-fidelity')
 
 
 def plot_gdn_ablation(performance):
@@ -208,8 +247,8 @@ def plot_moe_throughput():
         ]}
     plot_throughput(
         {'runs': runs}, order,
-        {'fp8': 'FP8 · vLLM 0.29 baseline',
-         'nvfp4': 'NVFP4 · vLLM 0.29 baseline',
+        {'fp8': 'FP8 · vLLM 0.29.0 baseline',
+         'nvfp4': 'NVFP4 · vLLM 0.29.0 baseline',
          'default': 'MXFP6 · Mach default',
          'full': 'MXFP6 · Mach full'},
         {'fp8': '#87919D', 'nvfp4': '#D77B44', 'default': '#126149', 'full': '#8050A0'},
@@ -217,8 +256,29 @@ def plot_moe_throughput():
         {'fp8': '--', 'nvfp4': ':', 'default': '-', 'full': '-'},
         'qwen35-moe-throughput',
         footnote='Qwen3.5-35B-A3B · 3000 input / 1000 output tokens · 2-run means · September 17, 2026\n'
-                 'FP8 / NVFP4: user-provided vLLM baseline services, remeasured at c4 / c16 / c24 / c32.\n'
+                 'FP8 / NVFP4: open-source vLLM 0.29.0 · c4 / c16 / c24 / c32.\n'
                  'Mach: 2 × RTX 5090 · TP2 · 2048 batched tokens · max sequences 64.')
+
+
+def plot_archived_accuracy(accuracy):
+    fig, ax = plt.subplots(figsize=(13.6,5.6))
+    fig.subplots_adjust(left=.35,right=.96,top=.96,bottom=.17)
+    accuracy_order = sorted(ORDER, key=lambda n: accuracy['runs'][n]['mae'])
+    for y, name in enumerate(accuracy_order):
+        run = accuracy['runs'][name]
+        v = run['mae']; lo,hi = run['ci95']
+        ax.errorbar(v,y,xerr=np.array([[v-lo],[hi-v]]),fmt='o',color=COLORS[name],capsize=3,lw=1.1,markersize=8)
+        ax.text(hi+.005,y,f'{v:.5f}',va='center',fontsize=12)
+    ax.set_yticks(range(len(accuracy_order)),[LABELS[n] for n in accuracy_order])
+    ax.invert_yaxis()
+    ax.set_xlim(0,max(r['ci95'][1] for r in accuracy['runs'].values())+.043)
+    ax.xaxis.set_major_locator(MultipleLocator(.05))
+    ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
+    ax.grid(axis='x',color='#E8EBEE',lw=.8)
+    ax.set_xlabel('Physical M32: gold-token logprob MAE vs BF16 (lower is better)',labelpad=13)
+    frame(ax)
+    save(fig,'accuracy-comparison')
+
 
 
 def main():
@@ -240,12 +300,12 @@ def main():
         return
     if not args.legacy:
         ORDER = ['fp8', 'default', 'persistent', 'gdn', 'full', 'full_ba', 'full_gdn', 'nvfp4']
-        LABELS = {'fp8':'FP8 · vLLM 0.29 baseline',
+        LABELS = {'fp8':'FP8 · vLLM 0.29.0 baseline',
                   'default':'MXFP6 · previous default', 'persistent':'MXFP6 · persistent only',
                   'gdn':'MXFP6 · Mach default',
                   'full':'MXFP6 · previous full', 'full_ba':'MXFP6 · full without persistent',
                   'full_gdn':'MXFP6 · Mach full',
-                  'nvfp4':'NVFP4 · vLLM 0.29 baseline'}
+                  'nvfp4':'NVFP4 · vLLM 0.29.0 baseline'}
         COLORS = dict(zip(ORDER, ['#87919D', '#3B69C8', '#159A98', '#126149', '#B58A2B', '#9579A6', '#8050A0', '#D77B44']))
         MARKERS = dict(zip(ORDER, ['o','s','D','X','^','v','*','P']))
         STYLES = dict(zip(ORDER, ['--','--',':','-','--','--','-',':']))
@@ -269,23 +329,19 @@ def main():
         return
     accuracy = json.loads((HERE/('accuracy-comparison-m32-20260910.json' if args.legacy else 'native-fidelity.json')).read_text())
     assert set(ORDER).issubset(accuracy['runs'])
-    fig, ax = plt.subplots(figsize=(13.6,5.6))
-    fig.subplots_adjust(left=.35,right=.96,top=.96,bottom=.17)
-    for y, name in enumerate(ORDER):
-        run = accuracy['runs'][name]
-        v = run['mae']; lo,hi = run['ci95']
-        ax.barh(y,v,height=.53,color=COLORS[name],edgecolor=COLORS[name],linewidth=.8)
-        ax.errorbar(v,y,xerr=np.array([[v-lo],[hi-v]]),fmt='none',ecolor=INK,capsize=3,lw=1.1)
-        ax.text(hi+.005,y,f'{v:.5f}',va='center',fontsize=12)
-    ax.set_yticks(range(len(ORDER)),[LABELS[n] for n in ORDER])
-    ax.invert_yaxis()
-    ax.set_xlim(0,max(r['ci95'][1] for r in accuracy['runs'].values())+.043)
-    ax.xaxis.set_major_locator(MultipleLocator(.05))
-    ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
-    ax.grid(axis='x',color='#E8EBEE',lw=.8)
-    ax.set_xlabel('Physical M32: gold-token logprob MAE vs BF16 (lower is better)',labelpad=13)
-    frame(ax)
-    save(fig,'accuracy-comparison')
+
+    current_fidelity_path = HERE/'profile-fidelity-20260917.json'
+    if not args.legacy and current_fidelity_path.exists():
+        profile_fidelity = json.loads(current_fidelity_path.read_text())
+        plot_profile_fidelity(profile_fidelity, 32)
+        plot_profile_fidelity(profile_fidelity, 4)
+        accuracy = {'runs': {
+            target: profile_fidelity['models']['dense']['m32']['runs'][source]
+            for target, source in [('fp8', 'fp8'), ('nvfp4', 'nvfp4'),
+                                   ('gdn', 'default'), ('full_gdn', 'full')]
+        }}
+    else:
+        plot_archived_accuracy(accuracy)
 
     if not args.legacy and (HERE/'gdn-m4-fidelity.json').exists():
         plot_gdn_m4(json.loads((HERE/'gdn-m4-fidelity.json').read_text()))
@@ -300,11 +356,11 @@ def main():
     if not args.legacy and 'prefill_default' in current['runs']:
         current['runs']['gdn'] = current['runs']['prefill_default']
     plot_throughput(current, ORDER, LABELS, COLORS, MARKERS, STYLES, 'throughput-comparison')
-    (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
+    (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,current)
     if not args.legacy:
         plot_gdn_ablation(performance)
         plot_moe_throughput()
-    print('Rendered three title-free comparison figures (PNG + SVG)')
+    print('Rendered fidelity and throughput figures (PNG + SVG)')
 
 if __name__ == '__main__':
     main()

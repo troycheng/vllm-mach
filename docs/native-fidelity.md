@@ -6,6 +6,10 @@ Qwen3.8-27B on two RTX 5090 GPUs per run, TP2. Model checkpoint:
 [nekofish/Qwen3.8-27B-MXFP6](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
 The [September 15 measurements](native-fidelity-20260915.md) are archived separately.
 
+Current Dense and MoE default/full profiles were remeasured on September 17;
+see [the matched M32/M4 experiment](profile-fidelity-20260917.md). The historical
+configuration names and results below retain their original meanings.
+
 ## Configurations and isolated comparisons
 
 The launcher now enables persistent at physical M1/2/4/8 with FP32 or FP16 recurrent
@@ -130,7 +134,7 @@ The corrected full_gdn arm also exactly matches full_ba at M32, where
 persistent is inactive. This establishes measured equivalence for BA scheduling
 on this corpus.
 
-![Physical-M32 fidelity](images/accuracy-comparison.png)
+![Physical-M32 fidelity](images/historical/accuracy-comparison-20260916.png)
 
 The separate physical-M4 diagnostic activates persistent: previous default
 MAE **0.089853**, persistent-only and combined new default
@@ -183,7 +187,7 @@ are retained. Dispatch counts describe host calls/captures, not graph replays.
 
 ## Fidelity and throughput
 
-![Numerical fidelity and throughput](images/quality-throughput-tradeoff.png)
+![Numerical fidelity and throughput](images/historical/quality-throughput-tradeoff-20260916.png)
 
 Horizontal bars are M32 MAE 95% intervals. Vertical bars span the four
 throughput gains over stock FP8; they are not confidence intervals. M32

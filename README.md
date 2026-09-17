@@ -80,23 +80,23 @@ The earlier graph/fusion update passed **50 focused tests** and **5088 measured 
 
 ### Numerical fidelity
 
-Gold-token logprob MAE against BF16 (the new and archived references match exactly) over 256 queries and 10,479 target tokens. Lower is better; whiskers are 95% query-bootstrap intervals.
+Current Dense and MoE default/full profiles, measured September 17, 2026. Each configuration scores 256 fixed queries and 10,479 gold tokens against its own model's BF16 reference. Lower MAE is better; the horizontal axis starts at zero, with Mach default shown above Mach full. Whiskers show 95% query-bootstrap intervals. MoE NVFP4 varies across repeated inputs; these intervals do not include run-to-run variation. FP8 and NVFP4 use open-source vLLM 0.29.0.
 
-![Physical-M32 fidelity](docs/images/accuracy-comparison.png)
+![Dense and MoE numerical fidelity at physical M32](docs/images/accuracy-comparison.png)
 
-For the September 16 profiles (Dense default before enabling lossless/owner prefill), physical M32 default MAE is **0.0906** and full is **0.0896**, versus **0.0614** for stock FP8 and **0.1709** for stock NVFP4. BA overlap preserves every scored gold-token logprob in both state dtypes. Persistent is inactive at M32.
+At physical M32, Dense default/full MAE is **0.09064 / 0.08962**; MoE default/full is **0.07261 / 0.07409**. Both paired full-minus-default confidence intervals include zero. These results do not establish that either profile is more accurate. MAE measures numerical deviation, not task accuracy.
 
-At physical M4, that September 16 default profile records **0.08540 MAE** and full records **0.08620 MAE** against the matched BF16 reference. [Independent GDN ablations and M4 fidelity](docs/gdn-decode.md) cover the active persistent route. MAE measures numerical deviation, not task accuracy.
+Default retains FP32 SSM; full adds FP16 SSM and NVFP4 head search. Persistent GDN can change arithmetic even with FP32 state, so default is not a claim of bitwise equivalence. Logprob requests use the BF16 head and do not exercise candidate search. [M4 results, exact configurations and raw data](docs/profile-fidelity-20260917.md).
 
-The independent NVFP4 head probe retains **100% global BF16 top-20 recall** and **100% final top-1 agreement** across 11,996 eligible rows. [Protocol and limitations](docs/native-fidelity.md).
+The separate historical NVFP4 head probe retains **100% global BF16 top-20 recall** and **100% final top-1 agreement** across 11,996 eligible Dense rows. [Head-probe protocol](docs/native-fidelity.md).
 
 ### Fidelity and throughput
 
-This September 16 comparison retains the pre-prefill-default configuration. Each point combines M32 MAE with the equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. The linked GDN validation covers active persistent arithmetic at M4.
+Each Dense point combines the September 17 M32 fidelity measurement with the current profile's equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. Throughput measurement dates and conditions are listed above.
 
 ![Fidelity and throughput](docs/images/quality-throughput-tradeoff.png)
 
-[September 15 native results](docs/native-fidelity-20260915.md) and [earlier EXL3 results](docs/benchmarks.md) remain archived.
+[September 16 ablations](docs/native-fidelity.md), [September 15 native results](docs/native-fidelity-20260915.md) and [earlier EXL3 results](docs/benchmarks.md) remain archived.
 
 ### Deployment tradeoffs
 

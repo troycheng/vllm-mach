@@ -269,43 +269,43 @@ L 87.846 16.129359
     </g>
    </g>
    <g id="text_13">
-    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="96.246" y="19.804359" transform="rotate(-0 96.246 19.804359)">FP8 · vLLM 0.29 baseline</text>
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="96.246" y="19.804359" transform="rotate(-0 96.246 19.804359)">FP8 · vLLM 0.29.0 baseline</text>
    </g>
    <g id="line2d_22">
-    <path d="M 242.066391 16.129359
-L 253.616391 16.129359
-L 265.166391 16.129359
+    <path d="M 252.084047 16.129359
+L 263.634047 16.129359
+L 275.184047 16.129359
 " style="fill: none; stroke-dasharray: 2,3.3; stroke-dashoffset: 0; stroke: #d77b44; stroke-width: 2"/>
     <g>
-     <use xlink:href="#m49b819d6ed" x="253.616391" y="16.129359" style="fill: #d77b44; stroke: #d77b44; stroke-linejoin: miter"/>
+     <use xlink:href="#m49b819d6ed" x="263.634047" y="16.129359" style="fill: #d77b44; stroke: #d77b44; stroke-linejoin: miter"/>
     </g>
    </g>
    <g id="text_14">
-    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="273.566391" y="19.804359" transform="rotate(-0 273.566391 19.804359)">NVFP4 · vLLM 0.29 baseline</text>
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="283.584047" y="19.804359" transform="rotate(-0 283.584047 19.804359)">NVFP4 · vLLM 0.29.0 baseline</text>
    </g>
    <g id="line2d_23">
-    <path d="M 434.42475 16.129359
-L 445.97475 16.129359
-L 457.52475 16.129359
+    <path d="M 454.460062 16.129359
+L 466.010063 16.129359
+L 477.560063 16.129359
 " style="fill: none; stroke: #126149; stroke-width: 2; stroke-linecap: square"/>
     <g>
-     <use xlink:href="#mb0ee347284" x="445.97475" y="16.129359" style="fill: #126149; stroke: #126149; stroke-linejoin: miter"/>
+     <use xlink:href="#mb0ee347284" x="466.010063" y="16.129359" style="fill: #126149; stroke: #126149; stroke-linejoin: miter"/>
     </g>
    </g>
    <g id="text_15">
-    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="465.92475" y="19.804359" transform="rotate(-0 465.92475 19.804359)">MXFP6 · Mach default</text>
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="485.960062" y="19.804359" transform="rotate(-0 485.960062 19.804359)">MXFP6 · Mach default</text>
    </g>
    <g id="line2d_24">
-    <path d="M 595.192875 16.129359
-L 606.742875 16.129359
-L 618.292875 16.129359
+    <path d="M 615.228187 16.129359
+L 626.778187 16.129359
+L 638.328188 16.129359
 " style="fill: none; stroke: #8050a0; stroke-width: 2; stroke-linecap: square"/>
     <g>
-     <use xlink:href="#m8c888cec98" x="606.742875" y="16.129359" style="fill: #8050a0; stroke: #8050a0; stroke-linejoin: bevel"/>
+     <use xlink:href="#m8c888cec98" x="626.778187" y="16.129359" style="fill: #8050a0; stroke: #8050a0; stroke-linejoin: bevel"/>
     </g>
    </g>
    <g id="text_16">
-    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="626.692875" y="19.804359" transform="rotate(-0 626.692875 19.804359)">MXFP6 · Mach full</text>
+    <text style="font-size: 10.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #202a35" x="646.728187" y="19.804359" transform="rotate(-0 646.728187 19.804359)">MXFP6 · Mach full</text>
    </g>
   </g>
  </g>

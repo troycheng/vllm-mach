@@ -121,6 +121,37 @@ def head_stats(worker):
     )
 
 
+def profile_flags(arm, model, current_profile=False):
+    """Resolve current model-aware profiles while preserving historical arm names."""
+    from vllm_mach.mxfp6.serve import profile_environment
+
+    full = arm in ("full", "full_ba", "full_gdn")
+    flags = profile_environment(
+        argparse.Namespace(
+            model=model,
+            fp16_ssm=full,
+            gdn_persistent=current_profile or arm in ("persistent", "gdn", "full_gdn"),
+            gdn_ba_overlap=current_profile or arm in ("full_ba", "gdn", "full_gdn"),
+            lossless_prefill=None if current_profile else full,
+            owner_prefill=None if current_profile else full,
+            nvfp4_lm_head=full,
+            verify_prefill=False,
+        )
+    )
+    if arm in ("bf16", "fp8", "nvfp4"):
+        flags.update(VLLM_QWEN3_5_FUSED_AR_NORM="0", VLLM_VOCAB_PARALLEL_GREEDY="0")
+    if arm in ("bf16", "fp8", "nvfp4"):
+        flags["VLLM_PLUGINS"] = ""
+        for key in (
+            "VLLM_SM120_LOSSLESS_PREFILL",
+            "VLLM_SM120_OWNER_PREFILL",
+            "VLLM_MACH_GDN_PERSISTENT",
+            "VLLM_MACH_GDN_BA_OVERLAP",
+        ):
+            flags[key] = "0"
+    return flags
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -146,34 +177,32 @@ def main():
     p.add_argument("--physical-rows", type=int, choices=[4, 32], default=32)
     p.add_argument("--skip-head-probe", action="store_true")
     p.add_argument(
+        "--current-profile",
+        action="store_true",
+        help="Use current model-aware serving defaults for default/full",
+    )
+    p.add_argument("--cpu-offload-gb", type=float, default=4)
+    p.add_argument(
         "--no-stock-compile",
         action="store_true",
         help="Diagnostic ablation only; not the stock serving configuration",
     )
     a = p.parse_args()
     samples = manifest(a.manifest)
-    from vllm_mach.mxfp6.serve import profile_environment
+    from vllm_mach.mxfp6.serve import _is_qwen35_moe
 
     full = a.arm in ("full", "full_ba", "full_gdn")
+    moe = _is_qwen35_moe(a.model)
+    if a.current_profile and a.arm not in ("default", "full", "bf16", "fp8", "nvfp4"):
+        p.error("--current-profile requires default/full or a reference arm")
     if a.head_only and not full:
         p.error("--head-only requires --arm full or full_ba")
     if a.head_only and (a.skip_head_probe or a.physical_rows != 32):
         p.error("--head-only requires M32 and cannot use --skip-head-probe")
-    flags = profile_environment(
-        argparse.Namespace(
-            fp16_ssm=full,
-            gdn_persistent=a.arm in ("persistent", "gdn", "full_gdn"),
-            gdn_ba_overlap=a.arm in ("full_ba", "gdn", "full_gdn"),
-            lossless_prefill=full,
-            owner_prefill=full,
-            nvfp4_lm_head=full,
-            verify_prefill=False,
-        )
-    )
-    if a.arm in ("bf16", "fp8", "nvfp4"):
-        flags.update(VLLM_QWEN3_5_FUSED_AR_NORM="0", VLLM_VOCAB_PARALLEL_GREEDY="0")
-    if a.arm in ("bf16", "fp8", "nvfp4"):
-        flags["VLLM_PLUGINS"] = ""
+    flags = profile_flags(a.arm, a.model, a.current_profile)
+    cache_dir = os.environ.get("VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR")
+    if cache_dir:
+        flags["VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR"] = cache_dir
     os.environ.update(flags)
     os.environ["K4O_QUALITY_ARM"] = "m32"
     os.environ["VLLM_ALLOW_INSECURE_SERIALIZATION"] = "1"
@@ -215,18 +244,19 @@ def main():
     )
     if a.arm in ("default", "gdn", "persistent", "full", "full_ba", "full_gdn"):
         args["quantization"] = "quark"
-    if a.arm in ("fp8", "nvfp4") and not a.no_stock_compile:
+    if (a.arm in ("fp8", "nvfp4") or (moe and not eager)) and not a.no_stock_compile:
         # Keep stock compilation enabled, as in the stock throughput baselines.
         args["compilation_config"] = dict(
             cudagraph_capture_sizes=[1, 2, 4, 8, 16, 24, 32]
         )
     if eager:
-        args["cpu_offload_gb"] = 4
+        args["cpu_offload_gb"] = a.cpu_offload_gb
         os.environ["VLLM_WEIGHT_OFFLOADING_DISABLE_UVA"] = "1"
     write(
         a.output / "contract.json",
         dict(
             arm=a.arm,
+            profile_version="current" if a.current_profile else "historical",
             manifest=str(a.manifest),
             physical_rows=a.physical_rows,
             llm_args=args,
