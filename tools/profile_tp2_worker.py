@@ -96,6 +96,10 @@ class TP2Probe:
             PROFILER = None
         from vllm_mach.mxfp6.gdn_decode import stats
         return dict(rank=self.rank, samples=SAMPLES, batches=BATCHES, inventory=INVENTORY, gdn=stats(),
+                    hybrid_head_modules=sum(hasattr(m, '_hybrid_nvfp4_lm_head_state')
+                                            for m in self.model_runner.model.modules()),
+                    gdn_state_dtypes=sorted({str(m.get_state_dtype()[1])
+                        for m in self.model_runner.model.modules() if hasattr(m, '_mach_gdn_prepared')}),
                     empty_output_layers=sum(bool(getattr(m, "_mach_gdn_empty_output", False))
                                             for m in self.model_runner.model.modules()),
                     recurrent_tile8_layers=sum(getattr(m, "_mach_gdn_recurrent_tile", 32) == 8

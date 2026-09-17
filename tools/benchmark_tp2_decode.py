@@ -17,6 +17,8 @@ def main():
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--rows', type=int, nargs='+', default=[1, 4, 16, 32])
     p.add_argument('--repeats', type=int, default=5)
+    p.add_argument('--precision-profile', choices=('default', 'full'), default='default',
+                   help='Full enables FP16 SSM, lossless/owner prefill and NVFP4 head')
     p.add_argument('--profile', action='store_true')
     p.add_argument('--gemm-overrides', type=Path, help='Diagnostic full-model dispatch candidates; JSON list')
     a = p.parse_args()
@@ -25,8 +27,10 @@ def main():
     if any(m not in (1, 2, 4, 8, 16, 24, 32) for m in a.rows):
         p.error('Unsupported physical graph size')
     from vllm_mach.mxfp6.serve import profile_environment
-    os.environ.update(profile_environment(argparse.Namespace(fp16_ssm=False, lossless_prefill=False,
-        owner_prefill=False, nvfp4_lm_head=False, verify_prefill=False)))
+    full = a.precision_profile == 'full'
+    environment = profile_environment(argparse.Namespace(fp16_ssm=full, lossless_prefill=full,
+        owner_prefill=full, nvfp4_lm_head=full, verify_prefill=False))
+    os.environ.update(environment)
     overrides=json.loads(a.gemm_overrides.read_text()) if a.gemm_overrides else []
     os.environ['MACH_TP2_GEMM_OVERRIDES']=json.dumps(overrides)
     os.environ['MACH_TP2_PROFILE'] = str(int(a.profile))
@@ -39,11 +43,12 @@ def main():
     config = dict(model=a.model, quantization='quark', dtype='bfloat16', tensor_parallel_size=2,
         max_model_len=4096, max_num_seqs=32, max_num_batched_tokens=512,
         kv_cache_memory_bytes=8218214400, enable_prefix_caching=False,
-        attention_backend='TRITON_ATTN', language_model_only=True, mamba_ssm_cache_dtype='float32',
+        attention_backend='TRITON_ATTN', language_model_only=True, mamba_ssm_cache_dtype='float16' if full else 'float32',
         seed=20260916, disable_log_stats=False, worker_extension_cls='profile_tp2_worker.TP2Probe',
         compilation_config=dict(mode='NONE', cudagraph_mode='FULL_DECODE_ONLY',
                                 cudagraph_capture_sizes=[1, 2, 4, 8, 16, 24, 32]))
     (a.output/'contract.json').write_text(json.dumps(dict(config=config, profile=a.profile,
+        precision_profile=a.precision_profile, environment=environment,
         repeats=a.repeats, gemm_overrides=overrides, input_tokens=2048, output_tokens={'1':129, 'other':1025},
         extension_library_sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
         fused_attention_quant=os.environ.get('VLLM_MACH_FUSED_ATTN_QUANT','0'),
@@ -71,7 +76,8 @@ def main():
             ranks = llm.collective_rpc('tp2_end')
             assert len(outputs) == m and all(len(o.outputs[0].token_ids) == output_tokens for o in outputs)
             metrics = [dataclasses.asdict(o.metrics) if o.metrics is not None else None for o in outputs]
-            entry = dict(duration_s=duration, output_tokens_per_s=m*output_tokens/duration, metrics=metrics, ranks=ranks)
+            entry = dict(duration_s=duration, output_tokens_per_s=m*output_tokens/duration, metrics=metrics, ranks=ranks,
+                         token_ids_sha256=hashlib.sha256(json.dumps([o.outputs[0].token_ids for o in outputs]).encode()).hexdigest())
             (trace/'result.json').write_text(json.dumps(entry))
             trials.append({k:v for k,v in entry.items() if k != 'ranks'})
             print('TRIAL', m, trial, duration, flush=True)

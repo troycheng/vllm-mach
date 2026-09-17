@@ -1,4 +1,9 @@
-# TP2 optimization measurements — September 16, 2026
+# TP2 optimization measurements — September 16–17, 2026
+
+Deployment follow-up: [full-profile cumulative comparison](tp2-full-results.md)
+tests the accepted plan against the original main configuration under the
+same full options. The [combination follow-up](tp2-combination-results.md)
+separately evaluates empty-output and attention-gate switches at M4/16/24/32.
 
 Accepted: scale initialization inside quantization (P1-C) and the exact
 rounded SwiGLU/MXFP8 producer (P1-B). Direct FlashInfer AR/quant reuse and
@@ -6,7 +11,9 @@ two M32 GEMM schedule candidates were rejected. P2-A now repairs and validates
 the exact fused GDN output producer. A subsequent strided BA consumer is
 numerically exact but remains disabled after failing performance acceptance;
 a subsequent BV8 recurrence schedule also fails default acceptance.
-Attention and head rewrites remain deferred. Detailed stage evidence follows.
+The exact attention-gate producer and empty-output experiment also remain
+opt-in after matched validation. Head rewrites remain deferred. Detailed
+stage evidence follows.
 
 ## P0: real-checkpoint baseline
 

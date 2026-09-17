@@ -37,40 +37,42 @@ See the [current source installation](docs/installation.md) for native dependenc
 
 ### 3k/1k reference comparison
 
-Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, GDN measured September 16, 2026; stock FP8/NVFP4 reuse September 15 data. Frozen prompts, 20/80/120/160 requests at c4/c16/c24/c32, per-point warmups. These are short, single-run output-throughput measurements.
+Qwen3.8-27B, two RTX 5090 GPUs, TP2, 3000 input / 1000 output tokens, Mach measured September 17, 2026; stock FP8/NVFP4 reuse September 15 reference data. Frozen prompts, 20/80/120/160 requests at c4/c16/c24/c32, per-point warmups. Mach default uses one serving run; full shows the mean of two runs. Full whiskers span the two observed rates, not a confidence interval. Stock references are single runs.
 
 ![Serving throughput](docs/images/throughput-comparison.png)
 
 | Configuration | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
 | FP8 · stock vLLM 0.29 | 267.0 | 806.1 | 1018.5 | 1160.4 |
-| MXFP6 · Mach default | 371.2 | 999.9 | 1278.4 | 1445.0 |
-| MXFP6 · Mach full | 384.9 | 1124.3 | 1453.6 | 1674.8 |
+| MXFP6 · Mach default | 370.9 | 999.2 | 1299.2 | 1461.0 |
+| MXFP6 · Mach full | 410.7 | 1130.6 | 1466.1 | 1685.0 |
 | NVFP4 · stock vLLM 0.29 | 379.0 | 1142.9 | 1424.6 | 1607.6 |
 
-The new default improves throughput over stock FP8 by **28.3%**, and the new full profile by **42.7%**, weighting the four concurrency levels equally.
+The current default is **29.1%** faster than the archived stock FP8 reference, and full is **45.8%** faster, weighting the four concurrency levels equally.
 
-Default now enables both GDN routes. Full options additionally enable FP16 SSM, lossless/owner prefill and NVFP4 head search; both state dtypes use persistent at small batches. Stock FP8/NVFP4 retain default compilation and disable FlashInfer AllReduce. Mach retains its decode graphs and fixed KV allocation. This compares deployable profiles; [exact settings, isolated comparisons and raw results](docs/native-fidelity.md) are retained.
+Default enables both GDN routes and the accepted TP2 producer optimizations. Full options additionally enable FP16 SSM, lossless/owner prefill and NVFP4 head search; both state dtypes use persistent at small batches. Stock FP8/NVFP4 retain default compilation and disable FlashInfer AllReduce. Mach retains its decode graphs and fixed KV allocation. This compares deployable profiles against archived stock references, not the isolated gain of the optimization plan. The measured Mach configuration requires the TP2 extension revision recorded by hash in the [validated comparison data](docs/data/readme-tp2-20260917.json).
+
+The separate [full P0/main-to-accepted comparison](docs/tp2-full-results.md) measures **2.53%–3.02%** mean serving improvement across two order blocks: c4 **3.74%–4.94%**, c16 **2.39%–3.27%**, c24 **1.89%–2.30%**, c32 **1.68%–1.99%**. These are small cumulative gains. [Empty-output and attention-gate combinations](docs/tp2-combination-results.md) remain opt-in.
 
 ### Numerical fidelity
 
-Gold-token logprob MAE against BF16 (the new and archived references match exactly) over 256 queries and 10,479 target tokens. Lower is better; whiskers are 95% query-bootstrap intervals.
+Gold-token logprob MAE against BF16 (the current and archived references match exactly) over 256 queries and 10,479 target tokens. Lower is better; whiskers are 95% query-bootstrap intervals.
 
 ![Physical-M32 fidelity](docs/images/accuracy-comparison.png)
 
-At physical M32, new default MAE is **0.0906** and new full is **0.0896**, versus **0.0614** for stock FP8 and **0.1709** for stock NVFP4. BA overlap preserves every scored gold-token logprob in both state dtypes. Persistent is inactive at M32.
+At physical M32, current default MAE is **0.0906** and current full is **0.0896**, versus **0.0614** for stock FP8 and **0.1709** for stock NVFP4. The accepted full configuration matches P0 on every scored target token at M4 and M32. Persistent is inactive at M32. Teacher-forced logprob requests use BF16 logits, including in full; the approximate greedy head is checked separately.
 
-At physical M4, the default profile records **0.08540 MAE** and full records **0.08620 MAE** against the matched BF16 reference. [Independent GDN ablations and M4 fidelity](docs/gdn-decode.md) cover the active persistent route. MAE measures numerical deviation, not task accuracy.
+At physical M4, the default profile records **0.08540 MAE** and full records **0.08620 MAE** against the matched BF16 reference. [Fresh default/full combination checks](docs/tp2-combination-results.md) and the [paired full comparison](docs/tp2-full-results.md) include the active M4 persistent route. MAE measures numerical deviation, not task accuracy.
 
-The independent NVFP4 head probe retains **100% global BF16 top-20 recall** and **100% final top-1 agreement** across 11,996 eligible rows. [Protocol and limitations](docs/native-fidelity.md).
+The independent NVFP4 head probe retains **100% global BF16 top-20 recall** and **100% final top-1 agreement** across 12,005 eligible rows in the current full M32 job. Maximum selected-logit error is 0.125; top-1 agreement does not imply identical logits. [Protocol and limitations](docs/tp2-full-results.md).
 
 ### Fidelity and throughput
 
-Each point combines M32 MAE with the equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. The linked GDN validation covers active persistent arithmetic at M4.
+Each point combines M32 MAE with the equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32, using the two-run mean for full. They are not throughput confidence intervals. Teacher-forced MAE uses BF16 logits; the full greedy head is validated separately.
 
 ![Fidelity and throughput](docs/images/quality-throughput-tradeoff.png)
 
-[September 15 native results](docs/native-fidelity-20260915.md) and [earlier EXL3 results](docs/benchmarks.md) remain archived.
+[September 16 GDN results](docs/native-fidelity.md), [September 15 native results](docs/native-fidelity-20260915.md) and [earlier EXL3 results](docs/benchmarks.md) remain archived.
 
 ### Deployment tradeoffs
 

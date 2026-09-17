@@ -98,10 +98,10 @@ def plot_tradeoff(accuracy, performance):
     save(fig,'quality-throughput-tradeoff')
 
 
-def plot_native_tradeoff(accuracy, performance):
+def plot_native_tradeoff(accuracy, performance, head_note=False):
     baseline = performance['runs']['fp8']['points']
     fig, ax = plt.subplots(figsize=(12.8, 6.6))
-    fig.subplots_adjust(left=.09, right=.97, top=.82, bottom=.16)
+    fig.subplots_adjust(left=.09, right=.97, top=.82, bottom=.20 if head_note else .16)
     for name in ORDER:
         run = accuracy['runs'][name]
         gains = [100*(p['output_throughput_tokens_per_s']/b['output_throughput_tokens_per_s']-1)
@@ -118,6 +118,9 @@ def plot_native_tradeoff(accuracy, performance):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
     fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.06,.995),
                ncol=2, frameon=False, fontsize=11.5)
+    if head_note:
+        fig.text(.09, .025, 'Teacher-forced BF16 logits; full NVFP4 greedy head checked separately.\n'
+                 'Vertical bars span concurrency gains; full throughput averages two runs.', fontsize=9)
     frame(ax)
     save(fig, 'quality-throughput-tradeoff')
 
@@ -173,7 +176,10 @@ def main():
     parser.add_argument('--accuracy-only', action='store_true')
     parser.add_argument('--gdn-m4-only', action='store_true')
     parser.add_argument('--legacy', action='store_true', help='Render archived EXL3 measurements to an archive directory')
+    parser.add_argument('--tp2', action='store_true', help='Render all README figures from validated September 17 TP2 data')
     args = parser.parse_args()
+    if args.tp2 and (args.legacy or args.gdn_m4_only):
+        parser.error('--tp2 cannot be combined with an archived comparison mode')
     if not args.legacy:
         ORDER = ['fp8', 'default', 'persistent', 'gdn', 'full', 'full_ba', 'full_gdn', 'nvfp4']
         LABELS = {'fp8':'FP8 · stock vLLM 0.29 (Sep 15)',
@@ -186,6 +192,9 @@ def main():
         MARKERS = dict(zip(ORDER, ['o','s','D','X','^','v','*','P']))
         STYLES = dict(zip(ORDER, ['--','--',':','-','--','--','-',':']))
         ORDER = ['fp8', 'gdn', 'full_gdn', 'nvfp4']
+        if args.tp2:
+            LABELS['gdn'] = 'MXFP6 · Mach default (Sep 17)'
+            LABELS['full_gdn'] = 'MXFP6 · Mach full (Sep 17)'
     else:
         global OUT
         OUT = OUT/'historical'
@@ -195,10 +204,11 @@ def main():
             parser.error('--gdn-m4-only cannot use --legacy')
         plot_gdn_m4(json.loads((HERE/'gdn-m4-fidelity.json').read_text()))
         return
-    accuracy = json.loads((HERE/('accuracy-comparison-m32-20260910.json' if args.legacy else 'native-fidelity.json')).read_text())
+    tp2 = json.loads((HERE/'readme-tp2-20260917.json').read_text()) if args.tp2 else None
+    accuracy = tp2['accuracy'] if tp2 else json.loads((HERE/('accuracy-comparison-m32-20260910.json' if args.legacy else 'native-fidelity.json')).read_text())
     assert set(ORDER).issubset(accuracy['runs'])
     fig, ax = plt.subplots(figsize=(13.6,5.6))
-    fig.subplots_adjust(left=.35,right=.96,top=.96,bottom=.17)
+    fig.subplots_adjust(left=.35,right=.96,top=.96,bottom=.24 if args.tp2 else .17)
     for y, name in enumerate(ORDER):
         run = accuracy['runs'][name]
         v = run['mae']; lo,hi = run['ci95']
@@ -211,17 +221,18 @@ def main():
     ax.xaxis.set_major_locator(MultipleLocator(.05))
     ax.xaxis.set_major_formatter(StrMethodFormatter('{x:.2f}'))
     ax.grid(axis='x',color='#E8EBEE',lw=.8)
-    ax.set_xlabel('Physical M32: gold-token logprob MAE vs BF16 (lower is better)',labelpad=13)
+    ax.set_xlabel('Physical M32: gold-token logprob MAE vs BF16 (lower is better)'
+                  + ('\nTeacher-forced BF16 logits; full greedy head checked separately' if args.tp2 else ''),labelpad=13)
     frame(ax)
     save(fig,'accuracy-comparison')
 
-    if not args.legacy and (HERE/'gdn-m4-fidelity.json').exists():
+    if not args.legacy and not args.tp2 and (HERE/'gdn-m4-fidelity.json').exists():
         plot_gdn_m4(json.loads((HERE/'gdn-m4-fidelity.json').read_text()))
 
     if args.accuracy_only:
         print('Rendered accuracy comparison (PNG + SVG)')
         return
-    performance = json.loads((HERE/('quantization-comparison-3k1k-20260910.json' if args.legacy else 'native-serving.json')).read_text())
+    performance = tp2['performance'] if tp2 else json.loads((HERE/('quantization-comparison-3k1k-20260910.json' if args.legacy else 'native-serving.json')).read_text())
     assert set(ORDER).issubset(performance['runs'])
 
     fig, ax = plt.subplots(figsize=(12.8,6.6))
@@ -229,9 +240,13 @@ def main():
     for name in ORDER:
         points = performance['runs'][name]['points']
         assert [p['concurrency'] for p in points] == [4,16,24,32]
-        ax.plot([p['concurrency'] for p in points],
-                [p['output_throughput_tokens_per_s'] for p in points],
-                label=LABELS[name],color=COLORS[name],marker=MARKERS[name],
+        rates = [p['output_throughput_tokens_per_s'] for p in points]
+        spread = None
+        if args.tp2:
+            spread = [[v-min(p['replicate_rates']) for v,p in zip(rates,points)],
+                      [max(p['replicate_rates'])-v for v,p in zip(rates,points)]]
+        ax.errorbar([p['concurrency'] for p in points], rates, yerr=spread, capsize=3,
+                label=LABELS[name]+(' · 2-run mean' if args.tp2 and name == 'full_gdn' else ''),color=COLORS[name],marker=MARKERS[name],
                 linestyle=STYLES[name],lw=2.0,ms=7,
                 markerfacecolor='white' if name in ('fp8_stock029','k4k5_derived_w6_fp16') else COLORS[name])
     fig.legend(*ax.get_legend_handles_labels(),loc='upper left',bbox_to_anchor=(.06,.995),
@@ -246,8 +261,11 @@ def main():
     ax.set_xlabel('Concurrent requests',labelpad=12)
     frame(ax)
     save(fig,'throughput-comparison')
-    (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
-    if not args.legacy:
+    if args.tp2:
+        plot_native_tradeoff(accuracy, performance, head_note=True)
+    else:
+        (plot_tradeoff if args.legacy else plot_native_tradeoff)(accuracy,performance)
+    if not args.legacy and not args.tp2:
         plot_gdn_ablation(performance)
     print('Rendered three title-free comparison figures (PNG + SVG)')
 

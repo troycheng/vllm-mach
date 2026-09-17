@@ -1,5 +1,8 @@
 # Native MXFP6 fidelity and serving comparison
 
+This September 16 comparison is archived. See the [current README](../README.md#performance)
+and [full-profile TP2 follow-up](tp2-full-results.md) for September 17 measurements.
+
 GDN measurements: September 16, 2026; stock FP8/NVFP4 baselines reused
 from September 15 at the user’s request. Native vLLM 0.29.0, FlashInfer 0.6.18, mxfp6-sm120 0.2.1,
 Qwen3.8-27B on two RTX 5090 GPUs per run, TP2. Model checkpoint:
@@ -70,7 +73,7 @@ The combined new default improves c4/c16/c24/c32 over the previous default by
 Equal-weight mean gains over stock FP8 are **28.28%** for the new
 default and **42.67%** for the new full profile.
 
-![Serving throughput](images/throughput-comparison.png)
+![Serving throughput](images/historical/throughput-comparison-native-20260916.png)
 
 All 3,040 measured requests completed with exactly 3000 input and 1000 output tokens.
 The frozen [ShareGPT-prefix manifest](data/serving-prompts.json) supplies identical
@@ -111,7 +114,7 @@ The corrected full_gdn arm also exactly matches full_ba at M32, where
 persistent is inactive. This establishes measured equivalence for BA scheduling
 on this corpus.
 
-![Physical-M32 fidelity](images/accuracy-comparison.png)
+![Physical-M32 fidelity](images/historical/accuracy-comparison-native-20260916.png)
 
 The separate physical-M4 diagnostic activates persistent: previous default
 MAE **0.089853**, persistent-only and combined new default
@@ -164,7 +167,7 @@ are retained. Dispatch counts describe host calls/captures, not graph replays.
 
 ## Fidelity and throughput
 
-![Numerical fidelity and throughput](images/quality-throughput-tradeoff.png)
+![Numerical fidelity and throughput](images/historical/quality-throughput-tradeoff-native-20260916.png)
 
 Horizontal bars are M32 MAE 95% intervals. Vertical bars span the four
 throughput gains over stock FP8; they are not confidence intervals. M32
