@@ -1,0 +1,2649 @@
+{
+  "schema": "mach-tp2-attention-validation/v1",
+  "contracts": {
+    "off": {
+      "config": {
+        "model": "/data1/models/Qwen3.8-27B-MXFP6",
+        "quantization": "quark",
+        "dtype": "bfloat16",
+        "tensor_parallel_size": 2,
+        "max_model_len": 4096,
+        "max_num_seqs": 32,
+        "max_num_batched_tokens": 512,
+        "kv_cache_memory_bytes": 8218214400,
+        "enable_prefix_caching": false,
+        "attention_backend": "TRITON_ATTN",
+        "language_model_only": true,
+        "mamba_ssm_cache_dtype": "float32",
+        "seed": 20260916,
+        "disable_log_stats": false,
+        "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+        "compilation_config": {
+          "mode": "NONE",
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "cudagraph_capture_sizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      },
+      "profile": false,
+      "repeats": 5,
+      "gemm_overrides": [],
+      "input_tokens": 2048,
+      "output_tokens": {
+        "1": 129,
+        "other": 1025
+      },
+      "extension_library_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d",
+      "fused_attention_quant": "0",
+      "fused_gdn_quant": "auto",
+      "strided_gdn_ba": "0",
+      "gdn_empty_output": "0",
+      "gdn_recurrent_tile": "32",
+      "fused_swiglu_quant": "auto",
+      "packages": {
+        "torch": "2.13.0+cu130",
+        "vllm": "0.29.0",
+        "mxfp6-sm120": "0.2.1"
+      },
+      "devices": "4,5"
+    },
+    "on": {
+      "config": {
+        "model": "/data1/models/Qwen3.8-27B-MXFP6",
+        "quantization": "quark",
+        "dtype": "bfloat16",
+        "tensor_parallel_size": 2,
+        "max_model_len": 4096,
+        "max_num_seqs": 32,
+        "max_num_batched_tokens": 512,
+        "kv_cache_memory_bytes": 8218214400,
+        "enable_prefix_caching": false,
+        "attention_backend": "TRITON_ATTN",
+        "language_model_only": true,
+        "mamba_ssm_cache_dtype": "float32",
+        "seed": 20260916,
+        "disable_log_stats": false,
+        "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+        "compilation_config": {
+          "mode": "NONE",
+          "cudagraph_mode": "FULL_DECODE_ONLY",
+          "cudagraph_capture_sizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      },
+      "profile": false,
+      "repeats": 5,
+      "gemm_overrides": [],
+      "input_tokens": 2048,
+      "output_tokens": {
+        "1": 129,
+        "other": 1025
+      },
+      "extension_library_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d",
+      "fused_attention_quant": "1",
+      "fused_gdn_quant": "auto",
+      "strided_gdn_ba": "0",
+      "gdn_empty_output": "0",
+      "gdn_recurrent_tile": "32",
+      "fused_swiglu_quant": "auto",
+      "packages": {
+        "torch": "2.13.0+cu130",
+        "vllm": "0.29.0",
+        "mxfp6-sm120": "0.2.1"
+      },
+      "devices": "4,5"
+    }
+  },
+  "trials": [
+    {
+      "mode": "off",
+      "rows": 1,
+      "trial": 0,
+      "sha256": "bf92caaba9a897c3c47cc1a690244f08c2a436544231131285b4ac4c69717a25",
+      "output_tokens_per_s": 80.4683878002362
+    },
+    {
+      "mode": "off",
+      "rows": 1,
+      "trial": 1,
+      "sha256": "6502410f6cf5a7ad8ee6e4117adf9196a9cf4ff3b9a8b976fd806ddcf80d1c44",
+      "output_tokens_per_s": 80.4788436809536
+    },
+    {
+      "mode": "off",
+      "rows": 1,
+      "trial": 2,
+      "sha256": "5725ac189489ffb3b711b0f5d961855ce5149ee98e103d3a32d751ea36628d77",
+      "output_tokens_per_s": 80.47109555800658
+    },
+    {
+      "mode": "off",
+      "rows": 1,
+      "trial": 3,
+      "sha256": "209e8dddca1f0c765af5f43d66cf1beb2bfe56a2ea9cfada9bf83a99d04fd76b",
+      "output_tokens_per_s": 80.39605504835194
+    },
+    {
+      "mode": "off",
+      "rows": 1,
+      "trial": 4,
+      "sha256": "fcb74212b0c6d8f17746d446ca356831ac02cfe4538e379d58a2ae1d53057b7e",
+      "output_tokens_per_s": 80.28358212813751
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "trial": 0,
+      "sha256": "32f1baa0262d710b3535ab252296097818465da22672064f13ff5b38a4e3ca8b",
+      "output_tokens_per_s": 194.15710879975808
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "trial": 1,
+      "sha256": "205705e92ffca9c7ae62747047c4710ee773d1dc65bd4911649dc3b59491d768",
+      "output_tokens_per_s": 194.21064807171635
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "trial": 2,
+      "sha256": "709e2a1271d169fcefdde9c172e6f2474aca419efebbcabe60f9df35fef7c629",
+      "output_tokens_per_s": 193.97847074610766
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "trial": 3,
+      "sha256": "5fef0b89ef657d007cbc0fb2f0c15a337c605f51dad15f8f1bf8ee45de85db02",
+      "output_tokens_per_s": 193.9956824624284
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "trial": 4,
+      "sha256": "55ee6c857eba7dc52a54dbe9e800700e09b711fce9b887f9a9d48743580785cf",
+      "output_tokens_per_s": 193.9467701215047
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "trial": 0,
+      "sha256": "73a898f0e85a75af1d11b85d287bde2909a7c45526dc43249b9fab638173ca07",
+      "output_tokens_per_s": 346.4289129202691
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "trial": 1,
+      "sha256": "a58df3bf4e9d2113e0c0cee709d95e3e79e75fdd3c81f660dd98a82ad8cf90d6",
+      "output_tokens_per_s": 346.55307202915805
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "trial": 2,
+      "sha256": "007d1719e72b0886d0958dc64dc79b02d3f70c442b3acd77d4ad0fabbd6a99ef",
+      "output_tokens_per_s": 346.4992708328745
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "trial": 3,
+      "sha256": "4810827a2c51a38fdf71c5059ed440bebc7c85b91d302dfd636400c7dd9b9157",
+      "output_tokens_per_s": 346.55621841783045
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "trial": 4,
+      "sha256": "8fcb6a441757a31df8fa35f2929bb269838b216e6eb350e4ce515ebfd2b773e0",
+      "output_tokens_per_s": 346.54094968351336
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "trial": 0,
+      "sha256": "dcd3a51ab9faf0b4499e9685a4234fcc7e8f725c74704e6018a46d1c50106ca8",
+      "output_tokens_per_s": 570.3517801385228
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "trial": 1,
+      "sha256": "1f7d58f9ca4cf4b8a3ca69ec41bae35f31df2cf88e36a7d164e736b446d38093",
+      "output_tokens_per_s": 570.2583674784115
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "trial": 2,
+      "sha256": "43a1cf22b3a841b753b6b0a8ea14997cea61ec9abb8b89e7adece2e968d31965",
+      "output_tokens_per_s": 570.6970853864224
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "trial": 3,
+      "sha256": "15f265ee44ba994c4242e890485a32023ef083f85a9c34ac7973605ea616c959",
+      "output_tokens_per_s": 570.7738224580102
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "trial": 4,
+      "sha256": "dbe6974204efe237c01ff9ddefb821f20d49267104614d19babd512e6b2216c7",
+      "output_tokens_per_s": 570.5820799485027
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "trial": 0,
+      "sha256": "2d6cf99162ec84c400a56acf5796217bdc69d54f5e4c4059043b130f01304cb9",
+      "output_tokens_per_s": 853.7390477160709
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "trial": 1,
+      "sha256": "b838ec85c6a60b8486af05169c1c09217c80ad4ba2537bf8c9cf05c701cab4ac",
+      "output_tokens_per_s": 853.1579881526133
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "trial": 2,
+      "sha256": "a40f074471b6f0a4d16e0dfb159516603b42fc8a89e213464d1e208cfc618378",
+      "output_tokens_per_s": 854.2003398248918
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "trial": 3,
+      "sha256": "fe7b24a403f7bc09ee4f9bb28e4a52608fc6a048e839efcb2a848d31154c4117",
+      "output_tokens_per_s": 852.037560554337
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "trial": 4,
+      "sha256": "cbae508ce245d7364b9ec0b276471183ba84ec12f3368dbe2843770f4edb51a4",
+      "output_tokens_per_s": 843.1754661847586
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "trial": 0,
+      "sha256": "f891440dc8e40a57e9343bfc2c711283c7c6c41c370466c9502f5a83e4d3e501",
+      "output_tokens_per_s": 1059.4400396234578
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "trial": 1,
+      "sha256": "ac9ce90deacd3b3796235589b570101617ea3d3b811cb2911ae78fa669168931",
+      "output_tokens_per_s": 1060.38798021337
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "trial": 2,
+      "sha256": "f08359425c7d416fd61cddd6ef602d4ca0f9b99c403832356012d9ac5348d8ad",
+      "output_tokens_per_s": 1059.279585897789
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "trial": 3,
+      "sha256": "7da12721e825afb641aa53386fe2e20138b8d6e5ad881ce54d2c51f59b29c328",
+      "output_tokens_per_s": 1060.714847949002
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "trial": 4,
+      "sha256": "3e8a5bb45c607d82332c7daf9aaa68fef8e1dc7e7cb0b41672d14e8dea6cc33d",
+      "output_tokens_per_s": 1059.9926976444997
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "trial": 0,
+      "sha256": "8816e1707252cf46baf2c111ca35cc01515082ad3580c9df71fd2e23e5adddae",
+      "output_tokens_per_s": 1161.460106815775
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "trial": 1,
+      "sha256": "9838a5d40c202d594528e2cc56488d58fc98fc6f2b1877bab4f470b919a03873",
+      "output_tokens_per_s": 1161.5584567688459
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "trial": 2,
+      "sha256": "67da123386c207c2cd9f2b90b6cef65535cfec9bcbd741e7cd13cdf8677cc448",
+      "output_tokens_per_s": 1151.8092064411376
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "trial": 3,
+      "sha256": "4e25e05e7533605bb0de1f5648c8bd574ca3ed091c280a8c77567b6630b50197",
+      "output_tokens_per_s": 1162.3670960883424
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "trial": 4,
+      "sha256": "e6ab5ff36c53b268dcf3cc76dba739d9d32ab959ec94168c770edb81ce83c4d9",
+      "output_tokens_per_s": 1163.2820652916364
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "trial": 0,
+      "sha256": "3ba758aa819c234e011f61b5c83ee5c0327fd65d3d848b0d4361c15ea6c79bbf",
+      "output_tokens_per_s": 82.31441225347761
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "trial": 1,
+      "sha256": "4e389a24c76156499b3adae445d34f9d3f1e95d7cc67ec3aa8692f2b5f16f7e8",
+      "output_tokens_per_s": 81.68120728499598
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "trial": 2,
+      "sha256": "1a6bb2fadb337fc407fa6e19ee43a8b2c89fa1670a440f31dd39f323d0098aa2",
+      "output_tokens_per_s": 82.87086141436576
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "trial": 3,
+      "sha256": "0186efae734f04799c314afc7e39ba5e2968c47dcc7f89ee9a8f5947ab6df908",
+      "output_tokens_per_s": 82.92345688373481
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "trial": 4,
+      "sha256": "47c5109ff9e82a00f97d1ea16f426fd265e14d0799e2bf6336dfa7d031da80c8",
+      "output_tokens_per_s": 82.88373996353103
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "trial": 0,
+      "sha256": "ab36ce3d75809c78edf7d511e231931f58723ed9bff563502f629ae336838a34",
+      "output_tokens_per_s": 202.00903776425284
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "trial": 1,
+      "sha256": "5b6694f3756865b9fdc3b02ea045a627a8c4c87492b7553bd03e148d7bfd817d",
+      "output_tokens_per_s": 202.14263541593638
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "trial": 2,
+      "sha256": "d70231678c4ac5568b63c7a26ad65bf5225b5cc20374351e3ef4bb10ed56f146",
+      "output_tokens_per_s": 201.94613166271355
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "trial": 3,
+      "sha256": "dd08df4e89d2cfa6f906eeff9cf66994c5567141035ca8b3b2e0616cbc2d92f9",
+      "output_tokens_per_s": 202.02952261338862
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "trial": 4,
+      "sha256": "0cda3b01b493b50f9977944b9c0b865883446f5e2f3fad9c87695da693cb91c5",
+      "output_tokens_per_s": 201.9587477111022
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "trial": 0,
+      "sha256": "e3ea7a912629e8f6b7ff3a645ea69e7dad07e5c5aeef75961dc0a8cf208736dc",
+      "output_tokens_per_s": 353.6814093847151
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "trial": 1,
+      "sha256": "abc79123a1391c37489749d9e24181b7529381c63ebac4eebc5978075b05ea63",
+      "output_tokens_per_s": 356.34560366593337
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "trial": 2,
+      "sha256": "941789c8d188f15f2ad7f25dc993c9768455bdb8780a478e713b04c929b51ccb",
+      "output_tokens_per_s": 359.2006504613156
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "trial": 3,
+      "sha256": "c58e051e4e7cf3aa3ca76ec9b6a3eb0a9731ccab069e717bb39c4e90d7d27b04",
+      "output_tokens_per_s": 358.27341994282534
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "trial": 4,
+      "sha256": "1a65690423ecdd5764619df13d0dca450591263dec8291c4857b1701d8139afc",
+      "output_tokens_per_s": 358.8935456100008
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "trial": 0,
+      "sha256": "b4e06c2538e8939a6be91c5acffac5dbf35f176c2e288c778a935ead42616d92",
+      "output_tokens_per_s": 587.305325037616
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "trial": 1,
+      "sha256": "d102a7a4180a848eaf14a5a3f26ec403101539165882db65630ba708757a3adc",
+      "output_tokens_per_s": 586.6514660013922
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "trial": 2,
+      "sha256": "c9833c7da34f95bfb96b4540385021821c126fecc4fa75c9e8f13ffd2b14a326",
+      "output_tokens_per_s": 587.3556324841816
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "trial": 3,
+      "sha256": "059bed4822bbde8e0854fb786e1f8f65c7c91098559173ac85476c3ba7fbf094",
+      "output_tokens_per_s": 586.9867408552356
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "trial": 4,
+      "sha256": "4de95021bd82f44a3d15435f2b07b83a7aa91c7a5b4c57be48c62d37e3cfcad7",
+      "output_tokens_per_s": 587.5775361773271
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "trial": 0,
+      "sha256": "e9d38de6a6b4850abec8816503a50500b8d5c9d8bf6ef865c0b0330917128620",
+      "output_tokens_per_s": 869.2941101823385
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "trial": 1,
+      "sha256": "78139122f6b5f17336ddcccd6eca4c350f46560f123a2cb1b7f152e1f0976298",
+      "output_tokens_per_s": 869.7743867393127
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "trial": 2,
+      "sha256": "705e1bbef6b740d346db701d8358239e76a80af2381ee8ed640d492c1d2e5efe",
+      "output_tokens_per_s": 869.3663399761693
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "trial": 3,
+      "sha256": "124912619bf4b3a7e726059dc9af8dd77b31cb303cdac5b4a775cb2fe89a0ed5",
+      "output_tokens_per_s": 869.5145912200402
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "trial": 4,
+      "sha256": "b281ad3c0224773e5798a706cf9e4f8d743551c85a9a362f99521cde055114e6",
+      "output_tokens_per_s": 869.6382797778808
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "trial": 0,
+      "sha256": "5d4b460372f5335136f5c78b2eae79608f5ecd15ad2bfb850a4b77d81118d574",
+      "output_tokens_per_s": 1054.239221806692
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "trial": 1,
+      "sha256": "c97ed5ca7eb21ac8421fe49aab6237fc2ee96c824a0f9dc0622735050db0b04e",
+      "output_tokens_per_s": 1053.7540160836465
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "trial": 2,
+      "sha256": "dfb84f6ad5444c6612827fe337e2e7e9b536d0799d5890009d38b6dfae9a7bf6",
+      "output_tokens_per_s": 1055.3954554324566
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "trial": 3,
+      "sha256": "09317570a2f209a2e80b124d7672e724567f40b7aa8949f9d8bbdf1287c44a59",
+      "output_tokens_per_s": 1052.0367097628455
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "trial": 4,
+      "sha256": "0d5be64c7a8671c4ba6366fc09553c9051ca28734a5be6667f68b3c80622edcb",
+      "output_tokens_per_s": 1052.335084868104
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "trial": 0,
+      "sha256": "ba6997314a192d7d69e90b43cf9a65aa93b20177b19a9a76b8ff6809fd9175bc",
+      "output_tokens_per_s": 1155.05549038924
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "trial": 1,
+      "sha256": "8ed7551b0b3d4634c05dd289594937ff736b02a2a8e6efc558b13e45d86c2610",
+      "output_tokens_per_s": 1154.7305888823828
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "trial": 2,
+      "sha256": "42c91725a813c94935abdce395b2f97d2f87bc146d057a0ec92906fbd6ff9779",
+      "output_tokens_per_s": 1158.2908240948527
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "trial": 3,
+      "sha256": "e8b84f7f6415ab676ee9a6a1459efab0a6cb87ef337f216cd2701c2c9afbb467",
+      "output_tokens_per_s": 1157.4442687190528
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "trial": 4,
+      "sha256": "ff6fe424040575ff68a105a2f1ad7f279cbcc1a963caf3afd28f8ed1345a46d0",
+      "output_tokens_per_s": 1157.4920484846693
+    }
+  ],
+  "reverse_order": [
+    {
+      "mode": "off",
+      "rows": 32,
+      "mean_output_tokens_per_s": 1145.375034081709,
+      "stdev_output_tokens_per_s": 9.580183758309506,
+      "trial_sha256": [
+        "3238d7eddf7e6256a0fec1ed9bfc30b9d951c45bd3c6ce7007da098ec7d47d06",
+        "934c1f99fdf8748f5372df79d0856541cff3353e5c53a2b3978b5af166dfe58e",
+        "04066109cb65715645ba5bdc7e1cf52cde905bf7f48872e025a51569b73654eb",
+        "409e76181e29b612a386e13daa7d96ca679dcebdec9b6a427931775cd5db9709",
+        "d93e86fadd36000149455de58c4ccfe5b94fee2217651fcafd0f49402164513c"
+      ],
+      "contract": {
+        "config": {
+          "model": "/data1/models/Qwen3.8-27B-MXFP6",
+          "quantization": "quark",
+          "dtype": "bfloat16",
+          "tensor_parallel_size": 2,
+          "max_model_len": 4096,
+          "max_num_seqs": 32,
+          "max_num_batched_tokens": 512,
+          "kv_cache_memory_bytes": 8218214400,
+          "enable_prefix_caching": false,
+          "attention_backend": "TRITON_ATTN",
+          "language_model_only": true,
+          "mamba_ssm_cache_dtype": "float32",
+          "seed": 20260916,
+          "disable_log_stats": false,
+          "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+          "compilation_config": {
+            "mode": "NONE",
+            "cudagraph_mode": "FULL_DECODE_ONLY",
+            "cudagraph_capture_sizes": [
+              1,
+              2,
+              4,
+              8,
+              16,
+              24,
+              32
+            ]
+          }
+        },
+        "profile": false,
+        "repeats": 5,
+        "gemm_overrides": [],
+        "input_tokens": 2048,
+        "output_tokens": {
+          "1": 129,
+          "other": 1025
+        },
+        "extension_library_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d",
+        "fused_attention_quant": "0",
+        "fused_gdn_quant": "auto",
+        "strided_gdn_ba": "0",
+        "gdn_empty_output": "0",
+        "gdn_recurrent_tile": "32",
+        "fused_swiglu_quant": "auto",
+        "packages": {
+          "torch": "2.13.0+cu130",
+          "vllm": "0.29.0",
+          "mxfp6-sm120": "0.2.1"
+        },
+        "devices": "6,7"
+      }
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "mean_output_tokens_per_s": 1150.5674016127173,
+      "stdev_output_tokens_per_s": 5.198976008060738,
+      "trial_sha256": [
+        "51452b4dd1b1190674a9da17603dc6222f61359476afab47b356ea8ee2e3556a",
+        "40afb557308761cb55f30f737b601f827d482654ed5da1dec6127ffd60d3182a",
+        "3aaf80fb693a1cc781df3135eaa01cfa1365cf18955eef403652f6ec7c9fad21",
+        "e37b816b70c90bdb2b1a0a1d51ef9f7b12868cc009018c9c47645a77334d54d3",
+        "2142e3f4f4063772a55826c78a9a42eafab932351e86fb85068d63d4a7e194fa"
+      ],
+      "contract": {
+        "config": {
+          "model": "/data1/models/Qwen3.8-27B-MXFP6",
+          "quantization": "quark",
+          "dtype": "bfloat16",
+          "tensor_parallel_size": 2,
+          "max_model_len": 4096,
+          "max_num_seqs": 32,
+          "max_num_batched_tokens": 512,
+          "kv_cache_memory_bytes": 8218214400,
+          "enable_prefix_caching": false,
+          "attention_backend": "TRITON_ATTN",
+          "language_model_only": true,
+          "mamba_ssm_cache_dtype": "float32",
+          "seed": 20260916,
+          "disable_log_stats": false,
+          "worker_extension_cls": "profile_tp2_worker.TP2Probe",
+          "compilation_config": {
+            "mode": "NONE",
+            "cudagraph_mode": "FULL_DECODE_ONLY",
+            "cudagraph_capture_sizes": [
+              1,
+              2,
+              4,
+              8,
+              16,
+              24,
+              32
+            ]
+          }
+        },
+        "profile": false,
+        "repeats": 5,
+        "gemm_overrides": [],
+        "input_tokens": 2048,
+        "output_tokens": {
+          "1": 129,
+          "other": 1025
+        },
+        "extension_library_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d",
+        "fused_attention_quant": "1",
+        "fused_gdn_quant": "auto",
+        "strided_gdn_ba": "0",
+        "gdn_empty_output": "0",
+        "gdn_recurrent_tile": "32",
+        "fused_swiglu_quant": "auto",
+        "packages": {
+          "torch": "2.13.0+cu130",
+          "vllm": "0.29.0",
+          "mxfp6-sm120": "0.2.1"
+        },
+        "devices": "6,7"
+      }
+    }
+  ],
+  "traces": [
+    {
+      "mode": "off",
+      "rows": 1,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 519,
+          "summed_us": 718.211,
+          "union_us": 714.830078125
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 659.793,
+          "union_us": 659.775390625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19780.066,
+          "union_us": 19780.05859375
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 959.29,
+          "union_us": 959.294921875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 190.941,
+          "union_us": 190.9130859375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1756.708,
+          "union_us": 1756.7099609375
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 404.50800000000004,
+          "union_us": 404.51953125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 606.1080000000001,
+          "union_us": 606.109375
+        },
+        "bf16_gemv": {
+          "count": 3,
+          "summed_us": 2440.136,
+          "union_us": 2440.1357421875
+        }
+      },
+      "sha256": "6ad5e95803195c1573bf2d32d8e282a8fe08d33262fe7a80859f0028ea710f11",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 52.865,
+      "multiply_summed_us": 42.493
+    },
+    {
+      "mode": "off",
+      "rows": 1,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 519,
+          "summed_us": 1181.173,
+          "union_us": 1178.9072265625
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 665.332,
+          "union_us": 665.31640625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19855.581,
+          "union_us": 19855.5791015625
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 961.913,
+          "union_us": 961.916015625
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 191.904,
+          "union_us": 191.869140625
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1638.29,
+          "union_us": 1638.279296875
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 407.574,
+          "union_us": 407.580078125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 608.253,
+          "union_us": 608.25390625
+        },
+        "bf16_gemv": {
+          "count": 3,
+          "summed_us": 2440.615,
+          "union_us": 2440.6142578125
+        }
+      },
+      "sha256": "07e0c7b730fd93ffcd52bdc8c313b0d1c0ca594ddfc6562810d527eaeda9c410",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 53.43900000000001,
+      "multiply_summed_us": 43.197
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 749.456,
+          "union_us": 747.2373046875
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 641.744,
+          "union_us": 641.7314453125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19547.343,
+          "union_us": 19547.3388671875
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1059.386,
+          "union_us": 1059.3828125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 156.067,
+          "union_us": 156.044921875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1841.776,
+          "union_us": 1841.76953125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 400.76,
+          "union_us": 400.7587890625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 631.417,
+          "union_us": 631.41796875
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2307.8199999999997,
+          "union_us": 2307.8203125
+        }
+      },
+      "sha256": "dcc58dd6d9d401b978016e4aa4588effb64a353899ff4e276d7703ea4ec8394b",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 53.504000000000005,
+      "multiply_summed_us": 43.077
+    },
+    {
+      "mode": "off",
+      "rows": 2,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 1117.6399999999999,
+          "union_us": 1116.6171875
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 647.4,
+          "union_us": 647.3798828125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19602.41,
+          "union_us": 19602.4052734375
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1067.762,
+          "union_us": 1067.763671875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 159.056,
+          "union_us": 159.048828125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1612.412,
+          "union_us": 1612.4072265625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 404.41,
+          "union_us": 404.4208984375
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 640.4399999999999,
+          "union_us": 640.439453125
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2310.893,
+          "union_us": 2310.8935546875
+        }
+      },
+      "sha256": "e9a403e486cf03e4e7d9561d7f91c8f0cbdda4a5fb596e30e1a3408ad4c3db8d",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 54.24,
+      "multiply_summed_us": 44.036
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 760.291,
+          "union_us": 758.6982421875
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 655.571,
+          "union_us": 655.5751953125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19888.468,
+          "union_us": 19888.466796875
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1513.393,
+          "union_us": 1513.400390625
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 157.31300000000002,
+          "union_us": 157.296875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1874.421,
+          "union_us": 1874.408203125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 412.57,
+          "union_us": 412.5439453125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 741.208,
+          "union_us": 741.208984375
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2313.133,
+          "union_us": 2313.1328125
+        }
+      },
+      "sha256": "8c10816f330dc747aa6a9aa6a5b2a03d45126a6dfcc29eae81c710b11d058324",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 54.147000000000006,
+      "multiply_summed_us": 44.227000000000004
+    },
+    {
+      "mode": "off",
+      "rows": 4,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 849.502,
+          "union_us": 848.083984375
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 664.933,
+          "union_us": 664.9677734375
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19932.396,
+          "union_us": 19932.4033203125
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1520.594,
+          "union_us": 1520.595703125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 159.58100000000002,
+          "union_us": 159.5810546875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1828.643,
+          "union_us": 1828.6357421875
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 417.022,
+          "union_us": 416.9892578125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 744.732,
+          "union_us": 744.73046875
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2312.75,
+          "union_us": 2312.75
+        }
+      },
+      "sha256": "76b8a9dbdf8c4afc34b9030e2057ec494462ae58be4384b814912e00d09e6e81",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 55.007999999999996,
+      "multiply_summed_us": 44.928000000000004
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 772.785,
+          "union_us": 769.67578125
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 657.287,
+          "union_us": 657.283203125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20353.609,
+          "union_us": 20353.62109375
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 2428.494,
+          "union_us": 2428.4970703125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 177.536,
+          "union_us": 177.5146484375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2101.294,
+          "union_us": 2101.291015625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 412.184,
+          "union_us": 412.158203125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 1214.267,
+          "union_us": 1214.2666015625
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2319.756,
+          "union_us": 2319.755859375
+        }
+      },
+      "sha256": "6a233c7e0c28ef7d6af10f29e210e004d9ac8321bfe9b09cbb8bb6c32e81de24",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 54.879999999999995,
+      "multiply_summed_us": 45.182
+    },
+    {
+      "mode": "off",
+      "rows": 8,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 882.4209999999999,
+          "union_us": 878.5166015625
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 667.599,
+          "union_us": 667.6376953125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20420.314,
+          "union_us": 20420.31640625
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 2441.263,
+          "union_us": 2441.2734375
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 178.944,
+          "union_us": 178.9384765625
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2102.854,
+          "union_us": 2102.853515625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 419.362,
+          "union_us": 419.3291015625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 1216.276,
+          "union_us": 1216.2744140625
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2324.266,
+          "union_us": 2324.265625
+        }
+      },
+      "sha256": "7dfba7c7b0f7a9664abb6d79813d7795eb9003961aa551a92c083009e263729e",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 55.553,
+      "multiply_summed_us": 45.856
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 827.389,
+          "union_us": 826.0498046875
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2907.276,
+          "union_us": 2907.2763671875
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 319.608,
+          "union_us": 319.607421875
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 508.911,
+          "union_us": 508.9052734375
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 695.952,
+          "union_us": 695.9677734375
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 21472.636,
+          "union_us": 21472.63671875
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 305.468,
+          "union_us": 305.4677734375
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 3082.275,
+          "union_us": 3082.279296875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 189.185,
+          "union_us": 189.19140625
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2890.947,
+          "union_us": 2890.9521484375
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 421.12,
+          "union_us": 421.09375
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 2269.9,
+          "union_us": 2269.8994140625
+        }
+      },
+      "sha256": "b78f56ece29c8f30f96ea9c8be10430cde711c8bc07855cc1c8413c51390f43a",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 57.571999999999996,
+      "multiply_summed_us": 47.357
+    },
+    {
+      "mode": "off",
+      "rows": 16,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 894.685,
+          "union_us": 893.7060546875
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2893.9320000000002,
+          "union_us": 2893.9326171875
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 341.401,
+          "union_us": 341.4052734375
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 522.353,
+          "union_us": 522.3515625
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 699.639,
+          "union_us": 699.623046875
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 21526.806,
+          "union_us": 21526.8076171875
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 307.935,
+          "union_us": 307.9267578125
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 3084.772,
+          "union_us": 3084.76953125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 192.194,
+          "union_us": 192.2060546875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2744.3,
+          "union_us": 2744.2841796875
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 429.377,
+          "union_us": 429.3857421875
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 2275.247,
+          "union_us": 2275.2470703125
+        }
+      },
+      "sha256": "14cf4d59962608dcb105231756d0d9b39d49c117cb184a492d79f1135b954579",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 58.274,
+      "multiply_summed_us": 48.574
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 1069.0140000000001,
+          "union_us": 1065.689453125
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2729.57,
+          "union_us": 2729.5634765625
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 454.076,
+          "union_us": 454.0703125
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 662.58,
+          "union_us": 662.5830078125
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 677.238,
+          "union_us": 677.2529296875
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20447.25,
+          "union_us": 20447.244140625
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 335.841,
+          "union_us": 335.83984375
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 4122.972,
+          "union_us": 4122.9755859375
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 228.44299999999998,
+          "union_us": 228.4453125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 3401.1150000000002,
+          "union_us": 3401.1298828125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 419.526,
+          "union_us": 419.4970703125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 3355.171,
+          "union_us": 3355.171875
+        }
+      },
+      "sha256": "06492be307085457e7d2fe1438fa552376132379a0facec7727d790a20b8f969",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 60.927,
+      "multiply_summed_us": 47.555
+    },
+    {
+      "mode": "off",
+      "rows": 24,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 892.6370000000001,
+          "union_us": 889.5322265625
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2754.056,
+          "union_us": 2754.0546875
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 461.429,
+          "union_us": 461.4345703125
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 661.463,
+          "union_us": 661.462890625
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 687.509,
+          "union_us": 687.515625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20492.224,
+          "union_us": 20492.212890625
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 334.484,
+          "union_us": 334.49609375
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 4118.019,
+          "union_us": 4118.01953125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 231.484,
+          "union_us": 231.48046875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 3367.393,
+          "union_us": 3367.390625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 423.32,
+          "union_us": 423.3056640625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 3362.087,
+          "union_us": 3362.0859375
+        }
+      },
+      "sha256": "d13467c4589aec451a93ad74eb01b187d425470295322c8ae9de84d77ff5df56",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 60.066,
+      "multiply_summed_us": 48.418
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 878.969,
+          "union_us": 878.4970703125
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2818.631,
+          "union_us": 2818.630859375
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 457.846,
+          "union_us": 457.8486328125
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 664.269,
+          "union_us": 664.267578125
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 678.569,
+          "union_us": 678.6015625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20496.321,
+          "union_us": 20496.30859375
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 377.404,
+          "union_us": 377.3984375
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 5929.871,
+          "union_us": 5929.87109375
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 286.234,
+          "union_us": 286.2392578125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 4146.369,
+          "union_us": 4146.3701171875
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 424.356,
+          "union_us": 424.3466796875
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 4432.541,
+          "union_us": 4432.54296875
+        }
+      },
+      "sha256": "8dce214f34801903bae3a86f2ed7c1981d188ec6ef02c6e98f17aeb075d4fd58",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 59.33,
+      "multiply_summed_us": 48.579
+    },
+    {
+      "mode": "off",
+      "rows": 32,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 522,
+          "summed_us": 1087.432,
+          "union_us": 1084.47265625
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2759.783,
+          "union_us": 2759.7861328125
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 460.061,
+          "union_us": 460.0556640625
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 667.554,
+          "union_us": 667.55859375
+        },
+        "activation_quantization": {
+          "count": 432,
+          "summed_us": 671.952,
+          "union_us": 671.9697265625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20531.241,
+          "union_us": 20531.2373046875
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 377.542,
+          "union_us": 377.544921875
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 5914.567,
+          "union_us": 5914.5615234375
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 288.54200000000003,
+          "union_us": 288.544921875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 3923.239,
+          "union_us": 3923.234375
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 427.71000000000004,
+          "union_us": 427.7275390625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 4429.213,
+          "union_us": 4429.216796875
+        }
+      },
+      "sha256": "d30b24e7166ebf4cfc7a9bdd1fd0c03a58a12aa4ebef4db2431f2b60dc3ed219",
+      "sigmoid_launches": 48,
+      "multiply_launches": 48,
+      "sigmoid_summed_us": 59.204,
+      "multiply_summed_us": 48.479
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 423,
+          "summed_us": 1721.194,
+          "union_us": 1720.1103515625
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 584.199,
+          "union_us": 584.1982421875
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19775.242,
+          "union_us": 19775.2353515625
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 957.755,
+          "union_us": 957.7578125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 191.96,
+          "union_us": 191.919921875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1766.914,
+          "union_us": 1766.8994140625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 403.579,
+          "union_us": 403.5947265625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 605.243,
+          "union_us": 605.2421875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 41.879,
+          "union_us": 41.892578125
+        },
+        "bf16_gemv": {
+          "count": 3,
+          "summed_us": 2444.297,
+          "union_us": 2444.2978515625
+        }
+      },
+      "sha256": "4eb729f2f8bb48959debf3fa0bb9713220a01a90b780e9f696b7600cd5f7e689",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 1,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 423,
+          "summed_us": 728.817,
+          "union_us": 727.755859375
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 586.396,
+          "union_us": 586.3974609375
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19843.756,
+          "union_us": 19843.75
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 962.289,
+          "union_us": 962.2978515625
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 194.427,
+          "union_us": 194.3974609375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1593.667,
+          "union_us": 1593.658203125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 405.15200000000004,
+          "union_us": 405.1630859375
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 607.549,
+          "union_us": 607.5498046875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 42.789,
+          "union_us": 42.80859375
+        },
+        "bf16_gemv": {
+          "count": 3,
+          "summed_us": 2443.752,
+          "union_us": 2443.7529296875
+        }
+      },
+      "sha256": "73fe15102bdb673eb9f369d8c1aaa0cf7466fde486f4b1413dd076b440e4463b",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 652.951,
+          "union_us": 650.220703125
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 571.07,
+          "union_us": 571.0595703125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19547.442,
+          "union_us": 19547.4453125
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1062.551,
+          "union_us": 1062.5546875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 156.133,
+          "union_us": 156.1083984375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1783.157,
+          "union_us": 1783.150390625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 400.095,
+          "union_us": 400.107421875
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 632.822,
+          "union_us": 632.82421875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 40.1,
+          "union_us": 40.1025390625
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2309.006,
+          "union_us": 2309.005859375
+        }
+      },
+      "sha256": "267cca59c7a31655adf3b45b8e056d3ad3aecff973b2e230cda28bf7f77cc07e",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 2,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 947.248,
+          "union_us": 944.2001953125
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 575.076,
+          "union_us": 575.0595703125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19596.639,
+          "union_us": 19596.6416015625
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1071.795,
+          "union_us": 1071.7919921875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 159.547,
+          "union_us": 159.537109375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1693.234,
+          "union_us": 1693.232421875
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 403.92600000000004,
+          "union_us": 403.9423828125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 638.521,
+          "union_us": 638.51953125
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 40.805,
+          "union_us": 40.8125
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2310.092,
+          "union_us": 2310.0927734375
+        }
+      },
+      "sha256": "3e23693b1c9c77e8495b1094331ca232a4dca9767297e41e0cbeca63f1062584",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 655.689,
+          "union_us": 654.3125
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 579.803,
+          "union_us": 579.80078125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19890.203,
+          "union_us": 19890.2080078125
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1516.241,
+          "union_us": 1516.2470703125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 158.466,
+          "union_us": 158.455078125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1942.032,
+          "union_us": 1942.03515625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 411.3,
+          "union_us": 411.28515625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 739.518,
+          "union_us": 739.5185546875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 40.0,
+          "union_us": 40.001953125
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2314.094,
+          "union_us": 2314.09375
+        }
+      },
+      "sha256": "10dd20c2b12c6b82c848aa57f84eb611251134fbef9117084432a9bf3aa59bbd",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 4,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 789.362,
+          "union_us": 786.5927734375
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 590.513,
+          "union_us": 590.537109375
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 19946.801,
+          "union_us": 19946.8125
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 1523.862,
+          "union_us": 1523.8662109375
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 161.304,
+          "union_us": 161.3115234375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 1798.373,
+          "union_us": 1798.365234375
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 417.507,
+          "union_us": 417.46875
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 745.016,
+          "union_us": 745.013671875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 40.763,
+          "union_us": 40.7705078125
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2314.541,
+          "union_us": 2314.5400390625
+        }
+      },
+      "sha256": "06c3d8c3a788d43b000e989441b3f44c0d48d815b5ba195702f0bcc06a16999a",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 673.304,
+          "union_us": 673.322265625
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 585.052,
+          "union_us": 585.0634765625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20365.881,
+          "union_us": 20365.8916015625
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 2429.826,
+          "union_us": 2429.8251953125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 180.356,
+          "union_us": 180.3427734375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2136.026,
+          "union_us": 2136.0205078125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 412.887,
+          "union_us": 412.8642578125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 1211.867,
+          "union_us": 1211.8642578125
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 42.498,
+          "union_us": 42.515625
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2317.707,
+          "union_us": 2317.70703125
+        }
+      },
+      "sha256": "818f8288ac3d7d36d6cf2e2e5d3f78c680ab2b27c6593b823e74e454c8286e51",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 8,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 687.958,
+          "union_us": 686.8466796875
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 594.393,
+          "union_us": 594.4228515625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20424.847,
+          "union_us": 20424.8798828125
+        },
+        "persistent_gdn": {
+          "count": 144,
+          "summed_us": 2441.293,
+          "union_us": 2441.296875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 183.877,
+          "union_us": 183.8701171875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2112.716,
+          "union_us": 2112.72265625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 418.726,
+          "union_us": 418.6904296875
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 1215.284,
+          "union_us": 1215.2802734375
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 43.421,
+          "union_us": 43.427734375
+        },
+        "bf16_gemm": {
+          "count": 3,
+          "summed_us": 2320.142,
+          "union_us": 2320.142578125
+        }
+      },
+      "sha256": "c3b554d62720e6e9352a994a35ac787c6f075c9012af7649f07100bf680f70da",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 761.952,
+          "union_us": 760.9052734375
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2893.473,
+          "union_us": 2893.4736328125
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 332.822,
+          "union_us": 332.822265625
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 520.99,
+          "union_us": 520.9833984375
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 618.145,
+          "union_us": 618.150390625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 21464.626,
+          "union_us": 21464.6220703125
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 310.272,
+          "union_us": 310.26953125
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 3084.228,
+          "union_us": 3084.2275390625
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 201.565,
+          "union_us": 201.5673828125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2810.753,
+          "union_us": 2810.755859375
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 421.18600000000004,
+          "union_us": 421.1611328125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 2270.092,
+          "union_us": 2270.0927734375
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 49.623,
+          "union_us": 49.6240234375
+        }
+      },
+      "sha256": "11c60ec77f866521b276e048e9f42c66079303da93670f313b20553d24ecd189",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 16,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 734.071,
+          "union_us": 733.791015625
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2892.574,
+          "union_us": 2892.578125
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 335.384,
+          "union_us": 335.3857421875
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 525.716,
+          "union_us": 525.712890625
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 621.682,
+          "union_us": 621.6611328125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 21505.685,
+          "union_us": 21505.6708984375
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 312.16,
+          "union_us": 312.1611328125
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 3083.684,
+          "union_us": 3083.6845703125
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 204.01999999999998,
+          "union_us": 204.0263671875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 2746.403,
+          "union_us": 2746.3984375
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 426.16700000000003,
+          "union_us": 426.1630859375
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 2269.422,
+          "union_us": 2269.4208984375
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 51.591,
+          "union_us": 51.5830078125
+        }
+      },
+      "sha256": "4cc74bce007bc80807622e966fdbbdb0ab3fb5090d2c21c51c7bb04a86bcbcce",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 750.615,
+          "union_us": 748.5029296875
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2733.104,
+          "union_us": 2733.1025390625
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 453.793,
+          "union_us": 453.796875
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 670.274,
+          "union_us": 670.27734375
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 608.128,
+          "union_us": 608.1572265625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20465.928,
+          "union_us": 20465.90625
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 335.059,
+          "union_us": 335.0673828125
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 4111.05,
+          "union_us": 4111.0537109375
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 228.70499999999998,
+          "union_us": 228.703125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 3369.675,
+          "union_us": 3369.6767578125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 417.911,
+          "union_us": 417.876953125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 3370.987,
+          "union_us": 3370.9873046875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 58.466,
+          "union_us": 58.458984375
+        }
+      },
+      "sha256": "1cb4166a00a41cd236a44bcb0be85b9d5104bf35b1adc1a0aed4d4ca224f4cc1",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 24,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 766.119,
+          "union_us": 763.9638671875
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2736.0769999999998,
+          "union_us": 2736.078125
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 455.491,
+          "union_us": 455.4814453125
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 674.303,
+          "union_us": 674.302734375
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 616.355,
+          "union_us": 616.3642578125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20516.844,
+          "union_us": 20516.830078125
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 337.781,
+          "union_us": 337.7861328125
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 4102.886,
+          "union_us": 4102.8935546875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 232.066,
+          "union_us": 232.0673828125
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 3355.295,
+          "union_us": 3355.2978515625
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 425.339,
+          "union_us": 425.330078125
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 3371.908,
+          "union_us": 3371.9091796875
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 59.264,
+          "union_us": 59.259765625
+        }
+      },
+      "sha256": "205de86ceb9fc582a9f87e9d199aed33a607b69cf373bd100e9dafa9270c8cfc",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "rank": 0,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 765.976,
+          "union_us": 763.802734375
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2791.942,
+          "union_us": 2791.9375
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 461.94,
+          "union_us": 461.935546875
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 663.63,
+          "union_us": 663.6279296875
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 609.2330000000001,
+          "union_us": 609.267578125
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20498.683,
+          "union_us": 20498.6865234375
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 376.382,
+          "union_us": 376.384765625
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 5911.598,
+          "union_us": 5911.5966796875
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 284.124,
+          "union_us": 284.115234375
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 4020.707,
+          "union_us": 4020.705078125
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 425.154,
+          "union_us": 425.1484375
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 4428.252,
+          "union_us": 4428.25
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 68.928,
+          "union_us": 68.939453125
+        }
+      },
+      "sha256": "3ac43144dae02e0c75f8858c3c8dc8c5d76a738ad27396ea9ee04ec4c9583817",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    },
+    {
+      "mode": "on",
+      "rows": 32,
+      "rank": 1,
+      "categories": {
+        "other": {
+          "count": 426,
+          "summed_us": 829.308,
+          "union_us": 826.794921875
+        },
+        "bf16_gemm": {
+          "count": 147,
+          "summed_us": 2815.667,
+          "union_us": 2815.66796875
+        },
+        "bf16_splitk_reduction": {
+          "count": 144,
+          "summed_us": 476.926,
+          "union_us": 476.9296875
+        },
+        "strided_tensor_copy": {
+          "count": 288,
+          "summed_us": 666.638,
+          "union_us": 666.6376953125
+        },
+        "activation_quantization": {
+          "count": 384,
+          "summed_us": 617.521,
+          "union_us": 617.5556640625
+        },
+        "mxfp6_gemm": {
+          "count": 768,
+          "summed_us": 20509.162,
+          "union_us": 20509.150390625
+        },
+        "gdn_convolution": {
+          "count": 144,
+          "summed_us": 378.459,
+          "union_us": 378.4658203125
+        },
+        "gdn_recurrence": {
+          "count": 144,
+          "summed_us": 5926.999,
+          "union_us": 5927.0
+        },
+        "gdn_norm_quantization": {
+          "count": 144,
+          "summed_us": 284.866,
+          "union_us": 284.8671875
+        },
+        "allreduce_residual_norm": {
+          "count": 384,
+          "summed_us": 4101.68,
+          "union_us": 4101.6875
+        },
+        "swiglu_quantization": {
+          "count": 192,
+          "summed_us": 428.112,
+          "union_us": 428.1181640625
+        },
+        "attention": {
+          "count": 48,
+          "summed_us": 4432.988,
+          "union_us": 4432.986328125
+        },
+        "attention_gate_quantization": {
+          "count": 48,
+          "summed_us": 68.864,
+          "union_us": 68.875
+        }
+      },
+      "sha256": "c8d441e496a264f1e2c23239e18637a45ec968302332dfd6aa6956ef0f9b2bb9",
+      "sigmoid_launches": 0,
+      "multiply_launches": 0,
+      "sigmoid_summed_us": 0,
+      "multiply_summed_us": 0
+    }
+  ],
+  "fidelity": {
+    "4": {
+      "max_difference_from_accepted": 0.0,
+      "mean_difference_from_accepted": 0.0,
+      "records_sha256": "9da9db9f5a4e05fe160b8e96e3bdf9fe2f564b73d684eb2892b9caa4d3fc55d2",
+      "repeat": {
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      }
+    },
+    "32": {
+      "max_difference_from_accepted": 0.0,
+      "mean_difference_from_accepted": 0.0,
+      "records_sha256": "e821f0898722ff2adae4420420e5e76be38a4616ba2acfed5862b80b769474f3",
+      "repeat": {
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      }
+    }
+  },
+  "tests": {
+    "gpu-tests.log": {
+      "passed": 23,
+      "sha256": "fda50f00876948fae5ca1bdc1d413348628057c7b2d38a0e93b4c6ec66f39ec5"
+    },
+    "integration-tests.log": {
+      "passed": 25,
+      "sha256": "89ca19a12300f9088e99b70fed7f4013c18ef428a1ea16dcf834f25d080d71de"
+    }
+  },
+  "packaging": {
+    "mach": {
+      "path": "../tp2-optimization-20260917/p2b-attention/mach-wheel/vllm_mach-0.1.0a11.dev0-py3-none-any.whl",
+      "sha256": "fe7df1ee3f472ca435fb8f6d2aa65a06ff7cb32c48460554bca765bebfd6b80b",
+      "source_sha256": "366fe44e6705c0901891190bdd6d9d724149e2d6e36e24e4e5645453463a74b0"
+    },
+    "extension": {
+      "path": "../tp2-optimization-20260917/p2b-attention/extension-wheel/mxfp6_sm120-0.2.1-cp312-cp312-linux_x86_64.whl",
+      "sha256": "ca123178c1ce2d8077ad8c711dad46cad9dc9652c06203915b6870fd9d6ee726",
+      "source_sha256": "aa7f95cfa46fc259b1623ed656bedaf6e6c9b305fc903bcbf0ef39182da15928",
+      "library_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d"
+    }
+  },
+  "runtime": {
+    "runtime": "/tmp/mach-p2b-runtime",
+    "files": {
+      "vllm/compilation/passes/fusion/allreduce_rms_fusion.py": "f76634856dbecf087d1c767393c17e999f49d3dfb9035ccc4fb15c0ad8404fe7",
+      "vllm/envs.py": "170843a1840a186133290053c798461e65e91cd1273f6a608e3abce0b299576c",
+      "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py": "eddbe8c54d351950d6dd6eefcc825535bac3679bfee8379f6cce2f255e12ffd1",
+      "vllm/model_executor/layers/logits_processor.py": "95270468a844b0fd899f9f478f981f8e7fa77c92d7a2a1a4aa1c546f2672cca2",
+      "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": "e40b42ef687e7f87e497b3e723d4d5a5f7d50c3e7db454df56c5b1a4d32673b0",
+      "vllm/model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py": "4228c84f12e59ab8b810ee76cbb4130c60bbb7748785dc2b998c777014dc56b1",
+      "vllm/model_executor/models/qwen3_5.py": "f52cb21fe52349c8915b89d52327a3b6f4e24dbcede1e12abc3c95d494330ca1",
+      "vllm/utils/flashinfer.py": "fc8c20c1c669f841ad70cc673bb3c28a2b250f76047db6852ff3098190c18d46",
+      "vllm/v1/worker/gpu/cudagraph_utils.py": "c390af9c2efc35c9678a927af578136a73b3e07aff807c044dba424a06ccf8d4",
+      "vllm/v1/worker/gpu/model_runner.py": "4c1b2b86318403530def540a44891056ed27e8e22cbd4a070c7cd35665452c23",
+      "vllm/v1/worker/gpu/sample/sampler.py": "42a613fdc2364da00b7b3cf869aa4e219dbdb44021ed32ea506eed9787bc88c5",
+      "vllm/v1/worker/gpu_model_runner.py": "b728bf230d29ce9f30f3c9dd6cb6717968b6c6259b3d03f77ccfa45b9135c26d",
+      "vllm/v1/worker/gpu_worker.py": "7c5287e5521f6fe1ee36c9fcb59a848f24dfa6b9d52053ea0123b0536b305989",
+      "vllm/model_executor/models/qwen3_next.py": "4a27cf7b065c2097688421e6ea849704cef946f347978fb426abbc72b77f00b2",
+      "flashinfer/comm/mnnvl.py": "abeb516620cb85f79503dc58a7551c708775210420fead82aa4978cf409aadf4",
+      "flashinfer/comm/trtllm_ar.py": "afeddc03a539cab12f286f3bc94acf4cf58b39dc12de5cac1498ccf329ee033d"
+    }
+  }
+}

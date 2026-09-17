@@ -18,6 +18,8 @@ def interval_union(intervals):
 
 
 def category(name):
+    if name == "_gate_quant":
+        return "attention_gate_quantization"
     if name == "_producer":
         return "gdn_norm_quantization"
     if "elementwise_kernel<128, 4" in name and "direct_copy_kernel_cuda" in name:
@@ -83,6 +85,7 @@ def collect(baseline, profile):
             ranks.append(dict(rank=rank['rank'], trace=summarize_trace(trial/f"rank{rank['rank']}.json"),
                 measured_decode_steps=3, physical_rows=m, logical_rows=m,
                 fused_ar_norm_modules=sum(v['fused_ar_norm'] is True for v in rank['inventory']),
+                fused_attention_layers=rank.get('fused_attention_layers',0),
                 fused_gdn_quant_layers=rank.get('fused_gdn_quant_layers',0),
                 empty_output_layers=rank.get('empty_output_layers',0),
                 recurrent_tile8_layers=rank.get('recurrent_tile8_layers',0),

@@ -102,6 +102,8 @@ class TP2Probe:
                                                for m in self.model_runner.model.modules()),
                     fused_gdn_quant_layers=sum(hasattr(m, "_mach_gdn_output_fused")
                                                 for m in self.model_runner.model.modules()),
+                    fused_attention_layers=sum(bool(getattr(m, "_mach_attention_prepared", False))
+                                               for m in self.model_runner.model.modules()),
                     fused_swiglu_layers=sum(bool(getattr(m, "_mach_swiglu_prepared", False))
                                             for m in self.model_runner.model.modules()),
                     peak_allocated_bytes=torch.cuda.max_memory_allocated(),

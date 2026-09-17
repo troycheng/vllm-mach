@@ -235,6 +235,7 @@ def main():
             manifest=str(a.manifest),
             physical_rows=a.physical_rows,
             extension_library_sha256=library_hash,
+            fused_attention_quant=os.environ.get("VLLM_MACH_FUSED_ATTN_QUANT", "0"),
             fused_gdn_quant=os.environ.get("VLLM_MACH_FUSED_GDN_QUANT", "auto"),
             strided_gdn_ba=os.environ.get("VLLM_MACH_GDN_STRIDED_BA", "0"),
             gdn_empty_output=os.environ.get("VLLM_MACH_GDN_EMPTY_OUTPUT", "0"),

@@ -707,3 +707,100 @@ trial validator across the main, changing-size and reverse-order runs.
 Regenerate the focused figure with the existing stage JSON inputs plus
 `--validation docs/data/tp2-gdn-output-initialization-validation.json`
 when running `docs/data/plot_tp2_optimization.py`.
+
+## P2-B: exact attention sigmoid-gate/MXFP8 producer
+
+Extension implementation: `mxfp6_sm120` commit `cd4e964`.
+
+The opt-in `VLLM_MACH_FUSED_ATTN_QUANT=1` route replaces the separate
+sigmoid, BF16 multiplication and activation quantizer at the 16 Full
+Attention output projections with one extension-owned producer. Both
+sigmoid→BF16 and product→BF16 rounding are retained. The producer feeds
+the existing PDL MXFP6 GEMM without a second quantization pass.
+
+Eligibility is restricted to native TP2, bias-free `[N=5120,K=3072]`
+row-parallel projections with deferred reduction, BF16 inputs, and physical
+M1/2/4/8/16/24/32. QKV, QK normalization, RoPE, attention, and KV updates
+continue through the original vLLM functions. Larger prefills and other
+configurations use the original forward. Small prefills with eligible shapes
+use the same exact producer. No residual is added at the rank-local output.
+
+The extension passes 23 GPU tests: exhaustive finite BF16 gate values,
+exhaustive finite BF16 attention values against five gates (including
+subnormals and saturation), 14 contiguous/strided cases × 120 changing-input
+poisoned graph replays, and seven projection sizes × 120 changing-input
+PDL GEMM graph replays. Rounded outputs and FP8 codes/scales are bitwise
+identical; projection outputs exactly match the public float-input route.
+The independent analytic FP64 check uses rtol 0.008 / atol 1e-34 to account
+for the preserved BF16 boundaries and FP32 sigmoid underflow.
+
+Fresh M4 and M32 real-checkpoint fidelity each score 256 queries and 10,479
+target tokens. Every gold logprob equals the accepted P2-A records. The
+underlying MXFP6 weights, BF16 activations/head and FP32 SSM precision remain
+fixed. The Mach and extension wheels contain the measured producer source;
+the binary extension hash equals the previously accepted P2-A library.
+
+This run uses a separate official vLLM 0.29.0 / FlashInfer 0.6.18 copy with
+the repository's runtime patches applied. The system Python installation
+had unrelated EXL3 edits and an older extension, so its failed startup runs
+are excluded. Both measurement arms use the same isolated runtime; its
+source hashes are retained in the validation evidence.
+
+Both ranks’ traces at all seven sizes confirm 16 sigmoid and 16 BF16
+multiply launches fall to zero per decode. Independent MXFP8 quantizers
+fall from 144 to 128; 16 fused producers replace these 48 launches, a net
+reduction of 32 launches. AR/residual/norm remains 128 launches per rank
+per decode. Twenty-five routing, warmup, compatibility, installation and
+profile-summary checks pass.
+
+### Attention producer matched decode and serving
+
+Each decode point contains five full-checkpoint trials on GPUs 4/5,
+with the candidate run before the control. All seven physical graph sizes
+are exercised with 2048 input tokens; B1 produces 129 tokens and B>1
+produces 1025. These rates include prefill and are separate from HTTP serving.
+
+| Requests | Control, tokens/s ± SD | Fused gate, tokens/s ± SD | Change |
+|---|---:|---:|---:|
+| 1 | 80.420 ± 0.083 | 82.535 ± 0.539 | +2.630% |
+| 2 | 194.058 ± 0.118 | 202.017 ± 0.078 | +4.102% |
+| 4 | 346.516 ± 0.054 | 357.279 ± 2.297 | +3.106% |
+| 8 | 570.533 ± 0.221 | 587.175 ± 0.361 | +2.917% |
+| 16 | 851.262 ± 4.592 | 869.518 ± 0.196 | +2.145% |
+| 24 | 1059.963 ± 0.610 | 1053.552 ± 1.386 | -0.605% |
+| 32 | 1160.095 ± 4.690 | 1156.603 ± 1.601 | -0.301% |
+
+The matched HTTP experiment uses GPUs 6/7, control then candidate,
+with frozen 3000-input/1000-output prompts and c4/c16/c24/c32.
+All 760 scored requests across both arms finish with exact token counts.
+Each point is one run and has no confidence interval.
+
+| Concurrency | Control, tokens/s | Fused gate, tokens/s | Change |
+|---|---:|---:|---:|
+| 4 | 371.410 | 373.110 | +0.458% |
+| 16 | 999.968 | 1003.128 | +0.316% |
+| 24 | 1300.301 | 1302.740 | +0.188% |
+| 32 | 1462.827 | 1465.436 | +0.178% |
+
+### Attention producer reverse-order check and decision
+
+A separate M32 experiment on GPUs 6/7 reverses the main experiment’s order:
+control first, candidate second, five trials each with otherwise identical
+contracts. Control reaches **1145.375 ± 9.580 tokens/s**;
+fusion reaches **1150.567 ± 5.199 tokens/s**, only **+0.453%**.
+This change is within trial variation. Do not pool this pair with GPUs 4/5.
+
+**Keep the producer opt-in, default `0`.** Small positive single-run serving
+changes do not resolve the main experiment’s M24/M32 regressions or establish
+a repeated M32 improvement beyond variation. The large small-M differences
+in the first decode comparison are not accepted as causal kernel speedups.
+A size-restricted policy would require its own independent validation.
+
+![Attention matched throughput and independent recheck](images/tp2-attention-throughput.png)
+![Attention fresh fidelity](images/tp2-attention-fidelity.png)
+
+[Decode and fidelity](data/tp2-p2b.json), [serving](data/tp2-attention-serving.json),
+[contracts, 80 decode trials, both-rank traces, tests and wheel hashes](data/tp2-attention-validation.json).
+Raw artifacts: `../tp2-optimization-20260917/p2b-attention/`.
+Collect the validation with `python docs/data/collect_tp2_attention_validation.py --root RESULTS`;
+regenerate the focused charts with `python docs/data/plot_tp2_attention.py`.

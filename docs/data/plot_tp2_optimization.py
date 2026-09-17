@@ -41,8 +41,8 @@ def main():
     axes[1].set_ylabel('Mean request ITL (ms)')
     for ax in axes:
         ax.set_xlabel('Logical requests (physical size verified separately)')
-        ax.set_xticks([1,4,16,32]);ax.grid(alpha=.2);ax.legend(fontsize=8)
-    fig.suptitle('TP2 / FP32 SSM / BF16 head · 2048 input tokens\nB1: 129 output; B4/16/32: 1025 output · five trials · includes prefill')
+        ax.set_xticks(sorted({r['rows'] for stage in curves for r in stage['decode']['rows']}));ax.grid(alpha=.2);ax.legend(fontsize=7)
+    fig.suptitle('TP2 / FP32 SSM / BF16 head · 2048 input tokens\nB1: 129 output; B>1: 1025 output · five trials · includes prefill')
     save(fig,a.output,'tp2-optimization-throughput')
     plt.close(fig)
     fig,axes=plt.subplots(1,2,figsize=(11,4.5),layout='constrained')

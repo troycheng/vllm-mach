@@ -46,6 +46,7 @@ def main():
     (a.output/'contract.json').write_text(json.dumps(dict(config=config, profile=a.profile,
         repeats=a.repeats, gemm_overrides=overrides, input_tokens=2048, output_tokens={'1':129, 'other':1025},
         extension_library_sha256=hashlib.sha256(library.read_bytes()).hexdigest(),
+        fused_attention_quant=os.environ.get('VLLM_MACH_FUSED_ATTN_QUANT','0'),
         fused_gdn_quant=os.environ.get('VLLM_MACH_FUSED_GDN_QUANT','auto'),
         strided_gdn_ba=os.environ.get('VLLM_MACH_GDN_STRIDED_BA','0'),
         gdn_empty_output=os.environ.get("VLLM_MACH_GDN_EMPTY_OUTPUT", "0"),
