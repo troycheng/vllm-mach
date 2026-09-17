@@ -49,6 +49,12 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
             destination = stage / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(target, destination)
+        # Peel the additive MoE fusion patch before checking the base profile.
+        # This also permits atomic upgrades from dense-only / initial MoE installs.
+        if _patch(stage, "moe-ar-norm.patch", reverse=True, dry=True).returncode == 0:
+            result = _patch(stage, "moe-ar-norm.patch", reverse=True)
+            if result.returncode:
+                raise RuntimeError(result.stdout + result.stderr)
         installed = (
             _patch(stage, "runtime.patch", reverse=True, dry=True).returncode == 0
         )
@@ -64,6 +70,11 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
                 raise RuntimeError(
                     "MXFP6 MoE patch failed: " + result.stdout + result.stderr
                 )
+        result = _patch(stage, "moe-ar-norm.patch")
+        if result.returncode:
+            raise RuntimeError(
+                "MXFP6 MoE AR/Norm patch failed: " + result.stdout + result.stderr
+            )
         ipc_installed = (
             _patch(
                 stage, "flashinfer-local-ipc.patch", reverse=True, dry=True

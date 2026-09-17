@@ -1,0 +1,24 @@
+--- a/vllm/model_executor/models/qwen3_5.py
++++ b/vllm/model_executor/models/qwen3_5.py
+@@ -112,6 +112,10 @@
+ def _use_mxfp6_ar_norm(vllm_config: VllmConfig) -> bool:
+     config = vllm_config.model_config.hf_text_config
+     parallel = vllm_config.parallel_config
++    if config.model_type == "qwen3_5_moe_text":
++        from vllm_mach.mxfp6.moe_ar_norm import use_moe_ar_norm
++
++        return use_moe_ar_norm(vllm_config)
+     return (
+         envs.VLLM_QWEN3_5_FUSED_AR_NORM
+         and config.model_type == "qwen3_5_text"
+@@ -202,6 +206,10 @@
+                 vllm_config=vllm_config,
+                 prefix=f"{prefix}.mlp",
+             )
++            if self.use_fused_ar_gemma_norm:
++                from vllm_mach.mxfp6.moe_ar_norm import defer_moe_allreduce
++
++                defer_moe_allreduce(self.mlp)
+         elif config.model_type == "qwen3_5_text":
+             self.mlp = Qwen3NextMLP(
+                 hidden_size=config.hidden_size,

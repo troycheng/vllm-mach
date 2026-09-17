@@ -61,17 +61,21 @@ Qwen3.5-35B-A3B, two RTX 5090 GPUs, TP2, measured September 17, 2026. The baseli
 
 ![Qwen3.5-35B-A3B MoE serving throughput](docs/images/qwen35-moe-throughput.png)
 
-| Configuration | c4 | c16 | c24 | c32 |
+| Configuration (output tokens/s) | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
 | FP8 · official vLLM 0.29 | 694.1 | 1627.7 | 2046.9 | 2335.0 |
-| MXFP6 · Mach | 725.9 | 1825.0 | 2291.1 | 2622.5 |
-| MXFP6 throughput change | +4.6% | +12.1% | +11.9% | +12.3% |
+| MXFP6 · Mach default | 1012.1 | 2224.1 | 2807.9 | 3169.2 |
+| MXFP6 · Mach full | 1068.4 | 2288.5 | 2914.5 | 3241.9 |
 
-Throughput changes by **+10.2%** relative to FP8 when weighting the four concurrency levels equally. Loaded model memory is **13.55 GiB/rank** for MXFP6 and **16.97 GiB/rank** for FP8; both receive an 8 GiB/rank KV budget.
+The default profile improves throughput over official FP8 by **38.8%**, and the full profile by **43.9%**, weighting the four concurrency levels equally.
 
-FP8 uses the unpatched official runtime, default compilation/attention/CUDA Graph settings, and `VLLM_ALLREDUCE_USE_FLASHINFER=0`. All Mach optimizations are confined to MXFP6: native MoE schedules, full decode graphs and compact BF16 greedy sampling. This is a serving-profile comparison. Functional checks passed 35/35 for each model; these are smoke checks, with no broad quality or BF16 fidelity evaluation. The integration passed 173 regression tests in groups.
+FP8 reuses the earlier same-day measurement with the unpatched official runtime, default compilation/attention/CUDA Graph settings, and `VLLM_ALLREDUCE_USE_FLASHINFER=0`. Mach default and full use native MoE schedules, full decode graphs, FP32 recurrent state and an 8 GiB/rank KV budget. This is a serving-profile comparison, not an isolated precision comparison.
 
-[Deployment, protocol and validation](docs/qwen35-moe.md) · [Machine-readable results and per-request raw data](docs/data/qwen35-moe-20260917.json). One run per point does not establish confidence intervals.
+Default enables GDN decode, fused AllReduce/residual/RMSNorm and compact BF16 greedy sampling. Full additionally enables `--nvfp4-lm-head`: NVFP4 candidate search followed by BF16 refinement, retaining the BF16 head for full-logit and sampling fallbacks at about **136.4 MiB/rank** extra memory. Unlike the 27B full profile, 35B full does not enable FP16 SSM or owner/lossless prefill; those options remain unsupported for this model.
+
+The update passed **139 focused tests** and **35/35 service smoke checks**. On **1640 real decode positions**, the optional head retained all global BF16 top-20 candidates and matched every final BF16 top-1. Candidate search and fused reduction can change numerical behavior; these checks do not establish broad model quality or BF16 fidelity.
+
+[Deployment, ablations and validation](docs/qwen35-moe.md#allreduce-and-nvfp4-head) · [New results and per-request raw data](docs/data/qwen35-ar-head-20260917.json) · [Retained FP8 baseline](docs/data/qwen35-moe-20260917.json). One run per point does not establish confidence intervals.
 
 ### Numerical fidelity
 
@@ -171,7 +175,7 @@ The earlier [validation record](docs/validation.md) and [rank64/owner-prefill in
 
 ## Limitations
 
-Routed MoE execution and additional model/GPU configurations remain unsupported by this profile. The optional NVFP4 LM head path accelerates eligible greedy decode only; requests requiring full logits retain the original BF16 head and sampler. FP16 SSM and approximate candidate search do not promise bitwise equivalence. Broad model-quality and long-context validation remain outstanding; the revised Dockerfile has not been built in the current validation environment.
+Routed MoE models other than the validated Qwen3.5-35B-A3B configuration remain unsupported by this profile. The optional NVFP4 LM head path accelerates eligible greedy decode only; requests requiring full logits retain the original BF16 head and sampler. FP16 SSM and approximate candidate search do not promise bitwise equivalence. Broad model-quality and long-context validation remain outstanding; the revised Dockerfile has not been built in the current validation environment.
 
 ## Contributing
 

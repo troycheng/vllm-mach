@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Native Qwen 27B TP2 GDN decode paths, prepared before profiling.
+"""Native Qwen 27B dense / 35B MoE TP2 GDN decode paths, prepared before profiling.
 
 Persistent uses FP32 or FP16 SSM at physical M1/2/4/8. BA overlap uses M16/24/32
 with FP32 or FP16 SSM. Prefill, speculative, mixed and unsupported calls
@@ -55,27 +55,40 @@ def select_path(rows, state_dtype, metadata, *, persistent, overlap):
     return None
 
 
+def _layer_geometry(layer):
+    """Return (hidden, local value heads, packed QKV) for supported TP2 layers."""
+    hidden = layer.in_proj_ba.weight.shape[1]
+    heads = layer.num_v_heads // 2
+    return hidden, heads, (2 * (layer.num_k_heads // 2) + heads) * 128
+
+
 def _eligible_layer(layer):
+    if type(layer).__name__ != "QwenGatedDeltaNetAttention" or layer.tp_size != 2:
+        return False
+    weight = getattr(layer.in_proj_ba, "weight", None)
+    if weight is None or weight.ndim != 2:
+        return False
+    hidden, heads, qkv_dim = _layer_geometry(layer)
     return (
-        type(layer).__name__ == "QwenGatedDeltaNetAttention"
-        and layer.tp_size == 2
-        and layer.num_k_heads == 16
-        and layer.num_v_heads == 48
+        layer.num_k_heads == 16
+        and (hidden, layer.num_v_heads) in ((5120, 48), (2048, 32))
         and layer.head_k_dim == layer.head_v_dim == 128
         and not layer.gqa_interleaved_layout
         and not layer.disable_tp_for_ba_proj
         and layer.enable_fused_gdn_decode
         and layer.enable_packed_recurrent_decode
         and layer.activation in ("silu", "swish")
-        and tuple(layer.in_proj_ba.weight.shape) == (48, 5120)
+        and tuple(layer.in_proj_ba.weight.shape) == (2 * heads, hidden)
         and layer.in_proj_ba.weight.dtype == torch.bfloat16
         and getattr(layer.in_proj_ba, "bias", None) is None
-        and tuple(layer.conv1d.weight.shape) == (5120, 1, 4)
+        and tuple(layer.conv1d.weight.shape) == (qkv_dim, 1, 4)
         and layer.conv1d.weight.dtype == torch.bfloat16
         and (
             getattr(layer.conv1d, "bias", None) is None
             or layer.conv1d.bias.dtype == torch.bfloat16
         )
+        and tuple(layer.A_log.shape) == (heads,)
+        and tuple(layer.dt_bias.shape) == (heads,)
         and layer.A_log.dtype == torch.float32
         and layer.dt_bias.dtype == torch.bfloat16
         and layer.norm.weight.dtype in (torch.bfloat16, torch.float32)
@@ -86,9 +99,10 @@ def _forward(layer, original, persistent, aux, hidden_states):
     from vllm.forward_context import get_forward_context
     from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
 
+    hidden, heads, qkv_dim = _layer_geometry(layer)
     rows = hidden_states.shape[0]
     if (
-        hidden_states.shape != (rows, 5120)
+        hidden_states.shape != (rows, hidden)
         or hidden_states.dtype != torch.bfloat16
         or not hidden_states.is_contiguous()
     ):
@@ -107,8 +121,8 @@ def _forward(layer, original, persistent, aux, hidden_states):
     indices = md.non_spec_state_indices_tensor[:rows]
     # Shape/stride checks stay on the host; index values remain on device.
     if (
-        conv.shape[1:] != (5120, 3)
-        or state.shape[1:] != (24, 128, 128)
+        conv.shape[1:] != (qkv_dim, 3)
+        or state.shape[1:] != (heads, 128, 128)
         or state.stride(-1) != 1
         or state.stride(-2) != 128
         or state.stride(-3) != 128 * 128
@@ -119,18 +133,18 @@ def _forward(layer, original, persistent, aux, hidden_states):
     ):
         return original(hidden_states)
     core = torch.zeros(
-        (rows, 24, 128), device=hidden_states.device, dtype=torch.bfloat16
+        (rows, heads, 128), device=hidden_states.device, dtype=torch.bfloat16
     )
     if path == "persistent":
         from .gdn import persistent as kernel
 
         mixed, _ = layer.in_proj_qkvz(hidden_states)
-        qkv, z = mixed.split([5120, 3072], -1)
+        qkv, z = mixed.split([qkv_dim, heads * 128], -1)
         kernel.execute(
             hidden_states,
             layer._mach_gdn_ba,
             qkv,
-            layer.conv1d.weight.view(5120, 4),
+            layer.conv1d.weight.view(qkv_dim, 4),
             layer._mach_gdn_bias,
             conv,
             layer.A_log,
@@ -155,11 +169,11 @@ def _forward(layer, original, persistent, aux, hidden_states):
             b, a = layer.split_ba(ba)
             b, a = b.contiguous(), a.contiguous()
         mixed, _ = layer.in_proj_qkvz(hidden_states)
-        qkv, z = mixed.split([5120, 3072], -1)
+        qkv, z = mixed.split([qkv_dim, heads * 128], -1)
         qkv = causal_conv1d_update(
             qkv,
             conv,
-            layer.conv1d.weight.view(5120, 4),
+            layer.conv1d.weight.view(qkv_dim, 4),
             layer.conv1d.bias,
             layer.activation,
             conv_state_indices=indices,
@@ -181,7 +195,7 @@ def _forward(layer, original, persistent, aux, hidden_states):
             ssm_state_indices=indices,
             use_qk_l2norm_in_kernel=True,
         )
-    layer._rms_norm_gated_cuda(core, z.reshape(rows, 24, 128), core)
+    layer._rms_norm_gated_cuda(core, z.reshape(rows, heads, 128), core)
     key = f"{path}_m{rows}"
     if not _STATS[key]:
         from vllm.logger import init_logger
@@ -199,9 +213,10 @@ def prepare(model):
     persistent, overlap = enabled("PERSISTENT"), enabled("BA_OVERLAP")
     if not (persistent or overlap):
         return
-    from .dense import Mxfp6Sm120LinearKernel
-    from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
     from vllm.logger import init_logger
+    from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
+
+    from .dense import Mxfp6Sm120LinearKernel
 
     layers = []
     for layer in model.modules():
@@ -233,42 +248,51 @@ def prepare(model):
     if persistent:
         from .gdn import persistent as kernel
     for layer in layers:
+        hidden, heads, qkv_dim = _layer_geometry(layer)
         if persistent:
             layer._mach_gdn_ba = layer.in_proj_ba.weight.T.contiguous()
             layer._mach_gdn_bias = layer.conv1d.bias
             if layer._mach_gdn_bias is None:
                 layer._mach_gdn_bias = torch.zeros(
-                    5120, device=device, dtype=torch.bfloat16
+                    qkv_dim, device=device, dtype=torch.bfloat16
                 )
         if aux is not None:
             aux.wait_stream(torch.cuda.current_stream(device))
             with torch.cuda.stream(aux):
                 for rows in OVERLAP_ROWS:
                     layer.in_proj_ba(
-                        torch.zeros((rows, 5120), device=device, dtype=torch.bfloat16)
+                        torch.zeros((rows, hidden), device=device, dtype=torch.bfloat16)
                     )
             torch.cuda.current_stream(device).wait_stream(aux)
-    if persistent:
-        layer = layers[0]
-        # Warmup runs outside vLLM's global config context. Read the resolved
-        # cache dtype from the loaded layer, just as its state allocator does.
+    warmed = set()
+    for layer in layers:
+        if not persistent:
+            break
+        hidden, heads, qkv_dim = _layer_geometry(layer)
         state_dtype = layer.get_state_dtype()[1]
+        key = (hidden, heads, qkv_dim, state_dtype)
+        if key in warmed:
+            continue
+        warmed.add(key)
+        # Hidden and packed QKV widths differ for 35B. Warm the exact kernel
+        # geometry and scratch before any CUDA Graph capture.
         for rows in PERSISTENT_ROWS:
-            x = torch.zeros((rows, 5120), device=device, dtype=torch.bfloat16)
+            x = torch.zeros((rows, hidden), device=device, dtype=torch.bfloat16)
+            qkv = torch.zeros((rows, qkv_dim), device=device, dtype=torch.bfloat16)
             conv = torch.zeros(
-                (rows + 1, 3, 5120), device=device, dtype=torch.bfloat16
+                (rows + 1, 3, qkv_dim), device=device, dtype=torch.bfloat16
             ).transpose(1, 2)
             if is_conv_state_dim_first():
                 conv = conv.contiguous()
             state = torch.zeros(
-                (rows + 1, 24, 128, 128), device=device, dtype=state_dtype
+                (rows + 1, heads, 128, 128), device=device, dtype=state_dtype
             )
             indices = torch.arange(1, rows + 1, device=device, dtype=torch.int32)
             kernel.execute(
                 x,
                 layer._mach_gdn_ba,
-                x,
-                layer.conv1d.weight.view(5120, 4),
+                qkv,
+                layer.conv1d.weight.view(qkv_dim, 4),
                 layer._mach_gdn_bias,
                 conv,
                 layer.A_log,

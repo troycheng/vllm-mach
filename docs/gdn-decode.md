@@ -9,9 +9,11 @@ default routes and do not restore the EXL3 overlay or require an EXL3 checkpoint
 | `--gdn-persistent` | 1, 2, 4, 8 | FP32 or FP16 | default vs persistent; full_ba vs full_gdn |
 | `--gdn-ba-overlap` | 16, 24, 32 | FP32 or FP16 | full vs full_ba |
 
-Both require the validated Qwen 27B geometry (hidden 5120, 16 QK heads,
-48 V heads, head dimension 128), TP2, BF16 activations/conv state and native
-MXFP6 QKV projection on SM120. LoRA/split QKV, other quantization paths,
+Both support Qwen 27B dense (hidden 5120, 16 QK heads, 48 V heads) and
+Qwen3.5-35B-A3B MoE (hidden 2048, 16 QK heads, 32 V heads), with head dimension
+128, TP2, BF16 activations/conv state and native MXFP6 QKV projection on SM120.
+The 35B launcher retains FP32 recurrent state; its validation and serving
+measurements are recorded separately in [the MoE profile](qwen35-moe.md). LoRA/split QKV, other quantization paths,
 other geometries, prefill, mixed batches and speculative decoding use the
 original method. The full_ba experiment differs from full only in BA overlap.
 
@@ -49,12 +51,16 @@ reference receives index zero for either padding convention, since its
 convolution kernel only recognizes zero. Persistent graph/eager outputs and
 state updates are compared bitwise; comparison to the native arithmetic uses
 a relative output L2 tolerance of 0.02 and reports the actual errors.
+Select `--model 27b` (default) or `--model 35b` to test the corresponding geometry.
+The adapter regression tests also compare both geometries at M4/16/24/32
+against the native composition, requiring bitwise equality for BA overlap.
 
 `tests/native_mxfp6/test_gdn_decode.py` checks row/state admission and disabled,
 prefill, speculative, missing-metadata and mixed-batch fallbacks. The wheel
 ships the CUDA source and host support; no dependency files are overwritten
 by enabling either option.
 
+The following full-model fidelity and ShareGPT results cover 27B only.
 Full-model fidelity uses frozen teacher-forced continuations, not free-token
 text similarity. M32 checks BA overlap and persistent fallback. A separate
 physical-M4 run of BF16, previous default, persistent-only and combined default scores all 256 queries and

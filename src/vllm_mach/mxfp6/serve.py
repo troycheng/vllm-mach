@@ -20,7 +20,7 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "MXFP6_AUTOTUNE": "off",
         "VLLM_USE_V2_MODEL_RUNNER": "1",
         "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
-        "VLLM_QWEN3_5_FUSED_AR_NORM": "1",
+        "VLLM_QWEN3_5_FUSED_AR_NORM": str(int(getattr(args, "fused_ar_norm", True))),
         "VLLM_QWEN3_5_FP16_SSM": str(int(args.fp16_ssm)),
         "VLLM_FLASHINFER_ALLREDUCE_BACKEND": "trtllm",
         "VLLM_ALLREDUCE_USE_FLASHINFER": "0",
@@ -46,18 +46,11 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
                 args.fp16_ssm,
                 args.lossless_prefill,
                 args.owner_prefill,
-                args.nvfp4_lm_head,
             )
         ):
             raise ValueError(
-                "Qwen3.5 MoE does not support the dense-only FP16 SSM, prefill or NVFP4 head options"
+                "Qwen3.5 MoE does not support the dense-only FP16 SSM or prefill options"
             )
-        for name in (
-            "VLLM_MACH_GDN_PERSISTENT",
-            "VLLM_MACH_GDN_BA_OVERLAP",
-            "VLLM_QWEN3_5_FUSED_AR_NORM",
-        ):
-            env[name] = "0"
     return env
 
 
@@ -106,6 +99,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--fp16-ssm", action="store_true")
+    parser.add_argument(
+        "--fused-ar-norm",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Fuse TP2 AllReduce, residual and RMSNorm (default on)",
+    )
     parser.add_argument(
         "--gdn-persistent",
         action=argparse.BooleanOptionalAction,

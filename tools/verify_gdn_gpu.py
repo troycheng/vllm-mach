@@ -6,19 +6,22 @@ import json
 from pathlib import Path
 
 import torch
-
-from vllm_mach.mxfp6.gdn import persistent
 from vllm.model_executor.layers.mamba.ops.causal_conv1d import causal_conv1d_update
 from vllm.third_party.flash_linear_attention.ops import (
     fused_recurrent_gated_delta_rule_packed_decode,
 )
+
+from vllm_mach.mxfp6.gdn import persistent
 
 
 @torch.inference_mode()
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--model", choices=("27b", "35b"), default="27b")
     a = p.parse_args()
+    hidden, heads = (5120, 24) if a.model == "27b" else (2048, 16)
+    qkv_dim = (16 + heads) * 128
     torch.manual_seed(20260916)
     results = []
 
@@ -30,20 +33,20 @@ def main():
     for state_dtype, layout, batch in product(
         (torch.float32, torch.float16), ("SD", "DS"), (1, 2, 4, 8)
     ):
-        x, w = rand(batch, 5120), rand(48, 5120)
+        x, w = rand(batch, hidden), rand(2 * heads, hidden)
         wt = w.T.contiguous()
-        qkv = rand(batch, 8192)[:, :5120]
-        cw, cb = rand(5120, 4), rand(5120)
-        al, dt = torch.zeros(24, device="cuda"), rand(24)
+        qkv = rand(batch, qkv_dim + heads * 128)[:, :qkv_dim]
+        cw, cb = rand(qkv_dim, 4), rand(qkv_dim)
+        al, dt = torch.zeros(heads, device="cuda"), rand(heads)
         indices = torch.arange(1, batch + 1, device="cuda", dtype=torch.int32)
-        conv = rand(batch + 2, 3, 5120).transpose(1, 2)
+        conv = rand(batch + 2, 3, qkv_dim).transpose(1, 2)
         if layout == "DS":
             conv = conv.contiguous()
-        state = rand(batch + 2, 24, 128, 128, dtype=state_dtype)
+        state = rand(batch + 2, heads, 128, 128, dtype=state_dtype)
         original_conv, original_state = conv.clone(), state.clone()
         eager_conv, eager_state = conv.clone(), state.clone()
         ref_conv, ref_state = conv.clone(), state.clone()
-        out = torch.empty(batch, 1, 24, 128, device="cuda", dtype=torch.bfloat16)
+        out = torch.empty(batch, 1, heads, 128, device="cuda", dtype=torch.bfloat16)
         eager_out, ref_out = torch.empty_like(out), torch.empty_like(out)
         scratch = torch.empty_like(qkv)
 
@@ -60,8 +63,8 @@ def main():
         errors, state_errors = [], []
         for step in range(4):
             before_conv, before_state = conv[1].clone(), state[1].clone()
-            x.copy_(rand(batch, 5120))
-            qkv.copy_(rand(batch, 5120))
+            x.copy_(rand(batch, hidden))
+            qkv.copy_(rand(batch, qkv_dim))
             indices[0] = 0 if step == 1 else -1 if step == 2 else 1
             graph.replay()
             call(eager_conv, eager_state, eager_out)
@@ -129,6 +132,7 @@ def main():
             errors.append(rel)
         results.append(
             dict(
+                model=a.model,
                 batch=batch,
                 state_dtype=str(state_dtype),
                 layout=layout,

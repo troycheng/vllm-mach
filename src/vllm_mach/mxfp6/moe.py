@@ -293,7 +293,7 @@ def try_enable_qwen35_moe_small_batch(layer: torch.nn.Module) -> bool:
         or moe.dp_size != 1
         or moe.pcp_size != 1
         or moe.is_sequence_parallel
-        or moe.skip_final_all_reduce
+        or (moe.skip_final_all_reduce and not getattr(layer, "_mach_fused_ar_norm", False))
         or moe.in_dtype != torch.bfloat16
         or layer.expert_map is not None
         or not layer.renormalize

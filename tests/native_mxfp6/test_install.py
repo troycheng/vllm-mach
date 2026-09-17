@@ -21,6 +21,8 @@ def pristine(tmp_path):
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(site / name, target)
+    if _patch(tmp_path, "moe-ar-norm.patch", reverse=True, dry=True).returncode == 0:
+        assert _patch(tmp_path, "moe-ar-norm.patch", reverse=True).returncode == 0
     if _patch(tmp_path, "runtime.patch", reverse=True, dry=True).returncode == 0:
         assert _patch(tmp_path, "runtime.patch", reverse=True).returncode == 0
     if _patch(tmp_path, "moe.patch", reverse=True, dry=True).returncode == 0:
@@ -48,7 +50,7 @@ def test_install_preflight_apply_and_repeat(pristine):
     assert not result["applied"]
     assert _patch(site, "runtime.patch", dry=True).returncode == 0
     assert install_profile(site, site, apply=True)["changed_files"]
-    assert _patch(site, "runtime.patch", reverse=True, dry=True).returncode == 0
+    assert _patch(site, "moe-ar-norm.patch", reverse=True, dry=True).returncode == 0
     assert not install_profile(site, site, apply=True)["changed_files"]
 
 
@@ -130,5 +132,23 @@ def test_incompatible_moe_source_rejected_without_writes(pristine):
     )
     before = {str(p): p.read_bytes() for p in site.rglob("*.py")}
     with pytest.raises(RuntimeError, match="MoE patch failed"):
+        install_profile(site, site, apply=True)
+    assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before
+
+
+def test_existing_moe_profile_upgrade_and_incompatible_fusion_are_atomic(pristine):
+    site, _ = pristine
+    assert _patch(site, "runtime.patch").returncode == 0
+    assert _patch(site, "moe.patch").returncode == 0
+    result = install_profile(site, site)
+    assert "vllm/model_executor/models/qwen3_5.py" in result["changed_files"]
+    install_profile(site, site, apply=True)
+    assert not install_profile(site, site, apply=True)["changed_files"]
+    target = site / "vllm/model_executor/models/qwen3_5.py"
+    target.write_text(
+        target.read_text().replace("defer_moe_allreduce(self.mlp)", "foreign(self.mlp)")
+    )
+    before = {str(p): p.read_bytes() for p in site.rglob("*.py")}
+    with pytest.raises(RuntimeError):
         install_profile(site, site, apply=True)
     assert {str(p): p.read_bytes() for p in site.rglob("*.py")} == before

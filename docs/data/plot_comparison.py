@@ -167,9 +167,11 @@ def plot_gdn_ablation(performance):
     save(fig, 'gdn-throughput-ablation')
 
 
-def plot_throughput(performance, order, labels, colors, markers, styles, stem):
+def plot_throughput(performance, order, labels, colors, markers, styles, stem, footnote=None):
     fig, ax = plt.subplots(figsize=(12.8,6.6))
-    fig.subplots_adjust(left=.09,right=.97,top=.82,bottom=.15)
+    fig.subplots_adjust(left=.09,right=.97,top=.82,bottom=.21 if footnote else .15)
+    if footnote:
+        fig.text(.09, .025, footnote, fontsize=10, color='#657180', linespacing=1.5)
     for name in order:
         points = performance['runs'][name]['points']
         assert [p['concurrency'] for p in points] == [4,16,24,32]
@@ -193,19 +195,28 @@ def plot_throughput(performance, order, labels, colors, markers, styles, stem):
 
 
 def plot_moe_throughput():
-    data = json.loads((HERE/'qwen35-moe-20260917.json').read_text())
-    order = ['fp8', 'mxfp6']
-    performance = {'runs': {name: {'points': [
-        {'concurrency': row['concurrency'],
-         'output_throughput_tokens_per_s': row[name]['aggregate']['output_throughput_tokens_per_s']}
-        for row in data['comparisons'] if row['concurrency'] in (4, 16, 24, 32)
-    ]} for name in order}}
+    baseline = json.loads((HERE/'qwen35-moe-20260917.json').read_text())
+    optimized = json.loads((HERE/'qwen35-ar-head-20260917.json').read_text())
+    order = ['fp8', 'gdn_ar', 'gdn_ar_head']
+    runs = {}
+    for name in order:
+        source = baseline if name == 'fp8' else optimized
+        runs[name] = {'points': [
+            {'concurrency': row['concurrency'],
+             'output_throughput_tokens_per_s': row[name]['aggregate']['output_throughput_tokens_per_s']}
+            for row in source['comparisons'] if row['concurrency'] in (4, 16, 24, 32)
+        ]}
     plot_throughput(
-        performance, order,
-        {'fp8': 'FP8 · official vLLM 0.29', 'mxfp6': 'MXFP6 · Mach'},
-        {'fp8': '#87919D', 'mxfp6': '#126149'},
-        {'fp8': 'o', 'mxfp6': 'X'},
-        {'fp8': '--', 'mxfp6': '-'}, 'qwen35-moe-throughput')
+        {'runs': runs}, order,
+        {'fp8': 'FP8 · official vLLM 0.29',
+         'gdn_ar': 'MXFP6 · Mach default',
+         'gdn_ar_head': 'MXFP6 · Mach full'},
+        {'fp8': '#87919D', 'gdn_ar': '#126149', 'gdn_ar_head': '#8050A0'},
+        {'fp8': 'o', 'gdn_ar': 'X', 'gdn_ar_head': '*'},
+        {'fp8': '--', 'gdn_ar': '-', 'gdn_ar_head': '-'},
+        'qwen35-moe-throughput',
+        footnote='Qwen3.5-35B-A3B · 2 × RTX 5090 · TP2 · 3000 input / 1000 output tokens · September 17, 2026\n'
+                 'Single run per point; uniform token IDs. FP8 reuses the earlier same-day official-runtime measurement.')
 
 
 def main():

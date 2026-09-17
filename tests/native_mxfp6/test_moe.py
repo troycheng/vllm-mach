@@ -10,7 +10,7 @@ import torch
 from vllm_mach.mxfp6.serve import build_command
 
 
-def test_moe_launcher_disables_dense_geometry_optimizations(tmp_path):
+def test_moe_launcher_enables_gdn_ar_norm_and_optional_head(tmp_path):
     (tmp_path / "config.json").write_text(json.dumps({"model_type": "qwen3_5_moe"}))
     args = argparse.Namespace(
         model=tmp_path,
@@ -22,12 +22,18 @@ def test_moe_launcher_disables_dense_geometry_optimizations(tmp_path):
     )
     command, env = build_command(args, [])
     assert command[command.index("--tensor-parallel-size") + 1] == "2"
-    for flag in (
-        "VLLM_MACH_GDN_PERSISTENT",
-        "VLLM_MACH_GDN_BA_OVERLAP",
-        "VLLM_QWEN3_5_FUSED_AR_NORM",
-    ):
-        assert env[flag] == "0"
+    assert env["VLLM_QWEN3_5_FUSED_AR_NORM"] == "1"
+    assert env["VLLM_MACH_GDN_PERSISTENT"] == "1"
+    assert env["VLLM_MACH_GDN_BA_OVERLAP"] == "1"
+    args.gdn_persistent = args.gdn_ba_overlap = False
+    _, env = build_command(args, [])
+    assert env["VLLM_MACH_GDN_PERSISTENT"] == "0"
+    assert env["VLLM_MACH_GDN_BA_OVERLAP"] == "0"
+    args.nvfp4_lm_head = True
+    args.fused_ar_norm = False
+    _, env = build_command(args, [])
+    assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == "1"
+    assert env["VLLM_QWEN3_5_FUSED_AR_NORM"] == "0"
     args.fp16_ssm = True
     with pytest.raises(ValueError, match="dense-only"):
         build_command(args, [])

@@ -1,0 +1,2514 @@
+{
+  "model": "Qwen3.5-35B-A3B-MXFP6",
+  "batches": [
+    1,
+    4,
+    16,
+    32
+  ],
+  "output_tokens": 32,
+  "head": [
+    {
+      "rank": 0,
+      "calls": [
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 3,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 3,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 3,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 3,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 15,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 15,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 31,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 31,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        }
+      ],
+      "rows": 1640,
+      "global_argmax_mismatches": 0,
+      "global_winner_candidate_misses_on_rank": 0,
+      "global_top20_candidate_misses_on_rank": 0,
+      "rows_missing_any_global_top20": 0,
+      "selected_logit_mismatches": 65,
+      "max_selected_logit_error": 0.125
+    },
+    {
+      "rank": 1,
+      "calls": [
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 4,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 3,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 3,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 1,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.015625
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 16,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.015625
+        },
+        {
+          "rows": 15,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 15,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 2,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 1,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 8,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.015625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 8,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 8,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.0625
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.03125
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 32,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 31,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 0,
+          "max_selected_logit_error": 0.0
+        },
+        {
+          "rows": 31,
+          "global_argmax_mismatches": 0,
+          "global_winner_candidate_misses_on_rank": 0,
+          "global_top20_candidate_misses_on_rank": 0,
+          "rows_missing_any_global_top20": 0,
+          "selected_logit_mismatches": 4,
+          "max_selected_logit_error": 0.015625
+        }
+      ],
+      "rows": 1640,
+      "global_argmax_mismatches": 0,
+      "global_winner_candidate_misses_on_rank": 0,
+      "global_top20_candidate_misses_on_rank": 0,
+      "rows_missing_any_global_top20": 0,
+      "selected_logit_mismatches": 107,
+      "max_selected_logit_error": 0.0625
+    }
+  ],
+  "allreduce_norm": [
+    {
+      "rank": 0,
+      "fused_layers": 40,
+      "native_moe_schedules_retained": true,
+      "samples": [
+        {
+          "rows": 19,
+          "relative_l2": [
+            0.0027601609472185373,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 1,
+          "relative_l2": [
+            0.0028298620600253344,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 67,
+          "relative_l2": [
+            0.0028068218380212784,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 4,
+          "relative_l2": [
+            0.0028861011378467083,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 3,
+          "relative_l2": [
+            0.0027043940499424934,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 310,
+          "relative_l2": [
+            0.002834699349477887,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 16,
+          "relative_l2": [
+            0.0032750098034739494,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 15,
+          "relative_l2": [
+            0.0034006405621767044,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 638,
+          "relative_l2": [
+            0.002876957645639777,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 32,
+          "relative_l2": [
+            0.0032531865872442722,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 31,
+          "relative_l2": [
+            0.0034861734602600336,
+            0.0
+          ],
+          "flashinfer_fused": true
+        }
+      ]
+    },
+    {
+      "rank": 1,
+      "fused_layers": 40,
+      "native_moe_schedules_retained": true,
+      "samples": [
+        {
+          "rows": 19,
+          "relative_l2": [
+            0.0027601609472185373,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 1,
+          "relative_l2": [
+            0.0028298620600253344,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 67,
+          "relative_l2": [
+            0.0028068218380212784,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 4,
+          "relative_l2": [
+            0.0028861011378467083,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 3,
+          "relative_l2": [
+            0.0027043940499424934,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 310,
+          "relative_l2": [
+            0.002834699349477887,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 16,
+          "relative_l2": [
+            0.0032750098034739494,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 15,
+          "relative_l2": [
+            0.0034006405621767044,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 638,
+          "relative_l2": [
+            0.002876957645639777,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 32,
+          "relative_l2": [
+            0.0032531865872442722,
+            0.0
+          ],
+          "flashinfer_fused": true
+        },
+        {
+          "rows": 31,
+          "relative_l2": [
+            0.0034861734602600336,
+            0.0
+          ],
+          "flashinfer_fused": true
+        }
+      ]
+    }
+  ]
+}

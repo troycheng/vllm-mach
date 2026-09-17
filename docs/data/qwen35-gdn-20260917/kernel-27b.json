@@ -1,0 +1,322 @@
+[
+  {
+    "model": "27b",
+    "batch": 1,
+    "state_dtype": "torch.float32",
+    "layout": "SD",
+    "relative_l2": [
+      0.001729598268866539,
+      0.0,
+      0.0,
+      0.0020155529491603374
+    ],
+    "state_relative_l2": [
+      3.841349098365754e-05,
+      3.841349098365754e-05,
+      3.841349098365754e-05,
+      2.9810471460223198e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 2,
+    "state_dtype": "torch.float32",
+    "layout": "SD",
+    "relative_l2": [
+      0.0017066884320229292,
+      0.0018760196398943663,
+      0.0018610215047374368,
+      0.0018910374492406845
+    ],
+    "state_relative_l2": [
+      4.0250542951980606e-05,
+      3.895978443324566e-05,
+      3.983657370554283e-05,
+      3.5566121368901804e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 4,
+    "state_dtype": "torch.float32",
+    "layout": "SD",
+    "relative_l2": [
+      0.0018204718362540007,
+      0.0017176652327179909,
+      0.0018175808945670724,
+      0.0017858723876997828
+    ],
+    "state_relative_l2": [
+      5.2800784033024684e-05,
+      5.0350328820059076e-05,
+      4.869011536356993e-05,
+      4.4973308831686154e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 8,
+    "state_dtype": "torch.float32",
+    "layout": "SD",
+    "relative_l2": [
+      0.0018306627171114087,
+      0.0019296171376481652,
+      0.0018693064339458942,
+      0.0018743375549092889
+    ],
+    "state_relative_l2": [
+      0.00010613923222990707,
+      8.98075450095348e-05,
+      7.626447768416256e-05,
+      7.25729696569033e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 1,
+    "state_dtype": "torch.float32",
+    "layout": "DS",
+    "relative_l2": [
+      0.0017531908815726638,
+      0.0,
+      0.0,
+      0.0019361345330253243
+    ],
+    "state_relative_l2": [
+      3.0531642551068217e-05,
+      3.0531642551068217e-05,
+      3.0531642551068217e-05,
+      2.4614979338366538e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 2,
+    "state_dtype": "torch.float32",
+    "layout": "DS",
+    "relative_l2": [
+      0.0016867039958015084,
+      0.0018700589425861835,
+      0.0016749941278249025,
+      0.001781354658305645
+    ],
+    "state_relative_l2": [
+      4.200007242616266e-05,
+      4.1347760998178273e-05,
+      3.9668560930294916e-05,
+      3.4212771424790844e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 4,
+    "state_dtype": "torch.float32",
+    "layout": "DS",
+    "relative_l2": [
+      0.0019884423818439245,
+      0.001959367422387004,
+      0.001868302933871746,
+      0.0018319502705708146
+    ],
+    "state_relative_l2": [
+      5.323648656485602e-05,
+      4.880112464888953e-05,
+      4.7338049625977874e-05,
+      4.6538672904716805e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 8,
+    "state_dtype": "torch.float32",
+    "layout": "DS",
+    "relative_l2": [
+      0.0018094578990712762,
+      0.0018478992860764265,
+      0.0019406343344599009,
+      0.001934557338245213
+    ],
+    "state_relative_l2": [
+      7.504811219405383e-05,
+      7.375385757768527e-05,
+      7.085511606419459e-05,
+      6.610358104808256e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 1,
+    "state_dtype": "torch.float16",
+    "layout": "SD",
+    "relative_l2": [
+      0.002245123963803053,
+      0.0,
+      0.0,
+      0.0018763653934001923
+    ],
+    "state_relative_l2": [
+      5.998607593937777e-05,
+      5.998607593937777e-05,
+      5.998607593937777e-05,
+      4.776046989718452e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 2,
+    "state_dtype": "torch.float16",
+    "layout": "SD",
+    "relative_l2": [
+      0.0018954059341922402,
+      0.0019244060385972261,
+      0.001984254689887166,
+      0.002022994915023446
+    ],
+    "state_relative_l2": [
+      7.700155401835218e-05,
+      7.240661216201261e-05,
+      6.70934678055346e-05,
+      5.772121585323475e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 4,
+    "state_dtype": "torch.float16",
+    "layout": "SD",
+    "relative_l2": [
+      0.0017643988830968738,
+      0.0019863354973495007,
+      0.0019554460886865854,
+      0.0020913388580083847
+    ],
+    "state_relative_l2": [
+      9.162590140476823e-05,
+      9.372567728860304e-05,
+      8.057542436290532e-05,
+      0.00011499747051857412
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 8,
+    "state_dtype": "torch.float16",
+    "layout": "SD",
+    "relative_l2": [
+      0.0019703987054526806,
+      0.0018841649871319532,
+      0.0019202700350433588,
+      0.0019438848830759525
+    ],
+    "state_relative_l2": [
+      0.0001143529880209826,
+      0.00011283992353128269,
+      0.00010033785656560212,
+      8.540944691048935e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 1,
+    "state_dtype": "torch.float16",
+    "layout": "DS",
+    "relative_l2": [
+      0.0017394738970324397,
+      0.0,
+      0.0,
+      0.0017537412932142615
+    ],
+    "state_relative_l2": [
+      5.494740980793722e-05,
+      5.494740980793722e-05,
+      5.494740980793722e-05,
+      4.513862222665921e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 2,
+    "state_dtype": "torch.float16",
+    "layout": "DS",
+    "relative_l2": [
+      0.0019034056458622217,
+      0.001928773825056851,
+      0.0020250664092600346,
+      0.0021221281494945288
+    ],
+    "state_relative_l2": [
+      7.164953422034159e-05,
+      6.708083674311638e-05,
+      6.420436693588272e-05,
+      5.626769416267052e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 4,
+    "state_dtype": "torch.float16",
+    "layout": "DS",
+    "relative_l2": [
+      0.0019582381937652826,
+      0.0018688684795051813,
+      0.0021303927060216665,
+      0.0019703395664691925
+    ],
+    "state_relative_l2": [
+      0.00010684430890250951,
+      9.802319254959002e-05,
+      8.502975106239319e-05,
+      6.783980643376708e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  },
+  {
+    "model": "27b",
+    "batch": 8,
+    "state_dtype": "torch.float16",
+    "layout": "DS",
+    "relative_l2": [
+      0.001892506843432784,
+      0.0019347001798450947,
+      0.0018266168190166354,
+      0.0018953586695715785
+    ],
+    "state_relative_l2": [
+      0.00011910377361346036,
+      0.00013976797345094383,
+      0.000115509785246104,
+      9.733732440508902e-05
+    ],
+    "graph_matches_eager": true,
+    "null_and_canary_unchanged": true
+  }
+]

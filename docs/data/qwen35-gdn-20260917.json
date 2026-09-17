@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "model": "Qwen3.5-35B-A3B-MXFP6",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "count": 2
+  },
+  "runtime": {
+    "vllm": "0.29.0",
+    "torch": "2.13.0+cu130",
+    "flashinfer": "0.6.18",
+    "mxfp6_sm120": "0.2.1"
+  },
+  "configuration": {
+    "tp": 2,
+    "pp": 1,
+    "dtype": "bfloat16",
+    "ssm_dtype": "float32",
+    "kv_cache_bytes_per_rank": 8589934592,
+    "max_model_len": 16384,
+    "max_num_seqs": 32,
+    "max_num_batched_tokens": 4096,
+    "attention_backend": "TRITON_ATTN",
+    "compilation_mode": "NONE",
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "capture_sizes": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      24,
+      32
+    ],
+    "prefix_caching": false,
+    "omp_num_threads": 4,
+    "flashinfer_allreduce": false,
+    "compact_bf16_greedy": true,
+    "fused_ar_norm": false
+  },
+  "arms": {
+    "baseline": {
+      "gdn_persistent": false,
+      "gdn_ba_overlap": false
+    },
+    "enabled": {
+      "gdn_persistent": true,
+      "gdn_ba_overlap": true
+    }
+  },
+  "protocol": {
+    "lifecycle_order": [
+      "enabled",
+      "baseline"
+    ],
+    "same_gpu_pair": true,
+    "runs_per_point": 1,
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "prompt_source": "uniform token IDs",
+    "warmup_requests": "concurrency",
+    "warmup_output_tokens": 128,
+    "contract_seed": 20260917,
+    "request_seed_base": 2026091700
+  },
+  "validation": {
+    "focused_tests_passed": 90,
+    "server_smoke_passed": 35,
+    "prepared_gdn_layers_per_rank": 30,
+    "kernel_acceptance": {
+      "27b": "qwen35-gdn-20260917/kernel-27b.json",
+      "35b": "qwen35-gdn-20260917/kernel-35b.json"
+    },
+    "ba_overlap_adapter_bitwise_equal": true,
+    "broad_quality_evaluated": false
+  },
+  "comparisons": [
+    {
+      "concurrency": 4,
+      "baseline": {
+        "aggregate": {
+          "completed": 16,
+          "requested": 16,
+          "duration_s": 22.020985087030567,
+          "prompt_tokens": 48000,
+          "completion_tokens": 16000,
+          "request_throughput_per_s": 0.7265796664756531,
+          "output_throughput_tokens_per_s": 726.5796664756531,
+          "total_throughput_tokens_per_s": 2906.3186659026123,
+          "mean_ttft_ms": 238.11804057186237,
+          "p99_ttft_ms": 444.754524185555,
+          "mean_tpot_ms": 5.2689375268353436,
+          "p99_tpot_ms": 5.458392580213432,
+          "mean_itl_ms": 5.325557054302853,
+          "p99_itl_ms": 10.207745905499904
+        },
+        "raw": "qwen35-gdn-20260917/baseline-c4.json.gz"
+      },
+      "enabled": {
+        "aggregate": {
+          "completed": 16,
+          "requested": 16,
+          "duration_s": 20.2196427739691,
+          "prompt_tokens": 48000,
+          "completion_tokens": 16000,
+          "request_throughput_per_s": 0.7913097268265543,
+          "output_throughput_tokens_per_s": 791.3097268265543,
+          "total_throughput_tokens_per_s": 3165.2389073062172,
+          "mean_ttft_ms": 269.62009293492883,
+          "p99_ttft_ms": 442.60883972747246,
+          "mean_tpot_ms": 4.7883250130229404,
+          "p99_tpot_ms": 5.026152905420976,
+          "mean_itl_ms": 4.790402283408391,
+          "p99_itl_ms": 4.814815954305232
+        },
+        "raw": "qwen35-gdn-20260917/enabled-c4.json.gz"
+      },
+      "output_throughput_change_percent": 8.908873085436152
+    },
+    {
+      "concurrency": 16,
+      "baseline": {
+        "aggregate": {
+          "completed": 32,
+          "requested": 32,
+          "duration_s": 17.565594750107266,
+          "prompt_tokens": 96000,
+          "completion_tokens": 32000,
+          "request_throughput_per_s": 1.8217430411688502,
+          "output_throughput_tokens_per_s": 1821.7430411688501,
+          "total_throughput_tokens_per_s": 7286.972164675401,
+          "mean_ttft_ms": 576.633366275928,
+          "p99_ttft_ms": 1434.5594010467175,
+          "mean_tpot_ms": 8.197206675641747,
+          "p99_tpot_ms": 8.702804108340949,
+          "mean_itl_ms": 8.340953934578609,
+          "p99_itl_ms": 15.185294053517282
+        },
+        "raw": "qwen35-gdn-20260917/baseline-c16.json.gz"
+      },
+      "enabled": {
+        "aggregate": {
+          "completed": 32,
+          "requested": 32,
+          "duration_s": 17.37745164905209,
+          "prompt_tokens": 96000,
+          "completion_tokens": 32000,
+          "request_throughput_per_s": 1.8414667838679064,
+          "output_throughput_tokens_per_s": 1841.4667838679063,
+          "total_throughput_tokens_per_s": 7365.867135471625,
+          "mean_ttft_ms": 602.698073580541,
+          "p99_ttft_ms": 1498.503261113074,
+          "mean_tpot_ms": 8.077764741413942,
+          "p99_tpot_ms": 8.604842247247968,
+          "mean_itl_ms": 8.219416718099977,
+          "p99_itl_ms": 14.854519972577691
+        },
+        "raw": "qwen35-gdn-20260917/enabled-c16.json.gz"
+      },
+      "output_throughput_change_percent": 1.0826852225219064
+    },
+    {
+      "concurrency": 24,
+      "baseline": {
+        "aggregate": {
+          "completed": 48,
+          "requested": 48,
+          "duration_s": 21.009993567015044,
+          "prompt_tokens": 144000,
+          "completion_tokens": 48000,
+          "request_throughput_per_s": 2.2846270679186844,
+          "output_throughput_tokens_per_s": 2284.627067918684,
+          "total_throughput_tokens_per_s": 9138.508271674737,
+          "mean_ttft_ms": 767.2522305365419,
+          "p99_ttft_ms": 2058.0529255978763,
+          "mean_tpot_ms": 9.719078242988049,
+          "p99_tpot_ms": 10.473968554170453,
+          "mean_itl_ms": 9.771464158132947,
+          "p99_itl_ms": 111.57164884265512
+        },
+        "raw": "qwen35-gdn-20260917/baseline-c24.json.gz"
+      },
+      "enabled": {
+        "aggregate": {
+          "completed": 48,
+          "requested": 48,
+          "duration_s": 20.726221474003978,
+          "prompt_tokens": 144000,
+          "completion_tokens": 48000,
+          "request_throughput_per_s": 2.315906932684492,
+          "output_throughput_tokens_per_s": 2315.906932684492,
+          "total_throughput_tokens_per_s": 9263.627730737968,
+          "mean_ttft_ms": 786.2138869434906,
+          "p99_ttft_ms": 2121.8445349577814,
+          "mean_tpot_ms": 9.559232995325432,
+          "p99_tpot_ms": 10.31423629218553,
+          "mean_itl_ms": 9.610756420459085,
+          "p99_itl_ms": 114.85714744427241
+        },
+        "raw": "qwen35-gdn-20260917/enabled-c24.json.gz"
+      },
+      "output_throughput_change_percent": 1.3691453281390098
+    },
+    {
+      "concurrency": 32,
+      "baseline": {
+        "aggregate": {
+          "completed": 64,
+          "requested": 64,
+          "duration_s": 24.522347609046847,
+          "prompt_tokens": 192000,
+          "completion_tokens": 64000,
+          "request_throughput_per_s": 2.6098643172478706,
+          "output_throughput_tokens_per_s": 2609.8643172478705,
+          "total_throughput_tokens_per_s": 10439.457268991482,
+          "mean_ttft_ms": 970.6879504556127,
+          "p99_ttft_ms": 2835.504109808244,
+          "mean_tpot_ms": 11.260340141401851,
+          "p99_tpot_ms": 12.184884896104759,
+          "mean_itl_ms": 11.371842327578719,
+          "p99_itl_ms": 116.3023510761559
+        },
+        "raw": "qwen35-gdn-20260917/baseline-c32.json.gz"
+      },
+      "enabled": {
+        "aggregate": {
+          "completed": 64,
+          "requested": 64,
+          "duration_s": 24.06672115495894,
+          "prompt_tokens": 192000,
+          "completion_tokens": 64000,
+          "request_throughput_per_s": 2.659273757647407,
+          "output_throughput_tokens_per_s": 2659.273757647407,
+          "total_throughput_tokens_per_s": 10637.095030589628,
+          "mean_ttft_ms": 970.1818340381578,
+          "p99_ttft_ms": 2822.566402318189,
+          "mean_tpot_ms": 11.034371775071026,
+          "p99_tpot_ms": 11.955128560812017,
+          "mean_itl_ms": 11.143635331354533,
+          "p99_itl_ms": 116.14083108957857
+        },
+        "raw": "qwen35-gdn-20260917/enabled-c32.json.gz"
+      },
+      "output_throughput_change_percent": 1.8931804260092333
+    }
+  ],
+  "limitations": [
+    "Single run per point; small differences may be run-to-run noise.",
+    "Kernel tolerances and serving smoke checks are not a broad model-quality or BF16-fidelity evaluation."
+  ]
+}
