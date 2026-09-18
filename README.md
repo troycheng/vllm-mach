@@ -92,9 +92,13 @@ The separate historical NVFP4 head probe retains **100% global BF16 top-20 recal
 
 ### Fidelity and throughput
 
-Each Dense point combines the September 17 M32 fidelity measurement with the current profile's equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. Throughput measurement dates and conditions are listed above.
+Each point combines its model's September 17 M32 fidelity measurement with the current profile's equally weighted mean throughput gain over stock FP8. Horizontal bars show MAE 95% intervals; vertical bars span gains across c4/c16/c24/c32. Throughput measurement dates and conditions are listed above.
 
-![Fidelity and throughput](docs/images/quality-throughput-tradeoff.png)
+![Dense fidelity and throughput](docs/images/quality-throughput-tradeoff.png)
+
+![MoE fidelity and throughput](docs/images/qwen35-moe-quality-throughput-tradeoff.png)
+
+The MoE plot uses the same open-source vLLM 0.29.0 throughput baselines as the serving comparison above. Its MAE comes from the separate precision diagnostic; MoE NVFP4 repeat variation is not included in the MAE confidence intervals.
 
 [September 16 ablations](docs/native-fidelity.md), [September 15 native results](docs/native-fidelity-20260915.md) and [earlier EXL3 results](docs/benchmarks.md) remain archived.
 

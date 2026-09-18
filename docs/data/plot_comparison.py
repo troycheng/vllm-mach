@@ -98,10 +98,11 @@ def plot_tradeoff(accuracy, performance):
     save(fig,'quality-throughput-tradeoff')
 
 
-def plot_native_tradeoff(accuracy, performance):
+def plot_native_tradeoff(accuracy, performance, *, title="Dense · Qwen3.8-27B",
+                         stem="quality-throughput-tradeoff", footnote=None):
     baseline = performance['runs']['fp8']['points']
     fig, ax = plt.subplots(figsize=(10.8, 7.2))
-    fig.subplots_adjust(left=.13, right=.97, top=.85, bottom=.13)
+    fig.subplots_adjust(left=.13, right=.97, top=.85, bottom=.20 if footnote else .13)
     for name in ORDER:
         run = accuracy['runs'][name]
         gains = [100*(p['output_throughput_tokens_per_s']/b['output_throughput_tokens_per_s']-1)
@@ -113,14 +114,38 @@ def plot_native_tradeoff(accuracy, performance):
                     label=LABELS[name])
     ax.axhline(0, color='#AAB2BC', lw=1)
     ax.grid(color='#E8EBEE', lw=.8)
-    ax.set_title('Dense · Qwen3.8-27B', loc='left', fontsize=12, fontweight='bold', pad=14)
+    ax.set_title(title, loc='left', fontsize=12, fontweight='bold', pad=14)
     ax.set_xlabel('Physical M32 gold-token logprob MAE vs BF16', labelpad=13)
     ax.set_ylabel('Output-throughput gain vs stock FP8', labelpad=15)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, pos: f'{value:+.0f}%'))
     fig.legend(*ax.get_legend_handles_labels(), loc='upper left', bbox_to_anchor=(.06,.995),
                ncol=2, frameon=False, fontsize=10)
     frame(ax)
-    save(fig, 'quality-throughput-tradeoff')
+    if footnote:
+        fig.text(.06, .025, footnote, fontsize=9, color='#657180', linespacing=1.5)
+    save(fig, stem)
+
+def plot_moe_tradeoff(profile_fidelity):
+    serving = json.loads((HERE/'qwen35-default-full-20260917.json').read_text())
+    mapping = [('fp8', 'fp8'), ('nvfp4', 'nvfp4'),
+               ('gdn', 'default'), ('full_gdn', 'full')]
+    accuracy = {'runs': {
+        target: profile_fidelity['models']['moe']['m32']['runs'][source]
+        for target, source in mapping
+    }}
+    performance = {'runs': {
+        target: {'points': [
+            {'concurrency': row['concurrency'],
+             'output_throughput_tokens_per_s': row[source]['aggregate']['output_throughput_tokens_per_s']}
+            for row in serving['comparisons'] if row['concurrency'] in (4, 16, 24, 32)
+        ]}
+        for target, source in mapping
+    }}
+    plot_native_tradeoff(
+        accuracy, performance, title='MoE · Qwen3.5-35B-A3B',
+        stem='qwen35-moe-quality-throughput-tradeoff',
+        footnote='MAE: physical M32 diagnostic · Throughput: 3000 input / 1000 output tokens, 2-run means.\n'
+                 'MoE NVFP4 varies across repeats; MAE intervals exclude run-to-run variation.')
 
 def plot_gdn_m4(data):
     fig, ax = plt.subplots(figsize=(12.8,6.2))
@@ -360,6 +385,8 @@ def main():
     if not args.legacy:
         plot_gdn_ablation(performance)
         plot_moe_throughput()
+        if current_fidelity_path.exists():
+            plot_moe_tradeoff(profile_fidelity)
     print('Rendered fidelity and throughput figures (PNG + SVG)')
 
 if __name__ == '__main__':
