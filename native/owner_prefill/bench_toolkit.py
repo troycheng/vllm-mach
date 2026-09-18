@@ -67,7 +67,7 @@ def run(args):
     config = json.loads(args.config.read_text())['text_config']
     assert (config['hidden_size'], config['intermediate_size'], config['num_hidden_layers']) == (5120, 17408, 64)
     assert config['rms_norm_eps'] == 1e-6
-    assert torch.cuda.get_device_properties(rank).multi_processor_count == 170
+    assert torch.cuda.get_device_capability(rank) == (12, 0)
     metadata, workspaces = {}, {}
     for tag in args.tags:
         metadata[tag] = json.loads((args.out / tag / 'build.json').read_text())

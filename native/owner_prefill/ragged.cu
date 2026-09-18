@@ -6,6 +6,7 @@
 #include <torch/library.h>
 #include <cuda_runtime.h>
 #include <cstdint>
+#include <algorithm>
 #ifndef C32_RAGGED_FUSION_INCLUDED
 #define C32_RAGGED_FUSION_INCLUDED
 #include "trtllm_allreduce_fusion.cuh"
@@ -25,7 +26,6 @@ constexpr int kInputPayloadBytes = kInputElements * int(sizeof(T));
 constexpr int kRequiredWorkspaceBytes =
     kInputElements * int(sizeof(T)) * 2 +
     kInputElements / 256 * int(sizeof(unsigned short)) * 2;
-constexpr int kExpectedSMCount = 170;
 static_assert(kInputPayloadBytes == 40 * 1024 * 1024);
 static_assert(kRequiredWorkspaceBytes == 84213760);
 
@@ -205,9 +205,12 @@ void reduce_owner(at::Tensor const& input, at::Tensor const& residual,
       &active, reduce_owner_kernel, 640, 0) == cudaSuccess && active >= 1,
       "owner reduce cannot sustain the original 640-thread whole-token block");
   TORCH_CHECK(cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount,
-                                    input.get_device()) == cudaSuccess);
+                                    input.get_device()) == cudaSuccess && sm_count > 0,
+              "owner reduce could not query a positive SM count");
   cudaLaunchConfig_t config{};
-  config.gridDim = sm_count; config.blockDim = 640; config.stream = params.stream;
+  // All CTAs must be resident and have a slot in the barrier workspace.
+  config.gridDim = std::min(sm_count, details::kBarrierFlagCount);
+  config.blockDim = 640; config.stream = params.stream;
   cudaLaunchAttribute attrs[2]{};
   attrs[0].id = cudaLaunchAttributeProgrammaticStreamSerialization;
   attrs[0].val.programmaticStreamSerializationAllowed = pdl ? 1 : 0;
@@ -252,13 +255,15 @@ void gather_mx8_padded(at::Tensor const& local_values, at::Tensor const& local_s
   int sm_count = 0, active = 0;
   TORCH_CHECK(cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount,
                                     local_values.get_device()) == cudaSuccess &&
-              sm_count == kExpectedSMCount,
-              "gather_mx8_padded requires the fixed 170-SM topology");
+              sm_count > 0,
+              "gather_mx8_padded could not query a positive SM count");
   TORCH_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
       &active, gather_mx8_padded_kernel, 256, 0) == cudaSuccess && active >= 1,
       "gather_mx8_padded cannot sustain one 256-thread block per SM");
   cudaLaunchConfig_t config{};
-  config.gridDim = sm_count; config.blockDim = 256;
+  // All CTAs must be resident and have a slot in the barrier workspace.
+  config.gridDim = std::min(sm_count, details::kBarrierFlagCount);
+  config.blockDim = 256;
   config.stream = c10::cuda::getCurrentCUDAStream().stream();
   cudaLaunchAttribute attrs[2]{};
   attrs[0].id = cudaLaunchAttributeProgrammaticStreamSerialization;

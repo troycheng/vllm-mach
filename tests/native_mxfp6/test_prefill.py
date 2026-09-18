@@ -412,6 +412,67 @@ def test_owner_prefill_fallback_does_not_initialize_owner_resources(monkeypatch,
     load.assert_not_called()
 
 
+@pytest.mark.parametrize("sm_count", [96, 128, 148, 170, 192, 256])
+def test_owner_prefill_initialization_accepts_other_sm_counts(monkeypatch, sm_count):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    import vllm.distributed as distributed
+
+    from vllm_mach.mxfp6 import sm120_owner_prefill as owner
+
+    monkeypatch.setenv("VLLM_SM120_OWNER_PREFILL", "1")
+    monkeypatch.setattr(owner.current_platform, "is_device_capability", lambda _: True)
+    monkeypatch.setattr(torch.cuda, "is_current_stream_capturing", lambda: False)
+    monkeypatch.setattr(
+        torch.cuda,
+        "get_device_properties",
+        lambda _: SimpleNamespace(multi_processor_count=sm_count),
+    )
+    monkeypatch.setattr(distributed, "get_tensor_model_parallel_world_size", lambda: 2)
+    monkeypatch.setattr(
+        owner,
+        "packed_weight",
+        lambda module, *, merged=True: SimpleNamespace(k=5120 if merged else 8704),
+    )
+    norm = SimpleNamespace(
+        weight=torch.empty(5120, dtype=torch.bfloat16), variance_epsilon=1e-6
+    )
+    layer = SimpleNamespace(
+        use_fused_ar_gemma_norm=True,
+        layer_scale=None,
+        input_layernorm=norm,
+        post_attention_layernorm=norm,
+        layer_type="linear_attention",
+        linear_attn=SimpleNamespace(in_proj_qkvz=SimpleNamespace(bias=None)),
+        mlp=SimpleNamespace(
+            gate_up_proj=SimpleNamespace(),
+            down_proj=SimpleNamespace(reduce_results=False),
+        ),
+    )
+    model = SimpleNamespace(
+        layers=[layer] * 64,
+        start_layer=0,
+        end_layer=64,
+        aux_hidden_state_layers=[],
+        norm=norm,
+    )
+    hidden = SimpleNamespace(
+        ndim=2,
+        shape=(512, 5120),
+        dtype=torch.bfloat16,
+        device=torch.device("cuda:0"),
+        is_contiguous=lambda: True,
+    )
+    # Stop at native loading: validation must accept every SM count without
+    # needing a GPU, native extensions, or an initialized TP process group.
+    load = Mock(side_effect=RuntimeError("reached native loading"))
+    monkeypatch.setattr(owner, "load_native", load)
+    with pytest.raises(RuntimeError, match="reached native loading"):
+        owner.begin(model, hidden)
+    load.assert_called_once()
+
+
 @ensure_current_vllm_config()
 def _worker_owner_norm(local_rank, port):
     from types import SimpleNamespace
@@ -470,9 +531,27 @@ def _worker_owner_norm(local_rank, port):
             local_mlp_partials=None,
             active_checks=[],
         )
+        # Preserve the TP partials before the owner reduce overwrites its input.
+        # The replica path uses the local ordered-sum kernels instead of reduce.
+        original_partial = partial.clone()
+        both = owner.gathered_rows(partial).reshape(2, rows, 5120)
         result = owner.norm_step(state, partial, residual, norm, f"M{rows}")
         assert len(state.active_checks) == 4
         assert all(c["bitwise_equal"] for c in state.active_checks), state.active_checks
+        state.local_mlp_partials = SimpleNamespace(
+            parts=[both[rank, own].contiguous() for rank in (0, 1)],
+            oracle_partial=original_partial,
+        )
+        state.active_checks = []
+        local_result = owner.norm_step(
+            state, torch.empty_like(partial), residual, norm, f"M{rows}/local"
+        )
+        assert len(state.active_checks) == 4
+        assert all(c["bitwise_equal"] for c in state.active_checks), state.active_checks
+        assert torch.equal(
+            local_result.norm[own].view(torch.int16),
+            result.norm[own].view(torch.int16),
+        )
         gathered = owner.padded_rows(state, result.norm[own])
         assert torch.equal(
             gathered.view(torch.int16), result.oracle_norm.view(torch.int16)

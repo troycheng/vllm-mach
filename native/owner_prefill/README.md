@@ -1,6 +1,6 @@
 # Owner prefill
 
-Optional TP2 owner-residual path for the Qwen3.8-27B checkpoint profile. It covers physical prefill batches of 3000–4096 rows at hidden size 5120; other shapes retain the existing runtime. The cooperative CUDA kernels require SM120 with 170 SMs. This is a distinct prefill path: rank64 GU and Temporal decode remain unchanged.
+Optional TP2 owner-residual path for the Qwen3.8-27B checkpoint profile. It covers physical prefill batches of 3000–4096 rows at hidden size 5120; other shapes retain the existing runtime. The cooperative CUDA kernels require SM120 and adapt their launch grid to the device SM count. Communication grids are capped at the 256 slots in the barrier workspace; local norm grids are capped at the input row count. The 170-SM RTX 5090 launch geometry is unchanged. This is a distinct prefill path: rank64 GU and Temporal decode remain unchanged.
 
 Each rank owns a contiguous row range between norms. QKV/QKVZ inputs use gathered MXFP8 values and 128-row scale atoms; GDN BA uses the original loaded BF16 parameters and the original physical matrix shape. Ragged transfers pad only communication packets, never attention inputs. The final norm gathers full BF16 output for the LM head.
 

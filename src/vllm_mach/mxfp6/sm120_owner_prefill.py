@@ -260,8 +260,6 @@ def begin(model, hidden):
             model.norm.weight.dtype == torch.bfloat16
             and model.norm.variance_epsilon == 1e-6
         )
-        if torch.cuda.get_device_properties(hidden.device).multi_processor_count != 170:
-            raise RuntimeError("Owner prefill requires the validated 170-SM geometry")
         load_native()
         rank = get_tensor_model_parallel_rank()
         # Dedicated workspace: never resize or replace a workspace referenced

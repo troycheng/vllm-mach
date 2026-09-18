@@ -6,6 +6,7 @@
 #include <torch/library.h>
 #include <cuda_runtime.h>
 #include <cstdint>
+#include <algorithm>
 #include "trtllm_allreduce_fusion.cuh"
 
 namespace mach_owner_local {
@@ -15,7 +16,6 @@ using T = __nv_bfloat16;
 constexpr auto Pattern = AllReduceFusionPattern::kARResidualRMSNorm;
 constexpr int kRows = 2048, kH = 5120, kRanks = 2, kVecSize = 8;
 constexpr int kThreads = kH / kVecSize;
-constexpr int kCTAs = 170;
 static_assert(kThreads == 640);
 
 // `vals[0]` is TP rank 0 and `vals[1]` TP rank 1. allreduce_sum<...,true>
@@ -62,8 +62,8 @@ void ordered_sum_norm(at::Tensor const& part0, at::Tensor const& part1,
   c10::cuda::CUDAGuard guard(part0.device());
   int sm_count = 0, active = 0;
   TORCH_CHECK(cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount,
-                                    part0.get_device()) == cudaSuccess && sm_count == kCTAs,
-              "ordered_sum_norm requires the fixed 170-SM topology");
+                                    part0.get_device()) == cudaSuccess && sm_count > 0,
+              "ordered_sum_norm could not query a positive SM count");
   TORCH_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
                   &active, ordered_sum_norm_kernel, kThreads, 0) == cudaSuccess && active >= 1,
               "ordered_sum_norm cannot sustain one 640-thread whole-token CTA per SM");
@@ -85,7 +85,8 @@ void ordered_sum_norm(at::Tensor const& part0, at::Tensor const& part1,
   params.trigger_completion_at_end = true;
 
   cudaLaunchConfig_t config{};
-  config.gridDim = kCTAs;
+  // One whole-token CTA per SM, with no idle CTAs past the input rows.
+  config.gridDim = std::min(sm_count, int(part0.size(0)));
   config.blockDim = kThreads;
   config.stream = params.stream;
   cudaLaunchAttribute attrs[2]{};

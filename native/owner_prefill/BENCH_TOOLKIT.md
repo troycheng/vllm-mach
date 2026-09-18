@@ -2,7 +2,7 @@
 
 `bench_toolkit.py` isolates the four owner-prefill extensions using the local
 Qwen3.5-27B configuration: TP2, BF16, hidden size 5120, intermediate size 17408,
-64 layers, RMSNorm epsilon 1e-6 and weight bias 1. Two 170-SM GPUs are required.
+64 layers, RMSNorm epsilon 1e-6 and weight bias 1. Two SM120 GPUs are required; launch grids adapt to the device SM count.
 It checks the supplied model config; it does not load model weights.
 
 Build identical sources with each toolkit, retaining `sm_120f`, fast math and
