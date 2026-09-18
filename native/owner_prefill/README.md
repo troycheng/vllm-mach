@@ -8,13 +8,13 @@ The default 32 even-numbered layers replicate the peer's original packed MXFP6 g
 
 ## Build
 
-Install the vLLM 0.29.0 / ExLlamaV3 1.5.0 source profile first. Build against the same PyTorch and FlashInfer 0.6.18 installation used for serving. The selected implementation was built with CUDA **13.2**, C++17 and `sm_120f`; preserve these compiler and fast-math settings when reproducing its numerical checks.
+Install the current [native MXFP6 profile](../../docs/installation.md) first. Build against the same PyTorch and FlashInfer 0.6.18 installation used for serving. Build with CUDA **13.0**, C++17, `sm_120f` and the retained fast-math settings, matching the lossless extension and the PyTorch cu130 environment. The [toolkit comparison](BENCH_TOOLKIT.md) records the CUDA 13.2 → 13.0 numerical and kernel performance checks; it does not establish end-to-end model equivalence.
 
 ```bash
 cd native/owner_prefill
-CUDA_HOME=/usr/local/cuda-13.2 MAX_JOBS=2 \
+CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=2 \
   python -m pip wheel --no-deps --no-build-isolation . -w dist
-python -m pip install --no-deps dist/vllm_mach_owner_prefill-*.whl
+python -m pip install --force-reinstall --no-deps dist/vllm_mach_owner_prefill-*.whl
 cd ../..
 python profiles/vllm-0.29.0/install-owner-prefill.py
 export VLLM_MACH_OWNER_PREFILL=1

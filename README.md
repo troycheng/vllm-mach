@@ -125,12 +125,11 @@ To build the image with the Dense default prefill extensions:
 
 ```bash
 docker buildx build --load \
-  --build-context cuda132=/usr/local/cuda-13.2 \
   --build-arg MAX_JOBS=8 \
   -f deploy/Dockerfile -t vllm-mach:local .
 ```
 
-This requires Linux x86-64, Docker Buildx and the CUDA 13.2 toolkit at the supplied path. The image supplies the separate CUDA 13.0 build for the lossless collective. Only the MXFP6 model checkpoint is required; no EXL3 checkpoint or rank64 assets are needed. Mach does not distribute model weights.
+This requires Linux x86-64 and Docker Buildx. The image supplies CUDA 13.0 for MXFP6 and both prefill extensions; no external toolkit is required. Only the MXFP6 model checkpoint is required; no EXL3 checkpoint or rank64 assets are needed. Mach does not distribute model weights.
 
 Release `0.1.0a10` remains documented with ExLlamaV3 1.4.9; a9 uses vLLM 0.28. See [earlier installations](docs/public-install.md) for those versions.
 

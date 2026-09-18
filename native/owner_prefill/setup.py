@@ -10,10 +10,10 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 if metadata.version('flashinfer-python') != '0.6.18':
     raise RuntimeError('Owner prefill requires flashinfer-python==0.6.18 headers')
 if not CUDA_HOME:
-    raise RuntimeError('Set CUDA_HOME to a CUDA 13.2 toolkit')
+    raise RuntimeError('Set CUDA_HOME to a CUDA 13.0 toolkit')
 nvcc = subprocess.check_output([str(Path(CUDA_HOME) / 'bin/nvcc'), '--version'], text=True)
-if not re.search(r'release 13\.2,', nvcc):
-    raise RuntimeError('This owner prefill profile requires the CUDA 13.2 compiler')
+if not re.search(r'release 13\.0,', nvcc):
+    raise RuntimeError('This owner prefill profile requires the CUDA 13.0 compiler')
 root = Path(metadata.distribution('flashinfer-python').locate_file('flashinfer/data'))
 includes = [root / path for path in ('include', 'spdlog/include', 'cutlass/include')]
 for path in includes:

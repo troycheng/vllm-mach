@@ -77,12 +77,13 @@ MoE does not use them. To opt out on Dense, pass
 ```bash
 CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=8 \
   uv pip install --no-build-isolation --no-deps ./native/lossless_prefill
-CUDA_HOME=/usr/local/cuda-13.2 MAX_JOBS=8 \
+CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=8 \
   uv pip install --no-build-isolation --no-deps ./native/owner_prefill
 ```
 
-These extensions retain their existing compiler contracts: CUDA 13.0 for
-lossless prefill and CUDA 13.2 for owner prefill, using FlashInfer 0.6.18 headers.
+Both extensions use CUDA 13.0 and FlashInfer 0.6.18 headers.
+When upgrading an existing owner installation, force a rebuild with
+`CUDA_HOME=/usr/local/cuda-13.0 uv pip install --reinstall --no-build-isolation --no-deps ./native/owner_prefill`.
 They do not depend on EXL3.
 
 ```bash
@@ -115,7 +116,6 @@ The image builds MXFP6 and both Dense default prefill extensions, without EXL3:
 
 ```bash
 docker buildx build --load \
-  --build-context cuda132=/usr/local/cuda-13.2 \
   --build-arg MAX_JOBS=8 -f deploy/Dockerfile -t vllm-mach:local .
 docker run --rm --gpus '"device=0,1"' --ipc=host --network=host \
   -v /path/to/model:/models/mxfp6:ro \
@@ -124,8 +124,8 @@ docker run --rm --gpus '"device=0,1"' --ipc=host --network=host \
   --owner-prefill --nvfp4-lm-head --kv-cache-memory-bytes 8218214400
 ```
 
-Docker Buildx and a local CUDA 13.2 toolkit are required. The vLLM image supplies
-the CUDA 13.0 toolkit used by the lossless extension.
+Docker Buildx is required. The vLLM image supplies the CUDA 13.0 toolkit used
+for MXFP6 and both prefill extensions; no external toolkit build context is needed.
 
 See [integration and validation](native-mxfp6.md) before interpreting benchmark
 results. Historical EXL3 guides apply only to earlier releases.

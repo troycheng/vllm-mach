@@ -42,8 +42,14 @@ def patch_file(target, patch):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cuda-home", type=Path)
-    parser.add_argument("--lossless-cuda-home", type=Path)
+    parser.add_argument(
+        "--cuda-home", type=Path,
+        help="CUDA 13.0 toolkit for both prefill extensions",
+    )
+    parser.add_argument(
+        "--lossless-cuda-home", type=Path,
+        help="Optional lossless toolkit path override (CUDA 13.0)",
+    )
     parser.add_argument("--work-dir", type=Path, default=Path("/opt/mach-build"))
     phases = parser.add_mutually_exclusive_group()
     phases.add_argument("--native-only", action="store_true")
@@ -60,13 +66,13 @@ def main():
         wheels.mkdir(parents=True, exist_ok=True)
         for part in parts:
             cuda = (
-                args.lossless_cuda_home
+                (args.lossless_cuda_home or args.cuda_home)
                 if part == "lossless_prefill"
                 else args.cuda_home
             )
             if cuda is None:
                 parser.error(
-                    "Supply --cuda-home (owner) / --lossless-cuda-home (lossless)"
+                    "Supply --cuda-home pointing to a CUDA 13.0 toolkit"
                 )
             env = dict(os.environ, CUDA_HOME=str(cuda), TORCH_CUDA_ARCH_LIST="12.0a")
             env["PATH"] = str(cuda / "bin") + os.pathsep + env["PATH"]
