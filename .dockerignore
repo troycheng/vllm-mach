@@ -3,8 +3,11 @@
 **/*.pyc
 .pytest_cache
 build
+**/build
 dist
 *.egg-info
+**/*.egg-info
+**/*.o
 **/*.so
 **/*.whl
 **/*.safetensors
