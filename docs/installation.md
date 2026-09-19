@@ -102,8 +102,9 @@ CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
 ```
 
 MoE is detected automatically and disables Dense prefill paths. Add
-`--fp16-ssm --nvfp4-lm-head` for MoE full. No additional kernels are needed
-beyond MXFP6 0.2.1. See the [MoE guide](qwen35-moe.md) for validation and
+`--fp16-ssm --nvfp4-lm-head` for MoE full. It uses the same pinned MXFP6
+source build from step 2; the original 0.2.1 wheel does not pass the current
+launcher checks. See the [MoE guide](qwen35-moe.md) for validation and
 benchmark settings.
 
 ## Configuration and memory

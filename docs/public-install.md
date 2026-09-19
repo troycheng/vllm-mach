@@ -1,8 +1,10 @@
 # Public EXL3 installation
 
-For the current profiles, use the [ExLlamaV3 1.4.9 patch](../profiles/exllamav3-1.4.9/README.md) with the a10 / vLLM 0.29 profile, or the [1.4.8 patch](../profiles/exllamav3-1.4.8/README.md) with a9. PR #330 is closed. The pinned 1.4.6 build below is retained for earlier installations.
+This page records the historical EXL3 installation. Use [Setup and usage](installation.md) for the current native MXFP6 profile.
 
-The current source checkout also includes a tested [1.5.0 upgrade](../profiles/exllamav3-1.5.0/README.md) for the a10 runtime. Rebuild ExLlamaV3 and the M32/Temporal extensions together; the published a10 source archive still contains the 1.4.9 profile.
+For the archived EXL3 profiles, use the [ExLlamaV3 1.4.9 patch](../profiles/exllamav3-1.4.9/README.md) with the a10 / vLLM 0.29 profile, or the [1.4.8 patch](../profiles/exllamav3-1.4.8/README.md) with a9. PR #330 is closed. The pinned 1.4.6 build below is retained for earlier installations.
+
+The retained [1.5.0 upgrade](../profiles/exllamav3-1.5.0/README.md) describes the a10 runtime. That installation required rebuilding ExLlamaV3 and the M32/Temporal extensions together; the published a10 source archive contains the 1.4.9 profile.
 
 Use Mach `0.1.0a4` or later for this installation. Do not combine `0.1.0a3` BF16 grouped execution with ExLlamaV3 commit `d0094bc`; it fails with `had_group_ids must be a CPU tensor`.
 
@@ -39,7 +41,7 @@ This minimal installation is for Mach's direct native-extension use inside the e
 python -c 'import torch; import exllamav3_ext as e; assert callable(e.exl3_mgemm_bf16_io_grouped_had)'
 ```
 
-The optional M32 module has [separate build instructions](../native/exl3_m32/README.md). Install the fixed Mach wheel in this same environment before using the public BF16 API.
+The optional M32 module has [archived build instructions](https://github.com/troycheng/vllm-mach/blob/dd48f2a52f03c2e45ec761736db6cd548541f393/native/exl3_m32/README.md). They describe historical EXL3 material, not a current native MXFP6 extension. Install the fixed Mach wheel in this same environment before using the public BF16 API.
 
 ## Without B12X
 

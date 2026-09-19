@@ -1,5 +1,7 @@
 # Experimental decode paths
 
+This page records historical EXL3 options. Use [Setup and usage](installation.md) for the current native MXFP6 profile.
+
 These options are available in `0.1.0a3`. They are disabled by default and require `EXL3_BF16_IO=1`, the BF16 API described in the main README, and compatible grouped QKV/QKVZ bundles.
 
 | Option | Dispatch |
@@ -18,7 +20,7 @@ export EXL3_BF16_IO_M32=1
 export EXL3_BF16_IO_TILE_M32=1
 ```
 
-The M32 module has [separate build instructions](../native/exl3_m32/README.md). If it is absent, M32 falls back to M16 + M16 with a warning. An installed module with an incompatible API fails explicitly; loader or binary errors are not silently hidden. CUDA Graph priming uses the same row selection as execution. Each captured M32 call owns its lock workspace, which the kernel resets on the current stream.
+The M32 module's [archived build instructions](https://github.com/troycheng/vllm-mach/blob/dd48f2a52f03c2e45ec761736db6cd548541f393/native/exl3_m32/README.md) are historical EXL3 material, not a current native MXFP6 extension. If it is absent, M32 falls back to M16 + M16 with a warning. An installed module with an incompatible API fails explicitly; loader or binary errors are not silently hidden. CUDA Graph priming uses the same row selection as execution. Each captured M32 call owns its lock workspace, which the kernel resets on the current stream.
 
 The optional [sampling metadata patch](../profiles/vllm-0.28.0/README.md#sampling-metadata) stages temperature and seed tensors on the GPU before vocabulary tiles read them. It is independent of the EXL3 quantization path and remains opt-in.
 
