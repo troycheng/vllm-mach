@@ -1,0 +1,163 @@
+{
+  "schema": "dense-ar-norm-mxfp8/v1",
+  "date": "2026-09-20",
+  "model": "Qwen3.8-27B native MXFP6",
+  "baseline": "Mach ef8c86b exact Dense producers; pinned official MXFP6 cd4e964",
+  "hardware": "2 x RTX 5090 SM120, TP2",
+  "vllm": "0.29.0",
+  "torch": "2.13.0+cu130",
+  "flashinfer": "0.6.18",
+  "checkpoint_count": 1,
+  "precision": {
+    "ssm": "float32",
+    "head": "bfloat16",
+    "kv": "bfloat16"
+  },
+  "kv_bytes_per_rank": 8218214400,
+  "mlp_replica_layers": 32,
+  "workload": {
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "requests": 64,
+    "max_active": 32,
+    "warmup_full_shape": true,
+    "scored_repeats_per_arm_per_load": 2,
+    "graph_mode": "FULL_DECODE_ONLY",
+    "compile_mode": "NONE",
+    "scope": "offline LLM end-to-end, not HTTP, four-concurrency or NVFP4 comparison"
+  },
+  "runs": [
+    {
+      "order": [
+        "base",
+        "fused"
+      ],
+      "arms": {
+        "base": {
+          "pooled_output_tok_s": 1542.3023095066048,
+          "scored_output_tokens": 128000,
+          "scored_elapsed_s": 82.99280835606623,
+          "scored_elapsed_s_per_round": [
+            41.45759575301781,
+            41.53521260304842
+          ]
+        },
+        "fused": {
+          "pooled_output_tok_s": 1552.1876922231977,
+          "scored_output_tokens": 128000,
+          "scored_elapsed_s": 82.46425393095706,
+          "scored_elapsed_s_per_round": [
+            41.21468955895398,
+            41.24956437200308
+          ]
+        }
+      },
+      "gain_pct": 0.6409497447848134
+    },
+    {
+      "order": [
+        "fused",
+        "base"
+      ],
+      "arms": {
+        "base": {
+          "pooled_output_tok_s": 1541.2975168338096,
+          "scored_output_tokens": 128000,
+          "scored_elapsed_s": 83.04691248899326,
+          "scored_elapsed_s_per_round": [
+            41.49395990895573,
+            41.55295258003753
+          ]
+        },
+        "fused": {
+          "pooled_output_tok_s": 1553.7054547093492,
+          "scored_output_tokens": 128000,
+          "scored_elapsed_s": 82.38369738101028,
+          "scored_elapsed_s_per_round": [
+            41.159388134023175,
+            41.224309246987104
+          ]
+        }
+      },
+      "gain_pct": 0.8050319772803016
+    }
+  ],
+  "descriptive_pool": {
+    "base_output_tok_s": 1541.799749464089,
+    "fused_output_tok_s": 1552.9462026223882,
+    "gain_pct": 0.7229507698502058,
+    "independent_load_pairs": 2,
+    "note": "Four timed rounds per arm across opposite-order pairs; no confidence interval or formal significance claim."
+  },
+  "reused_quality": {
+    "4": {
+      "queries": 256,
+      "target_tokens": 10479,
+      "different_gold_logprobs": 0,
+      "champion_delta_mae": 0.0,
+      "bf16_query_mean_mae": 0.08555314174362678
+    },
+    "32": {
+      "queries": 256,
+      "target_tokens": 10479,
+      "different_gold_logprobs": 0,
+      "champion_delta_mae": 0.0,
+      "bf16_query_mean_mae": 0.09132949335768556
+    }
+  },
+  "kernel_header_sha256": "3331023071470b566c8d57f9b42b69ee595050b8f3ef41936bd0dff09009a633",
+  "validation": {
+    "cpu_passed": 105,
+    "gpu_only_skipped": 8,
+    "installed_wheel_primitive_exact_rows": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      24,
+      32
+    ],
+    "runtime_fused_rows": [
+      2,
+      4,
+      8,
+      16,
+      24,
+      32
+    ],
+    "changed_input_graph_replays": 4,
+    "full_scale_padding_checked": true,
+    "prior_memcheck_errors_per_rank": [
+      0,
+      0
+    ],
+    "original_quality_artifact_hashes_reverified": 225
+  },
+  "compatibility": {
+    "requests_completed": 48,
+    "input_tokens_per_request": 3000,
+    "output_tokens_per_request": 1000,
+    "actual_decode_concurrency": 48,
+    "steps_at_48_per_rank": [
+      909,
+      909
+    ],
+    "kv_bytes_per_rank": 10737418240,
+    "preemptions_per_rank": [
+      2,
+      2
+    ],
+    "default_profile_or_c32_kv_changed": false,
+    "original_budget_observation": {
+      "kv_bytes_per_rank": 8218214400,
+      "peak_actual_decode_concurrency": 45,
+      "preemptions_per_rank": [
+        10,
+        10
+      ],
+      "requests_completed": 48
+    },
+    "scope": "Functional original-path coverage above M32. Not a throughput comparison or zero-preemption claim. The diagnostic assertion requiring zero preemptions failed after all outputs completed."
+  }
+}

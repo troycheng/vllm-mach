@@ -69,7 +69,7 @@ def test_warmup_plans_workspace_and_normalizes_sizes(monkeypatch) -> None:
 
 
 def test_warmup_prepares_gdn_and_dense_producers_before_workspace(monkeypatch) -> None:
-    from vllm_mach.mxfp6 import fused_mlp, gdn_decode
+    from vllm_mach.mxfp6 import ar_norm, fused_mlp, gdn_decode
 
     calls: list[str] = []
 
@@ -95,12 +95,13 @@ def test_warmup_prepares_gdn_and_dense_producers_before_workspace(monkeypatch) -
 
     monkeypatch.setattr(gdn_decode, "prepare", lambda model: calls.append("gdn"))
     monkeypatch.setattr(fused_mlp, "prepare", lambda model: calls.append("mlp"))
+    monkeypatch.setattr(ar_norm, "prepare", lambda model: calls.append("ar_norm"))
     monkeypatch.setattr(warmup, "_import_mxfp6", lambda: Runtime)
     monkeypatch.setattr(warmup.torch.cuda, "synchronize", lambda device: None)
 
     warmup.warmup_mxfp6_sm120(_Model(), [4], torch.bfloat16)
 
-    assert calls == ["gdn", "mlp", "begin", "warm", "finalize"]
+    assert calls == ["gdn", "mlp", "ar_norm", "begin", "warm", "finalize"]
 
 
 def test_capture_stream_warmup_stops_after_registering_lane(monkeypatch) -> None:

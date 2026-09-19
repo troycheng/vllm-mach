@@ -47,6 +47,7 @@ def test_launch_is_complete():
     )
     assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == "1"
     assert env["VLLM_SM120_OWNER_PREFILL"] == "1"
+    assert env["VLLM_MACH_FUSED_AR_QUANT"] == "1"
 
 
 def test_checkout_launcher_uses_package_entrypoint():
@@ -73,6 +74,8 @@ def test_nvfp4_launcher_does_not_require_standalone_b12x(
             return "0.1.0a1"
         if name == "vllm-mach-lossless-prefill":
             return "0.1.0a4"
+        if name == "vllm-mach-ar-norm":
+            return "0.1.0a1"
         if name == "b12x" and b12x_version is not None:
             return b12x_version
         raise metadata.PackageNotFoundError(name)
@@ -96,6 +99,52 @@ def test_nvfp4_launcher_does_not_require_standalone_b12x(
     assert "b12x" not in queried
     assert len(launched) == 1
     assert launched[0][2]["VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND"] == "b12x"
+    assert launched[0][2]["VLLM_MACH_FUSED_AR_QUANT"] == "1"
+
+
+@pytest.mark.parametrize(
+    ("fused_ar_quant", "fused_ar_norm", "expected"),
+    [(True, True, "1"), (False, True, "0"), (True, False, "0")],
+)
+def test_dense_fused_ar_quant_switches(
+    tmp_path, fused_ar_quant, fused_ar_norm, expected
+):
+    from vllm_mach.mxfp6.serve import profile_environment
+
+    environment = profile_environment(
+        argparse.Namespace(
+            model=tmp_path / "dense",
+            fp16_ssm=False,
+            lossless_prefill=None,
+            owner_prefill=None,
+            nvfp4_lm_head=False,
+            verify_prefill=False,
+            fused_ar_quant=fused_ar_quant,
+            fused_ar_norm=fused_ar_norm,
+        )
+    )
+    assert environment["VLLM_MACH_FUSED_AR_QUANT"] == expected
+
+
+def test_moe_disables_dense_fused_ar_quant(tmp_path):
+    from vllm_mach.mxfp6.serve import profile_environment
+
+    model = tmp_path / "moe"
+    model.mkdir()
+    (model / "config.json").write_text('{"model_type": "qwen3_5_moe"}')
+    environment = profile_environment(
+        argparse.Namespace(
+            model=model,
+            fp16_ssm=False,
+            lossless_prefill=False,
+            owner_prefill=False,
+            nvfp4_lm_head=False,
+            verify_prefill=False,
+            fused_ar_quant=True,
+            fused_ar_norm=True,
+        )
+    )
+    assert environment["VLLM_MACH_FUSED_AR_QUANT"] == "0"
 
 
 def fixture_model(root, shard="model.safetensors"):
@@ -154,3 +203,45 @@ def test_patch_applies_once_and_rejects_unknown_source(tmp_path):
     with pytest.raises(subprocess.CalledProcessError):
         tool.patch_file(tmp_path, patch)
     assert target.read_text() == "unrelated\n"
+
+
+def test_native_installer_selects_ar_norm(monkeypatch, tmp_path):
+    tool = load("deploy/install.py")
+    calls = []
+    monkeypatch.setattr(tool, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+    monkeypatch.setattr(
+        tool.sys,
+        "argv",
+        [
+            "install.py", "--native-only", "--native-part", "ar_norm",
+            "--cuda-home", "/cuda", "--work-dir", str(tmp_path),
+        ],
+    )
+    tool.main()
+    wheel_calls = [args for args, _ in calls if "wheel" in args]
+    assert len(wheel_calls) == 1
+    assert wheel_calls[0][-3] == ROOT / "native" / "ar_norm"
+    assert calls[-1][0][1:6] == (
+        "-m", "pip", "install", "--no-deps", "--force-reinstall"
+    )
+
+
+def test_native_installer_defaults_include_ar_norm(monkeypatch, tmp_path):
+    tool = load("deploy/install.py")
+    calls = []
+    monkeypatch.setattr(tool, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+    monkeypatch.setattr(
+        tool.sys,
+        "argv",
+        [
+            "install.py", "--native-only", "--cuda-home", "/cuda",
+            "--work-dir", str(tmp_path),
+        ],
+    )
+    tool.main()
+    wheel_calls = [args for args, _ in calls if "wheel" in args]
+    assert [args[-3] for args in wheel_calls] == [
+        ROOT / "native" / "lossless_prefill",
+        ROOT / "native" / "owner_prefill",
+        ROOT / "native" / "ar_norm",
+    ]

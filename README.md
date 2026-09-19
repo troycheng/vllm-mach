@@ -46,9 +46,8 @@ configurations require separate integration and validation.
 Both profiles enable native MXFP6, fused AllReduce/residual/RMSNorm, CUDA Graphs,
 and GDN decode optimizations. Dense also enables lossless and owner prefill.
 With the [pinned MXFP6 build](docs/installation.md#2-install-mxfp6-kernels),
-eligible Dense decode uses [fused SwiGLU and GDN producers](docs/dense-producer-fusion.md).
-The paired c32 offline check gained 1.72% with unchanged M4/M32 teacher-forced
-scores; its workload is separate from the HTTP comparisons below.
+eligible Dense decode uses [fused SwiGLU and GDN producers](docs/dense-producer-fusion.md) and [AR/RMSNorm/MXFP8 fusion](docs/ar-norm-mxfp8.md).
+The earlier producer/scale update gained 1.72% in a c32 offline check. The added AR/RMSNorm/MXFP8 fusion gained a further 0.72% across forward- and reverse-order short runs, with unchanged M4/M32 teacher-forced scores. These offline results use a separate workload from the HTTP comparisons below.
 
 | Profile | Recurrent state | LM head |
 |---|---|---|
@@ -63,12 +62,12 @@ the ordinary BF16 head.
 
 Start from **`vllm/vllm-openai:v0.29.0`** and follow the
 [setup and usage guide](docs/installation.md) to install CUDA Toolkit 13.0,
-MXFP6 kernels, the Dense prefill extensions, and Mach's runtime patches.
+MXFP6 kernels, the Dense native extensions, and Mach's runtime patches.
 **The Mach Python package alone is not sufficient.**
 
 ### Docker build
 
-Alternatively, build an image containing MXFP6, both prefill extensions, and
+Alternatively, build an image containing MXFP6, the Dense native extensions, and
 patched Mach. The host needs Docker Buildx, NVIDIA container runtime, and a
 compatible GPU driver.
 
