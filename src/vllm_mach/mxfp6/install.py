@@ -138,6 +138,31 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -
     }
 
 
+def check_mxfp6_producers() -> None:
+    """Reject the older 0.2.1 binary before patching or launching workers."""
+    import mxfp6
+    import torch
+
+    mxfp6.load_library()
+    missing = [
+        f"mxfp6.{name}"
+        for name in ("gemm_from_swiglu", "gemm_from_gdn")
+        if not callable(getattr(mxfp6, name, None))
+    ]
+    missing.extend(
+        f"torch.ops.mxfp6.{name}"
+        for name in ("silu_and_mul_mxfp8", "gemm_from_swiglu", "gemm_w6a8_pdl")
+        if not hasattr(torch.ops.mxfp6, name)
+    )
+    if missing:
+        raise RuntimeError(
+            "MXFP6 is missing required producer operations: " + ", ".join(missing)
+            + ". Rebuild Nekofish-L/mxfp6_sm120 at "
+            "cd4e964c391fcb8aaf1a27d28a63d778e3a38ece and force-reinstall the wheel; "
+            "the original 0.2.1 release is insufficient. See docs/installation.md."
+        )
+
+
 def check_versions() -> None:
     for name, expected in (
         ("vllm", "0.29.0"),
@@ -150,6 +175,7 @@ def check_versions() -> None:
         found = metadata.version(name).split("+", 1)[0]
         if found != expected:
             raise RuntimeError(f"{name}: expected {expected}, found {found}")
+    check_mxfp6_producers()
 
 
 def main() -> None:

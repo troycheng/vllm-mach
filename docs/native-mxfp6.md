@@ -64,6 +64,18 @@ logprobs, stochastic sampling, processors, structured outputs and mixed/prefill
 batches retain the normal path. The default compact BF16 argmax uses the original
 head projection without NVFP4 search.
 
+## Dense producer fusion
+
+The optional Dense TP2 producer routes prepare during MXFP6 warmup. They use
+the extension's GDN norm/output and SwiGLU/down-projection operations only for
+the supported BF16 CUDA decode geometry; other rows, unsupported models, and
+MoE retain the existing path. `VLLM_MACH_FUSED_GDN_QUANT` and
+`VLLM_MACH_FUSED_SWIGLU_QUANT` accept `auto` (default), `0`, and `1`. `auto`
+selects the operation for supported geometry. Missing required native
+operations are an installation/startup error; there is no silent old-library
+fallback. `0` is an explicit diagnostic opt-out. See [Dense producer
+fusion](dense-producer-fusion.md) for the narrow scope and current evidence.
+
 ## Validation
 
 Use a clean runtime after [installation](installation.md):

@@ -45,6 +45,10 @@ configurations require separate integration and validation.
 
 Both profiles enable native MXFP6, fused AllReduce/residual/RMSNorm, CUDA Graphs,
 and GDN decode optimizations. Dense also enables lossless and owner prefill.
+With the [pinned MXFP6 build](docs/installation.md#2-install-mxfp6-kernels),
+eligible Dense decode uses [fused SwiGLU and GDN producers](docs/dense-producer-fusion.md).
+The paired c32 offline check gained 1.72% with unchanged M4/M32 teacher-forced
+scores; its workload is separate from the HTTP comparisons below.
 
 | Profile | Recurrent state | LM head |
 |---|---|---|

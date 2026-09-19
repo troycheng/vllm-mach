@@ -21,9 +21,30 @@ apt install -y cuda-toolkit-13-0
 
 ## 2. Install MXFP6 kernels
 
-Install **`mxfp6-sm120==0.2.1`** following the
-[upstream build instructions](https://github.com/Nekofish-L/mxfp6_sm120#build).
-Build against the container's existing PyTorch with CUDA 13.0.
+Build MXFP6 from the official project's pinned revision
+[`cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`](https://github.com/Nekofish-L/mxfp6_sm120/commit/cd4e964c391fcb8aaf1a27d28a63d778e3a38ece).
+It retains package version **0.2.1** and includes the scale-initialization,
+SwiGLU and GDN producer operations used by the current Dense profile.
+The original 0.2.1 release does not contain these operations.
+
+```bash
+git clone https://github.com/Nekofish-L/mxfp6_sm120.git
+cd mxfp6_sm120
+git checkout cd4e964c391fcb8aaf1a27d28a63d778e3a38ece
+git submodule update --init --depth 1 third_party/cutlass
+export CUDA_HOME=/usr/local/cuda
+export PATH="$CUDA_HOME/bin:$PATH"
+bash scripts/build_wheel.sh
+pip install --no-deps --force-reinstall dist/mxfp6_sm120-0.2.1-*.whl
+cd ..
+```
+
+Build against the container's existing PyTorch with CUDA 13.0. The Mach
+Docker build uses this same source revision and checks the required native
+operations after installation. Both `vllm-mach-install` and `vllm-mach-serve`
+reject an older extension that lacks them, even if its package version is
+0.2.1. Upgrade both projects together; see the
+[producer-fusion results](dense-producer-fusion.md).
 
 ## 3. Build and install Mach
 
@@ -65,7 +86,9 @@ CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
 ```
 
 Dense enables both prefill paths and retains FP32 recurrent state and the BF16
-head by default. Add `--fp16-ssm --nvfp4-lm-head` for Dense full. If the prefill
+head by default. With the pinned MXFP6 build, eligible decode also uses fused
+SwiGLU/MXFP8 and GDN norm/MXFP8 producers. Add `--fp16-ssm --nvfp4-lm-head`
+for Dense full. If the prefill
 extensions are not installed, add `--no-lossless-prefill --no-owner-prefill`;
 this changes the profile used for the Dense benchmark results.
 
@@ -117,6 +140,11 @@ NVFP4 candidate search may change the BF16 head's argmax. The NVFP4 path support
 eligible greedy decode with at most 32 rows; unsupported requests use the
 ordinary head/sampling path. See [NVFP4 head details](native-mxfp6.md) and
 [GDN coverage](gdn-decode.md) for restrictions and fallbacks.
+
+The optional Dense producer controls `VLLM_MACH_FUSED_SWIGLU_QUANT` and
+`VLLM_MACH_FUSED_GDN_QUANT` accept `auto` (default), `0` (disabled), or `1`
+(require the operation when the model geometry is eligible). See
+[admission and fallback behavior](dense-producer-fusion.md#admission).
 
 Additional memory per GPU for the validated models:
 

@@ -68,6 +68,41 @@ def test_warmup_plans_workspace_and_normalizes_sizes(monkeypatch) -> None:
     assert calls[2][1] == (4, 8, 128, torch.bfloat16)
 
 
+def test_warmup_prepares_gdn_and_dense_producers_before_workspace(monkeypatch) -> None:
+    from vllm_mach.mxfp6 import fused_mlp, gdn_decode
+
+    calls: list[str] = []
+
+    class Runtime:
+        @staticmethod
+        def PackedMXFP6Tensor(**kwargs):
+            return SimpleNamespace(**kwargs)
+
+        @staticmethod
+        def begin_workspace_planning(device):
+            del device
+            calls.append("begin")
+
+        @staticmethod
+        def warmup_w6a8(x, weight, *, out_dtype, iterations):
+            del x, weight, out_dtype, iterations
+            calls.append("warm")
+
+        @staticmethod
+        def finalize_workspace_planning(device):
+            del device
+            calls.append("finalize")
+
+    monkeypatch.setattr(gdn_decode, "prepare", lambda model: calls.append("gdn"))
+    monkeypatch.setattr(fused_mlp, "prepare", lambda model: calls.append("mlp"))
+    monkeypatch.setattr(warmup, "_import_mxfp6", lambda: Runtime)
+    monkeypatch.setattr(warmup.torch.cuda, "synchronize", lambda device: None)
+
+    warmup.warmup_mxfp6_sm120(_Model(), [4], torch.bfloat16)
+
+    assert calls == ["gdn", "mlp", "begin", "warm", "finalize"]
+
+
 def test_capture_stream_warmup_stops_after_registering_lane(monkeypatch) -> None:
     calls: list[int] = []
 
