@@ -1,6 +1,8 @@
 # Generating the model assets
 
-Mach's current Qwen3.8-27B profile uses an EXL3 checkpoint, an original-model MXFP6 checkpoint, and an optional NVFP4/rank64 bundle. Mach does not upload these model assets. `tools/generate_assets.py` provides two generation commands using the existing quantizers. The assembled workflow has CPU/interface checks, but has not been rerun through full-model conversion and calibration.
+This page records the historical EXL3 asset workflow. Its rank64 generator is incomplete in the current checkout; the links below preserve the source used for existing assets. The current native MXFP6 profile loads one checkpoint; see [Setup and usage](installation.md).
+
+Mach's archived Qwen3.8-27B EXL3 profile used an EXL3 checkpoint, an original-model MXFP6 checkpoint, and an optional NVFP4/rank64 bundle. Mach did not upload these model assets. `tools/generate_assets.py` provided two generation commands using the existing quantizers. The assembled workflow had CPU/interface checks, but was not rerun through full-model conversion and calibration.
 
 The `--model` entry point remains the K5/K6 EXL3 checkpoint. The additional `--mxfp6-checkpoint` supplies original-model MXFP6 weights for the [checkpoint-hybrid routes](checkpoint-hybrid.md); it is not a cache converted from EXL3. The selected M32 gate/up route uses the separate `--rank64-bundle`. Calling this an EXL3 profile identifies the provider and entry checkpoint, not the format of every matrix it executes.
 
@@ -56,19 +58,19 @@ This command schedules two sequential TP2 capture subprocesses (QA, then code), 
 
 Use `generated/rank64` as `--rank64-bundle` in the serving command. The EXL3 and MXFP6 model directories remain separate; this change does not introduce a new checkpoint format.
 
-The [collected scripts](../tools/quantization/README.md) preserve the selected algorithm. The order matters:
+The [collected scripts](../tools/quantization/README.md) preserve the selected algorithm. The rank64 packaging tool and calibration selection below are archived provenance for the existing assets: the current checkout does not contain a runnable generator for them. The order matters:
 
 1. Capture BF16 inputs to gate/up in the checkpoint-hybrid runtime, using the fixed QA samples. Form a block-diagonal Hessian from training rows only.
 2. Quantize original BF16 gate/up weights to NVFP4 using that QA Hessian. Retain the selected 48 layers and both TP shards.
 3. Capture the additional long-code training inputs. Fit rank64 compensation against the already selected NVFP4 weights using concatenated QA/code rows. Do not requantize the weights with the mixed dataset.
 4. Derive static activation scales from the original RMSNorm weights.
-5. Package the resulting tensors and receipts with [import_rank64_bundle.py](../tools/import_rank64_bundle.py).
+5. The archived [import_rank64_bundle.py](https://github.com/troycheng/vllm-mach/blob/8c5021aef6e2a242b98c78426d838b98233d3d75/tools/import_rank64_bundle.py) packaged the resulting tensors and receipts.
 
 ### Fixed geometry and calibration
 
 The selected layers are `0–26, 34, 35, 36, 38, 42, 48–63`. For each TP rank, take 8,704 output rows from each original gate and up matrix, concatenate gate then up, and obtain BF16 `[17408, 5120]`. This produces 96 weight entries across 48 layers and TP2.
 
-[calibration-selection.json](../tools/quantization/calibration-selection.json) records the exact source IDs, token windows, train/holdout membership and hashes. Source data is [THUDM/LongBench](https://huggingface.co/datasets/THUDM/LongBench/tree/5e628be450b7e67fb7ae6e201bd6d8f7056f7672), revision `5e628be450b7e67fb7ae6e201bd6d8f7056f7672`. The original tokenizer JSON hash is `0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3`; the long-code preparation used tokenizers 0.22.2. Source texts and captured activations are not included here.
+The archived [calibration-selection.json](https://github.com/troycheng/vllm-mach/blob/8c5021aef6e2a242b98c78426d838b98233d3d75/tools/quantization/calibration-selection.json) records the exact source IDs, token windows, train/holdout membership and hashes. Source data is [THUDM/LongBench](https://huggingface.co/datasets/THUDM/LongBench/tree/5e628be450b7e67fb7ae6e201bd6d8f7056f7672), revision `5e628be450b7e67fb7ae6e201bd6d8f7056f7672`. The original tokenizer JSON hash is `0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3`; the long-code preparation used tokenizers 0.22.2. Source texts and captured activations are not included here.
 
 | Input set | Capture | Training rows per layer/rank | Use |
 | --- | --- | ---: | --- |

@@ -1,5 +1,7 @@
 # Observed-shape prefill collective
 
+This page records the historical EXL3 integration and its measurements. Use [Setup and usage](installation.md) for the current native MXFP6 profile.
+
 Integration of `long_prefill_direct_sum_service_v1` for the existing Qwen3.8-27B EXL3 K5/K6 and checkpoint MXFP6 profile. Weight loading, Temporal M24, BA32, sampling and the separate M4096 direct SUM implementation are unchanged. The rejected BA24 and attention-compaction experiments are not included.
 
 The new extension covers 32 observed prefill row counts at H5120, TP2 and BF16. Source arithmetic, signed-zero handling, odd-row ownership, barriers and PDL completion are preserved. The Mach adapter provides explicit opt-in, version/device/workspace checks and an eager-only dispatcher. Unsupported shapes retain the existing route. [Build and configuration](../native/lossless_prefill/README.md#observed-prefill-shapes).
@@ -29,4 +31,4 @@ The separate verifier-off service passed 40/40 tasks with zero pass/fail regress
 
 These are single-lifecycle integration observations with four short warmup requests per point, not a paired performance comparison or the source experiment's full conditioning protocol. The normal service automatically allocated 324,169 KV tokens; the source experiment pinned 335,286. Long c32 uses N128 here versus N256 in the source comparison. Do not compare these numbers as an isolated speedup or regression. Both test workers were stopped and the test containers removed; GPUs 6/7 returned to idle.
 
-Use [qwen38-checkpoint-long.env](../profiles/vllm-0.28.0/qwen38-checkpoint-long.env) for the accepted v0.1.0a8 combination. It enables BA32, M4096 direct SUM and the 32-shape prefill extension, with diagnostics disabled. Available in v0.1.0a8.
+The [archived qwen38-checkpoint-long.env](https://github.com/troycheng/vllm-mach/blob/2570a110c47de5a09a2dcc3324b8572c8ed596cd/profiles/vllm-0.28.0/qwen38-checkpoint-long.env) records the accepted v0.1.0a8 combination. It enables BA32, M4096 direct SUM and the 32-shape prefill extension, with diagnostics disabled. This is historical EXL3/v0.28 material, not a current native MXFP6 installation path.

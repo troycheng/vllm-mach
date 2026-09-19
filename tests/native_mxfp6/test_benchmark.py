@@ -103,6 +103,7 @@ def test_published_serving_counts_and_throughput():
         "full",
         "full_ba",
         "full_gdn",
+        "prefill_default",
     }
     columns = data["request_columns"]
     for arm, run in data["runs"].items():

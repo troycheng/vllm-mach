@@ -69,6 +69,10 @@ def test_nvfp4_launcher_does_not_require_standalone_b12x(
 
     def version(name):
         queried.append(name)
+        if name == "vllm-mach-owner-prefill":
+            return "0.1.0a1"
+        if name == "vllm-mach-lossless-prefill":
+            return "0.1.0a4"
         if name == "b12x" and b12x_version is not None:
             return b12x_version
         raise metadata.PackageNotFoundError(name)
