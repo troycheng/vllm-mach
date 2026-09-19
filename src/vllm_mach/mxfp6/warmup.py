@@ -80,9 +80,11 @@ def warmup_mxfp6_sm120(
 ) -> None:
     """Autotune W6A8 shapes and freeze the workspace before graph capture."""
 
+    from .fused_mlp import prepare as prepare_mlp
     from .gdn_decode import prepare
 
     prepare(model)
+    prepare_mlp(model)
     problems = _collect_w6a8_problems(model)
     sizes = _normalize_sizes(token_sizes, reverse=True)
     if not problems or not sizes:

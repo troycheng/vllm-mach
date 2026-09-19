@@ -195,7 +195,13 @@ def _forward(layer, original, persistent, aux, hidden_states):
             ssm_state_indices=indices,
             use_qk_l2norm_in_kernel=True,
         )
-    layer._rms_norm_gated_cuda(core, z.reshape(rows, heads, 128), core)
+    if getattr(layer, "_mach_gdn_output_fused", False):
+        from .gdn_output import project as output_projection
+
+        output = output_projection(layer, core, z)
+    else:
+        layer._rms_norm_gated_cuda(core, z.reshape(rows, heads, 128), core)
+        output = layer.out_proj(core.flatten(-2))[0]
     key = f"{path}_m{rows}"
     if not _STATS[key]:
         from vllm.logger import init_logger
@@ -204,7 +210,7 @@ def _forward(layer, original, persistent, aux, hidden_states):
             "Mach GDN selected %s at physical M%d", path, rows
         )
     _STATS[key] += 1
-    return layer.out_proj(core.flatten(-2))[0]
+    return output
 
 
 @torch.inference_mode()
@@ -247,7 +253,9 @@ def prepare(model):
     aux = torch.cuda.Stream(device=device) if overlap else None
     if persistent:
         from .gdn import persistent as kernel
+    from .gdn_output import prepare as prepare_output
     for layer in layers:
+        prepare_output(layer)
         hidden, heads, qkv_dim = _layer_geometry(layer)
         if persistent:
             layer._mach_gdn_ba = layer.in_proj_ba.weight.T.contiguous()

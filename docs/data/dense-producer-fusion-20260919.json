@@ -1,0 +1,136 @@
+{
+  "schema": "dense-producer-fusion-summary/v1",
+  "date": "2026-09-19",
+  "scope": {
+    "model": "Qwen3.8-27B native MXFP6",
+    "hardware": "2x RTX 5090",
+    "tensor_parallel_size": 2,
+    "vllm_version": "0.29.0",
+    "ssm_state_dtype": "float32",
+    "head_dtype": "bfloat16",
+    "kv_cache_memory_bytes_per_rank": 8218214400,
+    "workload": "offline LLM; 64 simultaneous requests, 3000 input tokens, 1000 output tokens, concurrency 32",
+    "http_serving": false,
+    "max_model_len": 16384,
+    "max_num_batched_tokens": 4096,
+    "enable_prefix_caching": false,
+    "compilation_mode": "NONE",
+    "cuda_graph_mode": "FULL_DECODE_ONLY",
+    "graph_capture_sizes": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      24,
+      32
+    ],
+    "prompt_manifest_sha256": "14f46c98f8c5bef16c834b3252f8ab2a3f9e6c76f9e4caa874894e42a4f027a2"
+  },
+  "accepted_port_sources": [
+    "src/vllm_mach/mxfp6/gdn_decode.py",
+    "src/vllm_mach/mxfp6/gdn_output.py",
+    "src/vllm_mach/mxfp6/fused_mlp.py",
+    "src/vllm_mach/mxfp6/warmup.py"
+  ],
+  "extension_source": {
+    "repository": "Nekofish-L/mxfp6_sm120",
+    "revision": "cd4e964c391fcb8aaf1a27d28a63d778e3a38ece",
+    "revision_url": "https://github.com/Nekofish-L/mxfp6_sm120/commit/cd4e964c391fcb8aaf1a27d28a63d778e3a38ece",
+    "tested_native_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d"
+  },
+  "admission": {
+    "environment_variables": [
+      "VLLM_MACH_FUSED_GDN_QUANT",
+      "VLLM_MACH_FUSED_SWIGLU_QUANT"
+    ],
+    "modes": [
+      "auto",
+      "0",
+      "1"
+    ],
+    "default": "auto",
+    "auto_behavior": "Select native Dense TP2 geometry; missing required extension operations raise at installation/startup/preparation.",
+    "forced_behavior": "eligible geometry without its native operation raises during preparation",
+    "runtime_rows": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      24,
+      32
+    ],
+    "unsupported_models": "existing path, including MoE",
+    "legacy_library_fallback": false
+  },
+  "warmed_performance": {
+    "warmup": "complete 64x1000-output-token warmup per arm",
+    "scored_timings_per_arm": 2,
+    "order": [
+      "accepted",
+      "base"
+    ],
+    "matched_gain_percent": [
+      1.6931,
+      1.7518
+    ],
+    "pooled_gain_percent": 1.7225,
+    "scored_jit_compilations": 0,
+    "limitations": [
+      "offline LLM, not HTTP serving",
+      "two timings per arm",
+      "unlocked clocks"
+    ],
+    "base": {
+      "output_tok_s": [
+        1517.7572471806473,
+        1515.4418379299464
+      ],
+      "pooled_output_tok_s": 1516.598658815086,
+      "scored_output_tokens": 128000,
+      "scored_elapsed_s": 84.39938889304176
+    },
+    "accepted": {
+      "output_tok_s": [
+        1543.4550669870646,
+        1541.9888098042422
+      ],
+      "pooled_output_tok_s": 1542.7215900000558,
+      "scored_output_tokens": 128000,
+      "scored_elapsed_s": 82.97025259106886
+    }
+  },
+  "fidelity": {
+    "queries": 256,
+    "target_tokens": 10479,
+    "base_vs_accepted_gold_logprob": {
+      "m4": {
+        "different_token_count": 0,
+        "max_abs_delta": 0.0
+      },
+      "m32": {
+        "different_token_count": 0,
+        "max_abs_delta": 0.0
+      }
+    },
+    "query_mean_mae_vs_archived_2026_09_17_bf16": {
+      "m4": 0.0855531417,
+      "m32": 0.0913294934
+    },
+    "bf16_rerun_in_this_comparison": false
+  },
+  "ownership": {
+    "team": "dev-ninfer",
+    "existing_work_items": [
+      "P1-C",
+      "P1-B",
+      "P2-A"
+    ],
+    "claim": "narrow integration and current-configuration validation; not a new-kernel or NVFP4 completion claim"
+  },
+  "baseline": {
+    "mach_revision": "1a2c67e54a04068eddebf3f70ccec3ec2bd8ec26",
+    "extension_native_sha256": "ef9eaf32328449fa191126236fbfaefadc9f45be8c39a1d291bf83f7b2922680"
+  }
+}
