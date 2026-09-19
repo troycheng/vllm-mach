@@ -54,13 +54,16 @@ def main():
     phases = parser.add_mutually_exclusive_group()
     phases.add_argument("--native-only", action="store_true")
     phases.add_argument("--runtime-only", action="store_true")
-    parser.add_argument("--native-part", choices=("lossless_prefill", "owner_prefill"))
+    parser.add_argument(
+        "--native-part",
+        choices=("lossless_prefill", "owner_prefill", "ar_norm"),
+    )
     args = parser.parse_args()
     if not args.runtime_only:
         parts = (
             [args.native_part]
             if args.native_part
-            else ["lossless_prefill", "owner_prefill"]
+            else ["lossless_prefill", "owner_prefill", "ar_norm"]
         )
         wheels = args.work_dir / "prefill-wheels"
         wheels.mkdir(parents=True, exist_ok=True)

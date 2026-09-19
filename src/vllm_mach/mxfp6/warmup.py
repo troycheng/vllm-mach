@@ -85,6 +85,9 @@ def warmup_mxfp6_sm120(
 
     prepare(model)
     prepare_mlp(model)
+    from .ar_norm import prepare as prepare_ar_norm
+
+    prepare_ar_norm(model)
     problems = _collect_w6a8_problems(model)
     sizes = _normalize_sizes(token_sizes, reverse=True)
     if not problems or not sizes:

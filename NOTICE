@@ -39,3 +39,8 @@ The MXFP6 MoE adapter and Quark MoE patch are adapted from the Apache-2.0
 vLLM example in Nekofish-L/mxfp6_sm120, revision
 cd4e964c391fcb8aaf1a27d28a63d778e3a38ece. Original notices are retained.
 The CUDA kernels remain in the external mxfp6-sm120 dependency.
+
+The optional native/ar_norm extension contains a frozen FlashInfer 0.6.18
+collective header under Apache-2.0, extended to emit MXFP8 after the original
+BF16 GemmaRMSNorm rounding. Original notices are retained. It is built separately
+from the Python wheel.

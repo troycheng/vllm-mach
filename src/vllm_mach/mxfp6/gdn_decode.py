@@ -95,7 +95,7 @@ def _eligible_layer(layer):
     )
 
 
-def _forward(layer, original, persistent, aux, hidden_states):
+def _forward(layer, original, persistent, aux, hidden_states, quantized=None):
     from vllm.forward_context import get_forward_context
     from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
 
@@ -138,7 +138,12 @@ def _forward(layer, original, persistent, aux, hidden_states):
     if path == "persistent":
         from .gdn import persistent as kernel
 
-        mixed, _ = layer.in_proj_qkvz(hidden_states)
+        if quantized is None:
+            mixed, _ = layer.in_proj_qkvz(hidden_states)
+        else:
+            from .ar_norm import projected
+
+            mixed = projected(*quantized, layer.in_proj_qkvz)
         qkv, z = mixed.split([qkv_dim, heads * 128], -1)
         kernel.execute(
             hidden_states,
@@ -168,7 +173,12 @@ def _forward(layer, original, persistent, aux, hidden_states):
             ba, _ = layer.in_proj_ba(hidden_states)
             b, a = layer.split_ba(ba)
             b, a = b.contiguous(), a.contiguous()
-        mixed, _ = layer.in_proj_qkvz(hidden_states)
+        if quantized is None:
+            mixed, _ = layer.in_proj_qkvz(hidden_states)
+        else:
+            from .ar_norm import projected
+
+            mixed = projected(*quantized, layer.in_proj_qkvz)
         qkv, z = mixed.split([qkv_dim, heads * 128], -1)
         qkv = causal_conv1d_update(
             qkv,

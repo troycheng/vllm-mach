@@ -14,6 +14,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     && rm -rf /opt/mach-build
 COPY native/lossless_prefill /opt/mach/native/lossless_prefill
 COPY native/owner_prefill /opt/mach/native/owner_prefill
+COPY native/ar_norm /opt/mach/native/ar_norm
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 /opt/mach/deploy/install.py --native-only --cuda-home /usr/local/cuda \
     && rm -rf /opt/mach-build /opt/mach/native/*/build /opt/mach/native/*/*.egg-info

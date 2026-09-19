@@ -30,6 +30,8 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_USE_V2_MODEL_RUNNER": "1",
         "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
         "VLLM_QWEN3_5_FUSED_AR_NORM": str(int(getattr(args, "fused_ar_norm", True))),
+        "VLLM_MACH_FUSED_AR_QUANT": str(int(dense and getattr(args, "fused_ar_quant", True)
+                                             and getattr(args, "fused_ar_norm", True))),
         "VLLM_QWEN3_5_FP16_SSM": str(int(args.fp16_ssm)),
         "VLLM_FLASHINFER_ALLREDUCE_BACKEND": "trtllm",
         "VLLM_ALLREDUCE_USE_FLASHINFER": "0",
@@ -106,6 +108,12 @@ def main() -> None:
         help="Fuse TP2 AllReduce, residual and RMSNorm (default on)",
     )
     parser.add_argument(
+        "--fused-ar-quant",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Fuse Dense decode AR/RMSNorm/MXFP8 at eligible shapes (default on)",
+    )
+    parser.add_argument(
         "--gdn-persistent",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -148,6 +156,11 @@ def main() -> None:
     from importlib import metadata
 
     for enabled, package, expected in (
+        (
+            environment["VLLM_MACH_FUSED_AR_QUANT"] == "1",
+            "vllm-mach-ar-norm",
+            "0.1.0a1",
+        ),
         (
             environment["VLLM_SM120_OWNER_PREFILL"] == "1",
             "vllm-mach-owner-prefill",

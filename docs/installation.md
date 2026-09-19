@@ -55,18 +55,16 @@ cd vllm-mach
 export CUDA_HOME=/usr/local/cuda-13.0
 export PATH="$CUDA_HOME/bin:$PATH"
 
-# Compile and install the Dense prefill extensions.
+# Compile and install the Dense native extensions.
 MAX_JOBS=8 pip install --no-build-isolation --no-deps \
-  ./native/lossless_prefill ./native/owner_prefill
+  ./native/lossless_prefill ./native/owner_prefill ./native/ar_norm
 
 # Install Mach and apply its runtime patches.
 pip install --no-build-isolation --no-deps .
 vllm-mach-install --apply
 ```
 
-Both prefill extensions are required for Dense default/full. MoE-only
-installations can skip the prefill build. To run Dense without these extensions,
-pass `--no-lossless-prefill --no-owner-prefill` when serving.
+The two prefill extensions and `vllm-mach-ar-norm==0.1.0a1` are required for Dense default/full. MoE-only installations can skip all three. To run Dense without these extensions, pass `--no-lossless-prefill --no-owner-prefill --no-fused-ar-quant` when serving. Existing installations can build only the new extension with `python deploy/install.py --native-only --native-part ar_norm --cuda-home /usr/local/cuda`, then reinstall Mach.
 
 ## 4. Launch a model
 
@@ -87,7 +85,7 @@ CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
 
 Dense enables both prefill paths and retains FP32 recurrent state and the BF16
 head by default. With the pinned MXFP6 build, eligible decode also uses fused
-SwiGLU/MXFP8 and GDN norm/MXFP8 producers. Add `--fp16-ssm --nvfp4-lm-head`
+SwiGLU/MXFP8, GDN norm/MXFP8 and [AR/GemmaRMSNorm/MXFP8](ar-norm-mxfp8.md) producers. Add `--fp16-ssm --nvfp4-lm-head`
 for Dense full. If the prefill
 extensions are not installed, add `--no-lossless-prefill --no-owner-prefill`;
 this changes the profile used for the Dense benchmark results.
@@ -132,7 +130,8 @@ The [MoE benchmark](qwen35-moe.md) uses explicit graph capture sizes and
 | `--nvfp4-lm-head` | off | Use NVFP4 candidate search with BF16 refinement for eligible greedy decode |
 | `--no-lossless-prefill` / `--no-owner-prefill` | on for Dense; off for MoE | Disable the corresponding Dense prefill path |
 | `--no-gdn-persistent` / `--no-gdn-ba-overlap` | on | Disable the corresponding GDN decode optimization |
-| `--no-fused-ar-norm` | on | Disable TP2 AllReduce/residual/RMSNorm fusion |
+| `--no-fused-ar-norm` | on | Disable TP2 AllReduce/residual/RMSNorm and its MXFP8 producer |
+| `--no-fused-ar-quant` | on for Dense; off for MoE | Disable only the AR/GemmaRMSNorm/MXFP8 producer |
 | `--verify-prefill` | off | Run diagnostic comparisons; exclude from throughput measurements |
 | `--dry-run` | off | Print the resolved command/environment without loading or validating the runtime |
 
@@ -142,10 +141,10 @@ eligible greedy decode with at most 32 rows; unsupported requests use the
 ordinary head/sampling path. See [NVFP4 head details](native-mxfp6.md) and
 [GDN coverage](gdn-decode.md) for restrictions and fallbacks.
 
-The optional Dense producer controls `VLLM_MACH_FUSED_SWIGLU_QUANT` and
-`VLLM_MACH_FUSED_GDN_QUANT` accept `auto` (default), `0` (disabled), or `1`
+The optional Dense producer controls `VLLM_MACH_FUSED_SWIGLU_QUANT`,
+`VLLM_MACH_FUSED_GDN_QUANT` and `VLLM_MACH_FUSED_AR_QUANT` accept `auto` (default), `0` (disabled), or `1`
 (require the operation when the model geometry is eligible). See
-[admission and fallback behavior](dense-producer-fusion.md#admission).
+[admission and fallback behavior](dense-producer-fusion.md#admission). The launcher sets `VLLM_MACH_FUSED_AR_QUANT` explicitly from `--[no-]fused-ar-quant`; direct Python users may set the environment variable. Larger request concurrency remains supported by the original paths; the AR/MXFP8 optimization does not change KV capacity or the scheduler limit.
 
 Additional memory per GPU for the validated models:
 

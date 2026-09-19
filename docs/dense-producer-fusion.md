@@ -5,8 +5,9 @@ rounded SwiGLU quantization and gated RMSNorm/output projection. The required
 extension source revision is
 [`cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`](https://github.com/Nekofish-L/mxfp6_sm120/commit/cd4e964c391fcb8aaf1a27d28a63d778e3a38ece).
 
-The running port is limited to `gdn_decode.py`, `gdn_output.py`,
-`fused_mlp.py`, and `warmup.py`. Warmup prepares the two optional routes. The
+These two routes are implemented in `gdn_decode.py`, `gdn_output.py`,
+`fused_mlp.py`, and `warmup.py`. Warmup also prepares the separately documented
+[AR/GemmaRMSNorm/MXFP8 producer](ar-norm-mxfp8.md) when it is eligible. The
 GDN route combines gated RMSNorm and the MXFP8 output projection. The MLP route
 uses the extension producer after the existing TP2 gate/up projection. Both
 keep the pre-existing implementation for unsupported input shapes and models.
