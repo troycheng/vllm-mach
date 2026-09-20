@@ -67,9 +67,15 @@ MXFP6 kernels, the Dense native extensions, and Mach's runtime patches.
 
 ### Docker build
 
-Alternatively, build an image containing MXFP6, the Dense native extensions, and
-patched Mach. The host needs Docker Buildx, NVIDIA container runtime, and a
-compatible GPU driver.
+Alternatively, use `deploy/Dockerfile` to build from
+`vllm/vllm-openai:v0.29.0`. It installs the complete CUDA Toolkit 13.0, including
+the development headers and linker libraries required by the native builds,
+then compiles the pinned MXFP6/CUTLASS sources and Dense native extensions for
+SM120 and installs Mach's runtime patches. The base image's vLLM and PyTorch
+versions are preserved.
+
+Build with Docker Buildx from the repository root. Running the image requires
+the NVIDIA container runtime and a compatible GPU driver.
 
 ```bash
 git clone https://github.com/troycheng/vllm-mach.git
@@ -80,7 +86,8 @@ docker buildx build --load \
   -f deploy/Dockerfile -t vllm-mach:local .
 ```
 
-The revised Dockerfile was **not rebuilt in the latest recorded validation**.
+`MAX_JOBS` controls native compilation parallelism (default: `8`); lower it if
+the build runs out of host memory.
 
 ## Usage
 
