@@ -142,6 +142,19 @@ def test_published_serving_counts_and_throughput():
         ("persistent", "default", "VLLM_MACH_GDN_PERSISTENT"),
         ("full_ba", "full", "VLLM_MACH_GDN_BA_OVERLAP"),
         ("full_gdn", "full_ba", "VLLM_MACH_GDN_PERSISTENT"),
+        ("dense_lossless", "dense_none", "VLLM_SM120_LOSSLESS_PREFILL"),
+        ("dense_owner", "dense_none", "VLLM_SM120_OWNER_PREFILL"),
+        ("dense_default", "dense_lossless", "VLLM_SM120_OWNER_PREFILL"),
+        ("dense_default", "dense_owner", "VLLM_SM120_LOSSLESS_PREFILL"),
+        ("dense_head", "dense_default", "VLLM_HYBRID_NVFP4_LM_HEAD"),
+        ("dense_full", "dense_ssm", "VLLM_HYBRID_NVFP4_LM_HEAD"),
+        ("core_sampler", "core_graph", "VLLM_VOCAB_PARALLEL_GREEDY"),
+        ("core_ar_norm", "core_sampler", "VLLM_QWEN3_5_FUSED_AR_NORM"),
+        ("core_gdn", "core_ar_norm", "VLLM_MACH_GDN_PERSISTENT"),
+        ("core_ba", "core_gdn", "VLLM_MACH_GDN_BA_OVERLAP"),
+        ("core_swiglu", "core_ba", "VLLM_MACH_FUSED_SWIGLU_QUANT"),
+        ("core_gdn_quant", "core_swiglu", "VLLM_MACH_FUSED_GDN_QUANT"),
+        ("core_ar_quant", "core_gdn_quant", "VLLM_MACH_FUSED_AR_QUANT"),
     ],
 )
 def test_gdn_serving_ablation_changes_only_one_flag(arm, base, changed):
@@ -158,6 +171,89 @@ def test_gdn_serving_ablation_changes_only_one_flag(arm, base, changed):
     assert command == base_command
     assert {k for k in env if env[k] != base_env[k]} == {changed}
     assert env[changed] == "1" and base_env[changed] == "0"
+
+
+@pytest.mark.parametrize("arm,base", [("dense_ssm", "dense_default"), ("dense_full", "dense_head")])
+def test_dense_ssm_ablation_changes_state_allocation_and_admission(arm, base):
+    spec = importlib.util.spec_from_file_location(
+        "serving_comparison", ROOT / "tools/compare_native_serving.py"
+    )
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    args = argparse.Namespace(
+        models=Path("/models"), stock_runtime=Path("/stock"), devices="0,1", port=8000
+    )
+    command, env = tool.launch_configuration(args, arm)
+    base_command, base_env = tool.launch_configuration(args, base)
+    index = command.index("--mamba-ssm-cache-dtype")
+    assert command[index + 1] == "float16"
+    assert command[:index] + command[index + 2:] == base_command
+    assert {k for k in env if env[k] != base_env[k]} == {"VLLM_QWEN3_5_FP16_SSM"}
+    assert env["VLLM_QWEN3_5_FP16_SSM"] == "1"
+    assert base_env["VLLM_QWEN3_5_FP16_SSM"] == "0"
+
+
+def test_core_final_reconstructs_base_profile():
+    spec = importlib.util.spec_from_file_location(
+        "serving_comparison", ROOT / "tools/compare_native_serving.py"
+    )
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    args = argparse.Namespace(
+        models=Path("/models"), stock_runtime=Path("/stock"), devices="0,1", port=8000
+    )
+    final, final_env = tool.launch_configuration(args, "core_ar_quant")
+    base, base_env = tool.launch_configuration(args, "dense_none")
+    assert final == base
+    for key in ("VLLM_MACH_FUSED_SWIGLU_QUANT", "VLLM_MACH_FUSED_GDN_QUANT"):
+        assert final_env.pop(key) == "1"
+        base_env.pop(key, None)
+    assert final_env == base_env
+
+
+def test_stock_aligned_profile_restores_defaults_without_mach_optimizations():
+    spec = importlib.util.spec_from_file_location(
+        "serving_comparison", ROOT / "tools/compare_native_serving.py"
+    )
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    args = argparse.Namespace(
+        models=Path("/models"), stock_runtime=Path("/stock"), devices="2,3", port=8000
+    )
+    command, env = tool.launch_configuration(args, tool.ALIGNED_ARM)
+    _, control_env = tool.launch_configuration(args, "core_graph")
+    for key, value in control_env.items():
+        if key in env and key.startswith(("VLLM_MACH_", "VLLM_QWEN3_5_", "VLLM_SM120_")):
+            assert env[key] == value
+    for flag in ("--compilation-config", "--attention-backend",
+                 "--max-num-batched-tokens", "--kv-cache-memory-bytes", "--enforce-eager"):
+        assert flag not in command
+    for key in ("VLLM_USE_V2_MODEL_RUNNER", "VLLM_USE_BREAKABLE_CUDAGRAPH",
+                "VLLM_FLASHINFER_ALLREDUCE_BACKEND"):
+        assert key not in env
+    assert env["VLLM_ALLREDUCE_USE_FLASHINFER"] == "0"
+    assert command[command.index("--max-num-seqs") + 1] == "64"
+    assert command[command.index("--gpu-memory-utilization") + 1] == "0.9"
+    assert env["VLLM_VOCAB_PARALLEL_GREEDY"] == "0"
+    assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == "0"
+
+
+def test_core_stages_all_keep_decode_graphs():
+    spec = importlib.util.spec_from_file_location(
+        "serving_comparison", ROOT / "tools/compare_native_serving.py"
+    )
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    args = argparse.Namespace(
+        models=Path("/models"), stock_runtime=Path("/stock"), devices="0,1", port=8000
+    )
+    assert all("eager" not in arm for arm in tool.DENSE_CORE_ORDER)
+    for arm in tool.DENSE_CORE_ORDER:
+        command, _ = tool.launch_configuration(args, arm)
+        assert "--enforce-eager" not in command
+        cfg = json.loads(command[command.index("--compilation-config") + 1])
+        assert cfg["cudagraph_mode"] == "FULL_DECODE_ONLY"
+        assert cfg["cudagraph_capture_sizes"] == [1, 2, 4, 8, 16, 24, 32]
 
 
 @pytest.mark.parametrize("token_text", ["hello", ""])

@@ -13,6 +13,27 @@ from pathlib import Path
 
 from vllm_mach.mxfp6.serve import build_command
 
+# Two 2x2 experiments sharing the prefill-on, FP32/BF16-head control.
+# All other current Dense optimizations remain enabled.
+DENSE_ABLATIONS = {
+    "dense_none": (False, False, False, False),
+    "dense_lossless": (True, False, False, False),
+    "dense_owner": (False, True, False, False),
+    "dense_default": (True, True, False, False),
+    "dense_ssm": (True, True, True, False),
+    "dense_head": (True, True, False, True),
+    "dense_full": (True, True, True, True),
+}
+
+# Cumulative reconstruction of dense_none. CUDA Graph remains enabled:
+# graph-off arms are intentionally excluded from the deployment comparison.
+DENSE_CORE_ORDER = [
+    "core_graph", "core_sampler", "core_ar_norm", "core_gdn",
+    "core_ba", "core_swiglu", "core_gdn_quant", "core_ar_quant",
+]
+STOCK_ARMS = ("fp8", "nvfp4")
+ALIGNED_ARM = "core_stock_aligned"
+
 
 def launch_configuration(a, arm):
     """Keep stock compiler defaults separate from the Mach profile."""
@@ -28,6 +49,18 @@ def launch_configuration(a, arm):
         nvfp4_lm_head=full,
         verify_prefill=False,
     )
+    if arm in DENSE_ABLATIONS:
+        (args.lossless_prefill, args.owner_prefill,
+         args.fp16_ssm, args.nvfp4_lm_head) = DENSE_ABLATIONS[arm]
+        args.gdn_persistent = args.gdn_ba_overlap = True
+    core_index = (0 if arm == ALIGNED_ARM else
+                  DENSE_CORE_ORDER.index(arm) if arm in DENSE_CORE_ORDER else None)
+    if core_index is not None:
+        args.fp16_ssm = args.lossless_prefill = args.owner_prefill = args.nvfp4_lm_head = False
+        args.fused_ar_norm = core_index >= 2
+        args.fused_ar_quant = core_index >= 7
+        args.gdn_persistent = core_index >= 3
+        args.gdn_ba_overlap = core_index >= 4
     command, env = build_command(
         args,
         [
@@ -42,7 +75,28 @@ def launch_configuration(a, arm):
         ],
     )
     env.update(CUDA_VISIBLE_DEVICES=a.devices, OMP_NUM_THREADS="1")
-    if arm in ("fp8", "nvfp4"):
+    if core_index is not None:
+        env["VLLM_VOCAB_PARALLEL_GREEDY"] = str(int(core_index >= 1))
+        env["VLLM_MACH_FUSED_SWIGLU_QUANT"] = str(int(core_index >= 5))
+        env["VLLM_MACH_FUSED_GDN_QUANT"] = str(int(core_index >= 6))
+    if arm == ALIGNED_ARM:
+        # Restore the user's stock serving defaults while retaining only the
+        # native MXFP6 adapter. Keep every optional Mach optimization disabled.
+        for flag in ("--compilation-config", "--kv-cache-memory-bytes",
+                     "--attention-backend", "--max-num-batched-tokens",
+                     "--generation-config", "--limit-mm-per-prompt", "--dtype"):
+            index = command.index(flag)
+            del command[index:index + 2]
+        command[command.index("--max-num-seqs") + 1] = "64"
+        command += ["--gpu-memory-utilization", "0.9", "--reasoning-parser", "qwen3",
+                    "--enable-logging-iteration-details"]
+        for key in ("VLLM_USE_V2_MODEL_RUNNER", "VLLM_USE_BREAKABLE_CUDAGRAPH",
+                    "VLLM_ALLREDUCE_USE_FLASHINFER", "VLLM_FLASHINFER_ALLREDUCE_BACKEND"):
+            env.pop(key, None)
+        # User FP8 logs confirm CUSTOM/PYNCCL: stock SM120 has no FI TP2
+        # size entry, whereas the patched Mach runtime adds one.
+        env["VLLM_ALLREDUCE_USE_FLASHINFER"] = "0"
+    if arm in STOCK_ARMS:
         # Do not merely disable flags in a patched runtime: import official packages.
         env = {k: v for k, v in env.items() if not k.startswith(("VLLM_", "MXFP6_"))}
         env["PYTHONPATH"] = str(a.stock_runtime.resolve())
@@ -80,6 +134,9 @@ def main():
             "full_gdn",
             "fp8",
             "nvfp4",
+            *DENSE_ABLATIONS,
+            *DENSE_CORE_ORDER,
+            ALIGNED_ARM,
         ],
         required=True,
     )
@@ -108,7 +165,7 @@ def main():
         dest = a.output / arm
         dest.mkdir(exist_ok=False)
         command, env = launch_configuration(a, arm)
-        if arm in ("fp8", "nvfp4"):
+        if arm in STOCK_ARMS:
             subprocess.run(
                 [
                     sys.executable,

@@ -1,0 +1,63 @@
+{
+  "origin": "User-provided pasted FP8 startup log, service restarted 2026-09-20 06:16:40 UTC; not a log from the earlier 05:xx benchmark process",
+  "model": "<LOCAL_PATH_009>",
+  "served_model_name": "Qwen3.8-27B-MXFP6",
+  "version": "0.29.0",
+  "nccl": "2.30.7",
+  "linear_kernel": "CutlassFp8BlockScaledMMKernel",
+  "deep_gemm": "auto-disabled for qwen3_5_text on Blackwell due to accuracy degradation with E8M0 scale",
+  "attention": "FLASH_ATTN v2",
+  "gdn_prefill": "Triton/FLA",
+  "gdn_decode": "cuda",
+  "runner": "V2",
+  "compilation": "VLLM_COMPILE / inductor",
+  "custom_ops": [
+    "+quant_fp8",
+    "none",
+    "+quant_fp8"
+  ],
+  "norm_quant": true,
+  "act_quant": true,
+  "fuse_allreduce_rms": false,
+  "enable_sp": false,
+  "fuse_gemm_comms": false,
+  "fuse_attn_quant": false,
+  "graph": "FULL_AND_PIECEWISE",
+  "graph_capture_sizes": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    24,
+    32,
+    40,
+    48,
+    56,
+    64,
+    72,
+    80,
+    88,
+    96,
+    104,
+    112,
+    120,
+    128
+  ],
+  "compile_ranges_endpoints": [
+    2048
+  ],
+  "allreduce_dispatch": [
+    "CUSTOM",
+    "PYNCCL"
+  ],
+  "flashinfer_allreduce": "disabled because world_size=2 not supported",
+  "tp": 2,
+  "gpu_devices_user_declared": "4,5",
+  "max_num_seqs": 64,
+  "max_model_len": 16384,
+  "gpu_memory_utilization": 0.9,
+  "prefix_caching": false,
+  "kv_cache_memory_gib": 11.82,
+  "privacy_note": "Local filesystem paths have been redacted for publication. Measurement values are unchanged."
+}

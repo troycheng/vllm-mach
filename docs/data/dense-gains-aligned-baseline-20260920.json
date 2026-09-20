@@ -1,0 +1,627 @@
+{
+  "scope": "User-edited row order. Per-row incremental throughput gain uses the immediately preceding displayed row, including cross-group/batch transitions. FP8 cumulative denominator unchanged. Raw unrounded throughputs; equal-weight mean across four concurrency points. Not single-switch causal attribution.",
+  "baseline": "stock-path-aligned/core_stock_aligned",
+  "records": [
+    {
+      "label": "Aligned MXFP6 baseline",
+      "group": "stock-path-aligned",
+      "arm": "core_stock_aligned",
+      "throughput": {
+        "4": 314.0276123980945,
+        "16": 946.573570664698,
+        "24": 1205.818941568937,
+        "32": 1365.4565830011925
+      },
+      "previous_row": null,
+      "gain_over_previous_row_pct": null,
+      "mean_gain_over_previous_row_pct": null,
+      "gain_over_aligned_fp6_pct": {
+        "4": 0.0,
+        "16": 0.0,
+        "24": 0.0,
+        "32": 0.0
+      },
+      "mean_gain_over_aligned_fp6_pct": 0.0,
+      "gain_over_fp8_pct": {
+        "4": 18.693143892783738,
+        "16": 17.90985627296098,
+        "24": 19.219452658069414,
+        "32": 18.63526005456513
+      },
+      "mean_gain_over_fp8_pct": 18.614428219594814
+    },
+    {
+      "label": "+ AR/Norm",
+      "group": "runtime",
+      "arm": "core_ar_norm",
+      "throughput": {
+        "4": 317.4239627320677,
+        "16": 959.8263644884446,
+        "24": 1270.783770682338,
+        "32": 1436.1906772052832
+      },
+      "previous_row": {
+        "group": "stock-path-aligned",
+        "arm": "core_stock_aligned",
+        "label": "Aligned MXFP6 baseline"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 1.0815451252954356,
+        "16": 1.400080694672301,
+        "24": 5.38761060005184,
+        "32": 5.180252165075916
+      },
+      "mean_gain_over_previous_row_pct": 3.262372146273873,
+      "gain_over_aligned_fp6_pct": {
+        "4": 1.0815451252954356,
+        "16": 1.400080694672301,
+        "24": 5.38761060005184,
+        "32": 5.180252165075916
+      },
+      "mean_gain_over_aligned_fp6_pct": 3.262372146273873,
+      "gain_over_fp8_pct": {
+        "4": 19.97686380461603,
+        "16": 19.560689407754573,
+        "24": 25.642532526799357,
+        "32": 24.780865682085174
+      },
+      "mean_gain_over_fp8_pct": 22.490237855313783
+    },
+    {
+      "label": "+ persistent GDN",
+      "group": "runtime",
+      "arm": "core_gdn",
+      "throughput": {
+        "4": 362.38203454431573,
+        "16": 959.3529666821998,
+        "24": 1270.7468257319997,
+        "32": 1435.9286941525074
+      },
+      "previous_row": {
+        "group": "runtime",
+        "arm": "core_ar_norm",
+        "label": "+ AR/Norm"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 14.163414578185574,
+        "16": -0.04932119222387232,
+        "24": -0.002907257016537823,
+        "32": -0.01824152300484716
+      },
+      "mean_gain_over_previous_row_pct": 3.523236151485079,
+      "gain_over_aligned_fp6_pct": {
+        "4": 15.398143423426758,
+        "16": 1.350068965957707,
+        "24": 5.384546711348115,
+        "32": 5.161065685180666
+      },
+      "mean_gain_over_aligned_fp6_pct": 6.823456196478311,
+      "gain_over_fp8_pct": {
+        "4": 36.96968442316886,
+        "16": 19.501720650307576,
+        "24": 25.638879775456715,
+        "32": 24.758103751766125
+      },
+      "mean_gain_over_fp8_pct": 26.71709715017482
+    },
+    {
+      "label": "+ BA overlap",
+      "group": "runtime",
+      "arm": "core_ba",
+      "throughput": {
+        "4": 376.8476069255127,
+        "16": 1012.2596057689647,
+        "24": 1295.5669219110634,
+        "32": 1458.5362651294763
+      },
+      "previous_row": {
+        "group": "runtime",
+        "arm": "core_gdn",
+        "label": "+ persistent GDN"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 3.9918017457424515,
+        "16": 5.514825191997441,
+        "24": 1.9531897051772162,
+        "32": 1.574421562089623
+      },
+      "mean_gain_over_previous_row_pct": 3.258559551251683,
+      "gain_over_aligned_fp6_pct": {
+        "4": 20.004608527157465,
+        "16": 6.939348101399134,
+        "24": 7.442906828561835,
+        "32": 6.816744178251377
+      },
+      "mean_gain_over_aligned_fp6_pct": 10.300901908842453,
+      "gain_over_fp8_pct": {
+        "4": 42.437242677110845,
+        "16": 26.092031645601143,
+        "24": 28.092845440930937,
+        "32": 26.72232223768807
+      },
+      "mean_gain_over_fp8_pct": 30.836110500332747
+    },
+    {
+      "label": "+ SwiGLU quant fusion",
+      "group": "producer",
+      "arm": "core_swiglu",
+      "throughput": {
+        "4": 379.0937994713675,
+        "16": 1012.4268453051925,
+        "24": 1291.933722964285,
+        "32": 1455.800816364161
+      },
+      "previous_row": {
+        "group": "runtime",
+        "arm": "core_ba",
+        "label": "+ BA overlap"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 0.5960479792296525,
+        "16": 0.016521407677894118,
+        "24": -0.2804331358984724,
+        "32": -0.18754753177648853
+      },
+      "mean_gain_over_previous_row_pct": 0.03614717980814641,
+      "gain_over_aligned_fp6_pct": {
+        "4": 20.719893571266024,
+        "16": 6.957015987067061,
+        "24": 7.141601315642032,
+        "32": 6.616412011021056
+      },
+      "mean_gain_over_aligned_fp6_pct": 10.358730721249042,
+      "gain_over_fp8_pct": {
+        "4": 43.28623698375817,
+        "16": 26.112863824198683,
+        "24": 27.733630657599328,
+        "32": 26.484657650121424
+      },
+      "mean_gain_over_fp8_pct": 30.904347278919403
+    },
+    {
+      "label": "+ GDN output quant fusion",
+      "group": "producer",
+      "arm": "core_gdn_quant",
+      "throughput": {
+        "4": 370.65370375879974,
+        "16": 1000.0092455109414,
+        "24": 1300.728360943645,
+        "32": 1463.8204496429353
+      },
+      "previous_row": {
+        "group": "producer",
+        "arm": "core_swiglu",
+        "label": "+ SwiGLU quant fusion"
+      },
+      "gain_over_previous_row_pct": {
+        "4": -2.2263871697023707,
+        "16": -1.2265182271522956,
+        "24": 0.6807344543326099,
+        "32": 0.5508743496107638
+      },
+      "mean_gain_over_previous_row_pct": -0.5553241482278232,
+      "gain_over_aligned_fp6_pct": {
+        "4": 18.032201349516995,
+        "16": 5.645168690767477,
+        "24": 7.8709511107212915,
+        "32": 7.2037344772651
+      },
+      "mean_gain_over_aligned_fp6_pct": 9.688013907067717,
+      "gain_over_fp8_pct": {
+        "4": 40.09613058760246,
+        "16": 24.566066562611134,
+        "24": 28.603157491255594,
+        "32": 27.181429185308946
+      },
+      "mean_gain_over_fp8_pct": 30.111695956694533
+    },
+    {
+      "label": "+ AR quant fusion",
+      "group": "producer",
+      "arm": "core_ar_quant",
+      "throughput": {
+        "4": 377.29679494402103,
+        "16": 1012.882888349115,
+        "24": 1312.3934354692149,
+        "32": 1471.809944890513
+      },
+      "previous_row": {
+        "group": "producer",
+        "arm": "core_gdn_quant",
+        "label": "+ GDN output quant fusion"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 1.7922635381364627,
+        "16": 1.287352381586837,
+        "24": 0.8968109619065467,
+        "32": 0.5457974883139816
+      },
+      "mean_gain_over_previous_row_pct": 1.130556092485957,
+      "gain_over_aligned_fp6_pct": {
+        "4": 20.14764945756422,
+        "16": 7.005194285939509,
+        "24": 8.8383496249951,
+        "32": 7.788849767420802
+      },
+      "mean_gain_over_aligned_fp6_pct": 10.945010783979908,
+      "gain_over_fp8_pct": {
+        "4": 42.60702245446409,
+        "16": 26.169670787153933,
+        "24": 29.756484704995103,
+        "32": 27.875582231404184
+      },
+      "mean_gain_over_fp8_pct": 31.602190044504326
+    },
+    {
+      "label": "+ Lossless prefill",
+      "group": "prefill",
+      "arm": "dense_lossless",
+      "throughput": {
+        "4": 377.73999164321606,
+        "16": 1024.9326439824051,
+        "24": 1333.7023184247525,
+        "32": 1500.8357888579671
+      },
+      "previous_row": {
+        "group": "producer",
+        "arm": "core_ar_quant",
+        "label": "+ AR quant fusion"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 0.11746633025619957,
+        "16": 1.189649442388152,
+        "24": 1.6236657681786726,
+        "32": 1.9721190272031563
+      },
+      "mean_gain_over_previous_row_pct": 1.2257251420065451,
+      "gain_over_aligned_fp6_pct": {
+        "4": 20.288782492271107,
+        "16": 8.278180983088546,
+        "24": 10.605520650506751,
+        "32": 9.914574182887549
+      },
+      "mean_gain_over_aligned_fp6_pct": 12.271764577188488,
+      "gain_over_fp8_pct": {
+        "4": 42.77453769042901,
+        "16": 27.670647572136264,
+        "24": 31.86329632914211,
+        "32": 30.39744091973653
+      },
+      "mean_gain_over_fp8_pct": 33.176480627860975
+    },
+    {
+      "label": "+ owner prefill: **default Mach**",
+      "group": "prefill",
+      "arm": "dense_default",
+      "throughput": {
+        "4": 380.1737351988204,
+        "16": 1046.9349302348999,
+        "24": 1374.5279969327348,
+        "32": 1553.0945838877315
+      },
+      "previous_row": {
+        "group": "prefill",
+        "arm": "dense_lossless",
+        "label": "+ Lossless prefill"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 0.6442906786271907,
+        "16": 2.146705579305608,
+        "24": 3.0610787687766594,
+        "32": 3.4819795355179872
+      },
+      "mean_gain_over_previous_row_pct": 2.3335136405568613,
+      "gain_over_aligned_fp6_pct": {
+        "4": 21.06379190530292,
+        "16": 10.60259473542311,
+        "24": 13.991242760234313,
+        "32": 13.741777162487413
+      },
+      "mean_gain_over_aligned_fp6_pct": 14.849851640861939,
+      "gain_over_fp8_pct": {
+        "4": 43.694420728221495,
+        "16": 30.41136048670292,
+        "24": 35.89973569688254,
+        "32": 34.93785312740092
+      },
+      "mean_gain_over_fp8_pct": 36.23584250980197
+    },
+    {
+      "label": "+ FP16 SSM",
+      "group": "state-head",
+      "arm": "dense_ssm",
+      "throughput": {
+        "4": 389.7056664837336,
+        "16": 1101.0233432181371,
+        "24": 1452.193430823809,
+        "32": 1671.000605376276
+      },
+      "previous_row": {
+        "group": "prefill",
+        "arm": "dense_default",
+        "label": "+ owner prefill: **default Mach**"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 2.507256657256507,
+        "16": 5.166358617063382,
+        "24": 5.65033481052295,
+        "32": 7.591683256881909
+      },
+      "mean_gain_over_previous_row_pct": 5.228908335431187,
+      "gain_over_aligned_fp6_pct": {
+        "4": 24.099171887375803,
+        "16": 16.31672141923235,
+        "24": 20.43212963086356,
+        "32": 22.37669261541191
+      },
+      "mean_gain_over_aligned_fp6_pct": 20.806178888220906,
+      "gain_over_fp8_pct": {
+        "4": 47.29720865803601,
+        "16": 37.14887904683728,
+        "24": 43.57852577037218,
+        "32": 45.181907530469715
+      },
+      "mean_gain_over_fp8_pct": 43.3016302514288
+    },
+    {
+      "label": "+ NVFP4 head: **full Mach**",
+      "group": "state-head",
+      "arm": "dense_full",
+      "throughput": {
+        "4": 411.141253128587,
+        "16": 1141.4009465471138,
+        "24": 1498.9256416926964,
+        "32": 1718.2421537657672
+      },
+      "previous_row": {
+        "group": "state-head",
+        "arm": "dense_ssm",
+        "label": "+ FP16 SSM"
+      },
+      "gain_over_previous_row_pct": {
+        "4": 5.500455468934806,
+        "16": 3.6672794975407763,
+        "24": 3.2180431254517528,
+        "32": 2.8271413090753095
+      },
+      "mean_gain_over_previous_row_pct": 3.803229850250661,
+      "gain_over_aligned_fp6_pct": {
+        "4": 30.925191574357804,
+        "16": 20.58238069605145,
+        "24": 24.30768749928469,
+        "32": 25.836454645022332
+      },
+      "mean_gain_over_aligned_fp6_pct": 25.41292860367907,
+      "gain_over_fp8_pct": {
+        "4": 55.39922602725527,
+        "16": 42.17851176922893,
+        "24": 48.198944648550615,
+        "32": 49.28640521156713
+      },
+      "mean_gain_over_fp8_pct": 48.765771914150484
+    }
+  ],
+  "original_conditional_gains": [
+    {
+      "group": "runtime",
+      "label": "Compact greedy sampler",
+      "base": "core_graph",
+      "candidate": "core_sampler",
+      "gain_pct": {
+        "4": 0.46943466442730397,
+        "16": 0.7098812951403799,
+        "24": 0.8633497830302206,
+        "32": 1.0896824209415845
+      },
+      "mean_gain_pct": 0.7830870408848722
+    },
+    {
+      "group": "runtime",
+      "label": "AR/residual/RMSNorm fusion",
+      "base": "core_sampler",
+      "candidate": "core_ar_norm",
+      "gain_pct": {
+        "4": 16.484593304637386,
+        "16": 21.382538960368013,
+        "24": 25.012525010577534,
+        "32": 23.929639056358543
+      },
+      "mean_gain_pct": 21.70232408298537
+    },
+    {
+      "group": "runtime",
+      "label": "Persistent GDN",
+      "base": "core_ar_norm",
+      "candidate": "core_gdn",
+      "gain_pct": {
+        "4": 14.163414578185574,
+        "16": -0.04932119222387232,
+        "24": -0.002907257016537823,
+        "32": -0.01824152300484716
+      },
+      "mean_gain_pct": 3.523236151485079
+    },
+    {
+      "group": "runtime",
+      "label": "BA overlap",
+      "base": "core_gdn",
+      "candidate": "core_ba",
+      "gain_pct": {
+        "4": 3.9918017457424515,
+        "16": 5.514825191997441,
+        "24": 1.9531897051772162,
+        "32": 1.574421562089623
+      },
+      "mean_gain_pct": 3.258559551251683
+    },
+    {
+      "group": "producer",
+      "label": "SwiGLU/MXFP8 fusion",
+      "base": "core_ba",
+      "candidate": "core_swiglu",
+      "gain_pct": {
+        "4": 0.9711188125238968,
+        "16": 0.5958749590452284,
+        "24": 0.4434670165480936,
+        "32": 0.501245656294369
+      },
+      "mean_gain_pct": 0.6279266111028969
+    },
+    {
+      "group": "producer",
+      "label": "GDN output norm/MXFP8 fusion",
+      "base": "core_swiglu",
+      "candidate": "core_gdn_quant",
+      "gain_pct": {
+        "4": -2.2263871697023707,
+        "16": -1.2265182271522956,
+        "24": 0.6807344543326099,
+        "32": 0.5508743496107638
+      },
+      "mean_gain_pct": -0.5553241482278232
+    },
+    {
+      "group": "producer",
+      "label": "AR/RMSNorm/MXFP8 fusion",
+      "base": "core_gdn_quant",
+      "candidate": "core_ar_quant",
+      "gain_pct": {
+        "4": 1.7922635381364627,
+        "16": 1.287352381586837,
+        "24": 0.8968109619065467,
+        "32": 0.5457974883139816
+      },
+      "mean_gain_pct": 1.130556092485957
+    },
+    {
+      "group": "prefill",
+      "label": "Lossless alone",
+      "base": "dense_none",
+      "candidate": "dense_lossless",
+      "gain_pct": {
+        "4": -2.362882022054813,
+        "16": 0.12097793363301523,
+        "24": 2.527508550679647,
+        "32": 2.980342120590529
+      },
+      "mean_gain_pct": 0.8164866457120945
+    },
+    {
+      "group": "prefill",
+      "label": "Owner alone",
+      "base": "dense_none",
+      "candidate": "dense_owner",
+      "gain_pct": {
+        "4": -1.726531661526387,
+        "16": 2.2936686951890994,
+        "24": 5.647390721548207,
+        "32": 6.5699074586770045
+      },
+      "mean_gain_pct": 3.196108803471981
+    },
+    {
+      "group": "prefill",
+      "label": "Lossless with owner",
+      "base": "dense_owner",
+      "candidate": "dense_default",
+      "gain_pct": {
+        "4": -0.007411471925677926,
+        "16": -0.022863724116839457,
+        "24": 0.017573198358400433,
+        "32": -0.003575962419388734
+      },
+      "mean_gain_pct": -0.004069490025876421
+    },
+    {
+      "group": "prefill",
+      "label": "Owner with lossless",
+      "base": "dense_lossless",
+      "candidate": "dense_default",
+      "gain_pct": {
+        "4": 0.6442906786271907,
+        "16": 2.146705579305608,
+        "24": 3.0610787687766594,
+        "32": 3.4819795355179872
+      },
+      "mean_gain_pct": 2.3335136405568613
+    },
+    {
+      "group": "prefill",
+      "label": "Both prefill options",
+      "base": "dense_none",
+      "candidate": "dense_default",
+      "gain_pct": {
+        "4": -1.7338151720426853,
+        "16": 2.270280552989634,
+        "24": 5.665956347080181,
+        "32": 6.566096558835888
+      },
+      "mean_gain_pct": 3.1921295717157543
+    },
+    {
+      "group": "state-head",
+      "label": "FP16 SSM alone",
+      "base": "dense_default",
+      "candidate": "dense_ssm",
+      "gain_pct": {
+        "4": -1.315110249184559,
+        "16": 2.0775434594184627,
+        "24": 4.417111248287764,
+        "32": 6.244966236229765
+      },
+      "mean_gain_pct": 2.8561276736878582
+    },
+    {
+      "group": "state-head",
+      "label": "NVFP4 head alone",
+      "base": "dense_default",
+      "candidate": "dense_head",
+      "gain_pct": {
+        "4": 2.1405793311677135,
+        "16": 1.5604064674018314,
+        "24": 3.0483616349298748,
+        "32": 2.589203701173326
+      },
+      "mean_gain_pct": 2.334637783668186
+    },
+    {
+      "group": "state-head",
+      "label": "FP16 SSM with NVFP4 head",
+      "base": "dense_head",
+      "candidate": "dense_full",
+      "gain_pct": {
+        "4": 1.9310922728992708,
+        "16": 4.195144508667048,
+        "24": 4.589046549261955,
+        "32": 6.491382742117757
+      },
+      "mean_gain_pct": 4.301666518236508
+    },
+    {
+      "group": "state-head",
+      "label": "NVFP4 head with FP16 SSM",
+      "base": "dense_ssm",
+      "candidate": "dense_full",
+      "gain_pct": {
+        "4": 5.500455468934806,
+        "16": 3.6672794975407763,
+        "24": 3.2180431254517528,
+        "32": 2.8271413090753095
+      },
+      "mean_gain_pct": 3.803229850250661
+    },
+    {
+      "group": "state-head",
+      "label": "Both full options",
+      "base": "dense_default",
+      "candidate": "dense_full",
+      "gain_pct": {
+        "4": 4.113008166126453,
+        "16": 5.821012282298987,
+        "24": 7.777298918608611,
+        "32": 9.248661565507344
+      },
+      "mean_gain_pct": 6.739995233135349
+    }
+  ]
+}
