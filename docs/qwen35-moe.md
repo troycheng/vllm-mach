@@ -16,6 +16,12 @@ The default MoE batched-token budget is 2048. Explicit
 to vLLM.
 Dense models retain their existing decode-only configuration.
 
+The package also installs [37 measured projection configurations](moe-projection-20260923.md)
+for this model's TP2 BF16 path on SM120. They are loaded before workspace
+planning and graph capture, with no external tuning file or checkpoint change.
+The native config ABI is checked at startup. Set
+`VLLM_MACH_MOE_PROJECTION_TUNING=0` before starting a new worker to disable them.
+
 Build `mxfp6-sm120` from revision
 `7c891d07b65ce2f4e5e8e10a6934c1a298755b8d` (v0.2.1) against the serving
 environment's PyTorch, following [installation](installation.md). The existing

@@ -1,0 +1,248 @@
+{
+  "date": "2026-09-23",
+  "model": "Qwen3.5-35B-A3B-MXFP6",
+  "baseline_mach_commit": "c8c860020054ddebe947d962b502921da3a995ce",
+  "vllm": "0.29.0",
+  "torch": "2.13.0+cu130",
+  "flashinfer": "0.6.18",
+  "gpu": "2 x RTX 5090, SM120, TP2",
+  "native_sha256": "09e0929322488fb27bf1be179b3670fcb018b37d90c0544ecb8f11ca2334a99d",
+  "native_config_abi": "native-w6a8-30-v5",
+  "selection_sha256": "d19c565da70c80b7c494ba215894310759dd47ed9f6d87d13d1ec1e28fa5cc38",
+  "contract": {
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "warmup_requests": "C",
+    "warmup_output_tokens": 256,
+    "scored_requests": "2*C",
+    "max_num_seqs": 256,
+    "max_num_batched_tokens": 2048,
+    "max_model_len": 16384,
+    "gpu_memory_utilization": 0.9,
+    "mamba_ssm_cache_dtype": "float32",
+    "prefix_caching": false,
+    "attention_backend": "TRITON_ATTN",
+    "cudagraph_capture_sizes": [
+      1,
+      2,
+      4,
+      8,
+      10,
+      12,
+      14,
+      16,
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      48,
+      56,
+      64,
+      72,
+      80,
+      96,
+      112,
+      128,
+      160,
+      192,
+      224,
+      256,
+      320,
+      384,
+      448,
+      512,
+      640,
+      768,
+      784,
+      896,
+      1024,
+      1280,
+      1536,
+      1792,
+      2048
+    ],
+    "seed": 20260917,
+    "contract_seed": 20260917,
+    "request_seed_base": 2026091700,
+    "token_id_low": 1000,
+    "token_id_high": 240000,
+    "temperature": 0,
+    "ignore_eos": true
+  },
+  "scope": "One reverse projection-then-base HTTP pair; earlier forward pair agrees. No statistical significance claim. Release package reload is recorded separately.",
+  "pairs": {
+    "c032": {
+      "base_tok_s": 3151.0721064669156,
+      "projection_tok_s": 3181.3395104656656,
+      "throughput_gain_pct": 0.9605430461788744,
+      "mean_ttft_change_pct": 0.2802622110340325,
+      "mean_tpot_change_pct": -1.0497926192980622,
+      "response_text_comparison": {
+        "status": "complete",
+        "common_request_indices": 64,
+        "matching_response_text_sha256": 64,
+        "mismatching_response_text_sha256": 0,
+        "missing_response_text": 0,
+        "only_base_request_indices": 0,
+        "only_projection_request_indices": 0
+      }
+    },
+    "c064": {
+      "base_tok_s": 4036.290657881692,
+      "projection_tok_s": 4040.9563253691335,
+      "throughput_gain_pct": 0.11559295112533174,
+      "mean_ttft_change_pct": -0.36214576316296876,
+      "mean_tpot_change_pct": -0.09341752515285018,
+      "response_text_comparison": {
+        "status": "complete",
+        "common_request_indices": 128,
+        "matching_response_text_sha256": 128,
+        "mismatching_response_text_sha256": 0,
+        "missing_response_text": 0,
+        "only_base_request_indices": 0,
+        "only_projection_request_indices": 0
+      }
+    },
+    "c096": {
+      "base_tok_s": 4439.417348944223,
+      "projection_tok_s": 4470.126401827449,
+      "throughput_gain_pct": 0.6917361101570929,
+      "mean_ttft_change_pct": -0.04994547527656934,
+      "mean_tpot_change_pct": -0.7592229070305434,
+      "response_text_comparison": {
+        "status": "complete",
+        "common_request_indices": 192,
+        "matching_response_text_sha256": 192,
+        "mismatching_response_text_sha256": 0,
+        "missing_response_text": 0,
+        "only_base_request_indices": 0,
+        "only_projection_request_indices": 0
+      }
+    },
+    "c128": {
+      "base_tok_s": 4920.944068763974,
+      "projection_tok_s": 4948.511776874538,
+      "throughput_gain_pct": 0.5602117749224478,
+      "mean_ttft_change_pct": -0.2735857455537283,
+      "mean_tpot_change_pct": -0.5886739726680301,
+      "response_text_comparison": {
+        "status": "complete",
+        "common_request_indices": 256,
+        "matching_response_text_sha256": 256,
+        "mismatching_response_text_sha256": 0,
+        "missing_response_text": 0,
+        "only_base_request_indices": 0,
+        "only_projection_request_indices": 0
+      }
+    },
+    "c160": {
+      "base_tok_s": 5128.219125777473,
+      "projection_tok_s": 5150.095858919484,
+      "throughput_gain_pct": 0.4265951318664474,
+      "mean_ttft_change_pct": -0.29661633131448095,
+      "mean_tpot_change_pct": -0.44045124677278835,
+      "response_text_comparison": {
+        "status": "complete",
+        "common_request_indices": 320,
+        "matching_response_text_sha256": 320,
+        "mismatching_response_text_sha256": 0,
+        "missing_response_text": 0,
+        "only_base_request_indices": 0,
+        "only_projection_request_indices": 0
+      }
+    }
+  },
+  "quality": {
+    "exact_against_both_frozen_references": true,
+    "queries_per_shape": 256,
+    "gold_tokens_per_shape": 10479,
+    "total_gold_values_compared_per_reference": 31437,
+    "new_bf16_run": false,
+    "shapes": {
+      "m032": {
+        "query_mean_bf16_mae": 0.07573536654260243,
+        "reference_date": "2026-09-17",
+        "inheritance_reason": "New raw gold logprobs exactly match frozen baseline and prior projection",
+        "new_repeat": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0
+        }
+      },
+      "m128": {
+        "query_mean_bf16_mae": 0.07496286053984415,
+        "reference_date": "2026-09-23",
+        "inheritance_reason": "New raw gold logprobs exactly match frozen baseline and prior projection",
+        "new_repeat": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0
+        }
+      },
+      "m160": {
+        "query_mean_bf16_mae": 0.07605973243744368,
+        "reference_date": "2026-09-23",
+        "inheritance_reason": "New raw gold logprobs exactly match frozen baseline and prior projection",
+        "new_repeat": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0
+        }
+      }
+    }
+  },
+  "installed_package_reload": {
+    "scope": "Installed wheel reload compared with frozen champion, not a fresh performance A/B pair",
+    "points": {
+      "c032": {
+        "champion_output_tok_s": 3181.3395104656656,
+        "wheel_output_tok_s": 3174.0448569554137,
+        "reload_change_pct": -0.22929503393946948,
+        "response_text": {
+          "status": "complete",
+          "common_request_indices": 64,
+          "matching_response_text_sha256": 64,
+          "mismatching_response_text_sha256": 0,
+          "missing_response_text": 0,
+          "only_base_request_indices": 0,
+          "only_projection_request_indices": 0
+        }
+      },
+      "c128": {
+        "champion_output_tok_s": 4948.511776874538,
+        "wheel_output_tok_s": 4953.187228500096,
+        "reload_change_pct": 0.09448197430605987,
+        "response_text": {
+          "status": "complete",
+          "common_request_indices": 256,
+          "matching_response_text_sha256": 256,
+          "mismatching_response_text_sha256": 0,
+          "missing_response_text": 0,
+          "only_base_request_indices": 0,
+          "only_projection_request_indices": 0
+        }
+      },
+      "c160": {
+        "champion_output_tok_s": 5150.095858919484,
+        "wheel_output_tok_s": 5150.420460535822,
+        "reload_change_pct": 0.006302826689630336,
+        "response_text": {
+          "status": "complete",
+          "common_request_indices": 320,
+          "matching_response_text_sha256": 320,
+          "mismatching_response_text_sha256": 0,
+          "missing_response_text": 0,
+          "only_base_request_indices": 0,
+          "only_projection_request_indices": 0
+        }
+      }
+    },
+    "requests": 640,
+    "output_tokens": 640000,
+    "preemptions": 0,
+    "kv_capacity_identical": true,
+    "gold_logprob_differences": 0,
+    "package_quality_wheel_sha256": "17e492cd2c846036545e612593500a9b87003f9aacc58eaa549716a840aab6c7",
+    "serving_wheel_sha256": "ecb7c586de16ebaa9846613f1ae8626c830b33885f6faa311edddc642c4cfbb9",
+    "wheel_delta": "Only the logger namespace changes between quality and serving wheels; compute and dispatch are unchanged."
+  }
+}

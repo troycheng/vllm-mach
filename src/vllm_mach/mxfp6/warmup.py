@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-"""Workspace and CUDA Graph stream warmup for the SM120 Dense backend."""
+"""Workspace and CUDA Graph stream warmup for native SM120 projections."""
 
 from __future__ import annotations
 
@@ -95,6 +95,9 @@ def warmup_mxfp6_sm120(
 
     mxfp6 = _import_mxfp6()
     device = problems[0][2].device
+    from .moe_projection import prepare as prepare_moe_projection
+
+    prepare_moe_projection(model, problems, _normalize_dtype(dtype))
     mxfp6.begin_workspace_planning(device)
     _warm_w6a8_problems(problems, sizes, _normalize_dtype(dtype))
     mxfp6.finalize_workspace_planning(device)
