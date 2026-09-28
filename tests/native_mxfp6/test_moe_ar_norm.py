@@ -240,10 +240,15 @@ def test_tp2_compiled_ar_norm_changing_graphs():
     spawn(_worker_ar_norm, args=(get_open_port(), True), nprocs=2, join=True)
 
 
-def test_compiled_manual_fusion_partitions_vllm_cache_by_rank():
+@pytest.mark.parametrize("fusion", [False, True])
+def test_native_moe_partitions_vllm_cache_by_rank(monkeypatch, fusion):
     from vllm.config import VllmConfig
 
     from vllm_mach.mxfp6.moe_ar_norm import prepare_compiled_ar_norm
+    from vllm_mach.mxfp6.moe import _prepare_qwen35_moe_graph_cache
+
+    monkeypatch.setenv("VLLM_QWEN3_5_FUSED_AR_NORM", str(int(fusion)))
+    prepare = prepare_compiled_ar_norm if fusion else _prepare_qwen35_moe_graph_cache
 
     configs = [VllmConfig(), VllmConfig()]
     for rank, config in enumerate(configs):
@@ -252,8 +257,8 @@ def test_compiled_manual_fusion_partitions_vllm_cache_by_rank():
     # vLLM normally shares this hash across TP ranks.
     assert configs[0].compute_hash() == configs[1].compute_hash()
     for config in configs:
-        prepare_compiled_ar_norm(config)
+        prepare(config)
     assert configs[0].compute_hash() != configs[1].compute_hash()
     original = configs[0].compute_hash()
-    prepare_compiled_ar_norm(configs[0])
+    prepare(configs[0])
     assert configs[0].compute_hash() == original

@@ -48,10 +48,22 @@ from vllm_mach.mxfp6.moe_utils import (
 
 logger = init_logger("vllm.mach.mxfp6.moe")
 
-_QWEN35_MOE_GRAPH_CACHE_VERSION = "mach_qwen35_tp2_v1_vllm029"
+_QWEN35_MOE_GRAPH_CACHE_VERSION = "mach_qwen35_tp2_v2_vllm029"
 _QWEN35_SMALL_BATCH_MAX_TOKENS = 4
 _QWEN35_GROUPED_MIN_TOKENS = 5
 _QWEN35_GROUPED_MAX_TOKENS = 96
+
+
+def _prepare_qwen35_moe_graph_cache(vllm_config) -> None:
+    from .moe_ar_norm import prepare_compiled_ar_norm
+
+    # Post-load op selection is absent from Dynamo's traced-file cache key.
+    vllm_config.additional_config["mxfp6_sm120_moe_graph"] = (
+        _QWEN35_MOE_GRAPH_CACHE_VERSION
+    )
+    # The unfused path also embeds rank-specific devices and vocabulary bounds
+    # in Inductor artifacts. It needs the same cache isolation as fused AR/Norm.
+    prepare_compiled_ar_norm(vllm_config)
 
 
 def _qwen35_moe_schedule(
@@ -173,7 +185,11 @@ def _qwen35_grouped_workspace(hidden_states: torch.Tensor):
         ((common_size,), torch.bfloat16),
         (workspace2_shape, torch.bfloat16),
     )
-    output = _resize_cache(common, (tokens, hidden_size))
+    # The custom op advertises a fresh output. Scratch is reused by later MoE
+    # calls, so it must not escape as that output (including into graph-captured
+    # TP collectives). Write the reduction directly into independently owned
+    # storage; no additional copy kernel is needed.
+    output = torch.empty_like(hidden_states)
     workspace13 = _resize_cache(common, workspace13_shape)
     workspace = mxfp6.Qwen35GroupedWorkspace.from_storage(
         output,
@@ -416,10 +432,7 @@ def try_enable_qwen35_moe_small_batch(layer: torch.nn.Module) -> bool:
         workspaces=workspaces,
     )
     runner._forward_entry = torch.ops.vllm.mxfp6_sm120_moe_forward
-    # This post-load op selection is not part of Dynamo's traced-file cache key.
-    vllm_config.additional_config["mxfp6_sm120_moe_graph"] = (
-        _QWEN35_MOE_GRAPH_CACHE_VERSION
-    )
+    _prepare_qwen35_moe_graph_cache(vllm_config)
     logger.info_once(
         "Enabled Qwen3.5-35B TP2 MXFP6 fused small-batch router/shared-expert schedule"
     )

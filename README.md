@@ -117,6 +117,8 @@ over the corresponding stock FP8 baseline, not a pooled throughput ratio.
 
 Mean throughput gains over stock FP8: **+34.0% default**, **+42.7% full**.
 
+[Per-optimization gains and absolute throughput](docs/dense-gains-aligned-baseline-20260920.md).
+
 Frozen ShareGPT prompts, 20/80/120/160 requests at c4/c16/c24/c32, with
 per-point warmups. These are short, single-run measurements: default was
 measured September 17, 2026, full September 16, and stock baselines September 15.
@@ -136,6 +138,8 @@ Mach uses decode graphs and a fixed KV budget.
 | MXFP6 · Mach full | 1094.8 | 2493.8 | 3070.6 | 3417.9 |
 
 Mean throughput gains over stock FP8: **+58.3% default**, **+69.4% full**.
+
+[Per-optimization gains and absolute throughput](docs/moe-gains-fp8-baseline-20260920.md).
 
 Measured September 17, 2026. Each point is a **two-run mean**, with
 16/32/48/64 scored requests at c4/c16/c24/c32 and a concurrency-sized,

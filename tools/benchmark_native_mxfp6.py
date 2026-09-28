@@ -132,7 +132,7 @@ async def request_one(
                         buffer += decoder.decode(chunk)
                         while "\n\n" in buffer:
                             event, buffer = buffer.split("\n\n", 1)
-                            for line in event.splitlines():
+                            for line in event.split("\n"):
                                 if not line.startswith("data:"):
                                     continue
                                 raw = line[5:].strip()

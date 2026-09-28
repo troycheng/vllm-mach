@@ -2,7 +2,7 @@
 
 The table starts from the measured, aligned MXFP6 baseline and calculates each increment against the immediately preceding displayed row using unrounded throughput. No new benchmarks were run. Other rows retain measurements from the original Mach profiles, with differences in compilation, attention, scheduling, GPU pairs, and measurement batches. These are configuration-level ratios, not isolated causal gains. Each configuration was measured in a single sweep with unlocked GPU clocks.
 
-Each cell shows **gain over the previous row / total gain over the user-hosted stock FP8 service**. Incremental gain is `(current throughput / previous throughput - 1) × 100%`. The first row has no predecessor, shown as “—”. The mean is the equally weighted average of the four concurrency-specific gains, not the difference between rounded mean percentages.
+Each cell shows **gain over the previous row / total gain over the user-hosted open-source vLLM 0.29.0 FP8 service**. Incremental gain is `(current throughput / previous throughput - 1) × 100%`. The first row has no predecessor, shown as “—”. The mean is the equally weighted average of the four concurrency-specific gains, not the difference between rounded mean percentages.
 
 | Configuration | c4 | c16 | c24 | c32 | Mean |
 |---|---:|---:|---:|---:|---:|
@@ -24,10 +24,20 @@ The SwiGLU quant fusion, Lossless prefill, and FP16 SSM transitions cross GPU gr
 
 Throughput is measured in output tokens/s, with 3,000 input and 1,000 output tokens per request.
 
-| Baseline | c4 | c16 | c24 | c32 |
+| Configuration (output tokens/s) | c4 | c16 | c24 | c32 |
 |---|---:|---:|---:|---:|
-| opensource FP8 | 264.57 | 802.79 | 1011.43 | 1150.97 |
-| MXFP6 | 314.03 | 946.57 | 1205.82 | 1365.46 |
+| opensource FP8 (vLLM 0.29.0) | 264.57 | 802.79 | 1011.43 | 1150.97 |
+| Aligned MXFP6 baseline | 314.03 | 946.57 | 1205.82 | 1365.46 |
+| + AR/Norm | 317.42 | 959.83 | 1270.78 | 1436.19 |
+| + persistent GDN | 362.38 | 959.35 | 1270.75 | 1435.93 |
+| + BA overlap | 376.85 | 1012.26 | 1295.57 | 1458.54 |
+| + SwiGLU quant fusion | 379.09 | 1012.43 | 1291.93 | 1455.80 |
+| + GDN output quant fusion | 370.65 | 1000.01 | 1300.73 | 1463.82 |
+| + AR quant fusion | 377.30 | 1012.88 | 1312.39 | 1471.81 |
+| + lossless prefill | 377.74 | 1024.93 | 1333.70 | 1500.84 |
+| + owner prefill: **default Mach** | 380.17 | 1046.93 | 1374.53 | 1553.09 |
+| + FP16 SSM | 389.71 | 1101.02 | 1452.19 | 1671.00 |
+| + NVFP4 head: **full Mach** | 411.14 | 1141.40 | 1498.93 | 1718.24 |
 
 FP8 uses CUTLASS block-FP8. Both baselines use Inductor, FULL_AND_PIECEWISE CUDA Graphs, FlashAttention 2, stock CUDA GDN, and CUSTOM/PYNCCL AllReduce. MXFP8 quantization fusion still has integration gaps, and NCCL versions differ (FP8: 2.30.7; Mach: 2.29.7), so this is not a strictly identical-environment, GEMM-only comparison. CUDA Graphs remain enabled throughout.
 

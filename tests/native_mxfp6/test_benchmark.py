@@ -256,7 +256,7 @@ def test_core_stages_all_keep_decode_graphs():
         assert cfg["cudagraph_capture_sizes"] == [1, 2, 4, 8, 16, 24, 32]
 
 
-@pytest.mark.parametrize("token_text", ["hello", ""])
+@pytest.mark.parametrize("token_text", ["hello", "", "hello\u2028world\u0085end"])
 def test_single_token_prefill_benchmark_serializes_without_decode_intervals(token_text):
     import asyncio
 
@@ -277,7 +277,10 @@ def test_single_token_prefill_benchmark_serializes_without_decode_intervals(toke
                     },
                 },
             ]
-            body = "".join("data: " + json.dumps(event) + "\n\n" for event in events)
+            body = "".join(
+                "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                for event in events
+            )
             return web.Response(
                 text=body + "data: [DONE]\n\n", content_type="text/event-stream"
             )

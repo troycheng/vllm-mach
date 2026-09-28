@@ -65,6 +65,27 @@ def test_schedule_boundaries():
         assert _qwen35_moe_schedule(size) == expected
 
 
+@pytest.mark.parametrize("rows", [5, 32, 96])
+def test_grouped_output_survives_workspace_reuse(monkeypatch, rows):
+    """A later invocation must not overwrite an earlier custom-op result."""
+    mxfp6 = pytest.importorskip("mxfp6")
+    from vllm_mach.mxfp6 import moe
+
+    shapes = mxfp6.qwen35_grouped_workspace_shapes(rows)
+    scratch = [torch.empty(shape, dtype=torch.bfloat16) for shape in shapes]
+    manager = SimpleNamespace(get_simultaneous=lambda *args: scratch)
+    monkeypatch.setattr(moe, "current_workspace_manager", lambda: manager)
+    hidden = torch.empty(rows, 2048, dtype=torch.bfloat16)
+    _, first = moe._qwen35_grouped_workspace(hidden)
+    first.fill_(3)
+    _, second = moe._qwen35_grouped_workspace(hidden)
+    second.fill_(7)
+    for buffer in scratch:
+        buffer.zero_()
+    torch.testing.assert_close(first, torch.full_like(first, 3))
+    torch.testing.assert_close(second, torch.full_like(second, 7))
+
+
 @torch.inference_mode()
 def test_routed_experts_changing_graph_inputs():
     """Compare the complete adapter against independent per-expert dense GEMMs."""
