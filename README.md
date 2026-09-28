@@ -26,8 +26,10 @@ with native [MXFP6 kernels](https://github.com/Nekofish-L/mxfp6_sm120), fused
 communication, CUDA Graphs, and optimized GDN decode. Performance measurements
 focus on **4–32 concurrent requests**.
 
-This guide covers the current native MXFP6 profile on **vLLM 0.29.0**. For older
-EXL3 releases, see the [historical guide](docs/public-install.md).
+This guide covers **vLLM Mach 0.1.1** with the native MXFP6 profile on
+**vLLM 0.29.0**. See the [0.1.1 release notes](docs/releases/0.1.1.md) for
+changes and installation requirements. For older EXL3 releases, see the
+[historical guide](docs/public-install.md).
 
 ## Supported configurations
 
@@ -78,12 +80,12 @@ Build with Docker Buildx from the repository root. Running the image requires
 the NVIDIA container runtime and a compatible GPU driver.
 
 ```bash
-git clone https://github.com/troycheng/vllm-mach.git
+git clone --branch v0.1.1 https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
 
 docker buildx build --load \
   --build-arg MAX_JOBS=8 \
-  -f deploy/Dockerfile -t vllm-mach:local .
+  -f deploy/Dockerfile -t vllm-mach:0.1.1 .
 ```
 
 `MAX_JOBS` controls native compilation parallelism (default: `8`); lower it if

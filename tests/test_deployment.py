@@ -10,6 +10,34 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_package_version_matches_build_metadata():
+    from setuptools.config.pyprojecttoml import read_configuration
+
+    from vllm_mach import __version__
+
+    project = read_configuration(str(ROOT / "pyproject.toml"))["project"]
+    assert project["version"] == __version__
+
+
+@pytest.mark.parametrize(
+    ("installed", "expected"),
+    [
+        ("0.2.1", True),
+        ("0.2.1+cu130", True),
+        ("0.2.0", False),
+        ("0.2.2", False),
+        ("0.2.1rc1", False),
+        ("0.2.1.dev0", False),
+    ],
+)
+def test_mxfp6_registration_version_check(monkeypatch, installed, expected):
+    from vllm_mach import mxfp6
+
+    monkeypatch.setattr(mxfp6.importlib.util, "find_spec", lambda name: object())
+    monkeypatch.setattr(mxfp6, "version", lambda name: installed)
+    assert mxfp6._optional_runtime_is_installed() is expected
+
+
 def load(relative):
     spec = importlib.util.spec_from_file_location(
         "deployment_test_module", ROOT / relative

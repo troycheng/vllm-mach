@@ -28,7 +28,7 @@ def _optional_runtime_is_installed() -> bool:
     try:
         return (
             importlib.util.find_spec("mxfp6") is not None
-            and version("mxfp6-sm120") == _SUPPORTED_RUNTIME_VERSION
+            and version("mxfp6-sm120").split("+", 1)[0] == _SUPPORTED_RUNTIME_VERSION
         )
     except (ImportError, ModuleNotFoundError, PackageNotFoundError, ValueError):
         return False

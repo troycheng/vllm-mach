@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-mach"
-version = "0.1.0a11.dev0"
+version = "0.1.1"
 description = "Accelerated native MXFP6 inference for vLLM on SM120"
 readme = "README.md"
 requires-python = ">=3.10"
