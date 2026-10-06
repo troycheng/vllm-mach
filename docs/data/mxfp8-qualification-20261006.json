@@ -2,7 +2,7 @@
   "schema_version": 1,
   "date": "2026-10-06",
   "timezone": "Asia/Shanghai",
-  "status": "code_and_installed_profile_qualified_model_asset_access_pending",
+  "status": "code_and_installed_profile_qualified_model_asset_public",
   "profile": "qwen35-4b-mxfp8-champion-v1",
   "runtime_commit": "ace36a3db9e5ca1db422346c9c307f2aa840bcdd",
   "kernel_commit": "15a56aa2774552d0584d8fc6b621b41dc173f30b",
@@ -56,7 +56,9 @@
     "verified_output_tensors": 595,
     "l0_asset_bytes": 47186176,
     "l0_asset_sha256": "133aae145c4a21963520f538b2fc3a6cff263f3ccb128ba21ade6d91e63686f4",
-    "l0_asset_publicly_available": false
+    "l0_asset_publicly_available": true,
+    "l0_release_url": "https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1",
+    "l0_asset_url": "https://github.com/troycheng/vllm-mach/releases/download/qwen35-4b-mxfp8-assets-v1/qwen35-4b-mxfp8-asym-l0-v1.safetensors"
   },
   "validation": {
     "cpu_combined_suite": {
@@ -601,7 +603,6 @@
     ]
   },
   "limitations": [
-    "L0 asset is identified but not publicly distributed.",
     "Fixed-M short-gold fixtures and accepted records are private and not bundled.",
     "Whole-profile benchmark gains cannot be attributed to a single kernel.",
     "Historical FP8 and packaged champion screens are independent complete runs; the current-old subset is one sequential pair, not a statistical noninferiority study.",

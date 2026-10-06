@@ -12,18 +12,30 @@ See the [complete profile guide](mxfp8-champion.md) for build and serving steps.
   `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`. Keep both safetensors shards,
   their index, config and tokenizer artifacts. The tool verifies full shard
   hashes and the fixed metadata identities.
-- **L0 codes:** obtain the exact two-tensor safetensors asset through an
-  **authorized channel**. It has not been publicly released; no public download
-  URL is available. Required size: `47186176` bytes. Required SHA-256:
+- **L0 codes:** download the exact two-tensor safetensors asset from the [versioned release](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1). Required size: `47186176` bytes. Required SHA-256:
   `133aae145c4a21963520f538b2fc3a6cff263f3ccb128ba21ade6d91e63686f4`.
   It contains E4M3 gate/up codes of shape `[9216,2560]`. A PyTorch pickle is
   not an interchangeable input.
 
-The public BF16 revision is identified, but L0 distribution authorization and
-access remain unresolved. Do not describe the complete profile as publicly
-reproducible until this asset access boundary is closed. Input
-hashes verify identity, not redistribution permission; the manifest retains
-pending provenance for the L0 asset and complete materialization.
+Both model inputs are publicly obtainable. The L0 release includes the derived-weight manifest, numerical construction settings, source attribution and upstream Apache-2.0 license. It provides the exact selected tensor bytes; it does not publish calibration requests or promise that a new calibration solve will regenerate those bytes. The materializer validates identity, not legal provenance: its conservative `source_pending_verification` metadata does not query release availability or certify redistribution rights.
+
+## Download the L0 asset
+
+Download the safetensors file, manifest, attribution README and license from the same versioned asset release:
+
+```bash
+mkdir -p mxfp8-assets
+for asset in qwen35-4b-mxfp8-asym-l0-v1.safetensors manifest.json README.md LICENSE-Qwen3.5-4B.txt; do
+  curl --fail --location --retry 3 \
+    "https://github.com/troycheng/vllm-mach/releases/download/qwen35-4b-mxfp8-assets-v1/${asset}" \
+    --output "mxfp8-assets/${asset}"
+done
+printf '%s  %s\n' \
+  133aae145c4a21963520f538b2fc3a6cff263f3ccb128ba21ade6d91e63686f4 \
+  mxfp8-assets/qwen35-4b-mxfp8-asym-l0-v1.safetensors | sha256sum --check
+```
+
+On macOS, use `shasum -a 256 --check` instead of `sha256sum --check`. Keep the attribution and license when redistributing the derived asset. This 47 MB companion is not a standalone model; preparation below combines it with the pinned public BF16 checkpoint.
 
 ## Prepare and validate
 

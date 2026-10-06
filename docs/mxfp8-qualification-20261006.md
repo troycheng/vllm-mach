@@ -2,7 +2,7 @@
 
 The source-built, installed profile preserves the accepted champion on the tested workload. Both fixed-M precision records are byte-identical to the accepted records, and all 1040 generated output hashes match the previous complete serving screen. Rechecking the four historical-negative throughput points against the old implementation on the same GPU leaves differences from −0.081% to +0.255%; these measurements show no material packaging regression. They do not establish statistical equivalence.
 
-The code can be built from Mach and the official mxfp6 repository with the declared public dependencies. Full reproduction also requires the exact L0 asset, which is identified but not publicly distributed. No model weights or evaluation requests are included in this report.
+The code can be built from Mach and the official mxfp6 repository with the declared public dependencies. Full reproduction also requires the exact L0 asset, now available in the [versioned asset release](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1). That publication supplies the same tensor bytes used here and changes no runtime, model arithmetic or measured result. No model weights or evaluation requests are embedded in this report.
 
 ## Qualified revisions and build
 
@@ -56,4 +56,4 @@ The current-old results account for most of the small historical-negative differ
 - Six new native GPU tests, three shapes × five prototype input cases with bitwise limbs/scales/output and graph replay, the existing MXFP6 GPU ops suite and three CTests passed. Official kernel source CI passed on Python 3.10 and 3.12.
 - Final-image testing covers actual route/capture receipts, sequential cohorts and drains, two worker starts, fixed-M precision and the complete serving contract above. It is not an exhaustive state-transition or arbitrary workload/concurrency qualification.
 
-The benchmark client is public and generates its workload locally. Authorized access to the [identified L0 input](mxfp8-model.md) is still needed to construct the checkpoint; the fixed-gold evaluation corpus is not bundled.
+The benchmark client is public and generates its workload locally. The [public BF16 source and L0 input](mxfp8-model.md) are sufficient to reconstruct the checkpoint; the fixed-gold evaluation corpus is not bundled.

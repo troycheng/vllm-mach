@@ -1,6 +1,6 @@
 # Qwen3.5-4B MXFP8 champion profile
 
-`qwen35-4b-mxfp8-champion-v1` is an explicit TP1 integration for one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It is separate from the released TP2 MXFP6 Dense/MoE profiles. The public-base source build passed checkpoint reconstruction, two starts in the same run directory, fixed-M precision and all six serving points. See the [October 6 qualification](mxfp8-qualification-20261006.md) for exact revisions, results and limits. The dual kernels are merged in [mxfp6 PR #8](https://github.com/Nekofish-L/mxfp6_sm120/pull/8) at `15a56aa2774552d0584d8fc6b621b41dc173f30b`. The L0 model asset is not publicly released; authorized access to its exact bytes is still required.
+`qwen35-4b-mxfp8-champion-v1` is an explicit TP1 integration for one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It is separate from the released TP2 MXFP6 Dense/MoE profiles. The public-base source build passed checkpoint reconstruction, two starts in the same run directory, fixed-M precision and all six serving points. See the [October 6 qualification](mxfp8-qualification-20261006.md) for exact revisions, results and limits. The dual kernels are merged in [mxfp6 PR #8](https://github.com/Nekofish-L/mxfp6_sm120/pull/8) at `15a56aa2774552d0584d8fc6b621b41dc173f30b`. Download the exact L0 model asset from the [versioned release](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1), then follow the [model preparation guide](mxfp8-model.md).
 
 ## Required parts
 
@@ -42,7 +42,7 @@ docker buildx build --load -f deploy/Dockerfile.mxfp8 \
 docker run --rm --entrypoint vllm-mach-mxfp8-prepare \
   -e OMP_NUM_THREADS=4 -e MKL_NUM_THREADS=4 \
   -v /path/to/bf16:/input/bf16:ro \
-  -v /path/to/authorized-l0.safetensors:/input/l0.safetensors:ro \
+  -v /path/to/qwen35-4b-mxfp8-asym-l0-v1.safetensors:/input/l0.safetensors:ro \
   -v /path/to/output:/output vllm-mach:mxfp8-champion \
   --bf16 /input/bf16 --l0-codes /input/l0.safetensors --output /output/model
 
@@ -57,8 +57,7 @@ docker run --rm --network host --entrypoint vllm-mach-mxfp8-bench \
 ```
 
 Create the host output/run parents first; `/output/model` and `/runs/sixpoint`
-must be new. Obtain L0 bytes only through an authorized channel and check the
-[exact asset identity](mxfp8-model.md); there is no published download URL.
+must be new. Download the versioned L0 asset and check its [exact SHA-256](mxfp8-model.md#download-the-l0-asset) before model preparation.
 The image builds both official kernel libraries from source and applies Mach's
 bundled source profile. It does not consume experimental images, old runtime
 patch directories, old binaries, parent caches or calibration requests.
