@@ -1,0 +1,12 @@
+PR #45055 CUDA validation harness
+Copyright 2026 Tong Cheng and contributors
+Licensed under Apache-2.0; see LICENSE.
+
+upstream/pr45055_42cff10c.cu is an unchanged snapshot from the vLLM project,
+public revision 42cff10c75958b8cb1ba1cb991ac8bab9f242aa1, under Apache-2.0.
+Its original SPDX and contributor copyright notices are retained. The PR's
+commits include work by Micah Williamson and Andreas Karatzas.
+
+The adapter includes the kernel and its original helpers from a separately
+verified official vLLM source tree. The namespace/host identifier adaptation
+and private registration do not alter kernel arithmetic.

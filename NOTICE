@@ -49,3 +49,11 @@ The optional native/ar_norm extension contains a frozen FlashInfer 0.6.18
 collective header under Apache-2.0, extended to emit MXFP8 after the original
 BF16 GemmaRMSNorm rounding. Original notices are retained. It is built separately
 from the Python wheel.
+
+The independent block-FP8 profile includes selected CUTLASS caller code and
+SiLU/block-quantization code derived from Apache-2.0 vLLM sources. The mixed
+FA2 request-splitting approach is adapted from LiRunGuo's vLLM PR #58013,
+head e17555d2673e632cbe85365a53490a138e4b2fae, with a narrower execution
+contract and separately validated split settings. Original source notices
+and authorship are retained. The two block-FP8 native extensions are built
+separately from the Python wheel.

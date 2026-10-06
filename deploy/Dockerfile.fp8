@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+# docker build -f deploy/Dockerfile.fp8 -t vllm-mach-fp8 .
+ARG VLLM_IMAGE=docker.m.daocloud.io/vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b
+FROM ${VLLM_IMAGE}
+ARG MAX_JOBS=2
+ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} OMP_NUM_THREADS=1
+
+COPY native/block_fp8 /opt/mach-native/block_fp8
+COPY native/fp8_activation /opt/mach-native/fp8_activation
+RUN python3 -m pip wheel --no-deps --no-build-isolation --wheel-dir /opt/mach-wheels \
+      /opt/mach-native/block_fp8 /opt/mach-native/fp8_activation \
+    && python3 -m pip install --no-deps /opt/mach-wheels/*.whl \
+    && rm -rf /opt/mach-native
+
+COPY pyproject.toml README.md LICENSE NOTICE /opt/mach/
+COPY src /opt/mach/src
+WORKDIR /opt/mach
+RUN python3 -m pip install --no-deps --no-build-isolation . \
+    && python3 -m vllm_mach.fp8.install --apply > /opt/mach/runtime-source-install.json \
+    && rm -rf /opt/mach/build /opt/mach/src/*.egg-info
+ENTRYPOINT ["vllm-mach-fp8-serve"]

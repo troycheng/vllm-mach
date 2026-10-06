@@ -1,0 +1,925 @@
+{
+  "format_version": 1,
+  "profile_mode": "quality64",
+  "torch_version": "2.13.0+cu130",
+  "autotuner_init_sha256": "76354c38ef8f0405b8a7f21a3fc58bbe6be75797b9c894d67a5ef089f11954a6",
+  "scope": "six stock RMS reduction sites; exact descriptors only",
+  "bindings": [
+    {
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+      "heuristic": "reduction",
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 4096,
+        "num_warps": 16,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "id": "rms_00",
+      "variants": [
+        {
+          "name": "stock",
+          "boundary": {
+            "function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "in_ptr3": "*bf16",
+              "out_ptr1": "*bf16",
+              "out_ptr2": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        4
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        5
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        7
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "d6fc59e9ad684e06c4d6ebd4fdf2435a2312b1c7919464ec1b4264d34814eec8",
+          "source_sha256": "9a9ca48408214b7dc67e6a6879e1a6656333e3234c0b6c50089d48553673a3b6"
+        }
+      ]
+    },
+    {
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+      "heuristic": "reduction",
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 1024,
+        "num_warps": 8,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "id": "rms_01",
+      "variants": [
+        {
+          "name": "stock",
+          "boundary": {
+            "function_sha256": "0434deadf367733171da7793906321a53149af1472ecc1d7f686aeb9f195f5dc",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "in_ptr3": "*bf16",
+              "out_ptr1": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        4
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        6
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "96077dc673257376ef684e76972c65fb5e3395bb92864ca2351ee9b2244c875b",
+          "source_sha256": "2a11d63408a11a43874f2d07ee8e6381be4bf6c2a79870a605eaaa2e9e13a81a"
+        },
+        {
+          "name": "audited_m64_inplace",
+          "boundary": {
+            "function_sha256": "57dd0d114f6350e142b3fc4fd276f8bb7ab9d0ec650f295ed53276396addc453",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_out_ptr0": "*bf16",
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        5
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "2a88e6532130f83264aff57fa6ba222cc95f9701659cca8a97a34a2998ca2b77",
+          "source_sha256": "385d2e0e07750a7f0c08041f7a1cc772ca0907fcaef412ddaa7a57db8587bcb8"
+        }
+      ]
+    },
+    {
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+      "heuristic": "reduction",
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 4096,
+        "num_warps": 16,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "id": "rms_02",
+      "variants": [
+        {
+          "name": "stock",
+          "boundary": {
+            "function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "in_ptr3": "*bf16",
+              "out_ptr1": "*bf16",
+              "out_ptr2": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        4
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        5
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        7
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "d6fc59e9ad684e06c4d6ebd4fdf2435a2312b1c7919464ec1b4264d34814eec8",
+          "source_sha256": "ffdce5abaeee399f12b7cfd49feb8d9ffa07a1ecbeaca9ee9f896d01f61ad19a"
+        }
+      ]
+    },
+    {
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_0",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_0",
+      "heuristic": "reduction",
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 1024,
+        "num_warps": 8,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "id": "rms_03",
+      "variants": [
+        {
+          "name": "stock",
+          "boundary": {
+            "function_sha256": "e875b0b81961dbe40ad7195d00887558772d0f2d4b803dfa59dbc7800410ed5b",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "out_ptr1": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        5
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "06ed2cad5d04885ad736cd3e7fa6f619854255a604a4a0723afe051dc07425b4",
+          "source_sha256": "05b4e351672c7b7fc20a97c3211d0dd7a69bb82e99d7ccf97fb92756c4c0b2f2"
+        }
+      ]
+    },
+    {
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
+      "heuristic": "reduction",
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 1024,
+        "num_warps": 8,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "id": "rms_04",
+      "variants": [
+        {
+          "name": "stock",
+          "boundary": {
+            "function_sha256": "e875b0b81961dbe40ad7195d00887558772d0f2d4b803dfa59dbc7800410ed5b",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "out_ptr1": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        5
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "06ed2cad5d04885ad736cd3e7fa6f619854255a604a4a0723afe051dc07425b4",
+          "source_sha256": "8a7830ac16b42a35d07262b9904c48e1bfe4e180d5255c130f0789c912f86746"
+        }
+      ]
+    },
+    {
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
+      "heuristic": "reduction",
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 4096,
+        "num_warps": 16,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "id": "rms_05",
+      "variants": [
+        {
+          "name": "stock",
+          "boundary": {
+            "function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
+            "size_hints": {
+              "x": 16384,
+              "r0_": 4096
+            },
+            "signature": {
+              "in_ptr0": "*bf16",
+              "in_ptr1": "*bf16",
+              "in_ptr2": "*bf16",
+              "in_ptr3": "*bf16",
+              "out_ptr1": "*bf16",
+              "out_ptr2": "*bf16",
+              "xnumel": "i32",
+              "r0_numel": "i32",
+              "XBLOCK": "constexpr",
+              "R0_BLOCK": "constexpr"
+            },
+            "constants": {},
+            "specialization": [
+              {
+                "__mapping__": [
+                  [
+                    {
+                      "__tuple__": [
+                        0
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        1
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        2
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        3
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        4
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        5
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ],
+                  [
+                    {
+                      "__tuple__": [
+                        7
+                      ]
+                    },
+                    [
+                      [
+                        "tt.divisibility",
+                        16
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            ],
+            "compiler_flags": {
+              "enable_fp_fusion": true,
+              "disable_ftz": false,
+              "launch_pdl": false,
+              "native_matmul": false
+            },
+            "architecture": {
+              "type": "cuda",
+              "cc": 120
+            }
+          },
+          "semantic_key": "d6fc59e9ad684e06c4d6ebd4fdf2435a2312b1c7919464ec1b4264d34814eec8",
+          "source_sha256": "8cdeb2d1e3ac85d6bf13aaa1faa2a33697168b5a5985c979cc13a6f5c94645f5"
+        }
+      ]
+    }
+  ]
+}

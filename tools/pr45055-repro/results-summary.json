@@ -1,0 +1,114 @@
+{
+  "candidate": {
+    "head": "42cff10c75958b8cb1ba1cb991ac8bab9f242aa1",
+    "kernel_sha256": "d1741c0a7b4cefee38d0da82505e4bf9914ecc7a31003b0a7b98d710e7936637",
+    "archive_sha256": "5debd34ef431cf28c34e85bf50e9cfffa73d59ea92b99895f206689360c01ded",
+    "archive_prefix": "vllm-42cff10c75958b8cb1ba1cb991ac8bab9f242aa1",
+    "source_verification": "archive/source entry types, symlinks and every file SHA256",
+    "adaptation": "namespace/host identifier rename and private stable registration",
+    "binary_sha256": "2b62be20bfa3e4c9c8be1e540fa2fe0abbcd81d7a7c37c55b1f956f0539c3e48"
+  },
+  "reference": {
+    "vllm_version": "0.29.0",
+    "image": "vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "library": "_C_stable_libtorch.abi3.so",
+    "library_sha256": "0375f3ec05f823961476dfe3450cb67df385eb9541eeed29e5daccc28a142ecb"
+  },
+  "environment": {
+    "torch": "2.13.0+cu130",
+    "nvcc": "13.0.88",
+    "gpu_architecture": "SM120"
+  },
+  "validation": {
+    "complete": true,
+    "cuda_only": true,
+    "numerical_cases": 84,
+    "changing_input_graph_replays": 6,
+    "quantized_bytes_changed": 0,
+    "scale_bits_changed": 0,
+    "auto_functionalized_fake_and_actual_dynamic_compile": "passed",
+    "schema_checker_float8_limitation": {
+      "original": "\"mul_cuda\" not implemented for 'Float8_e4m3fn'",
+      "exact_head": "\"mul_cuda\" not implemented for 'Float8_e4m3fn'"
+    }
+  },
+  "matrix": {
+    "input_width": 18432,
+    "rows": [
+      1,
+      3,
+      32,
+      64,
+      2048
+    ],
+    "input_dtypes": [
+      "bfloat16",
+      "float16"
+    ],
+    "output_dtypes": [
+      "float8_e4m3fn",
+      "int8"
+    ],
+    "group_sizes": [
+      64,
+      128
+    ],
+    "scale_storage": [
+      "ordinary",
+      "transposed"
+    ],
+    "upper_bound_cases": {
+      "rows": 3,
+      "groups": [
+        3,
+        5
+      ],
+      "group_sizes": [
+        64,
+        128
+      ],
+      "input_dtype": "bfloat16",
+      "output_dtype": "float8_e4m3fn",
+      "scale_storage": "transposed",
+      "scale_ub": 0.001
+    },
+    "graphs": {
+      "rows": [
+        32,
+        64
+      ],
+      "replays_per_rows": 3,
+      "input_dtype": "bfloat16",
+      "output_dtype": "float8_e4m3fn",
+      "group_size": 128,
+      "scale_storage": "transposed"
+    },
+    "dynamic_compile_rows": [
+      3,
+      32,
+      64
+    ]
+  },
+  "int32_offset_example": {
+    "token_index": 65536,
+    "input_stride": 32768,
+    "int64_expected": 2147483648,
+    "int32_wrapped": -2147483648,
+    "evidence": "source/CPU arithmetic, not CUDA overflow execution"
+  },
+  "limitations": [
+    "ROCm unqualified",
+    "no model/service qualification",
+    "exact-head int32 token-offset multiplication risk",
+    "standalone adapter, not full PR build or vLLM fusion-pass coverage",
+    "no performance qualification"
+  ],
+  "harness_files_sha256": {
+    "exact_head/binding.cu": "ec246feff7201be126d74e0f3ffd0f844b46166d87cee4ae2bf9fc9f9a6bdebb",
+    "exact_head/check.py": "fef016bcde70e00b1f3d206ece2c20d45c39e1628adf0ce84c6b4fe43e63f0cf",
+    "exact_head/setup.py": "93ce39c7b1df192f249db7b0c3d570e3b7d93f3421f30a365297f1d127cf1392",
+    "exact_head/source_identity.py": "4171690e65f8dc5785bc6f2fb784ab2fb4a9de553694f68e23426c1263ca4864",
+    "exact_head/test_source_identity.py": "22f5689fb668b5eef2d35f10ac25e5aabbc145fcba4d700504b7327fbf9cdeb2",
+    "upstream/pr45055_42cff10c.cu": "d1741c0a7b4cefee38d0da82505e4bf9914ecc7a31003b0a7b98d710e7936637"
+  }
+}

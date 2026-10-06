@@ -1,0 +1,9 @@
+exact_head/.venv/
+exact_head/build/
+exact_head/*.so
+exact_head/*.egg-info/
+exact_head/__pycache__/
+exact_head/build_identity.json
+exact_head/results.json
+exact_head/vllm-*/
+exact_head/vllm-*.tar.gz
