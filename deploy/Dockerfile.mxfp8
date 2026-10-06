@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1
+# Build from the public base and the qualified official kernel source:
+# docker build -f deploy/Dockerfile.mxfp8 \
+#   --build-arg MAX_JOBS=8 -t vllm-mach-mxfp8 .
+# Audit a local source checkout without building:
+# python3 deploy/build-mxfp8.py --source-dir ../mxfp6-sm120-champion --check-only
+ARG VLLM_IMAGE=docker.m.daocloud.io/vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b
+FROM ${VLLM_IMAGE}
+
+# The base already supplies CUDA 13.0 nvcc/runtime and the pinned Torch/FI/Triton.
+# Its installed nvidia/cu13 headers are discovered and passed with -isystem,
+# never -I, so they do not shadow nvcc's CUDA 13.0 crt headers.
+ARG MAX_JOBS=2
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} TORCH_CUDA_ARCH_LIST=12.0a
+COPY deploy/requirements-mxfp8.txt /opt/mach/deploy/requirements-mxfp8.txt
+RUN python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_URL}" \
+    -r /opt/mach/deploy/requirements-mxfp8.txt
+
+# Standard official wheel build produces both mxfp6_torch and mxfp8_torch,
+# including MLP32, QKVZ32 and QKVZ64 pipereg. No old binary/cache is copied.
+# CUTLASS e6233c... is archived afresh; patches 0001/0003/0004/0005 all apply.
+ARG MXFP6_REVISION=15a56aa2774552d0584d8fc6b621b41dc173f30b
+COPY deploy/install.py deploy/build-mxfp8.py /opt/mach/deploy/
+RUN test -n "${MXFP6_REVISION}" \
+    && python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \
+    && mv /opt/mach-build/mxfp8-build.json /opt/mach/mxfp8-build.json \
+    && rm -rf /opt/mach-build
+
+# Install the independent MXFP8 profile. Do not install the Dense/MoE/AR/IPC
+# profile or unrelated native extensions. Keep the resulting source SHA receipt.
+COPY pyproject.toml README.md LICENSE NOTICE /opt/mach/
+COPY src /opt/mach/src
+WORKDIR /opt/mach
+RUN python3 -m pip install --no-deps --no-build-isolation . \
+    && python3 -m vllm_mach.mxfp8.install --apply > /opt/mach/runtime-source-install.json \
+    && rm -rf /opt/mach/build /opt/mach/src/*.egg-info
+
+# Models come from the profile's separately declared materialized assets.
+ENV OMP_NUM_THREADS=1
+ENTRYPOINT ["vllm-mach-mxfp8-serve"]

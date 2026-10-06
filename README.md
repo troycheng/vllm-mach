@@ -31,6 +31,13 @@ This guide covers **vLLM Mach 0.1.1** with the native MXFP6 profile on
 changes and installation requirements. For older EXL3 releases, see the
 [historical guide](docs/public-install.md).
 
+An explicit **Qwen3.5-4B MXFP8 champion** integration is also in development
+for one RTX 5090 / TP1. Its clean BF16-to-595-tensor model reconstruction has
+passed; final packaged quality and six-point serving acceptance are pending.
+The required L0 asset has not been publicly released. See the
+[complete profile guide](docs/mxfp8-champion.md) for its source build, authorized
+model inputs, launch configuration and historical measurement boundaries.
+
 ## Supported configurations
 
 The validated deployment uses **Linux x86-64, Python 3.12, and two RTX 5090 GPUs
@@ -186,6 +193,7 @@ the [Dense](docs/images/quality-throughput-tradeoff.png) and
 |---|---|
 | [Setup and usage](docs/installation.md) | CUDA setup, kernel and extension installation, launch commands, and memory |
 | [Native MXFP6 integration](docs/native-mxfp6.md) | Checkpoint loading, graph lifecycle, request eligibility, and fallbacks |
+| [MXFP8 4B champion candidate](docs/mxfp8-champion.md) / [model reconstruction](docs/mxfp8-model.md) | Complete TP1 profile, build/run/benchmark steps, asset access and pending acceptance |
 | [Qwen3.5 MoE](docs/qwen35-moe.md) | MoE schedules, compilation, model-specific validation, and benchmark reproduction |
 | [GDN decode](docs/gdn-decode.md) | Persistent decode, BA overlap, state precision, and validation |
 | [Fidelity](docs/profile-fidelity-20260917.md) | Current default/full precision diagnostics and raw data |

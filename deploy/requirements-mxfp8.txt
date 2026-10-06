@@ -1,0 +1,4 @@
+# Retain the public base's Torch, Triton, vLLM and FlashInfer packages.
+# PyPI release file hashes: Linux x86-64 CMake wheel and universal B12x wheel.
+cmake==4.1.0 --hash=sha256:dab375932f5962e078da8cf76ca228c21bf4bea9ddeb1308e2b35797fa30f784
+b12x==1.2.6 --hash=sha256:c51f9b06c7ecd0b0f68c83932cd4f40b07dd673e0fe2893bc7adf308a7b7e684
