@@ -3,8 +3,7 @@
 `vllm-mach-mxfp8-prepare` reconstructs the fixed
 `qwen35-4b-mxfp8-champion-v1` checkpoint on CPU. Reconstruction from the public
 BF16 source and the exact L0 asset has passed full file and **595-tensor**
-validation in a clean public-base environment. Packaged GPU quality and six-point
-serving acceptance remain pending; this result establishes checkpoint identity.
+validation in a clean public-base environment. The reconstructed checkpoint also passed [packaged GPU precision and six-point serving qualification](mxfp8-qualification-20261006.md).
 See the [complete profile guide](mxfp8-champion.md) for build and serving steps.
 
 ## Inputs and access
@@ -22,7 +21,7 @@ See the [complete profile guide](mxfp8-champion.md) for build and serving steps.
 
 The public BF16 revision is identified, but L0 distribution authorization and
 access remain unresolved. Do not describe the complete profile as publicly
-reproducible until this asset boundary and final acceptance are closed. Input
+reproducible until this asset access boundary is closed. Input
 hashes verify identity, not redistribution permission; the manifest retains
 pending provenance for the L0 asset and complete materialization.
 

@@ -31,12 +31,7 @@ This guide covers **vLLM Mach 0.1.1** with the native MXFP6 profile on
 changes and installation requirements. For older EXL3 releases, see the
 [historical guide](docs/public-install.md).
 
-An explicit **Qwen3.5-4B MXFP8 champion** integration is also in development
-for one RTX 5090 / TP1. Its clean BF16-to-595-tensor model reconstruction has
-passed; final packaged quality and six-point serving acceptance are pending.
-The required L0 asset has not been publicly released. See the
-[complete profile guide](docs/mxfp8-champion.md) for its source build, authorized
-model inputs, launch configuration and historical measurement boundaries.
+The explicit **Qwen3.5-4B MXFP8 champion** profile runs on one RTX 5090 / TP1. Its source-built image passed complete checkpoint reconstruction, repeated startup, fixed-M precision and all six serving points. All 1040 generated output hashes and both 10479-token precision records match the previous champion. The required L0 asset has not been publicly released, so model access remains a prerequisite. See the [complete profile guide](docs/mxfp8-champion.md) and [October 6 qualification](docs/mxfp8-qualification-20261006.md) for commands, measured performance and scope.
 
 ## Supported configurations
 

@@ -1,13 +1,6 @@
 # Qwen3.5-4B MXFP8 champion profile
 
-`qwen35-4b-mxfp8-champion-v1` is an explicit TP1 integration for one RTX 5090
-(SM120), Linux x86-64 and Python 3.12. It is separate from the released TP2
-MXFP6 Dense/MoE profiles. Full CPU model reconstruction has passed in a clean
-public-base environment; packaged fixed-M quality and six-point end-to-end
-acceptance are still pending. The dual-kernel contribution is
-[mxfp6 PR #8](https://github.com/Nekofish-L/mxfp6_sm120/pull/8), merged into
-official main at `15a56aa2774552d0584d8fc6b621b41dc173f30b`. The L0 model
-asset is not publicly released.
+`qwen35-4b-mxfp8-champion-v1` is an explicit TP1 integration for one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It is separate from the released TP2 MXFP6 Dense/MoE profiles. The public-base source build passed checkpoint reconstruction, two starts in the same run directory, fixed-M precision and all six serving points. See the [October 6 qualification](mxfp8-qualification-20261006.md) for exact revisions, results and limits. The dual kernels are merged in [mxfp6 PR #8](https://github.com/Nekofish-L/mxfp6_sm120/pull/8) at `15a56aa2774552d0584d8fc6b621b41dc173f30b`. The L0 model asset is not publicly released; authorized access to its exact bytes is still required.
 
 ## Required parts
 
@@ -36,7 +29,7 @@ backend named `b12x` is distinct from the standalone BA package.
 
 ## Build, prepare, serve, benchmark
 
-Use the current reviewed Mach checkout. The Dockerfile pins a public vLLM base
+Use Mach runtime commit `ace36a3db9e5ca1db422346c9c307f2aa840bcdd` or a later revision documented to contain the same qualified runtime. The Dockerfile pins a public vLLM base
 and requires the **full official kernel commit containing all three dual
 variants** pinned below. The version label `mxfp6-sm120==0.2.1` alone does
 not identify that source revision.
@@ -150,6 +143,4 @@ community FP8 were independent complete screens, not a component ABBA study.
 Historical fixed-M raw records matched their accepted parents; same-M BF16
 anchor MAE was 0.049038113196 at M32 and 0.053286047365 at M64. The stored BF16
 anchor used FLASH_ATTN and BF16 KV; champion used FLASHINFER and FP8 KV. These
-short-gold errors are not task accuracy or universal output equivalence. Fresh
-packaged quality and six-point results must be reported separately. See the
-[benchmark contract](mxfp8-benchmark.md) for the reproducible public workload.
+short-gold errors are not task accuracy or universal output equivalence. The [packaged qualification](mxfp8-qualification-20261006.md) reports the new results separately. See the [benchmark contract](mxfp8-benchmark.md) for the reproducible public workload.
