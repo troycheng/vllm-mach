@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "profile": "qwen35-4b-mxfp8-champion-v1",
+  "packages": {
+    "vllm": "0.29.0",
+    "torch": "2.13.0",
+    "triton": "3.7.1",
+    "flashinfer-python": "0.6.18",
+    "flashinfer-cubin": "0.6.18",
+    "nvidia-cutlass-dsl": "4.6.2",
+    "cuda-bindings": "13.3.1"
+  },
+  "files": {
+    "vllm/envs.py": {
+      "upstream_sha256": "518e8952af66697d7310d53a85ff5227c2918f4d802c111a10d84168ffb9c940",
+      "installed_sha256": "adc69b3b8c541507b24685f2b28467df4a7b1235d8565f70f67ac0ce6936c0a1",
+      "frozen_champion_sha256": "adc69b3b8c541507b24685f2b28467df4a7b1235d8565f70f67ac0ce6936c0a1",
+      "changed": true,
+      "purpose": "Frozen environment declarations/defaults and compilation factors."
+    },
+    "vllm/utils/flashinfer.py": {
+      "upstream_sha256": "4d9352c82f189e56109b7112a742b6610a15e0d96fab561f4f1336f7b9ea4507",
+      "installed_sha256": "8a25b28226fbdb709f8dcba9b0f3ca38090a960f48fa297aac44149a4abe7089",
+      "frozen_champion_sha256": "8a25b28226fbdb709f8dcba9b0f3ca38090a960f48fa297aac44149a4abe7089",
+      "changed": true,
+      "purpose": "Frozen SM120 XQA eligibility, autotuning and quantization helpers."
+    },
+    "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
+      "upstream_sha256": "cb819264c1e791177d866f484ca0579a7d57141926705a1f75dd4a79de4d0125",
+      "installed_sha256": "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719",
+      "frozen_champion_sha256": "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719",
+      "changed": true,
+      "purpose": "Frozen GDN prefill/decode and opaque custom-op boundaries, unchanged bytes."
+    },
+    "vllm/v1/worker/gpu/cudagraph_utils.py": {
+      "upstream_sha256": "024d0570b1808c2baa47ac0ebeb5407eeaf8dcaa847f55e844769038cc48caad",
+      "installed_sha256": "1e548b405fcbc5c15f63446c6e2524f6c9e385b995ba0206f498065dad1b1e09",
+      "frozen_champion_sha256": "64b6227f8394602e899209a4d8cee94cdca48588d69de3ab5f74c2b5e357b51e",
+      "changed": true,
+      "purpose": "Frozen candidate ordering and graph stream; package import for empty MXFP6 warmup."
+    },
+    "vllm/v1/worker/gpu/model_runner.py": {
+      "upstream_sha256": "d7bae5b05a2a9f02c1ba29f0b4b32434cee43c3b369d3985505d3f8ed89b461b",
+      "installed_sha256": "7e6de891206992f6018bb2b26a2c2fff5f3eabe3de1fc9066f5eb8f7e62fb52d",
+      "frozen_champion_sha256": "255344f5ef78c9f5e0a0389c42f3beeb70756e19fd231415b8a9d6af6668405c",
+      "changed": true,
+      "purpose": "Public full-vocabulary runner plus frozen prompt-logprob profile warmup; no compact routes."
+    },
+    "vllm/v1/worker/gpu_worker.py": {
+      "upstream_sha256": "b0f39124f31ead3d2d20f1c6ac8696393c0ed6fed585ba8d31a4f7673e390407",
+      "installed_sha256": "1af248c35e95428bac12fbd20647fe924acf189d7b913090ccfbd75333870950",
+      "frozen_champion_sha256": "18171ef55c76942c4ee969af0fde037a90146a5d6036bc08344eb69be792b1e8",
+      "changed": true,
+      "purpose": "Frozen graph-memory accounting and worker lifecycle; remove verified disabled MXFP6 adapters."
+    },
+    "vllm/v1/attention/backends/flashinfer.py": {
+      "upstream_sha256": "95f9e66762860f94a428c0f7f9ff6564f375ed95c46fc8b9019b3d91c99a57b0",
+      "installed_sha256": "f718755cd10cce50dfd85ec4399eab6cdda0c513409b700d63e17eeb2df8e568",
+      "frozen_champion_sha256": "f718755cd10cce50dfd85ec4399eab6cdda0c513409b700d63e17eeb2df8e568",
+      "changed": true,
+      "purpose": "Frozen separate K/V head layout, XQA/FP8 KV eligibility and update/decode arithmetic."
+    },
+    "vllm/model_executor/layers/logits_processor.py": {
+      "upstream_sha256": "6b0603d67b0c756253c2fdc882a3896d2e873a16e9aa2ef877aabca8d36bdb5f",
+      "installed_sha256": "6b0603d67b0c756253c2fdc882a3896d2e873a16e9aa2ef877aabca8d36bdb5f",
+      "frozen_champion_sha256": "dd25a73bb23809bfa3d5d8dfcd3960381068a8a3a2818fcca9b0d4d9d367dd56",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/model_executor/models/qwen3_5.py": {
+      "upstream_sha256": "3abeac36180df7bd1bd96b1a7c698a8f212d92c063026420cbdd16d1980e90e6",
+      "installed_sha256": "3abeac36180df7bd1bd96b1a7c698a8f212d92c063026420cbdd16d1980e90e6",
+      "frozen_champion_sha256": "bba0cfc4bd2d5fe1f16a6f4b4d72fa65e48bf544fd9d79a0ce2c04a61dc8787f",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/v1/worker/gpu/sample/sampler.py": {
+      "upstream_sha256": "408b08c4ac66de271f476460490f360ef2a9b73528a346d132a22326e1674369",
+      "installed_sha256": "408b08c4ac66de271f476460490f360ef2a9b73528a346d132a22326e1674369",
+      "frozen_champion_sha256": "e3aed87b05deaea9a73cc7f3ae4763422d2b460cddb161193b3255ba20619ed6",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/third_party/flash_linear_attention/ops/fused_recurrent.py": {
+      "upstream_sha256": "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755",
+      "installed_sha256": "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755",
+      "frozen_champion_sha256": "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/model_executor/kernels/linear/mxfp8/flashinfer.py": {
+      "upstream_sha256": "1844cd24f9128107a8e29d4f2dfdb772548f06562e8cb53b67820e81b14f1778",
+      "installed_sha256": "1844cd24f9128107a8e29d4f2dfdb772548f06562e8cb53b67820e81b14f1778",
+      "frozen_champion_sha256": "1844cd24f9128107a8e29d4f2dfdb772548f06562e8cb53b67820e81b14f1778",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/v1/worker/gpu/sample/states.py": {
+      "upstream_sha256": "4e3671f93695ba5a48fad7d2d13beb231ac8741034904ed5a15d9f7b9b86662e",
+      "installed_sha256": "4e3671f93695ba5a48fad7d2d13beb231ac8741034904ed5a15d9f7b9b86662e",
+      "frozen_champion_sha256": "4e3671f93695ba5a48fad7d2d13beb231ac8741034904ed5a15d9f7b9b86662e",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu/sample/prompt_logprob.py": {
+      "upstream_sha256": "4cf22d390e7bf59e44c458cff7180268db63e95d06af2f1e14d720a2d77c9663",
+      "installed_sha256": "4cf22d390e7bf59e44c458cff7180268db63e95d06af2f1e14d720a2d77c9663",
+      "frozen_champion_sha256": "4cf22d390e7bf59e44c458cff7180268db63e95d06af2f1e14d720a2d77c9663",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu/input_batch.py": {
+      "upstream_sha256": "3929c92e42ae90e4410bb4537dcbdcd171a662e44afc1189a9a3e19037a84410",
+      "installed_sha256": "3929c92e42ae90e4410bb4537dcbdcd171a662e44afc1189a9a3e19037a84410",
+      "frozen_champion_sha256": "ea80a9185f727df9a52c5d73f0d9692327a4c953d27401401f48a34143eea360",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu/sample/penalties.py": {
+      "upstream_sha256": "46c29434caf5f415129ef4a9bb2b8d4f62d2765596e3e07f73ad2b198c7def1b",
+      "installed_sha256": "46c29434caf5f415129ef4a9bb2b8d4f62d2765596e3e07f73ad2b198c7def1b",
+      "frozen_champion_sha256": "a3cee4b5474c883f9f0bdfb6fe3966b32d792ff2892fbeb6436f7d772b5cc1ca",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    }
+  },
+  "patch_sha256": "f0a9d319de9a89e1866f72d50ad5afe98d643c5ab5ab47edd901ffce071873c1",
+  "excluded_files": {
+    "compilation/passes/fusion/allreduce_rms_fusion.py": "TP1 has no allreduce fusion.",
+    "model_executor/layers/fused_allreduce_gemma_rms_norm.py": "TP1 dense4B and fused AR-Norm disabled.",
+    "model_executor/layers/quantization/quark/quark_moe.py": "Dense MXFP8 checkpoint has no MoE.",
+    "model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py": "Native MXFP8 kernel selected through public MXFP8 API, no MXFP6 OCP scheme.",
+    "v1/worker/gpu_model_runner.py": "Complete profile requires v2 runner."
+  },
+  "formalization": {
+    "unchanged_frozen_arithmetic": [
+      "GDN complete source",
+      "FlashInfer complete attention source",
+      "FlashInfer utility source",
+      "CUDA graph candidate generation/capture stream",
+      "prompt-logprob profiling helper launch"
+    ],
+    "operative_changes": [
+      "Remove disabled legacy dense-auto/adapter calls from Worker.",
+      "Use the public base full-vocabulary logits/model/sampler/runner path; remove compact sampling and sparse-presence extensions.",
+      "Non-speculative profile_run calls base dummy sampler and frozen prompt-logprob warmup.",
+      "Retain public gpu/warmup.py: omit three frozen unseeded compact-sampling warmup requests (greedy, full-distribution, top-k). This changes startup execution; it is not a no-op or complete warmup equivalence claim."
+    ],
+    "import_changes": [
+      "CUDA graph warmup uses vllm_mach.mxfp6.warmup rather than private vllm quantization utility."
+    ],
+    "requirements": [
+      "Fresh v2 worker; TP1 dense Qwen3.5-4B MXFP8; no speculative decoding/LoRA/prefix/replay/offload/connector.",
+      "Compact hybrid flags and vocab-parallel greedy disabled; full-vocabulary head installed after compile.",
+      "Legacy Mach dense-auto/producer/prefill/MoE adapters disabled."
+    ],
+    "gpu_validation": "Paired clean startup/capture, fixed-seed full sixpoint and prefill/decode/slot-reuse checks required before release; CPU source checks do not certify output equivalence."
+  },
+  "frozen_ast_sha256": {
+    "vllm/model_executor/layers/logits_processor.py:forward": "3b6adbfafeeb60268c15d14c7763decf00dcb23e98f9d73aa7f0fbdd1ccdbd96",
+    "vllm/model_executor/layers/logits_processor.py:_apply_head": "9b4fc0e65c25384d2bdc780296076563aa19d35c4c85617a09b623cb9e8065df",
+    "vllm/model_executor/layers/logits_processor.py:_get_logits": "35db92296b1786141681292ac61b5d27bc811e89a3aff2ff0552f987e4fed2ec",
+    "vllm/model_executor/layers/logits_processor.py:_gather_logits": "15ac02235e1d221e850c9df095bda6ef018ef4f2dbeb0c494b668ee4d4f3c73a",
+    "vllm/v1/worker/gpu/sample/sampler.py:apply_sampling_params": "2016d9ce62ba9e014cb531f5232c0cc2ca43e8fd8a4dc163aa6238472d842f0b",
+    "vllm/v1/worker/gpu/sample/sampler.py:sample": "65348259b430b70b1dd397fcd237a52d80f2f126b92cd4a44ac98eba8efa0a02",
+    "vllm/v1/worker/gpu/model_runner.py:_dummy_prompt_logprobs_run": "bbf4ad222e0663c5def4b81f6543c81eca41dbbf417e28c024ac8db8fe648541",
+    "vllm/v1/worker/gpu/model_runner.py:execute_model": "fa5ade9169f535004d44f1c1342a973abf46ae6ef7efa4e0904481fcc81c66e3",
+    "vllm/v1/worker/gpu/model_runner.py:prepare_inputs": "90d597efed2278576f7b7e646909a4879f44371faf3000100a0fe3599b3336ae",
+    "vllm/v1/worker/gpu/model_runner.py:prepare_attn": "2c5af5855fdb5b2910114befe31672406d936f13f5df6935ea2a77f10c735092",
+    "vllm/v1/worker/gpu/cudagraph_utils.py:_build_candidates": "ea702abe4703d845db0ae6c113dc8d449add86606bb2e6edc4c49691ee4dd334",
+    "vllm/v1/worker/gpu/cudagraph_utils.py:_init_candidates": "e9f3008e4caa122674c2f49899053d3f8f23efe351ff268eb5b9675c98c34f89",
+    "vllm/v1/worker/gpu/cudagraph_utils.py:get_capture_sizes": "7fb0eb124c8820e435d4fe9927146ca9738f5f9587b0a04d1cd13459cd75f17c",
+    "vllm/v1/worker/gpu/sample/states.py:add_request": "aafa2c3d85031720814b3221c6fb7db01c7758e91b92704074deef0b0de9917e",
+    "vllm/v1/worker/gpu/sample/states.py:any_explicit_seed": "6690a7137d1c107a84389f752c92a67e51a6ec649b79327b6b34aaba23b453a1",
+    "vllm/v1/worker/gpu/sample/prompt_logprob.py:compute_prompt_logprobs_with_chunking": "b41653feefde7fe5335f34baf8cb3ccf917cc7bf29d3592c03ac7949c8ec2ad5"
+  },
+  "specialized_frozen_ast_sha256": {
+    "vllm/v1/worker/gpu/input_batch.py:_post_update_kernel": {
+      "sha256": "c57a123fb2e2938d71d872259b7077ac92d9c87cb05cd8cca9d6d0487a227f99",
+      "specialization": "Frozen hybrid flags all false -> output_unique_token_ids_ptr=None; remove that unreachable branch and its four unused pointer/stride arguments; all remaining integer operations and launch grid/num_warps match public base."
+    }
+  },
+  "behavior_proofs": {
+    "explicit_seed_gate": "Executed frozen SamplingStates.add_request/any_explicit_seed and Sampler.get_vocab_parallel_sampling_params on CPU for c4/16/24/32/48/64 with the actual protocol seeds/default filters: all return None and take the normal full-vocabulary path.",
+    "prompt_logprobs": "Public and frozen prompt_logprob.py are byte-identical. Serving normal compute entrypoint is public base; frozen extra profiling launch retained.",
+    "integer_state": "Frozen PenaltiesState assigns both unique-token buffers=None when hybrid flags are false. Frozen _post_update_kernel specializes to public base exact AST after unused arguments/branch removal; launch grid and num_warps=1 unchanged.",
+    "legacy_adapter_calls": "Frozen configure_dense_defaults requires hidden5120/layers64/TP2/FP6. Dense4B TP1 MXFP8 cannot enable defaults; requested producer/prefill flags are false and projection tuning default0, so prepare_model returns before adapter import.",
+    "quality_logprobs_gate": "Quality requests use logprobs=1. Frozen Sampler.get_vocab_parallel_sampling_params returns None whenever max_num_logprobs != NO_LOGPROBS, so these requests use the normal full-vocabulary logits/sampler path. All nine M32 teacher call records match the accepted request geometry/order; this does not establish numerical output equivalence.",
+    "startup_warmup": {
+      "module": "vllm.v1.worker.gpu.warmup",
+      "public_sha256": "ca8e7bdcc0edd429904c8c509f7bdb5327e02824eebd24cb8886460568d75682",
+      "frozen_sha256": "def9c07eb673b2fd479edf4ddf48483c267563f6eb8dfa5cb6a6cc608bdb6f1e",
+      "status": "Source-comparison evidence only; not an additional installer hash gate.",
+      "operative_delta": "Frozen warmup_kernels appends three real request/sample/cleanup cycles gated by model get_top_tokens/sample_full_tokens/sample_topk_tokens methods. Public warmup lacks the entire appended block, and public Qwen model lacks these methods.",
+      "actual_frozen_paths": "Accepted startup log records greedy, full-distribution and compact top-k fast paths even with hybrid flags and VLLM_VOCAB_PARALLEL_GREEDY disabled. These unseeded warmup requests ask for no logprobs.",
+      "validation_required": "Acceptance of this startup change depends on paired precision, deferred-state/reset/slot-reuse, clean-restart and production performance verification; no numerical or performance neutrality is assumed."
+    }
+  },
+  "required_disabled_legacy_environment": {
+    "VLLM_MACH_DENSE_AUTO": "0",
+    "VLLM_MACH_GDN_PERSISTENT": "0",
+    "VLLM_MACH_GDN_BA_OVERLAP": "0",
+    "VLLM_MACH_FUSED_SWIGLU_QUANT": "0",
+    "VLLM_MACH_FUSED_GDN_QUANT": "0",
+    "VLLM_MACH_FUSED_AR_QUANT": "0",
+    "VLLM_MACH_MOE_PROJECTION_TUNING": "0",
+    "VLLM_SM120_OWNER_PREFILL": "0",
+    "VLLM_SM120_LOSSLESS_PREFILL": "0",
+    "VLLM_QWEN3_5_FP16_SSM": "0",
+    "VLLM_QWEN3_5_FUSED_AR_NORM": "0"
+  },
+  "required_disabled_compact_environment": {
+    "VLLM_VOCAB_PARALLEL_GREEDY": "0",
+    "VLLM_HYBRID_NVFP4_LM_HEAD": "0",
+    "VLLM_HYBRID_MXFP4_LM_HEAD": "0",
+    "VLLM_HYBRID_MXFP8_LM_HEAD": "0"
+  }
+}

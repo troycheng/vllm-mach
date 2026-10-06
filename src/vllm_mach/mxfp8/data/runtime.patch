@@ -1,0 +1,2685 @@
+--- a/vllm/envs.py
++++ b/vllm/envs.py
+@@ -128,6 +128,7 @@
+     VLLM_USE_HW_AGNOSTIC: bool = False
+     VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE: bool = True
+     VLLM_GDN_DECODE_KERNEL: Literal["cuda", "triton"] = "cuda"
++    VLLM_GDN_MTP_RESET_POOL_CACHE: bool = True
+     VLLM_DISABLE_PYNCCL: bool = False
+     VLLM_USE_OINK_OPS: bool = False
+     VLLM_MXFP8_EMULATION_DEQUANT_AT_LOAD: bool = True
+@@ -190,6 +191,24 @@
+     VLLM_HUMMING_MOE_GEMM_TYPE: Literal["indexed", "grouped", "auto"] | None = None
+     VLLM_B12X_MOE_FP4_FORCE_A16: bool = False
+     VLLM_DEEPEPLL_NVFP4_DISPATCH: bool = False
++    # Experimental hybrid lm-head paths.  These settings are intentionally
++    # exposed through envs.py so model loading and tests use the same values.
++    VLLM_HYBRID_NVFP4_LM_HEAD: bool = False
++    VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND: Literal["b12x", "auto"] = "b12x"
++    VLLM_HYBRID_NVFP4_LM_HEAD_CANDIDATES: int = 128
++    VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS: int = 0
++    VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK: bool = True
++    VLLM_HYBRID_MXFP4_LM_HEAD: bool = False
++    VLLM_HYBRID_MXFP4_LM_HEAD_CANDIDATES: int = 128
++    VLLM_HYBRID_MXFP4_LM_HEAD_MAX_ROWS: int = 0
++    VLLM_HYBRID_MXFP4_LM_HEAD_USE_FLASHINFER_TOPK: bool = True
++    VLLM_HYBRID_MXFP4_LM_HEAD_ROW_BUCKET_PAD: bool = True
++    VLLM_HYBRID_MXFP4_LM_HEAD_MIXED_BATCH_MODE: str = "all"
++    VLLM_HYBRID_MXFP8_LM_HEAD: bool = False
++    VLLM_HYBRID_MXFP8_LM_HEAD_CANDIDATES: int = 128
++    VLLM_HYBRID_MXFP8_LM_HEAD_MAX_ROWS: int = 0
++    VLLM_HYBRID_MXFP8_LM_HEAD_USE_FLASHINFER_TOPK: bool = True
++    VLLM_SCHED_TT_DEBUG: bool = False
+     VLLM_V1_USE_OUTLINES_CACHE: bool = False
+     VLLM_TPU_USING_PATHWAYS: bool = False
+     VLLM_USE_DEEP_GEMM: bool = True
+@@ -217,6 +236,7 @@
+     VLLM_FLASHINFER_AUTOTUNE_SKIP_OPS: list[str] | None = None
+     VLLM_FLASHINFER_ALLREDUCE_BACKEND: Literal["auto", "trtllm", "mnnvl"] = "auto"
+     VLLM_FLASHINFER_WORKSPACE_BUFFER_SIZE: int = 394 * 1024 * 1024
++    VLLM_FLASHINFER_SEPARATE_KV_HEADS: bool = True
+     VLLM_XGRAMMAR_CACHE_MB: int = 0
+     VLLM_REGEX_COMPILATION_TIMEOUT_S: int = 5
+     VLLM_MSGPACK_ZERO_COPY_THRESHOLD: int = 256
+@@ -263,7 +283,8 @@
+     VLLM_HAS_FLASHINFER_CUBIN: bool = False
+     VLLM_ROCM_FP8_MFMA_PAGE_ATTN: bool = False
+     VLLM_ALLREDUCE_USE_SYMM_MEM: bool = True
+-    VLLM_ALLREDUCE_USE_FLASHINFER: bool = True
++    VLLM_ALLREDUCE_USE_FLASHINFER: bool | None = None
++    VLLM_MXFP6_SM120_QWEN35_FASTPATH: bool = True
+     VLLM_TUNED_CONFIG_FOLDER: str | None = None
+     VLLM_ENABLE_STARTUP_PLAN: bool = False
+     VLLM_GPT_OSS_SYSTEM_TOOL_MCP_LABELS: set[str] = set()
+@@ -295,6 +316,23 @@
+     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
+     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
+     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
++    VLLM_QWEN3_5_FUSED_AR_NORM: bool = True
++    VLLM_MACH_DENSE_AUTO: bool = True
++    VLLM_QWEN3_5_FP16_SSM: bool = False
++    VLLM_MACH_GDN_PERSISTENT: bool = False
++    VLLM_MACH_GDN_REQUIRE_PRECOMPILED: bool = False
++    VLLM_MACH_GDN_BA_OVERLAP: bool = False
++    VLLM_MACH_FUSED_SWIGLU_QUANT: str = "0"
++    VLLM_MACH_FUSED_GDN_QUANT: str = "0"
++    VLLM_MACH_FUSED_AR_QUANT: str = "0"
++    VLLM_MACH_MOE_PROJECTION_TUNING: str = "0"
++    VLLM_SM120_LOSSLESS_PREFILL: bool = False
++    VLLM_SM120_LOSSLESS_PREFILL_VERIFY: bool = False
++    VLLM_SM120_LOSSLESS_PREFILL_GRAPH: bool = False
++    VLLM_SM120_OWNER_PREFILL: bool = False
++    VLLM_SM120_OWNER_MLP_LAYERS: str = ""
++    VLLM_SM120_OWNER_VERIFY: int = 0
++    VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED: bool = False
+     VLLM_USE_V2_MODEL_RUNNER: bool | None = None
+     VLLM_LOG_MODEL_INSPECTION: bool = False
+     VLLM_DEBUG_MFU_METRICS: bool = False
+@@ -323,6 +361,7 @@
+     VLLM_NIC_SELECTION_VARS: str = ""
+     VLLM_PREFIX_CACHE_RETENTION_INTERVAL: int | None = None
+     VLLM_ENABLE_HPC_OPS: bool = False
++    VLLM_MXFP8_FUSED_SILU: bool = True
+ 
+ 
+ def get_default_cache_root():
+@@ -384,6 +423,23 @@
+     )
+ 
+     return os.environ.get("VLLM_USE_MEGA_AOT_ARTIFACT", default_value) == "1"
++
++
++_mach_dense_defaults = False
++_mach_dense_fp16_defaults = False
++
++
++def set_mach_dense_defaults(enabled: bool, *, fp16: bool = False) -> None:
++    """Set process-local model defaults without exporting them to other engines."""
++    global _mach_dense_defaults, _mach_dense_fp16_defaults
++    _mach_dense_defaults = enabled
++    _mach_dense_fp16_defaults = enabled and fp16
++    if hasattr(__getattr__, "cache_clear"):
++        __getattr__.cache_clear()
++
++
++def mach_dense_default() -> str:
++    return "1" if _mach_dense_defaults else "0"
+ 
+ 
+ def env_with_choices(
+@@ -429,6 +485,21 @@
+         return value
+ 
+     return _get_validated_env
++
++
++def env_flag_or_none(
++    env_name: str,
++    fallback_env_name: str | None = None,
++) -> Callable[[], bool | None]:
++    """Return a tri-state flag: unset for auto, false, or true."""
++
++    def _get_optional_flag() -> bool | None:
++        value = os.getenv(env_name)
++        if value is None and fallback_env_name is not None:
++            value = os.getenv(fallback_env_name)
++        return None if value is None else bool(int(value))
++
++    return _get_optional_flag
+ 
+ 
+ def env_list_with_choices(
+@@ -850,13 +921,12 @@
+     # If set to 1, vllm will trace function calls
+     # Useful for debugging
+     "VLLM_TRACE_FUNCTION": lambda: int(os.getenv("VLLM_TRACE_FUNCTION", "0")),
+-    # Whether to use the FlashInfer top-k / top-p sampler on CUDA. Enabled
+-    # by default when the hardware supports it — set to 0 to opt out
+-    # explicitly, which forces the PyTorch-native (Triton for bs>=8) path.
++    # Whether to use the FlashInfer top-k / top-p sampler on CUDA. Disabled by
++    # default so the compact Triton sampler can be selected; set to 1 to opt in.
+     "VLLM_USE_FLASHINFER_SAMPLER": lambda: (
+         bool(int(os.environ["VLLM_USE_FLASHINFER_SAMPLER"]))
+         if "VLLM_USE_FLASHINFER_SAMPLER" in os.environ
+-        else True
++        else False
+     ),
+     # Pipeline stage partition strategy
+     "VLLM_PP_LAYER_PARTITION": lambda: os.getenv("VLLM_PP_LAYER_PARTITION", None),
+@@ -1211,6 +1281,9 @@
+         "cuda",
+         ["cuda", "triton"],
+         case_sensitive=False,
++    ),
++    "VLLM_GDN_MTP_RESET_POOL_CACHE": lambda: bool(
++        int(os.getenv("VLLM_GDN_MTP_RESET_POOL_CACHE", "1"))
+     ),
+     # Disable pynccl (using torch.distributed instead)
+     "VLLM_DISABLE_PYNCCL": lambda: (
+@@ -1527,6 +1600,58 @@
+     "VLLM_DEEPEPLL_NVFP4_DISPATCH": lambda: bool(
+         int(os.getenv("VLLM_DEEPEPLL_NVFP4_DISPATCH", "0"))
+     ),
++    # Experimental MXFP4/NVFP4/MXFP8-coarse, BF16-refined lm-head paths.
++    "VLLM_HYBRID_NVFP4_LM_HEAD": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_NVFP4_LM_HEAD", "0"))
++    ),
++    "VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND": lambda: os.getenv(
++        "VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND", "b12x"
++    )
++    .strip()
++    .lower(),
++    "VLLM_HYBRID_NVFP4_LM_HEAD_CANDIDATES": lambda: int(
++        os.getenv("VLLM_HYBRID_NVFP4_LM_HEAD_CANDIDATES", "128")
++    ),
++    "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": lambda: int(
++        os.getenv("VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS", "0")
++    ),
++    "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK", "1"))
++    ),
++    "VLLM_HYBRID_MXFP4_LM_HEAD": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_MXFP4_LM_HEAD", "0"))
++    ),
++    "VLLM_HYBRID_MXFP4_LM_HEAD_CANDIDATES": lambda: int(
++        os.getenv("VLLM_HYBRID_MXFP4_LM_HEAD_CANDIDATES", "128")
++    ),
++    "VLLM_HYBRID_MXFP4_LM_HEAD_MAX_ROWS": lambda: int(
++        os.getenv("VLLM_HYBRID_MXFP4_LM_HEAD_MAX_ROWS", "0")
++    ),
++    "VLLM_HYBRID_MXFP4_LM_HEAD_USE_FLASHINFER_TOPK": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_MXFP4_LM_HEAD_USE_FLASHINFER_TOPK", "1"))
++    ),
++    "VLLM_HYBRID_MXFP4_LM_HEAD_ROW_BUCKET_PAD": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_MXFP4_LM_HEAD_ROW_BUCKET_PAD", "1"))
++    ),
++    "VLLM_HYBRID_MXFP4_LM_HEAD_MIXED_BATCH_MODE": lambda: os.getenv(
++        "VLLM_HYBRID_MXFP4_LM_HEAD_MIXED_BATCH_MODE", "all"
++    )
++    .strip()
++    .lower(),
++    "VLLM_HYBRID_MXFP8_LM_HEAD": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_MXFP8_LM_HEAD", "0"))
++    ),
++    "VLLM_HYBRID_MXFP8_LM_HEAD_CANDIDATES": lambda: int(
++        os.getenv("VLLM_HYBRID_MXFP8_LM_HEAD_CANDIDATES", "128")
++    ),
++    "VLLM_HYBRID_MXFP8_LM_HEAD_MAX_ROWS": lambda: int(
++        os.getenv("VLLM_HYBRID_MXFP8_LM_HEAD_MAX_ROWS", "0")
++    ),
++    "VLLM_HYBRID_MXFP8_LM_HEAD_USE_FLASHINFER_TOPK": lambda: bool(
++        int(os.getenv("VLLM_HYBRID_MXFP8_LM_HEAD_USE_FLASHINFER_TOPK", "1"))
++    ),
++    # Opt-in per-request QUEUED/SCHEDULED timing debug logs (SCHED_TT).
++    "VLLM_SCHED_TT_DEBUG": lambda: bool(int(os.getenv("VLLM_SCHED_TT_DEBUG", "0"))),
+     # Whether to turn on the outlines cache for V1
+     # This cache is unbounded and on disk, so it's not safe to use in
+     # an environment with potentially malicious users.
+@@ -1731,6 +1856,9 @@
+     "VLLM_FLASHINFER_WORKSPACE_BUFFER_SIZE": lambda: int(
+         os.getenv("VLLM_FLASHINFER_WORKSPACE_BUFFER_SIZE", str(394 * 1024 * 1024))
+     ),
++    "VLLM_FLASHINFER_SEPARATE_KV_HEADS": lambda: bool(
++        int(os.getenv("VLLM_FLASHINFER_SEPARATE_KV_HEADS", "1"))
++    ),
+     # Control the maximum number of tokens per expert supported by the
+     # NVFP4 MoE CUTLASS Kernel. This value is used to create a buffer for
+     # the blockscale tensor of activations NVFP4 Quantization.
+@@ -1860,9 +1988,13 @@
+     "VLLM_ALLREDUCE_USE_SYMM_MEM": lambda: bool(
+         int(os.getenv("VLLM_ALLREDUCE_USE_SYMM_MEM", "1"))
+     ),
+-    # Whether to use FlashInfer allreduce
+-    "VLLM_ALLREDUCE_USE_FLASHINFER": lambda: bool(
+-        int(os.getenv("VLLM_ALLREDUCE_USE_FLASHINFER", "1"))
++    # Whether to use FlashInfer allreduce. Unset auto-selects the validated
++    # SM120 TP2 FlashInfer path; 0 disables it and 1 forces the existing path.
++    "VLLM_ALLREDUCE_USE_FLASHINFER": env_flag_or_none("VLLM_ALLREDUCE_USE_FLASHINFER"),
++    # Use the Qwen3.5-specific fused MXFP6 router/shared-expert schedule.
++    # Set to 0 to fall back to the generic native MXFP6 MoE runner.
++    "VLLM_MXFP6_SM120_QWEN35_FASTPATH": lambda: bool(
++        int(os.getenv("VLLM_MXFP6_SM120_QWEN35_FASTPATH", "1"))
+     ),
+     # Experimental: use this to enable MCP tool calling for non harmony models
+     "VLLM_USE_EXPERIMENTAL_PARSER_CONTEXT": lambda: bool(
+@@ -1994,6 +2126,8 @@
+     # Debug workspace allocations.
+     # logging of workspace resize operations.
+     "VLLM_DEBUG_WORKSPACE": lambda: bool(int(os.getenv("VLLM_DEBUG_WORKSPACE", "0"))),
++    # Changes the compiled graph, so it must participate in compile_factors().
++    "VLLM_MXFP8_FUSED_SILU": lambda: bool(int(os.getenv("VLLM_MXFP8_FUSED_SILU", "1"))),
+     # Disables parallel execution of shared_experts via separate cuda stream
+     "VLLM_DISABLE_SHARED_EXPERTS_STREAM": lambda: bool(
+         int(os.getenv("VLLM_DISABLE_SHARED_EXPERTS_STREAM", "0"))
+@@ -2032,6 +2166,56 @@
+         "VLLM_COMPILE_CACHE_SAVE_FORMAT", "binary", ["binary", "unpacked"]
+     ),
+     # Flag to control the v2 model runner. If unset, use config defaults.
++    # Default on for eligible SM120 TP2 Qwen3.5 MoE MXFP6 models.
++    # Dense requires explicit opt-in or the validated automatic bundle.
++    "VLLM_QWEN3_5_FUSED_AR_NORM": lambda: (
++        os.getenv("VLLM_QWEN3_5_FUSED_AR_NORM", "1") == "1"
++    ),
++    "VLLM_QWEN3_5_FP16_SSM": lambda: os.getenv(
++        "VLLM_QWEN3_5_FP16_SSM", "1" if _mach_dense_fp16_defaults else "0"
++    )
++    == "1",
++    "VLLM_MACH_DENSE_AUTO": lambda: os.getenv("VLLM_MACH_DENSE_AUTO", "1") == "1",
++    "VLLM_MACH_GDN_PERSISTENT": lambda: (
++        os.getenv("VLLM_MACH_GDN_PERSISTENT", mach_dense_default()) == "1"
++    ),
++    "VLLM_MACH_GDN_REQUIRE_PRECOMPILED": lambda: (
++        os.getenv("VLLM_MACH_GDN_REQUIRE_PRECOMPILED", "0") == "1"
++    ),
++    "VLLM_MACH_GDN_BA_OVERLAP": lambda: (
++        os.getenv("VLLM_MACH_GDN_BA_OVERLAP", mach_dense_default()) == "1"
++    ),
++    "VLLM_MACH_FUSED_SWIGLU_QUANT": lambda: env_with_choices(
++        "VLLM_MACH_FUSED_SWIGLU_QUANT", mach_dense_default(), ["0", "1", "auto"]
++    )(),
++    "VLLM_MACH_FUSED_GDN_QUANT": lambda: env_with_choices(
++        "VLLM_MACH_FUSED_GDN_QUANT", mach_dense_default(), ["0", "1", "auto"]
++    )(),
++    "VLLM_MACH_FUSED_AR_QUANT": lambda: env_with_choices(
++        "VLLM_MACH_FUSED_AR_QUANT", mach_dense_default(), ["0", "1", "auto"]
++    )(),
++    "VLLM_MACH_MOE_PROJECTION_TUNING": env_with_choices(
++        "VLLM_MACH_MOE_PROJECTION_TUNING", "0", ["0", "1", "auto"]
++    ),
++    "VLLM_SM120_LOSSLESS_PREFILL": lambda: (
++        os.getenv("VLLM_SM120_LOSSLESS_PREFILL", mach_dense_default()) == "1"
++    ),
++    "VLLM_SM120_LOSSLESS_PREFILL_VERIFY": lambda: (
++        os.getenv("VLLM_SM120_LOSSLESS_PREFILL_VERIFY", "0") == "1"
++    ),
++    "VLLM_SM120_LOSSLESS_PREFILL_GRAPH": lambda: (
++        os.getenv("VLLM_SM120_LOSSLESS_PREFILL_GRAPH", "0") == "1"
++    ),
++    "VLLM_SM120_OWNER_PREFILL": lambda: (
++        os.getenv("VLLM_SM120_OWNER_PREFILL", mach_dense_default()) == "1"
++    ),
++    "VLLM_SM120_OWNER_MLP_LAYERS": lambda: os.getenv(
++        "VLLM_SM120_OWNER_MLP_LAYERS", str(list(range(0, 64, 2)))
++    ),
++    "VLLM_SM120_OWNER_VERIFY": lambda: int(os.getenv("VLLM_SM120_OWNER_VERIFY", "0")),
++    "VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED": lambda: (
++        os.getenv("VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED", "0") == "1"
++    ),
+     "VLLM_USE_V2_MODEL_RUNNER": lambda: maybe_convert_bool(
+         os.getenv("VLLM_USE_V2_MODEL_RUNNER", None)
+     ),
+@@ -2287,6 +2471,8 @@
+         # Credential; never affects compiled artifacts and must not be
+         # persisted in cache_key_factors.json.
+         "VLLM_API_KEY",
++        # Effective adapter flags and compilation config encode this decision.
++        "VLLM_MACH_DENSE_AUTO",
+         "VLLM_USAGE_STATS_SERVER",
+         "VLLM_NO_USAGE_STATS",
+         "VLLM_DO_NOT_TRACK",
+@@ -2339,6 +2525,34 @@
+         "NO_COLOR",
+     }
+ 
++    # Keep the pre-migration baseline cache key unchanged when all Mach
++    # adapters are disabled. Enabled adapters must have isolated artifacts.
++    mach_opt_in_flags = {
++        "VLLM_QWEN3_5_FP16_SSM",
++        "VLLM_MACH_GDN_PERSISTENT",
++        "VLLM_MACH_GDN_BA_OVERLAP",
++        "VLLM_MACH_FUSED_SWIGLU_QUANT",
++        "VLLM_MACH_FUSED_GDN_QUANT",
++        "VLLM_MACH_FUSED_AR_QUANT",
++        "VLLM_MACH_MOE_PROJECTION_TUNING",
++        "VLLM_SM120_LOSSLESS_PREFILL",
++        "VLLM_SM120_OWNER_PREFILL",
++    }
++    if not any(
++        environment_variables[name]() not in (False, "0") for name in mach_opt_in_flags
++    ):
++        ignored_factors.update(mach_opt_in_flags)
++        ignored_factors.update(
++            {
++                "VLLM_SM120_LOSSLESS_PREFILL_VERIFY",
++                "VLLM_MACH_GDN_REQUIRE_PRECOMPILED",
++                "VLLM_SM120_LOSSLESS_PREFILL_GRAPH",
++                "VLLM_SM120_OWNER_MLP_LAYERS",
++                "VLLM_SM120_OWNER_VERIFY",
++                "VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED",
++            }
++        )
++
+     from vllm.config.utils import normalize_value
+ 
+     factors: dict[str, object] = {}
+--- a/vllm/utils/flashinfer.py
++++ b/vllm/utils/flashinfer.py
+@@ -11,6 +11,7 @@
+ import importlib.util
+ import os
+ import shutil
++import threading
+ from collections.abc import Callable
+ from typing import Any, NoReturn
+ 
+@@ -243,6 +244,57 @@
+     "autotune",
+     fallback_fn=lambda *args, **kwargs: contextlib.nullcontext(),
+ )
++
++_AUTOTUNE_DELAY_LOCK = threading.RLock()
++
++
++@contextlib.contextmanager
++def autotune_with_torch_cuda_delay(*args, **kwargs):
++    """Run FlashInfer autotuning without its optional TRT-LLM delay JIT.
++
++    Some CUDA toolkit installations provide the runtime libraries but omit
++    compatible cuBLAS development headers. FlashInfer's profiling-only delay
++    kernel then fails to build and every otherwise-valid tactic is discarded.
++    ``torch.cuda._sleep`` provides the same stream delay without a JIT build.
++    """
++    if not has_flashinfer():
++        yield
++        return
++
++    autotuner = _get_submodule("flashinfer.autotuner")
++    if autotuner is None or not hasattr(autotuner, "autotune"):
++        yield
++        return
++
++    autotune_fn = autotuner.autotune
++    implementation_name = getattr(autotune_fn, "__module__", "")
++    implementation = (
++        _get_submodule(implementation_name) if implementation_name else None
++    )
++    delay_owners = []
++    for module in (autotuner, implementation):
++        if (
++            module is not None
++            and hasattr(module, "delay_kernel")
++            and all(module is not owner for owner in delay_owners)
++        ):
++            delay_owners.append(module)
++
++    def torch_delay(microseconds: int) -> None:
++        torch.cuda._sleep(max(1, int(microseconds) * 1000))
++
++    with _AUTOTUNE_DELAY_LOCK:
++        original_delays = [owner.delay_kernel for owner in delay_owners]
++        for owner in delay_owners:
++            owner.delay_kernel = torch_delay
++        try:
++            with autotune_fn(*args, **kwargs):
++                yield
++        finally:
++            for owner, original_delay in zip(
++                delay_owners, original_delays, strict=True
++            ):
++                owner.delay_kernel = original_delay
+ 
+ 
+ @functools.cache
+@@ -489,6 +541,19 @@
+     return current_platform.is_device_capability_family(100)
+ 
+ 
++@functools.cache
++def supports_xqa_attention() -> bool:
++    """Return `True` if FlashInfer XQA decode is supported on this platform."""
++    if envs.VLLM_BATCH_INVARIANT:
++        return False
++    if not current_platform.is_cuda_alike():
++        return False
++    if not has_flashinfer():
++        return False
++    capability = current_platform.get_device_capability()
++    return capability is not None and capability.major in (9, 10, 12)
++
++
+ def force_use_trtllm_attention() -> bool | None:
+     """
+     This function should only be called during initialization stage when vllm config
+@@ -512,6 +577,24 @@
+     return supports_trtllm_attention(is_prefill=is_prefill) and (
+         num_qo_heads % num_kv_heads == 0
+     )
++
++
++def can_use_xqa_attention(
++    num_qo_heads: int,
++    num_kv_heads: int,
++    head_dim: int,
++) -> bool:
++    """Check if FlashInfer XQA decode supports this attention shape."""
++    if force_use_trtllm_attention() is False:
++        return False
++    if not supports_xqa_attention():
++        return False
++    if num_kv_heads <= 0 or num_qo_heads % num_kv_heads != 0:
++        return False
++    # FlashInfer XQA JIT accepts more head sizes, but verifier tests show D=80
++    # can illegal-address. The pinned FlashInfer version includes the XQA
++    # V-page prefetch fix required for D=256.
++    return head_dim in (64, 128, 256)
+ 
+ 
+ def use_trtllm_attention(
+@@ -799,6 +882,36 @@
+         )
+ 
+     @torch.library.custom_op(
++        "vllm::flashinfer_nvfp4_quantize_128x4",
++        mutates_args=[],
++        device_types="cuda",
++    )
++    def flashinfer_nvfp4_quantize_128x4_op(
++        a: torch.Tensor, a_global_sf: torch.Tensor
++    ) -> tuple[torch.Tensor, torch.Tensor]:
++        from flashinfer import SfLayout
++        from flashinfer import nvfp4_quantize as nvfp4_quantize_
++
++        return nvfp4_quantize_(
++            a,
++            a_global_sf,
++            sfLayout=SfLayout.layout_128x4,
++            do_shuffle=False,
++        )
++
++    @torch.library.register_fake("vllm::flashinfer_nvfp4_quantize_128x4")
++    def flashinfer_nvfp4_quantize_128x4_fake(
++        a: torch.Tensor, a_global_sf: torch.Tensor
++    ) -> tuple[torch.Tensor, torch.Tensor]:
++        m, n = a.shape
++        rounded_m = cdiv(m, 128) * 128
++        scale_n = cdiv(n // 16, 4) * 4
++        return (
++            torch.empty(m, n // 2, dtype=torch.uint8, device=a.device),
++            torch.empty(rounded_m, scale_n, dtype=torch.uint8, device=a.device),
++        )
++
++    @torch.library.custom_op(
+         "vllm::flashinfer_mxfp8_quantize_8x4",
+         mutates_args=[],
+         device_types="cuda",
+@@ -1055,6 +1168,17 @@
+     a: torch.Tensor, a_global_sf: torch.Tensor
+ ) -> tuple[torch.Tensor, torch.Tensor]:
+     return flashinfer_nvfp4_quantize(a, a_global_sf)
++
++
++def flashinfer_nvfp4_quantize_128x4(
++    a: torch.Tensor, a_global_sf: torch.Tensor
++) -> tuple[torch.Tensor, torch.Tensor]:
++    """Quantize NVFP4 with the 128x4 scale layout required by b12x."""
++    if not has_flashinfer():
++        raise RuntimeError("FlashInfer is required for NVFP4 quantization")
++    return torch.ops.vllm.flashinfer_nvfp4_quantize_128x4.default(
++        a, a_global_sf
++    )
+ 
+ 
+ flashinfer_fp8_blockscale_gemm = _lazy_import_wrapper(
+@@ -1170,6 +1294,7 @@
+     "flashinfer_trtllm_batch_decode_sparse_mla_dsv4",
+     "flashinfer_xqa_batch_decode_with_kv_cache",
+     "autotune",
++    "autotune_with_torch_cuda_delay",
+     "has_flashinfer_moe",
+     "has_flashinfer_comm",
+     "has_flashinfer_nvlink_two_sided",
+@@ -1182,7 +1307,9 @@
+     "has_flashinfer_fp8_blockscale_gemm",
+     "has_nvidia_artifactory",
+     "supports_trtllm_attention",
++    "supports_xqa_attention",
+     "can_use_trtllm_attention",
++    "can_use_xqa_attention",
+     "use_trtllm_attention",
+     "flashinfer_mxfp4_quantize",
+     "flashinfer_scaled_fp4_mm",
+@@ -1190,6 +1317,7 @@
+     "flashinfer_scaled_fp8_mm",
+     "flashinfer_scaled_fp8_mm_out",
+     "flashinfer_quant_nvfp4_8x4_sf_layout",
++    "flashinfer_nvfp4_quantize_128x4",
+     "flashinfer_fp8_blockscale_gemm",
+     "should_use_flashinfer_for_blockscale_fp8_gemm",
+     "is_flashinfer_fp8_blockscale_gemm_supported",
+--- a/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
++++ b/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
+@@ -2,6 +2,7 @@
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ """Inference-only Qwen3-Next/Qwen3.5 model."""
+ 
++import functools
+ import os
+ from typing import Literal
+ 
+@@ -12,6 +13,7 @@
+ from vllm import _custom_ops as ops
+ from vllm import envs
+ from vllm._aiter_ops import rocm_aiter_ops
++from vllm.compilation.breakable_cudagraph import eager_break_during_capture
+ from vllm.config import (
+     VllmConfig,
+     get_current_vllm_config,
+@@ -88,6 +90,99 @@
+ 
+ MAX_FUSED_GDN_MTP_TOKENS = 8
+ FUSED_GDN_STATE_DTYPES = (torch.float32, torch.bfloat16)
++_FLASHINFER_GDN_MTP_POOL_SIGNATURE: tuple | None = None
++
++
++def _reset_flashinfer_gdn_mtp_pool_cache() -> bool:
++    """Drop CuTe MTP launchers after vLLM replaces the state pool.
++
++    vLLM first binds a small profiling pool and later binds the final pool.
++    FlashInfer 0.6.x keys its non-contiguous MTP launcher cache by strides,
++    but the CuTe input descriptor also captures the pool extent. The two
++    pools have the same page stride, so a cache hit can reuse a launcher with
++    the profiling extent and make the first full CUDA-graph capture fall back
++    to FLA.
++    """
++    try:
++        from flashinfer.gdn_kernels import gdn_decode_mtp
++    except Exception:
++        return False
++
++    cleared = False
++    for name in ("_get_compiled_mtp_kernel", "_get_compiled_mtp_kernel_inline"):
++        cache_clear = getattr(getattr(gdn_decode_mtp, name, None), "cache_clear", None)
++        if cache_clear is not None:
++            cache_clear()
++            cleared = True
++    return cleared
++
++
++@functools.cache
++def _get_flashinfer_gdn_decode_ops():
++    """Return FlashInfer's fused GDN decode entry points when available.
++
++    Keep this import lazy: FlashInfer is optional for vLLM, and importing its
++    experimental GDN package at module import time would make the regular FLA
++    path depend on the optional CUDA installation.
++    """
++    try:
++        from flashinfer import (
++            gdn_fused_decode_step,
++            gdn_fused_decode_step_supported,
++        )
++    except Exception:
++        return None, None
++    return gdn_fused_decode_step, gdn_fused_decode_step_supported
++
++
++@functools.cache
++def _get_flashinfer_gdn_mtp_op():
++    """Return FlashInfer's optimized GDN MTP entry point when available."""
++    try:
++        from flashinfer.gdn_decode import gated_delta_rule_mtp
++    except Exception:
++        return None
++    return gated_delta_rule_mtp
++
++
++# TODO(arpera): remove ``_is_libs_cu13_install_intact`` and its caller in
++# ``_resolve_gdn_prefill_backend`` once the upstream packaging bug is
++# fixed and the broken wheels are yanked / superseded on PyPI:
++#   https://github.com/NVIDIA/cutlass/issues/3170
++#   https://github.com/NVIDIA/cutlass/issues/3259
++@functools.cache
++def _is_libs_cu13_install_intact() -> bool:
++    """Check that the installed CUDA 13 CUTLASS DSL files match RECORD."""
++    import hashlib
++    import importlib.metadata
++
++    import pybase64 as base64
++
++    try:
++        dist = importlib.metadata.distribution("nvidia-cutlass-dsl-libs-cu13")
++    except importlib.metadata.PackageNotFoundError:
++        return False
++
++    files = dist.files
++    if not files:
++        return False
++
++    for pkg_path in files:
++        file_hash = pkg_path.hash
++        if file_hash is None or not file_hash.value:
++            continue
++        if file_hash.mode != "sha256":
++            continue
++        try:
++            with open(pkg_path.locate(), "rb") as f:
++                digest = hashlib.sha256(f.read()).digest()
++        except OSError:
++            return False
++        actual = base64.urlsafe_b64encode(digest).decode().rstrip("=")
++        if actual != file_hash.value:
++            return False
++
++    return True
+ 
+ 
+ def _resolve_gdn_prefill_backend(
+@@ -100,7 +195,9 @@
+     * ``platform == cuda``;
+     * one of the following:
+       - Hopper (SM90) — no further constraints;
+-      - Blackwell (SM10.x) with ``head_k_dim == 128``, ``cuda_runtime >= 13``.
++      - Blackwell (SM10.x/SM12.x) with ``head_k_dim == 128``,
++        ``cuda_runtime >= 13``, and an intact
++        ``nvidia-cutlass-dsl-libs-cu13`` install.
+ 
+     In-tree CuteDSL GDN prefill kernel is chosen when:
+     * "cutedsl" is requested; (opt-in only)
+@@ -127,12 +224,26 @@
+     if current_platform.is_device_capability(90):
+         supports_flashinfer = True
+     elif (
+-        current_platform.is_device_capability_family(100)
++        (
++            current_platform.is_device_capability_family(100)
++            or current_platform.is_device_capability_family(120)
++        )
+         and head_k_dim == 128
+         and current_platform.get_cuda_runtime_major() >= 13
+     ):
+-        supports_flashinfer = True
+-        supports_cutedsl = True
++        supports_flashinfer = _is_libs_cu13_install_intact()
++        supports_cutedsl = current_platform.is_device_capability_family(100)
++        if not supports_flashinfer:
++            logger.warning_once(
++                "FlashInfer Blackwell GDN requires an intact nvidia-cutlass-dsl"
++                "-libs-cu13 install, but some on-disk files do not match the "
++                "SHA-256 declared in its RECORD (install-order race in "
++                "nvidia-cutlass-dsl packaging -- see "
++                "https://github.com/NVIDIA/cutlass/issues/3170 and "
++                "https://github.com/NVIDIA/cutlass/issues/3259). Falling back "
++                "to Triton/FLA. Repair with: pip install --force-reinstall "
++                "--no-deps nvidia-cutlass-dsl-libs-cu13"
++            )
+ 
+     if backend in ["flashinfer", "auto"] and supports_flashinfer:
+         return backend, "flashinfer"
+@@ -187,6 +298,7 @@
+     output_final_state: bool,
+     cu_seqlens: torch.Tensor | None = None,
+     use_qk_l2norm_in_kernel: bool = True,
++    output: torch.Tensor | None = None,
+ ):
+     from flashinfer.gdn_prefill import (
+         chunk_gated_delta_rule as chunk_gated_delta_rule_fi,
+@@ -217,13 +329,14 @@
+         initial_state=fi_state,
+         output_final_state=output_final_state,
+         cu_seqlens=cu_seqlens,
++        output=output,
+     )
+     # FlashInfer returns (output, state) when output_final_state=True,
+     # or just output when output_final_state=False.
+     # Unsqueeze back to 4D (1, L, H, D) to match fla output format
+     if output_final_state:
+-        output, final_state = result
+-        return output.unsqueeze(0), final_state
++        result_output, final_state = result
++        return result_output.unsqueeze(0), final_state
+     else:
+         return result.unsqueeze(0), None
+ 
+@@ -266,6 +379,10 @@
+         use_qk_l2norm_in_kernel: bool = True,
+         core_attn_out: torch.Tensor | None = None,
+     ):
++        # FlashInfer's public GDN API supports caller-provided output/state
++        # buffers.  Keep the output argument optional for the custom-op ABI,
++        # while allowing the mixed-prefill path to reuse the model runner's
++        # output allocation.
+         o, final_state = fi_chunk_gated_delta_rule(
+             q=q,
+             k=k,
+@@ -276,11 +393,8 @@
+             output_final_state=output_final_state,
+             cu_seqlens=cu_seqlens,
+             use_qk_l2norm_in_kernel=use_qk_l2norm_in_kernel,
+-        )
+-        if core_attn_out is not None:
+-            o_flat = o.squeeze(0).reshape(-1)
+-            co_flat = core_attn_out.reshape(-1)
+-            co_flat[: o_flat.numel()].copy_(o_flat)
++            output=core_attn_out,
++        )
+         return o, final_state
+ 
+     def forward_native(
+@@ -359,6 +473,28 @@
+ 
+ @PluggableLayer.register("qwen_gated_delta_net_attention")
+ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
++    def bind_kv_cache(self, kv_cache: torch.Tensor) -> None:
++        super().bind_kv_cache(kv_cache)
++        if not envs.VLLM_GDN_MTP_RESET_POOL_CACHE:
++            return
++
++        # All Qwen3.5 GDN layers use the same state-pool layout. Reset once
++        # when the allocator changes from the profiling pool to the final
++        # pool; repeated layer bindings then keep the already-correct cache.
++        state = self.kv_cache[1]
++        signature = (tuple(state.shape), tuple(state.stride()))
++        global _FLASHINFER_GDN_MTP_POOL_SIGNATURE
++        if signature == _FLASHINFER_GDN_MTP_POOL_SIGNATURE:
++            return
++        if _reset_flashinfer_gdn_mtp_pool_cache():
++            logger.info_once(
++                "Reset FlashInfer GDN MTP CuTe cache for state pool shape=%s "
++                "stride=%s.",
++                tuple(state.shape),
++                tuple(state.stride()),
++            )
++        _FLASHINFER_GDN_MTP_POOL_SIGNATURE = signature
++
+     def get_state_shape(
+         self,
+     ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
+@@ -390,6 +526,13 @@
+         self.key_dim = self.head_k_dim * self.num_k_heads
+         self.value_dim = self.head_v_dim * self.num_v_heads
+         self.gqa_interleaved_layout = gqa_interleaved_layout
++        # Cache the device-family query during construction.  The forward
++        # methods are inside the torch.compile region, where platform
++        # capability helpers are not Dynamo-compatible Python functions.
++        self._is_sm120 = bool(
++            current_platform.is_cuda()
++            and current_platform.is_device_capability_family(120)
++        )
+         if current_platform.is_xpu():
+             self._forward_method = self.forward_xpu
+         elif current_platform.is_cpu():
+@@ -500,6 +643,13 @@
+         self.enable_packed_recurrent_decode = (
+             envs.VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE
+         )
++        # FlashInfer's fused decode API requires the b/a projection in a
++        # transposed dense layout and a zero vector when conv1d has no bias.
++        # These are built lazily after model weights and KV-cache tensors exist.
++        self._flashinfer_gdn_w_ba: torch.Tensor | None = None
++        self._flashinfer_gdn_w_ba_key: tuple | None = None
++        self._flashinfer_gdn_conv_bias: torch.Tensor | None = None
++        self._flashinfer_gdn_conv_bias_key: tuple | None = None
+         self.gdn_decode_kernel = envs.VLLM_GDN_DECODE_KERNEL.strip().lower()
+         if self.gdn_decode_kernel == "cuda" and current_platform.is_cuda_alike():
+             reason = self._fused_gdn_decode_unsupported_reason(vllm_config)
+@@ -516,6 +666,11 @@
+             self.gdn_decode_kernel = "CPU"
+ 
+         self.enable_fused_gdn_decode = self.gdn_decode_kernel == "cuda"
++        if self._is_sm120 and self.enable_fused_gdn_decode:
++            logger.info_once(
++                "Using the legacy SM120 GDN FlashInfer/FLA path; disabling "
++                "the generic fused post-conv decode wrapper."
++            )
+         logger.info_once("GDN decode kernel: %s", self.gdn_decode_kernel)
+ 
+         compilation_config = get_current_vllm_config().compilation_config
+@@ -527,6 +682,18 @@
+         self, vllm_config: VllmConfig
+     ) -> str | None:
+         conv_state_dtype, recurrent_state_dtype = self.get_state_dtype()
++        narrow_fp16_state = (
++            envs.VLLM_QWEN3_5_FP16_SSM
++            and recurrent_state_dtype == torch.float16
++            and self._is_sm120
++            and self.tp_size == 2
++            and (self.hidden_size, self.num_v_heads) in ((5120, 48), (2048, 32))
++            and self.num_k_heads == 16
++            and vllm_config.speculative_config is None
++            and vllm_config.lora_config is None
++            and self.enable_packed_recurrent_decode
++            and self.norm.activation == "silu"
++        )
+         if (
+             self.gqa_interleaved_layout
+             or self.head_k_dim != 128
+@@ -534,7 +701,10 @@
+             or self.norm.activation not in ("silu", "sigmoid")
+             or vllm_config.model_config.dtype != torch.bfloat16
+             or conv_state_dtype != torch.bfloat16
+-            or recurrent_state_dtype not in FUSED_GDN_STATE_DTYPES
++            or (
++                recurrent_state_dtype not in FUSED_GDN_STATE_DTYPES
++                and not narrow_fp16_state
++            )
+             or not current_platform.has_device_capability(80)
+         ):
+             return (
+@@ -825,6 +995,34 @@
+ 
+         return query, key, value
+ 
++    def rearrange_mixed_qkv_flashinfer(self, mixed_qkv):
++        """Expose packed qkv as non-contiguous views for FlashInfer MTP.
++
++        FlashInfer's dynamic-layout MTP entry point accepts split views into
++        the row-packed convolution output.  Keeping the original row stride
++        avoids the intermediate ``torch.cat`` used by
++        :meth:`rearrange_mixed_qkv`; the generic FLA and attention paths still
++        use the contiguous layout above because their kernels have different
++        layout contracts.
++        """
++        if mixed_qkv is None:
++            return None, None, None
++
++        q_dim = self.key_dim // self.tp_size
++        k_dim = self.key_dim // self.tp_size
++        v_dim = self.value_dim // self.tp_size
++        query, key, value = torch.split(mixed_qkv, [q_dim, k_dim, v_dim], dim=-1)
++
++        # The leading dimension remains the packed QKV width.  ``view`` is
++        # valid because each split has a contiguous innermost head dimension;
++        # FlashInfer marks these layouts dynamic and consumes the stride
++        # directly.
++        seq_len = mixed_qkv.shape[0]
++        query = query.view(1, seq_len, -1, self.head_k_dim)
++        key = key.view(1, seq_len, -1, self.head_k_dim)
++        value = value.view(1, seq_len, -1, self.head_v_dim)
++        return query, key, value
++
+     def forward(
+         self,
+         hidden_states: torch.Tensor,
+@@ -878,6 +1076,7 @@
+                 projected_states_ba,
+                 z,
+                 core_attn_out,
++                hidden_states,
+                 layer_name=_encode_layer_name(self.prefix),
+                 use_aiter=True,
+             )
+@@ -903,8 +1102,13 @@
+         mixed_qkvz, _ = self.in_proj_qkvz(hidden_states)
+         ba, _ = self.in_proj_ba(hidden_states)
+ 
++        # SM120 has a dedicated FlashInfer/FLA decode path in _forward_core.
++        # The generic post-conv fused wrapper would bypass that path and use
++        # the slower generic MTP kernel at the batch sizes used by serving.
++        use_sm120_legacy_decode = self._is_sm120
+         use_fused_gdn_decode = (
+             self.enable_fused_gdn_decode
++            and not use_sm120_legacy_decode
+             and hidden_states.dtype == torch.bfloat16
+             and self.norm.weight.dtype in (torch.bfloat16, torch.float32)
+         )
+@@ -918,6 +1122,7 @@
+                 mixed_qkvz,
+                 ba,
+                 core_attn_out,
++                hidden_states,
+                 layer_name=_encode_layer_name(self.prefix),
+             )
+             output, _ = self.out_proj(core_attn_out.flatten(-2))
+@@ -956,6 +1161,7 @@
+             b.contiguous(),
+             a.contiguous(),
+             core_attn_out,
++            hidden_states,
+             layer_name=_encode_layer_name(self.prefix),
+         )
+ 
+@@ -1262,6 +1468,7 @@
+         b: torch.Tensor,
+         a: torch.Tensor,
+         core_attn_out: torch.Tensor,
++        hidden_states: torch.Tensor | None = None,
+     ):
+         """Core conv1d + recurrent attention (standard path).
+ 
+@@ -1289,6 +1496,13 @@
+             and attn_metadata.num_prefills == 0
+             and attn_metadata.num_decodes > 0
+         ):
++            if hidden_states is not None and self._try_flashinfer_gdn_decode(
++                hidden_states=hidden_states,
++                mixed_qkv=mixed_qkv,
++                core_attn_out=core_attn_out,
++                attn_metadata=attn_metadata,
++            ):
++                return
+             return self._forward_core_decode_non_spec(
+                 mixed_qkv=mixed_qkv,
+                 b=b,
+@@ -1296,6 +1510,21 @@
+                 core_attn_out=core_attn_out,
+                 attn_metadata=attn_metadata,
+             )
++
++        if (
++            attn_metadata.spec_sequence_masks is not None
++            and attn_metadata.num_prefills == 0
++            and attn_metadata.num_decodes == 0
++            and attn_metadata.num_spec_decodes > 0
++            and self._try_flashinfer_gdn_mtp_decode(
++                mixed_qkv=mixed_qkv,
++                b=b,
++                a=a,
++                core_attn_out=core_attn_out,
++                attn_metadata=attn_metadata,
++            )
++        ):
++            return
+ 
+         has_initial_state = attn_metadata.has_initial_state
+         spec_query_start_loc = attn_metadata.spec_query_start_loc
+@@ -1516,6 +1745,19 @@
+             assert prefill_has_initial_state is not None
+             initial_state = ssm_state[prefill_state_indices]
+             initial_state[~prefill_has_initial_state, ...] = 0
++
++            # For a non-speculative batch the prefill rows are contiguous in
++            # the caller-owned output.  Let the chunk kernel write there
++            # directly; this avoids an intermediate output tensor and a
++            # follow-up device copy on every layer.  Speculative batches need
++            # index-based stitching below, so they retain the compact result.
++            prefill_output = None
++            direct_prefill_output = spec_sequence_masks is None
++            if direct_prefill_output:
++                prefill_start = num_decode_tokens if split_non_spec else 0
++                prefill_output = core_attn_out[prefill_start:num_actual_tokens]
++            else:
++                prefill_output = None
+             (
+                 core_attn_out_non_spec,
+                 last_recurrent_state,
+@@ -1531,16 +1773,21 @@
+                 chunk_indices=attn_metadata.chunk_indices,
+                 chunk_offsets=attn_metadata.chunk_offsets,
+                 use_qk_l2norm_in_kernel=False,
++                core_attn_out=prefill_output,
+             )
+             # Init cache
+             ssm_state[prefill_state_indices] = last_recurrent_state.to(ssm_state.dtype)
+ 
+             if split_non_spec:
+-                # Stitch the peeled decode outputs in front of the prefill
+-                # outputs (decode-first order).
+-                core_attn_out_non_spec = torch.cat(
+-                    [core_attn_out_decode, core_attn_out_non_spec], dim=1
+-                )
++                # The runner already keeps non-spec requests decode-first.  Write
++                # each result directly into the caller-owned output buffer instead
++                # of materializing a concatenated [1, T, H, D] tensor per layer.
++                # Besides the copy itself, ``torch.cat`` used to create a sizable
++                # transient allocation on every mixed iteration; this is especially
++                # costly for long prefill chunks and can compete with KV-cache
++                # headroom even though it is not part of the KV cache.
++                core_attn_out[:num_decode_tokens] = core_attn_out_decode.squeeze(0)
++                core_attn_out_non_spec = None
+         elif attn_metadata.num_decodes > 0:
+             core_attn_out_non_spec, last_recurrent_state = (
+                 fused_sigmoid_gating_delta_rule_update(
+@@ -1566,18 +1813,407 @@
+ 
+         # 3. Merge core attention output
+         if spec_sequence_masks is not None and core_attn_out_non_spec is not None:
+-            merged_out = torch.empty(
+-                (1, num_actual_tokens, *core_attn_out_spec.shape[2:]),
+-                dtype=core_attn_out_non_spec.dtype,
+-                device=core_attn_out_non_spec.device,
+-            )
+-            merged_out.index_copy_(1, spec_token_indx, core_attn_out_spec)
+-            merged_out.index_copy_(1, non_spec_token_indx, core_attn_out_non_spec)
+-            core_attn_out[:num_actual_tokens] = merged_out.squeeze(0)
++            # Both index tensors address the first dimension of the flattened
++            # caller-owned output.  Avoid the temporary merged_out buffer and its
++            # extra device-to-device copy.
++            core_attn_out.index_copy_(0, spec_token_indx, core_attn_out_spec.squeeze(0))
++            core_attn_out.index_copy_(
++                0, non_spec_token_indx, core_attn_out_non_spec.squeeze(0)
++            )
+         elif spec_sequence_masks is not None:
+             core_attn_out[:num_actual_tokens] = core_attn_out_spec.squeeze(0)
+-        else:
++        elif core_attn_out_non_spec is not None and not (
++            spec_sequence_masks is None and attn_metadata.num_prefills > 0
++        ):
+             core_attn_out[:num_actual_tokens] = core_attn_out_non_spec.squeeze(0)
++
++    def _get_flashinfer_gdn_w_ba(self) -> torch.Tensor | None:
++        """Build the dense ``[hidden, 2 * local_v_heads]`` b/a weight view."""
++        if self.gqa_interleaved_layout:
++            # Qwen3-Next stores b/a interleaved by GQA group.  The fused API
++            # consumes all beta columns followed by all decay columns; keep
++            # the existing path for that layout until a matching reorder is
++            # added.
++            return None
++
++        weight = self.in_proj_ba.weight
++        if weight.ndim != 2 or weight.dtype != torch.bfloat16:
++            return None
++
++        local_heads = self.num_v_heads // self.tp_size
++        source_key = (
++            weight.data_ptr(),
++            tuple(weight.shape),
++            tuple(weight.stride()),
++            str(weight.device),
++            weight.dtype,
++            self.tp_rank,
++            self.disable_tp_for_ba_proj,
++        )
++        if self._flashinfer_gdn_w_ba_key == source_key:
++            return self._flashinfer_gdn_w_ba
++
++        source_weight = weight.detach()
++        if self.disable_tp_for_ba_proj:
++            if weight.shape != (2 * self.num_v_heads, self.hidden_size):
++                return None
++            start = self.tp_rank * local_heads
++            with torch.no_grad():
++                source_weight = torch.cat(
++                    (
++                        source_weight[start : start + local_heads],
++                        source_weight[
++                            self.num_v_heads + start : self.num_v_heads
++                            + start
++                            + local_heads
++                        ],
++                    ),
++                    dim=0,
++                )
++        elif weight.shape != (2 * local_heads, self.hidden_size):
++            return None
++
++        with torch.no_grad():
++            self._flashinfer_gdn_w_ba = source_weight.t().contiguous()
++        self._flashinfer_gdn_w_ba_key = source_key
++        return self._flashinfer_gdn_w_ba
++
++    def _get_flashinfer_gdn_conv_bias(
++        self, conv_weight: torch.Tensor
++    ) -> torch.Tensor | None:
++        """Return a dense BF16 conv bias, materializing zero for bias-free GDN."""
++        bias = self.conv1d.bias
++        if bias is None:
++            bias_key = (
++                str(conv_weight.device),
++                conv_weight.dtype,
++                conv_weight.size(0),
++            )
++            if self._flashinfer_gdn_conv_bias_key != bias_key:
++                self._flashinfer_gdn_conv_bias = torch.zeros(
++                    conv_weight.size(0),
++                    dtype=conv_weight.dtype,
++                    device=conv_weight.device,
++                )
++                self._flashinfer_gdn_conv_bias_key = bias_key
++            return self._flashinfer_gdn_conv_bias
++
++        if bias.dtype != torch.bfloat16 or bias.numel() != conv_weight.size(0):
++            return None
++        return bias.detach().reshape(-1).contiguous()
++
++    def _try_flashinfer_gdn_decode(
++        self,
++        hidden_states: torch.Tensor,
++        mixed_qkv: torch.Tensor,
++        core_attn_out: torch.Tensor,
++        attn_metadata: GDNAttentionMetadata,
++    ) -> bool:
++        """Run FlashInfer's specialized Qwen GDN decode when its contract fits."""
++        if not (
++            self._is_sm120
++            and not self.gqa_interleaved_layout
++            and self.head_k_dim == self.head_v_dim == 128
++        ):
++            return False
++
++        # The specialized SM120 implementation currently consumes an FP32
++        # recurrent-state pool.  BF16 cache mode remains on the existing FLA
++        # path; converting a paged state pool for every layer would erase the
++        # launch-fusion win and would change the cache's numerical contract.
++        ssm_state = self.kv_cache[1]
++        if ssm_state.dtype != torch.float32:
++            logger.info_once(
++                "FlashInfer fused GDN decode is available on SM120 but is "
++                "disabled because the Mamba SSM cache is %s; use "
++                "--mamba-ssm-cache-dtype float32 to enable it.",
++                ssm_state.dtype,
++            )
++            return False
++
++        fused_decode, fused_decode_supported = _get_flashinfer_gdn_decode_ops()
++        if fused_decode is None or fused_decode_supported is None:
++            return False
++
++        num_actual_tokens = attn_metadata.num_actual_tokens
++        state_indices = attn_metadata.non_spec_state_indices_tensor
++        if (
++            num_actual_tokens <= 0
++            or hidden_states.ndim != 2
++            or hidden_states.shape[0] < num_actual_tokens
++            or mixed_qkv.shape[0] < num_actual_tokens
++            or state_indices is None
++            or state_indices.shape[0] < num_actual_tokens
++        ):
++            return False
++
++        conv_state = (
++            self.kv_cache[0]
++            if is_conv_state_dim_first()
++            else self.kv_cache[0].transpose(-1, -2)
++        )
++        conv_state_len = self.conv_kernel_size - 1
++        local_conv_dim = self.conv1d.weight.size(0)
++        if (
++            conv_state.shape[1] != local_conv_dim
++            or conv_state.shape[2] < conv_state_len
++        ):
++            return False
++        # Speculative decoding reserves extra rolling-state columns.  The
++        # non-spec one-token update uses only the ordinary width-1 prefix, and
++        # this view preserves the extra columns for a later spec step.
++        conv_state = conv_state[..., :conv_state_len]
++        if is_conv_state_dim_first() and conv_state.stride(1) != conv_state_len:
++            # A DS pool with speculative columns is strided by the full
++            # reserved width and is not one of FlashInfer's dense layouts.
++            return False
++
++        conv_weight = self.conv1d.weight.detach().view(
++            self.conv1d.weight.size(0), self.conv1d.weight.size(2)
++        )
++        if conv_weight.dtype != torch.bfloat16:
++            return False
++        conv_weight = conv_weight.contiguous()
++        conv_bias = self._get_flashinfer_gdn_conv_bias(conv_weight)
++        w_ba = self._get_flashinfer_gdn_w_ba()
++        if conv_bias is None or w_ba is None:
++            return False
++        if self.A_log.dtype != torch.float32 or self.dt_bias.dtype != torch.bfloat16:
++            return False
++        if (
++            hidden_states.dtype != torch.bfloat16
++            or mixed_qkv.dtype != torch.bfloat16
++            or conv_state.dtype != torch.bfloat16
++            or state_indices.dtype != torch.int32
++            or core_attn_out.dtype != torch.bfloat16
++        ):
++            return False
++
++        batch_size = num_actual_tokens
++        conv_layout = "DS" if is_conv_state_dim_first() else "SD"
++        try:
++            supported = fused_decode_supported(
++                batch_size=batch_size,
++                hidden_size=self.hidden_size,
++                n_ba=w_ba.shape[1],
++                qkv_dim=mixed_qkv.shape[1],
++                num_qk_heads=self.num_k_heads // self.tp_size,
++                num_v_heads=self.num_v_heads // self.tp_size,
++                head_dim=self.head_k_dim,
++                conv_width=self.conv_kernel_size,
++                conv_state_len=conv_state_len,
++                device=hidden_states.device,
++                conv_state_layout=conv_layout,
++            )
++        except Exception:
++            logger.warning_once(
++                "FlashInfer fused GDN decode capability probing failed; "
++                "falling back to the vLLM FLA decode path.",
++            )
++            return False
++        if not supported:
++            return False
++
++        try:
++            fused_decode(
++                hidden_states=hidden_states[:num_actual_tokens],
++                w_ba=w_ba,
++                mixed_qkv=mixed_qkv[:num_actual_tokens],
++                conv_weight=conv_weight,
++                conv_bias=conv_bias,
++                conv_state=conv_state,
++                A_log=self.A_log.detach(),
++                dt_bias=self.dt_bias.detach(),
++                scale=self.head_k_dim**-0.5,
++                ssm_state=ssm_state,
++                state_indices=state_indices[:num_actual_tokens],
++                use_qk_l2norm=True,
++                out=core_attn_out[:num_actual_tokens].unsqueeze(1),
++            )
++        except Exception:
++            logger.warning_once(
++                "FlashInfer fused GDN decode execution failed; falling back "
++                "to the vLLM FLA decode path.",
++            )
++            return False
++
++        logger.info_once(
++            "Using FlashInfer fused GDN decode kernel on SM120 "
++            "(hidden=%d, n_ba=%d, qkv_dim=%d, batch=%d).",
++            self.hidden_size,
++            w_ba.shape[1],
++            mixed_qkv.shape[1],
++            batch_size,
++        )
++        return True
++
++    def _try_flashinfer_gdn_mtp_decode(
++        self,
++        mixed_qkv: torch.Tensor,
++        b: torch.Tensor,
++        a: torch.Tensor,
++        core_attn_out: torch.Tensor,
++        attn_metadata: GDNAttentionMetadata,
++    ) -> bool:
++        """Use FlashInfer's optimized recurrence for uniform spec decode.
++
++        FlashInfer's fused decode-step API is intentionally single-token.  A
++        speculative verification batch must first run the causal convolution,
++        then process all draft tokens from the same request in order.  The
++        FlashInfer MTP kernel is the matching optimized recurrence for that
++        phase; irregular or padded batches stay on vLLM's FLA implementation.
++        """
++        if not (
++            self._is_sm120
++            and not self.gqa_interleaved_layout
++            and self.head_k_dim == self.head_v_dim == 128
++            and self.kv_cache[1].dtype == torch.float32
++        ):
++            return False
++
++        mtp_decode = _get_flashinfer_gdn_mtp_op()
++        if mtp_decode is None:
++            return False
++
++        state_indices = attn_metadata.spec_state_indices_tensor
++        cu_seqlens = attn_metadata.spec_query_start_loc
++        num_accepted_tokens = attn_metadata.num_accepted_tokens
++        batch_size = attn_metadata.num_spec_decodes
++        if (
++            state_indices is None
++            or cu_seqlens is None
++            or num_accepted_tokens is None
++            or batch_size <= 0
++        ):
++            return False
++
++        # The FlashInfer MTP kernel has a fixed T interface.  Only use it when
++        # every active speculative request contributes the full draft window;
++        # the existing FLA path handles variable-length/padded captures.
++        seq_len = state_indices.shape[1]
++        num_tokens = batch_size * seq_len
++        if (
++            seq_len <= 1
++            or attn_metadata.num_spec_decode_tokens != num_tokens
++            or mixed_qkv.shape[0] < num_tokens
++            or b.shape[0] < num_tokens
++            or a.shape[0] < num_tokens
++            or core_attn_out.shape[0] < num_tokens
++            or state_indices.shape[0] < batch_size
++            or cu_seqlens.shape[0] < batch_size + 1
++        ):
++            return False
++
++        # Keep the convolution semantics identical to the existing MTP path.
++        # It updates the rolling conv state once per request and returns the
++        # activated q/k/v stream consumed by the recurrent kernel.
++        conv_state = (
++            self.kv_cache[0]
++            if is_conv_state_dim_first()
++            else self.kv_cache[0].transpose(-1, -2)
++        )
++        conv_weights = self.conv1d.weight.detach().view(
++            self.conv1d.weight.size(0), self.conv1d.weight.size(2)
++        )
++        conv_bias = None if self.conv1d.bias is None else self.conv1d.bias.detach()
++        active_state_indices = state_indices[:batch_size, :seq_len]
++        active_cu_seqlens = cu_seqlens[: batch_size + 1]
++        active_num_accepted = num_accepted_tokens[:batch_size]
++        conv_output = causal_conv1d_update(
++            mixed_qkv[:num_tokens],
++            conv_state,
++            conv_weights,
++            conv_bias,
++            self.activation,
++            conv_state_indices=active_state_indices[:, 0],
++            num_accepted_tokens=active_num_accepted,
++            query_start_loc=active_cu_seqlens,
++            max_query_len=seq_len,
++            validate_data=False,
++        )
++        query, key, value = self.rearrange_mixed_qkv_flashinfer(conv_output)
++        query = query.reshape(
++            batch_size, seq_len, self.num_k_heads // self.tp_size, self.head_k_dim
++        )
++        key = key.reshape(
++            batch_size, seq_len, self.num_k_heads // self.tp_size, self.head_k_dim
++        )
++        value = value.reshape(
++            batch_size,
++            seq_len,
++            self.num_v_heads // self.tp_size,
++            self.head_v_dim,
++        )
++        a = a[:num_tokens].reshape(
++            batch_size, seq_len, self.num_v_heads // self.tp_size
++        )
++        b = b[:num_tokens].reshape(
++            batch_size, seq_len, self.num_v_heads // self.tp_size
++        )
++
++        # vLLM's FLA kernel selects the state after the already-accepted
++        # prefix, i.e. state_indices[i, num_accepted_tokens[i] - 1].
++        initial_token = (active_num_accepted - 1).clamp(0, seq_len - 1).view(-1, 1)
++        initial_state_indices = active_state_indices.gather(1, initial_token).view(-1)
++        output = core_attn_out[:num_tokens].reshape(
++            batch_size,
++            seq_len,
++            self.num_v_heads // self.tp_size,
++            self.head_v_dim,
++        )
++        used_flashinfer = True
++        try:
++            mtp_decode(
++                q=query,
++                k=key,
++                v=value,
++                initial_state=self.kv_cache[1],
++                initial_state_indices=initial_state_indices,
++                A_log=self.A_log.detach(),
++                a=a,
++                dt_bias=self.dt_bias.detach(),
++                b=b,
++                scale=self.head_k_dim**-0.5,
++                output=output,
++                ssm_state_indices=active_state_indices,
++                disable_state_update=False,
++                use_qk_l2norm=True,
++            )
++        except Exception:
++            # The conv state has already been advanced.  Fall back only to
++            # the recurrent FLA kernel over the post-conv tensors; re-running
++            # the general path would advance the conv state twice.
++            logger.warning_once(
++                "FlashInfer GDN MTP decode execution failed; falling back "
++                "to the vLLM FLA MTP recurrence.",
++            )
++            used_flashinfer = False
++            fallback_out, _ = fused_sigmoid_gating_delta_rule_update(
++                A_log=self.A_log,
++                a=a.reshape(num_tokens, -1),
++                b=b.reshape(num_tokens, -1),
++                dt_bias=self.dt_bias,
++                q=query.reshape(1, num_tokens, query.shape[2], query.shape[3]),
++                k=key.reshape(1, num_tokens, key.shape[2], key.shape[3]),
++                v=value.reshape(1, num_tokens, value.shape[2], value.shape[3]),
++                initial_state=self.kv_cache[1],
++                inplace_final_state=True,
++                cu_seqlens=active_cu_seqlens,
++                ssm_state_indices=active_state_indices,
++                num_accepted_tokens=active_num_accepted,
++                use_qk_l2norm_in_kernel=True,
++            )
++            core_attn_out[:num_tokens] = fallback_out.squeeze(0)
++
++        if used_flashinfer:
++            logger.info_once(
++                "Using FlashInfer GDN MTP decode kernel on SM120 "
++                "(hidden=%d, batch=%d, tokens/request=%d).",
++                self.hidden_size,
++                batch_size,
++                seq_len,
++            )
++        return True
+ 
+     def _forward_core_decode_aiter(
+         self,
+@@ -1786,6 +2422,7 @@
+         mixed_qkvz: torch.Tensor,
+         ba: torch.Tensor,
+         core_attn_out: torch.Tensor,
++        hidden_states: torch.Tensor,
+     ) -> None:
+         forward_context = get_forward_context()
+         attn_metadata_raw = forward_context.attn_metadata
+@@ -1811,6 +2448,7 @@
+             a=a,
+             output_gate=output_gate,
+             core_attn_out=core_attn_out,
++            hidden_states=hidden_states,
+         )
+ 
+     def _can_use_fused_gdn_mtp_decode(
+@@ -1871,6 +2509,7 @@
+         a: torch.Tensor,
+         output_gate: torch.Tensor,
+         core_attn_out: torch.Tensor,
++        hidden_states: torch.Tensor,
+     ) -> None:
+         forward_context = get_forward_context()
+         attn_metadata_raw = forward_context.attn_metadata
+@@ -1882,10 +2521,11 @@
+             return
+ 
+         assert isinstance(attn_metadata, GDNAttentionMetadata)
+-        if (
+-            self._can_use_fused_gdn_mtp_decode(attn_metadata)
++        if not (
++            attn_metadata.spec_sequence_masks is not None
+             and attn_metadata.num_prefills == 0
+-        ):
++            and self._is_sm120
++        ) and self._can_use_fused_gdn_mtp_decode(attn_metadata):
+             self._forward_core_decode_spec_fused_norm(
+                 mixed_qkv=mixed_qkv,
+                 b=b,
+@@ -1895,11 +2535,17 @@
+                 attn_metadata=attn_metadata,
+             )
+             return
++
++        # The fused CUDA MTP kernel is useful on generic CUDA devices, but it
++        # is slower than the SM120 FlashInfer/FLA route for Qwen3.5.  The
++        # latter is selected inside _forward_core (and is also the route used
++        # by the pre-fused implementation), so keep SM120 on that path.
+         self._forward_core(
+             mixed_qkv=mixed_qkv,
+             b=b.contiguous(),
+             a=a.contiguous(),
+             core_attn_out=core_attn_out,
++            hidden_states=hidden_states,
+         )
+         num_actual_tokens = attn_metadata.num_actual_tokens
+         self._rms_norm_gated_cuda(
+@@ -1909,11 +2555,13 @@
+         )
+ 
+ 
++@eager_break_during_capture
+ def qwen_gdn_attention_core(
+     qkv_or_qkvz: torch.Tensor,
+     b_or_ba: torch.Tensor,
+     a_or_z_out: torch.Tensor,
+     core_attn_out: torch.Tensor,
++    hidden_states: torch.Tensor,
+     layer_name: LayerNameType,
+     use_aiter: bool = False,
+ ) -> None:
+@@ -1946,6 +2594,7 @@
+             b=b_or_ba,
+             a=a_or_z_out,
+             core_attn_out=core_attn_out,
++            hidden_states=hidden_states,
+         )
+ 
+ 
+@@ -1954,6 +2603,7 @@
+     b_or_ba: torch.Tensor,
+     a_or_z_out: torch.Tensor,
+     core_attn_out: torch.Tensor,
++    hidden_states: torch.Tensor,
+     layer_name: LayerNameType,
+     use_aiter: bool = False,
+ ) -> None:
+@@ -1969,10 +2619,12 @@
+ )
+ 
+ 
++@eager_break_during_capture
+ def qwen_gdn_attention_core_fused_norm_packed(
+     mixed_qkvz: torch.Tensor,
+     ba: torch.Tensor,
+     core_attn_out: torch.Tensor,
++    hidden_states: torch.Tensor,
+     layer_name: LayerNameType,
+ ) -> None:
+     layer_name = _resolve_layer_name(layer_name)
+@@ -1982,6 +2634,7 @@
+         mixed_qkvz=mixed_qkvz,
+         ba=ba,
+         core_attn_out=core_attn_out,
++        hidden_states=hidden_states,
+     )
+ 
+ 
+@@ -1989,6 +2642,7 @@
+     mixed_qkvz: torch.Tensor,
+     ba: torch.Tensor,
+     core_attn_out: torch.Tensor,
++    hidden_states: torch.Tensor,
+     layer_name: LayerNameType,
+ ) -> None:
+     return
+--- a/vllm/v1/worker/gpu/cudagraph_utils.py
++++ b/vllm/v1/worker/gpu/cudagraph_utils.py
+@@ -32,7 +32,6 @@
+ from vllm.platforms import current_platform
+ from vllm.sequence import IntermediateTensors
+ from vllm.utils.math_utils import round_up
+-from vllm.utils.torch_utils import current_stream
+ from vllm.v1.kv_cache_interface import KVCacheConfig
+ from vllm.v1.spec_decode.dynamic.utils import build_dynamic_sd_schedule_lookup
+ from vllm.v1.worker.gpu.attn_utils import build_slot_mappings_by_layer
+@@ -137,7 +136,11 @@
+         self._lora_dispatch_map, self._max_lora_case = self._build_lora_dispatch_map()
+ 
+         self.graphs: dict[BatchExecutionDescriptor, torch.cuda.CUDAGraph] = {}
+-        self.pool = current_platform.get_global_graph_pool() if cudagraph_mode else None
++        self.pool = (
++            current_platform.get_global_graph_pool()
++            if cudagraph_mode and device.type == "cuda"
++            else None
++        )
+ 
+         self._graphs_captured = False
+ 
+@@ -149,6 +152,7 @@
+ 
+         self._candidates: dict[tuple[int, int], list[BatchExecutionDescriptor]] = {}
+         self._capture_descs: dict[CUDAGraphMode, list[BatchExecutionDescriptor]] = {}
++        self.decode_query_lens = {decode_query_len}
+ 
+         # Breakable CUDA graph (PW CUDA graph without torch.compile)
+         self.use_breakable_cg = (
+@@ -185,6 +189,25 @@
+         # Counts above the largest captured case clamp to it.
+         return self._lora_dispatch_map.get(num_active_loras, self._max_lora_case)
+ 
++    def _build_candidates(
++        self,
++        descs_by_token_lora: dict[tuple[int, int], list[BatchExecutionDescriptor]],
++    ) -> dict[tuple[int, int], list[BatchExecutionDescriptor]]:
++        candidates: dict[tuple[int, int], list[BatchExecutionDescriptor]] = {}
++        for num_active_loras in self.lora_capture_cases:
++            token_counts = sorted(
++                num_tokens
++                for num_tokens, lora_count in descs_by_token_lora
++                if lora_count == num_active_loras
++            )
++            current_range_start = 0
++            for token_cg_size in token_counts:
++                descs = descs_by_token_lora[(token_cg_size, num_active_loras)]
++                for num_tokens in range(current_range_start, token_cg_size + 1):
++                    candidates[(num_tokens, num_active_loras)] = descs
++                current_range_start = token_cg_size + 1
++        return candidates
++
+     def _init_candidates(self) -> None:
+         """Build priority-ordered candidate lists for each token count."""
+         capture_sizes = self.compilation_config.cudagraph_capture_sizes
+@@ -192,11 +215,11 @@
+             return
+ 
+         capture_sizes = sorted(capture_sizes)
+-        max_decode_tokens = self.max_num_reqs * self.decode_query_len
+         decode_mode = self.cudagraph_mode.decode_mode()
+         mixed_mode = self.cudagraph_mode.mixed_mode()
+         separate_decode_routine = self.cudagraph_mode.separate_routine()
+         max_cg_capture_size = self.compilation_config.max_cudagraph_capture_size
++        assert max_cg_capture_size is not None
+ 
+         descs_by_mode: defaultdict[CUDAGraphMode, list[BatchExecutionDescriptor]] = (
+             defaultdict(list)
+@@ -229,10 +252,12 @@
+             )
+         else:
+             decode_query_lens = [self.decode_query_len]
++        self.decode_query_lens = set(decode_query_lens)
+ 
+         capture_varlen_decode = (
+             separate_decode_routine and bool(decode_mode) and self.varlen_decode
+         )
++        max_decode_tokens = self.max_num_reqs * self.decode_query_len
+         for num_tokens, num_active_loras in product(
+             capture_sizes, self.lora_capture_cases
+         ):
+@@ -251,6 +276,7 @@
+             #  (i.e. separate decode routine)
+             elif separate_decode_routine and decode_mode and not self.varlen_decode:
+                 for decode_query_len in decode_query_lens:
++                    max_decode_tokens = self.max_num_reqs * decode_query_len
+                     rounded_num_tokens = round_up(num_tokens, decode_query_len)
+                     rounded_num_reqs = rounded_num_tokens // decode_query_len
+ 
+@@ -273,6 +299,9 @@
+                     if desc not in descs_by_mode[decode_mode]:
+                         descs_by_mode[decode_mode].append(desc)
+ 
++        for num_tokens, num_active_loras in product(
++            capture_sizes, self.lora_capture_cases
++        ):
+             if mixed_mode:
+                 # for PIECEWISE graphs there is no limit on requests when replaying
+                 # i.e. no request padding is needed, so we leave it as None.
+@@ -313,11 +342,23 @@
+     def needs_capture(self) -> bool:
+         return len(self._capture_descs) > 0
+ 
++    def get_capture_sizes(self) -> list[int]:
++        """Return the distinct token counts that will be captured."""
++        return sorted(
++            {
++                desc.num_tokens
++                for descs in self._capture_descs.values()
++                for desc in descs
++            },
++            reverse=True,
++        )
++
+     @torch.inference_mode()
+     def capture(
+         self,
+         create_forward_fn: CreateForwardFn,
+         progress_bar_desc: str = "Capturing CUDA graphs",
++        capture_stream_warmup: Callable[[], None] | None = None,
+     ) -> None:
+         """Capture CUDA graphs.
+ 
+@@ -327,8 +368,13 @@
+                 it is invoked once with warmup=True and again with warmup=False
+                 because attention backends may mutate or lazily initialize
+                 metadata during warmup.
++            capture_stream_warmup: Optional eager warmup that runs on the CUDA
++                graph capture stream before any graph capture begins.
+         """
+-        with graph_capture(device=self.device):
++        with graph_capture(device=self.device) as graph_capture_context:
++            if capture_stream_warmup is not None:
++                capture_stream_warmup()
++
+             # Capture in order: PIECEWISE first, then FULL. PIECEWISE has larger
+             # activations so FULL activations should fit in already allocated
+             # buffers in the graph pool.
+@@ -384,7 +430,9 @@
+                             torch.accelerator.synchronize()
+                             free_before = torch.accelerator.get_memory_info()[0]
+                         with torch.cuda.graph(
+-                            graph, self.pool, stream=current_stream()
++                            graph,
++                            self.pool,
++                            stream=graph_capture_context.stream,
+                         ):
+                             forward_fn(CUDAGraphMode.NONE)
+                             # Join offloader's copy stream after forward to avoid
+@@ -614,7 +662,24 @@
+ 
+             return forward_fn
+ 
+-        super().capture(create_forward_fn, progress_bar_desc)
++        capture_sizes = [
++            desc.num_tokens for descs in self._capture_descs.values() for desc in descs
++        ]
++
++        def warmup_capture_stream() -> None:
++            from vllm_mach.mxfp6.warmup import warmup_mxfp6_sm120_stream
++
++            warmup_mxfp6_sm120_stream(
++                model,
++                capture_sizes,
++                self.vllm_config.model_config.dtype,
++            )
++
++        super().capture(
++            create_forward_fn,
++            progress_bar_desc,
++            capture_stream_warmup=warmup_capture_stream,
++        )
+ 
+     def run_fullgraph(
+         self, desc: BatchExecutionDescriptor
+--- a/vllm/v1/worker/gpu/model_runner.py
++++ b/vllm/v1/worker/gpu/model_runner.py
+@@ -139,7 +139,10 @@
+     gather_sampler_output,
+ )
+ from vllm.v1.worker.gpu.sample.output import SamplerOutput
+-from vllm.v1.worker.gpu.sample.prompt_logprob import PromptLogprobsWorker
++from vllm.v1.worker.gpu.sample.prompt_logprob import (
++    PromptLogprobsWorker,
++    compute_prompt_logprobs_with_chunking,
++)
+ from vllm.v1.worker.gpu.sample.sampler import Sampler
+ from vllm.v1.worker.gpu.shutdown import free_before_shutdown
+ from vllm.v1.worker.gpu.spec_decode import init_speculator
+@@ -848,6 +851,21 @@
+         self.pooling_runner.dummy_pooler_run(hidden_states)
+ 
+     @torch.inference_mode()
++    def _dummy_prompt_logprobs_run(self, hidden_states: torch.Tensor) -> None:
++        """Profile the largest full-logits chunk used by prompt logprobs."""
++        num_tokens = min(1024, hidden_states.shape[0])
++        prompt_token_ids = torch.zeros(
++            num_tokens, dtype=torch.int64, device=hidden_states.device
++        )
++        compute_prompt_logprobs_with_chunking(
++            prompt_token_ids,
++            hidden_states[:num_tokens],
++            self.model.compute_logits,
++            num_prompt_logprobs=1,
++        )
++
++
++    @torch.inference_mode()
+     def profile_run(self) -> None:
+         if self.supports_mm_inputs and self.is_first_pp_rank:
+             mm_config = self.model_config.multimodal_config
+@@ -873,7 +891,13 @@
+         if self.is_last_pp_rank:
+             assert sample_hidden_states is not None
+             if self.pooling_runner is None:
++                # MTP rejection sampling flattens one target row plus the
++                # speculative rows for every request.  Profile that larger
++                # top-k/top-p shape before KV cache allocation so its Triton
++                # workspace is accounted for and reused during warmup.
+                 self._dummy_sampler_run(sample_hidden_states)
++                assert hidden_states is not None
++                self._dummy_prompt_logprobs_run(hidden_states)
+             else:
+                 self._dummy_pooler_run(hidden_states)
+ 
+@@ -881,6 +905,7 @@
+         del hidden_states, sample_hidden_states
+         self.reset_encoder_cache()
+         gc.collect()
++
+ 
+     def reset_mm_cache(self) -> None:
+         if self.encoder_cache is not None:
+--- a/vllm/v1/worker/gpu_worker.py
++++ b/vllm/v1/worker/gpu_worker.py
+@@ -134,6 +134,29 @@
+     return torch_reserved
+ 
+ 
++def _get_cudagraph_memory_reservation(
++    cudagraph_memory_estimate: int,
++    init_free_memory: int,
++    requested_memory: int,
++) -> tuple[int, int]:
++    """Split the CUDA graph estimate across the two available memory budgets.
++
++    CUDA graphs are captured before the KV cache is allocated.  Therefore, the
++    graph pool can use memory that is free at startup but outside the
++    ``gpu_memory_utilization`` budget.  Only the part that does not fit in that
++    headroom needs to be reserved from the requested KV-cache budget.
++
++    Returns ``(requested_memory_reservation, unrequested_memory_reservation)``.
++    Keeping this calculation separate makes the accounting easy to test and
++    prevents the graph estimate from being charged twice.
++    """
++    estimate = max(cudagraph_memory_estimate, 0)
++    unrequested_memory = max(init_free_memory - requested_memory, 0)
++    from_unrequested = min(estimate, unrequested_memory)
++    from_requested = estimate - from_unrequested
++    return from_requested, from_unrequested
++
++
+ if TYPE_CHECKING:
+     from vllm.device_allocator.sleep_mode_backend import SleepModeBackend
+     from vllm.model_executor.model_loader.tensorizer import TensorizerConfig
+@@ -343,6 +366,22 @@
+             _SIZE_MAX_MB = (2**64 - 1) // (1024 * 1024)
+             restore = original_value if original_value else str(_SIZE_MAX_MB)
+             torch._C._accelerator_setAllocatorSettings(f"max_split_size_mb:{restore}")
++
++    def _warmup_v2_tp_gather(self) -> None:
++        if (
++            not self.use_v2_model_runner
++            or self.model_config.runner_type != "generate"
++            or self.parallel_config.tensor_parallel_size == 1
++            or not get_pp_group().is_last_rank
++        ):
++            return
++
++        # V2 vocab-parallel sampling uses NCCL gather. ProcessGroupNCCL
++        # initializes its P2P channels lazily on the first gather, so warm them
++        # before the memory snapshot accounts for persistent non-Torch memory.
++        local_pair = torch.empty((1, 2), dtype=torch.float64, device=self.device)
++        get_tp_group().gather(local_pair, dst=0, dim=-1)
++        torch.accelerator.synchronize()
+ 
+     @instrument(span_name="Init device")
+     def init_device(self):
+@@ -427,6 +466,7 @@
+ 
+             if self.use_v2_model_runner:
+                 logger.info_once("Using V2 Model Runner")
++                self._warmup_v2_tp_gather()
+ 
+             # Set random seed.
+             set_random_seed(self.model_config.seed)
+@@ -569,14 +609,26 @@
+         ):
+             cudagraph_memory_estimate = self.model_runner.profile_cudagraph_memory()
+ 
+-        # Respect the opt-in flag as originally designed.
+-        cudagraph_memory_estimate_applied = (
+-            cudagraph_memory_estimate
+-            if envs.VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS
+-            else 0
+-        )
+-
+         init_free_memory = self.init_snapshot.free_memory
++        unrequested_memory = max(init_free_memory - self.requested_memory, 0)
++
++        # Respect the opt-in flag as originally designed.  When enabled, use
++        # the free memory outside the requested gpu_memory_utilization budget
++        # for the graph pool first.  Charging the full estimate to the
++        # requested budget unnecessarily shrinks the KV cache and can push
++        # larger batches over a cache-capacity cliff.
++        cudagraph_memory_estimate_applied = 0
++        cudagraph_memory_estimate_from_unrequested = 0
++        if envs.VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS:
++            (
++                cudagraph_memory_estimate_applied,
++                cudagraph_memory_estimate_from_unrequested,
++            ) = _get_cudagraph_memory_reservation(
++                cudagraph_memory_estimate,
++                init_free_memory,
++                self.requested_memory,
++            )
++
+         free_gpu_memory = profile_result.after_profile.free_memory
+         rocm_fallback = maybe_rocm_profiling_fallback(profile_result)
+         if rocm_fallback is None:
+@@ -609,7 +661,6 @@
+             - cudagraph_memory_estimate_applied
+         )
+ 
+-        unrequested_memory = self.init_snapshot.free_memory - self.requested_memory
+         logger.debug(
+             "Initial free memory: %s GiB; Requested memory: %f (util), %s GiB",
+             format_gib(self.init_snapshot.free_memory),
+@@ -630,26 +681,33 @@
+         if cudagraph_memory_estimate > 0:
+             total_mem = self.init_snapshot.total_memory
+             current_util = self.cache_config.gpu_memory_utilization
+-            cg_util_delta = cudagraph_memory_estimate / total_mem
+             if envs.VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS:
+-                equiv_util = round(current_util - cg_util_delta, 4)
++                cg_util_delta = cudagraph_memory_estimate / total_mem
++                applied_util_delta = cudagraph_memory_estimate_applied / total_mem
++                equiv_util = round(current_util - applied_util_delta, 4)
+                 suggested_util = min(
+                     round(current_util + cg_util_delta, 4),
+                     1.0,
+                 )
+                 logger.info(
+                     "CUDA graph memory profiling is enabled (default since "
+-                    "v0.21.0). The current --gpu-memory-utilization=%.4f is "
+-                    "equivalent to --gpu-memory-utilization=%.4f without "
+-                    "CUDA graph memory profiling. To maintain the same "
+-                    "effective KV cache size as before, increase "
+-                    "--gpu-memory-utilization to %.4f. To disable, set "
+-                    "VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.",
++                    "v0.21.0). Estimated CUDA graph memory is %s GiB; %s GiB "
++                    "fits in memory outside the requested budget and %s GiB "
++                    "is reserved from the KV cache. The current "
++                    "--gpu-memory-utilization=%.4f is equivalent to "
++                    "--gpu-memory-utilization=%.4f without CUDA graph memory "
++                    "profiling. To maintain the same effective KV cache size "
++                    "as before, increase --gpu-memory-utilization to %.4f. "
++                    "To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.",
++                    format_gib(cudagraph_memory_estimate),
++                    format_gib(cudagraph_memory_estimate_from_unrequested),
++                    format_gib(cudagraph_memory_estimate_applied),
+                     current_util,
+                     equiv_util,
+                     suggested_util,
+                 )
+             else:
++                cg_util_delta = cudagraph_memory_estimate / total_mem
+                 suggested_util = min(
+                     round(current_util + cg_util_delta, 4),
+                     1.0,
+@@ -860,6 +918,23 @@
+             logger.info(msg)
+ 
+             maybe_save_startup_plan(self, kv_cache_memory_bytes_to_requested_limit)
++
++        # Qwen3.5's long-prefill kernels have shapes that are not covered by
++        # decode graph capture. Warm them for both model-runner generations.
++        if (
++            get_pp_group().is_last_rank
++            and "Qwen3_5MoeForConditionalGeneration" in self.model_config.architectures
++        ):
++            long_prefill_tokens = min(
++                3000,
++                self.scheduler_config.max_num_batched_tokens,
++                self.model_config.max_model_len - 1,
++            )
++            self.model_runner._dummy_run(
++                num_tokens=long_prefill_tokens,
++                skip_eplb=True,
++                cudagraph_runtime_mode=CUDAGraphMode.NONE,
++            )
+ 
+         if self.use_v2_model_runner:
+             # V2: Run full execute_model + sample_tokens to JIT compile triton kernels.
+@@ -1102,7 +1177,13 @@
+     def sample_tokens(
+         self, grammar_output: "GrammarOutput | None"
+     ) -> ModelRunnerOutput | AsyncModelRunnerOutput:
+-        return self.model_runner.sample_tokens(grammar_output)
++        context = (
++            self.profiler.annotate_context_manager("sample_tokens")
++            if self.profiler
++            else nullcontext()
++        )
++        with context:
++            return self.model_runner.sample_tokens(grammar_output)
+ 
+     @torch.inference_mode()
+     @with_gpu_sync_check
+--- a/vllm/v1/attention/backends/flashinfer.py
++++ b/vllm/v1/attention/backends/flashinfer.py
+@@ -2,6 +2,7 @@
+ # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ """Attention layer with FlashInfer."""
+ 
++import os
+ from dataclasses import dataclass, replace
+ from enum import Enum
+ from functools import partial
+@@ -41,6 +42,7 @@
+ from vllm.triton_utils import tl, triton
+ from vllm.utils.flashinfer import (
+     can_use_trtllm_attention,
++    can_use_xqa_attention,
+     flashinfer_xqa_batch_decode_with_kv_cache,
+     force_use_trtllm_attention,
+     supports_trtllm_attention,
+@@ -98,6 +100,15 @@
+ logger = init_logger(__name__)
+ 
+ trtllm_workspace_buffer = None
++_xqa_spec_decode_causal_mask_cache: dict[tuple[str, int, int, int], torch.Tensor] = {}
++
++
++def _use_separate_kv_head_slots() -> bool:
++    """Use separate K/V head slots for the SM120 XQA layout."""
++    return (
++        envs.VLLM_FLASHINFER_SEPARATE_KV_HEADS
++        and current_platform.is_device_capability_family(120)
++    )
+ 
+ 
+ def _get_trtllm_workspace_buffer():
+@@ -107,6 +118,20 @@
+             envs.VLLM_FLASHINFER_WORKSPACE_BUFFER_SIZE, dtype=torch.uint8, device="cuda"
+         )
+     return trtllm_workspace_buffer
++
++
++def _can_use_xqa_decode(
++    q_len_per_req: int,
++    window_left: int,
++    logits_soft_cap: float | None,
++) -> bool:
++    # FlashInfer's XQA decode API has no logits_soft_cap parameter.
++    has_logits_soft_cap = logits_soft_cap not in (None, 0.0)
++    # Sliding-window verifier attention needs a different window start for
++    # each query token, which cannot be represented by the current XQA mask
++    # contract.
++    has_sliding_spec_decode = q_len_per_req > 1 and window_left >= 0
++    return not (has_logits_soft_cap or has_sliding_spec_decode)
+ 
+ 
+ def _pack_draft_block_bool_mask(
+@@ -395,6 +420,22 @@
+     def customize_spec(cls, spec: "AttentionSpec") -> "AttentionSpec":
+         """NVFP4 stores K and V as separate per-head slots of packed fp4 data
+         plus fp8 block scales."""
++        if (
++            _use_separate_kv_head_slots()
++            and spec.state_content_bytes is None
++            and spec.kv_quant_mode == KVQuantMode.NONE
++            and spec.head_size == spec.head_size_v
++            and spec.num_head_slots is None
++        ):
++            # The normal BF16/FP16 cache packs K and V into the content axis.
++            # On SM120 this gives XQA a stride of 2*head_dim between adjacent
++            # KV heads.  Keep the same total page size, but put K heads first
++            # and V heads second so each XQA input view is head-contiguous.
++            return replace(
++                spec,
++                num_head_slots=2 * spec.num_kv_heads,
++                state_content_bytes=spec.head_size * get_dtype_size(spec.dtype),
++            )
+         if spec.state_content_bytes is not None or not spec.kv_quant_mode.is_nvfp4:
+             return spec
+         hs_k = nvfp4_kv_cache_full_dim(spec.head_size)
+@@ -440,6 +481,31 @@
+             return [16, 32, 64]
+         return [16, 32, 64, 128, 256, 512, 1024]
+ 
++    @classmethod
++    def get_preferred_block_size(cls, default_block_size: int) -> int:
++        """Prefer the XQA page size measured for SM120 hybrid decode.
++
++        The default framework block size (16) is still useful for general
++        models, but it prevents a hybrid block from being divisible by the
++        faster XQA page-64 kernel. Keep this workload-specific: explicit
++        ``--block-size`` remains authoritative, and speculative/MTP paths are
++        left unchanged because they have not been validated with this layout.
++        """
++        vllm_config = get_current_vllm_config_or_none()
++        if (
++            default_block_size == 16
++            and _use_separate_kv_head_slots()
++            and current_platform.is_device_capability_family(120)
++            and vllm_config is not None
++            and vllm_config.model_config is not None
++            and vllm_config.model_config.is_hybrid
++            and getattr(vllm_config.speculative_config, "method", None) is None
++            and vllm_config.cache_config.cache_dtype
++            in ("auto", "float16", "bfloat16")
++        ):
++            return 64
++        return super().get_preferred_block_size(default_block_size)
++
+     @staticmethod
+     def get_name() -> str:
+         return "FLASHINFER"
+@@ -536,6 +602,12 @@
+     @classmethod
+     def supported_kv_cache_layouts(cls) -> tuple[KVCacheLayout, ...] | None:
+         capability = current_platform.get_device_capability()
++        if _use_separate_kv_head_slots():
++            # The separate-head representation is most effective when the
++            # page interior is head-major: XQA then sees contiguous token
++            # vectors after its zero-copy HND -> NHD view.  Keep the behavior
++            # isolated to this layout while leaving non-SM120 paths unchanged.
++            return (KVCacheLayout.LBHNC,)
+         if capability is not None and capability.major == 10:
+             # The trtllm-gen kernels consume head-major block interiors; the L/B
+             # nesting outside the block is immaterial to them.
+@@ -634,7 +706,7 @@
+     """Tensor for writing K/V to the cache. Shape: [num_actual_tokens]"""
+ 
+     # The data types of the query for prefill and decode.
+-    # On SM90, these two data types may be different.
++    # On XQA-capable devices, these two data types may be different.
+     q_data_type_prefill: torch.dtype
+     q_data_type_decode: torch.dtype
+ 
+@@ -718,6 +790,12 @@
+             if speculative_config is not None
+             else 0
+         )
++        num_spec_tokens = num_spec_tokens or 0
++        spec_decode_query_len = 1 + num_spec_tokens
++        if speculative_config is not None and speculative_config.parallel_drafting:
++            spec_decode_query_len = 1 + 2 * num_spec_tokens
++        self.spec_decode_query_len = spec_decode_query_len
++        max_decode_rows = max_num_reqs * spec_decode_query_len
+         self.enable_cuda_graph = (
+             self.compilation_config.cudagraph_mode.decode_mode() == CUDAGraphMode.FULL
+         )
+@@ -727,7 +805,7 @@
+             self._decode_wrappers_cudagraph: dict[
+                 int, BatchDecodeWithPagedKVCacheWrapper
+             ] = {}
+-            self._decode_cudagraph_max_bs = (1 + num_spec_tokens) * max_num_reqs
++            self._decode_cudagraph_max_bs = max_decode_rows
+             if self.compilation_config.max_cudagraph_capture_size is not None:
+                 self._decode_cudagraph_max_bs = min(
+                     self._decode_cudagraph_max_bs,
+@@ -787,31 +865,42 @@
+             assert self.kv_cache_spec.dtype == self.model_config.dtype
+             self.kv_cache_dtype = self.kv_cache_spec.dtype
+ 
+-        # Compute per-phase Q dtype.  On SM90 (XQA decode), the prefill and
+-        # decode phases require different Q dtypes when the KV cache is FP8
+-        # (FP8-Q for the FI native prefill, BF16/FP16-Q for XQA decode),
+-        # so both values must be tracked independently.
++        # Prefer trtllm-gen on SM100, then XQA on supported SM90/SM120
++        # configurations. The decode kernel must be selected statically for
++        # FULL CUDA graph capture.
++        can_use_trtllm_gen_decode = current_platform.is_device_capability_family(
++            100
++        ) and can_use_trtllm_attention(
++            self.num_qo_heads, self.num_kv_heads, is_prefill=False
++        )
++        can_use_xqa_decode = can_use_xqa_attention(
++            self.num_qo_heads,
++            self.num_kv_heads,
++            self.head_dim,
++        )
++        self.flashinfer_trtllm_api_decode_kernel: FlashInferDecodeKernel | None
++        if can_use_trtllm_gen_decode:
++            self.flashinfer_trtllm_api_decode_kernel = FlashInferDecodeKernel.TRTLLM_GEN
++        elif can_use_xqa_decode:
++            self.flashinfer_trtllm_api_decode_kernel = FlashInferDecodeKernel.XQA
++        else:
++            self.flashinfer_trtllm_api_decode_kernel = None
++        self.use_trtllm_decode_attention = (
++            self.flashinfer_trtllm_api_decode_kernel is not None
++        )
++
++        # Compute per-phase Q dtype. XQA decode requires model-dtype Q when the
++        # KV cache is FP8, while native SM90 prefill can use FP8 Q.
+         self.q_data_type_prefill = self.get_q_data_type(is_prefill=True)
+         self.q_data_type_decode = self.get_q_data_type(is_prefill=False)
+ 
+-        # Prefer TRTLLM/XQA for decoding whenever supported. The decode kernel
+-        # must be selected statically for FULL cudagraph capture.
+-        can_use_xqa_or_trtllm_gen_decode = can_use_trtllm_attention(
+-            self.num_qo_heads, self.num_kv_heads, is_prefill=False
+-        )
+         # Page sizes >= 128 require the trtllm-gen GQA/MQA path (guaranteed by
+         # get_supported_kernel_block_sizes).
+         assert self.page_size <= 64 or (
+-            current_platform.is_device_capability_family(100)
+-            and can_use_xqa_or_trtllm_gen_decode
++            self.flashinfer_trtllm_api_decode_kernel
++            == FlashInferDecodeKernel.TRTLLM_GEN
+             and self.num_qo_heads // self.num_kv_heads > 1
+         ), f"Unexpected FlashInfer page size {self.page_size} without trtllm-gen GQA"
+-        self.use_trtllm_decode_attention = can_use_xqa_or_trtllm_gen_decode
+-        self.flashinfer_trtllm_api_decode_kernel: FlashInferDecodeKernel | None = (
+-            self._get_flashinfer_trtllm_api_decode_kernel()
+-            if can_use_xqa_or_trtllm_gen_decode
+-            else None
+-        )
+         # The dedicated FlashInfer XQA API accepts head dimensions in
+         # [16, 256] that are divisible by 16. Some hybrid-attention models
+         # (for example Gemma 4) use XQA-compatible sliding-attention groups
+@@ -854,6 +943,17 @@
+             == FlashInferDecodeKernel.TRTLLM_GEN
+             and not self.use_dcp
+         )
++        # During autoregressive MTP drafting on SM120, XQA metadata keeps
++        # references to the runner's persistent block-table and seq-lens
++        # buffers.  The draft loop updates those buffers in place, so the
++        # metadata can be reused without rebuilding the FlashInfer wrapper.
++        # Keep this disabled for DCP and adaptive varlen paths, whose decode
++        # metadata has additional step-dependent state.
++        self.supports_draft_decode_metadata_update = (
++            self.use_dedicated_xqa
++            and not self.use_dcp
++            and not self.use_trtllm_gen_varlen_decode
++        )
+         supports_spec_as_decode = (
+             self.flashinfer_trtllm_api_decode_kernel
+             == FlashInferDecodeKernel.TRTLLM_GEN
+@@ -894,12 +994,42 @@
+         self.window_left = self.global_hyperparameters.window_left
+         self.logits_soft_cap = self.global_hyperparameters.logits_soft_cap
+         self.has_sinks = self.global_hyperparameters.has_sinks
++        if (
++            self.flashinfer_trtllm_api_decode_kernel == FlashInferDecodeKernel.XQA
++            and not _can_use_xqa_decode(1, self.window_left, self.logits_soft_cap)
++        ):
++            logger.warning_once(
++                "FlashInfer XQA decode is disabled because the model uses "
++                "attention logits soft capping, which XQA does not support."
++            )
++            self.flashinfer_trtllm_api_decode_kernel = None
++            self.use_trtllm_decode_attention = False
+         if self.has_sinks and not FlashInferBackend.supports_sink():
+             raise NotImplementedError(
+                 "FlashInfer backend currently does not support attention "
+                 "sinks, please use trtllm on blackwell or flash attention on "
+                 "earlier GPUs."
+             )
++        self.use_native_spec_decode = (
++            not self.is_kvcache_nvfp4 and not self.use_dcp and not self.has_sinks
++        )
++        xqa_supports_spec = (
++            self.flashinfer_trtllm_api_decode_kernel == FlashInferDecodeKernel.XQA
++            and _can_use_xqa_decode(
++                self.spec_decode_query_len,
++                self.window_left,
++                self.logits_soft_cap,
++            )
++        )
++        supports_spec_as_decode = (
++            self.flashinfer_trtllm_api_decode_kernel
++            == FlashInferDecodeKernel.TRTLLM_GEN
++            or xqa_supports_spec
++            or self.use_native_spec_decode
++        )
++        self._init_reorder_batch_threshold(
++            1, supports_spec_as_decode=supports_spec_as_decode
++        )
+         capability = current_platform.get_device_capability()
+         arch = f"sm{capability.major}{capability.minor}" if capability else "unknown"
+         decode_backend = (
+@@ -931,7 +1061,7 @@
+     def kv_cache_layout(self) -> KVCacheLayout:
+         return self.cache_config.get_resolved_kv_cache_layout()
+ 
+-    # Keep SM90 prefill/decode Q dtype selection in one place.
++    # Keep per-phase prefill/decode Q dtype selection in one place.
+     def get_q_data_type(self, is_prefill: bool) -> torch.dtype:
+         # The user sets --attention-config.disable_flashinfer_q_quantization
+         # to 1 explicitly, use model dtype for query.
+@@ -950,7 +1080,6 @@
+                 or current_platform.is_device_capability_family(120)
+             )
+             and not is_prefill
+-            and force_use_trtllm_attention() is not False
+             and cache_dtype.startswith("fp8")
+         ):
+             return self.model_config.dtype
+@@ -993,7 +1122,12 @@
+         num_qo_heads = vllm_config.model_config.get_num_attention_heads(
+             vllm_config.parallel_config
+         )
+-        has_trtllm_support: bool = len(kv_specs) > 0
++        # In 0.25.x can_use_trtllm_attention also reports the SM90 XQA
++        # decode path. Only trtllm-gen can bypass the DCP native-decode
++        # restriction here; XQA and SM120 use the native fallback below.
++        has_trtllm_support = (
++            current_platform.is_device_capability_family(100) and len(kv_specs) > 0
++        )
+         for spec in kv_specs:
+             if not isinstance(spec, AttentionSpec):
+                 # FlashInfer only applies to attention, so we don't consider other types
+@@ -1011,8 +1145,11 @@
+             is_sm12x or not vllm_config.attention_config.use_non_causal
+         ):
+             return AttentionCGSupport.UNIFORM_BATCH
+-        else:
+-            return AttentionCGSupport.UNIFORM_SINGLE_TOKEN_DECODE
++
++        if vllm_config.parallel_config.decode_context_parallel_size <= 1:
++            return AttentionCGSupport.UNIFORM_BATCH
++
++        return AttentionCGSupport.UNIFORM_SINGLE_TOKEN_DECODE
+ 
+     def _get_workspace_buffer(self):
+         if self._workspace_buffer is None:
+@@ -1280,6 +1417,109 @@
+         )
+         return paged_kv_indices
+ 
++    def _compute_flashinfer_expanded_decode_kv_metadata(
++        self,
++        seq_lens_cpu: torch.Tensor,
++        query_start_loc_cpu: torch.Tensor,
++        block_table_tensor: torch.Tensor,
++        num_decodes: int,
++        num_decode_tokens: int,
++        page_size: int,
++    ) -> torch.Tensor:
++        """
++        Build token-level paged KV metadata for native FlashInfer decode.
++
++        FlashInfer's native decode wrapper treats each metadata row as a
++        non-causal single-query decode. Spec decode verifies multiple tokens per
++        request, so expand each request into one metadata row per query token and
++        shrink the visible KV length for earlier draft positions. This preserves
++        causal verification semantics while keeping the FlashInfer decode path
++        graph-compatible.
++        """
++        assert num_decodes > 0
++        assert num_decode_tokens % num_decodes == 0
++        rows_per_decode = num_decode_tokens // num_decodes
++
++        query_start_loc_np = query_start_loc_cpu.numpy()
++        query_lens_np = (
++            query_start_loc_np[1 : num_decodes + 1] - query_start_loc_np[:num_decodes]
++        )
++        seq_lens_np = seq_lens_cpu.numpy()
++
++        indptr_np = self.paged_kv_indptr.np
++        last_page_len_np = self.paged_kv_last_page_len.np
++        indptr_np[0] = 0
++
++        total_blocks = 0
++        row_idx = 0
++        for req_idx in range(num_decodes):
++            query_len = int(query_lens_np[req_idx])
++            final_seq_len = int(seq_lens_np[req_idx])
++            for token_idx in range(rows_per_decode):
++                if token_idx < query_len:
++                    seq_len = final_seq_len - (query_len - 1 - token_idx)
++                    seq_len = max(seq_len, 0)
++                else:
++                    seq_len = 0
++
++                num_blocks = cdiv(seq_len, page_size) if seq_len > 0 else 0
++                total_blocks += num_blocks
++                indptr_np[row_idx + 1] = total_blocks
++                last_page_len_np[row_idx] = (
++                    page_size
++                    if seq_len > 0 and seq_len % page_size == 0
++                    else seq_len % page_size
++                )
++                row_idx += 1
++
++        assert row_idx == num_decode_tokens
++        assert total_blocks <= self.paged_kv_indices.gpu.numel()
++
++        self.paged_kv_indptr_cpu_buffer[: num_decode_tokens + 1] = (
++            self.paged_kv_indptr.cpu[: num_decode_tokens + 1]
++        )
++        paged_kv_indptr = self.paged_kv_indptr.gpu[: num_decode_tokens + 1]
++        paged_kv_indptr.copy_(
++            self.paged_kv_indptr_cpu_buffer[: num_decode_tokens + 1],
++            non_blocking=True,
++        )
++        self.paged_kv_last_page_len.gpu[:num_decode_tokens].copy_(
++            self.paged_kv_last_page_len.cpu[:num_decode_tokens],
++            non_blocking=True,
++        )
++
++        paged_kv_indices = self.paged_kv_indices.gpu[:total_blocks]
++        if total_blocks > 0:
++            _copy_expanded_page_indices_kernel[(num_decode_tokens,)](
++                paged_kv_indices,
++                block_table_tensor,
++                block_table_tensor.stride(0),
++                paged_kv_indptr,
++                ROWS_PER_REQ=rows_per_decode,
++                BLOCK_SIZE=1024,
++            )
++        return paged_kv_indices
++
++    def update_draft_decode_metadata(self, metadata: FlashInferMetadata) -> None:
++        """Reuse XQA draft metadata after the runner advances its buffers.
++
++        XQA consumes ``block_tables`` and ``seq_lens`` directly from the
++        persistent GPU buffers owned by the model runner.  Autoregressive
++        drafting changes those buffers in place; it does not change the XQA
++        kernel configuration, query width, or mask for the one-token draft
++        path.  There is therefore no metadata object to rebuild here.
++        """
++        if not self.supports_draft_decode_metadata_update:
++            raise NotImplementedError(
++                "FlashInfer draft metadata update is only supported for SM120 XQA"
++            )
++        assert metadata.decode is not None
++        assert isinstance(metadata.decode, FlashInferTrtllmAPIDecode)
++        assert metadata.decode.kernel == FlashInferDecodeKernel.XQA
++        assert metadata.decode.q_len_per_req == 1
++        assert metadata.decode.q_cu_seq_lens is None
++        assert metadata.decode.mask is None
++
+     def build(
+         self,
+         common_prefix_len: int,
+@@ -1298,6 +1538,20 @@
+                     require_uniform=not self.use_dedicated_xqa,
+                 )
+             )
++            if (
++                self.use_native_spec_decode
++                and self.reorder_batch_threshold > 1
++                and num_decodes > 0
++                and num_prefills > 0
++                and num_decode_tokens != num_decodes
++            ):
++                # Native spec-as-decode expands decode requests to token-level
++                # rows. Mixed multi-token decode/prefill batches still use
++                # request-level metadata, so run the whole batch as prefill.
++                num_decodes = 0
++                num_prefills = num_reqs
++                num_decode_tokens = 0
++                num_prefill_tokens = num_actual_tokens
+         else:
+             num_decodes = 0
+             num_prefills = num_reqs
+@@ -1336,6 +1590,29 @@
+         )
+         decode_with_flashinfer_trtllm_api = self.use_trtllm_decode_attention and (
+             causal or self.use_dedicated_xqa
++        )
++        if (
++            decode_with_flashinfer_trtllm_api
++            and self.flashinfer_trtllm_api_decode_kernel == FlashInferDecodeKernel.XQA
++            and num_decode_tokens > num_decodes
++            and not self.use_dedicated_xqa
++        ):
++            assert num_decodes > 0
++            if num_decode_tokens % num_decodes != 0:
++                decode_with_flashinfer_trtllm_api = False
++            else:
++                q_len_per_req = num_decode_tokens // num_decodes
++                decode_with_flashinfer_trtllm_api = _can_use_xqa_decode(
++                    q_len_per_req,
++                    self.window_left,
++                    self.logits_soft_cap,
++                )
++        native_decode_expands_queries = (
++            num_decodes > 0
++            and num_prefills == 0
++            and not decode_with_flashinfer_trtllm_api
++            and self.use_native_spec_decode
++            and self.reorder_batch_threshold > 1
+         )
+ 
+         if not causal and self.use_dcp:
+@@ -1682,6 +1959,18 @@
+                     and num_decode_tokens <= self._decode_cudagraph_max_bs
+                 )
+                 num_input_tokens = num_decode_tokens
++                if native_decode_expands_queries:
++                    paged_kv_indices = (
++                        self._compute_flashinfer_expanded_decode_kv_metadata(
++                            seq_lens_cpu,
++                            qo_indptr_cpu,
++                            block_table_tensor,
++                            num_decodes,
++                            num_decode_tokens,
++                            page_size,
++                        )
++                    )
++                assert paged_kv_indices is not None
+ 
+                 decode_wrapper = self._get_decode_wrapper(
+                     num_input_tokens, use_cudagraph
+@@ -1748,6 +2037,8 @@
+         sinks: torch.Tensor | None = None,
+     ) -> None:
+         self.num_heads = num_heads
++        self._small_batch_attention = None
++        self._use_small_batch_attention = os.getenv("VLLM_SMALL_BATCH_ATTN", "1") == "1"
+         self.head_size = head_size
+         self.scale = float(scale)
+         self.num_kv_heads = num_kv_heads
+@@ -1764,6 +2055,11 @@
+         self.cache_dtype = kv_cache_dtype
+         self.is_kvcache_nvfp4 = kv_cache_dtype.startswith("nvfp4")
+         self.kv_cache_dtype = "nvfp4" if self.is_kvcache_nvfp4 else kv_cache_dtype
++        self.use_separate_kv_head_slots = (
++            _use_separate_kv_head_slots()
++            and not self.is_kvcache_nvfp4
++            and not is_quantized_kv_cache(self.kv_cache_dtype)
++        )
+         self.fp4_data_dim = head_size // 2 if self.is_kvcache_nvfp4 else 0
+         self.logits_soft_cap = logits_soft_cap
+         self.kv_sharing_target_layer_name = kv_sharing_target_layer_name
+@@ -1792,7 +2088,7 @@
+ 
+         self.supports_xqa_or_trtllm_gen_decode = can_use_trtllm_attention(
+             num_heads, num_kv_heads, is_prefill=False
+-        )
++        ) or can_use_xqa_attention(num_heads, num_kv_heads, head_size)
+         vllm_config = get_current_vllm_config_or_none()
+         # The layout is resolved after model construction, so read it lazily.
+         self.cache_config = vllm_config.cache_config if vllm_config else None
+@@ -1866,8 +2162,9 @@
+             bmm1_scale *= layer._k_scale_float
+         return bmm1_scale
+ 
+-    # SM90 may need FP8-Q for native prefill and BF16/FP16-Q for XQA decode,
+-    # so quantize only the slice whose target dtype differs.
++    # XQA may need BF16/FP16-Q while native prefill uses FP8-Q, so
++    # quantize only the slice whose target dtype differs.
++
+     def maybe_quant_query(
+         self,
+         query: torch.Tensor,
+@@ -1914,7 +2211,7 @@
+         """
+         if attn_metadata is None:
+             # Profiling run.
+-            return output.fill_(0)
++            return output.zero_()
+ 
+         if self.bmm1_scale is None:
+             self.bmm1_scale = self.scale
+@@ -2011,6 +2308,14 @@
+                     cache.permute(*stride_order)
+                     for cache in kv_cache.split(self.num_kv_heads, dim=1)
+                 )
++            elif self.use_separate_kv_head_slots:
++                kv_perm = kv_cache.permute(*stride_order)
++                head_axis = (
++                    2
++                    if get_flashinfer_layout_string(self.kv_cache_layout) == "NHD"
++                    else 1
++                )
++                kv_cache_views = kv_perm.split(self.num_kv_heads, dim=head_axis)
+             else:
+                 kv_perm = kv_cache.permute(*stride_order)
+                 kv_cache_views = kv_perm.split(self.head_size, dim=-1)
+@@ -2058,6 +2363,16 @@
+             v_data, v_sf = nvfp4_split_data_scale(kv_cache_tuple[1])
+             nvfp4_kv_data = (k_data, v_data)
+             nvfp4_kv_block_scales = (k_sf, v_sf)
++        elif self.use_separate_kv_head_slots:
++            head_axis = (
++                2
++                if get_flashinfer_layout_string(self.kv_cache_layout) == "NHD"
++                else 1
++            )
++            kv_cache_tuple = tuple(
++                canonicalize_singleton_dim_strides(cache)
++                for cache in kv_cache_permute.split(self.num_kv_heads, dim=head_axis)
++            )
+         else:
+             kv_cache_tuple = kv_cache_permute.split(hs, dim=-1)
+ 
+@@ -2364,7 +2679,7 @@
+                 seq_lens_decode = attn_metadata.decode.seq_lens
+ 
+                 # trtllm-gen needs HND layout on SM100. XQA is selected
+-                # separately on SM90 and does not use this SM100 layout gate.
++                # separately and does not use this SM100 layout gate.
+                 if decode_with_trtllm_gen:
+                     assert get_flashinfer_layout_string(self.kv_cache_layout) == "HND"
+                 else:
+@@ -2374,13 +2689,15 @@
+                 assert is_strictly_contiguous(block_tables_decode)
+                 assert is_strictly_contiguous(seq_lens_decode)
+                 kv_cache_permute = canonicalize_singleton_dim_strides(kv_cache_permute)
+-                kv_strides = kv_cache_permute.stride()
+-                assert (
+-                    kv_strides[-1] == 1 and kv_strides[-2] == kv_cache_permute.shape[-1]
+-                ), (
+-                    "KV cache inner dims (block_size, head_size) must be "
+-                    f"contiguous, got strides {kv_strides}"
+-                )
++                if decode_with_trtllm_gen:
++                    kv_strides = kv_cache_permute.stride()
++                    assert (
++                        kv_strides[-1] == 1
++                        and kv_strides[-2] == kv_cache_permute.shape[-1]
++                    ), (
++                        "KV cache inner dims (block_size, head_size) must be "
++                        f"contiguous, got strides {kv_strides}"
++                    )
+ 
+                 if use_dcp:
+                     assert decode_with_trtllm_gen
+@@ -2399,6 +2716,51 @@
+                         layer, attn_metadata.q_data_type_decode
+                     )
+                     q_len_per_req: int | None = attn_metadata.decode.q_len_per_req
++
++                    if (
++                        self._use_small_batch_attention
++                        and current_platform.is_device_capability_family(120)
++                        and attn_metadata.num_decodes == 1
++                        and attn_metadata.num_prefills == 0
++                        and attn_metadata.causal
++                        and q_len_per_req in (1, 5)
++                        and num_decode_tokens == q_len_per_req
++                        and attn_metadata.decode.q_cu_seq_lens is None
++                        and self.num_heads == 16
++                        and self.num_kv_heads == 4
++                        and self.head_size == 256
++                        and self.window_left == -1
++                        and not self.logits_soft_cap
++                        and self.sinks is None
++                        and self.alibi_slopes is None
++                        and decode_query.dtype == torch.bfloat16
++                        and kv_cache_tuple[0].dtype == torch.bfloat16
++                        and output.dtype == torch.bfloat16
++                        and self.bmm2_scale == 1.0
++                    ):
++                        if self._small_batch_attention is None:
++                            from vllm.v1.attention.ops.triton_small_batch_attention import (
++                                SmallBatchAttention,
++                            )
++
++                            self._small_batch_attention = SmallBatchAttention()
++                            layout = get_flashinfer_layout_string(self.kv_cache_layout)
++                            logger.info_once(
++                                "Using experimental BS1 split-KV attention "
++                                "(layout=%s, page=%d).",
++                                layout,
++                                kv_cache_tuple[0].shape[1 if layout == "NHD" else 2],
++                            )
++                        self._small_batch_attention(
++                            decode_query,
++                            kv_cache_tuple,
++                            output[:num_decode_tokens],
++                            block_tables_decode,
++                            seq_lens_decode,
++                            bmm1_scale,
++                            get_flashinfer_layout_string(self.kv_cache_layout),
++                        )
++                        return output_padded
+ 
+                     flashinfer_xqa_batch_decode_with_kv_cache(
+                         query=decode_query,
+@@ -2535,6 +2897,12 @@
+                 # (B, 2*H, N, full_dim) -> ((B, N, H, full_dim),
+                 #                            (B, N, H, full_dim));
+                 # K heads first, then V heads.
++                k_cache, v_cache = kv_cache.transpose(1, 2).split(
++                    self.num_kv_heads, dim=-2
++                )
++            elif self.use_separate_kv_head_slots:
++                # (B, 2*H, N, head_size) -> ((B, N, H, head_size),
++                #                             (B, N, H, head_size)).
+                 k_cache, v_cache = kv_cache.transpose(1, 2).split(
+                     self.num_kv_heads, dim=-2
+                 )
+@@ -2670,3 +3038,29 @@
+             block_ids,
+             mask=i + offset < num_blocks,
+         )
++
++
++@triton.jit
++def _copy_expanded_page_indices_kernel(
++    page_indices,
++    block_table,
++    block_table_stride,
++    cu_num_blocks,
++    ROWS_PER_REQ: tl.constexpr,
++    BLOCK_SIZE: tl.constexpr,
++):
++    row_idx = tl.program_id(0)
++    req_idx = row_idx // ROWS_PER_REQ
++    row_ptr = block_table + req_idx * block_table_stride
++    start_idx = tl.load(cu_num_blocks + row_idx)
++    end_idx = tl.load(cu_num_blocks + row_idx + 1)
++    num_blocks = end_idx - start_idx
++
++    offset = tl.arange(0, BLOCK_SIZE)
++    for i in tl.range(0, num_blocks, BLOCK_SIZE):
++        block_ids = tl.load(row_ptr + i + offset, mask=i + offset < num_blocks)
++        tl.store(
++            page_indices + start_idx + i + offset,
++            block_ids,
++            mask=i + offset < num_blocks,
++        )

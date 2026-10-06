@@ -5,9 +5,14 @@ The native MXFP6 integration, optional LM head search and source profile
 contain code derived from the vLLM project and the downstream optimization
 series ending at 8983c0369e, under Apache-2.0. Original file notices are retained.
 
-The optional NVFP4 head uses B12X-derived kernels vendored by FlashInfer.
+The MXFP6 profile's optional NVFP4 head uses B12X-derived kernels vendored by FlashInfer.
 These kernels retain their upstream notices and licenses in FlashInfer;
-the standalone B12X package is not required by this runtime.
+the standalone B12X package is not required by that MXFP6 head path.
+The independent Qwen3.5-4B MXFP8 profile requires the external b12x==1.2.6
+package by Luke Alonso, distributed under Apache-2.0. Its BA GEMV helper in
+vllm_mach/mxfp8/ba_gemv.py is adapted from b12x/gemm/bf16_gemv/_kernel.py
+in that release and uses its compiler and intrinsics interfaces. The NVFP4
+head continues to use FlashInfer's vendored B12X-derived kernels.
 Earlier EXL3 implementations and their original notices are retained in Git
 history, not in the current source tree or wheel.
 
