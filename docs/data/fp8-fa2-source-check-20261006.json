@@ -1,0 +1,365 @@
+{
+  "status": "COMPLETE",
+  "receipt_kind": "public synthetic component diagnostic with separate captured-input supplement",
+  "source_receipt_sha256": "c69b3604137b7f448b2745c229fd61f91e25464606141e3877590991c0a91418",
+  "observed_scope": "unchanged exact-head/base AST methods on vLLM 0.29 FA2 runtime",
+  "sources": {
+    "repository": "https://github.com/LiRunGuo/vllm",
+    "pr": "https://github.com/vllm-project/vllm/pull/58013",
+    "base": "382970ee6ca490aeaaaf4e32c53695b581ff61ba",
+    "head": "e17555d2673e632cbe85365a53490a138e4b2fae",
+    "original_author": "LiRunGuo",
+    "base_sha256": "0598232cb726e8ce97ec1db725a6558218e51b7a8051abd7d74193d2283cacb1",
+    "head_sha256": "75aef45298c454532cb3dd59954bea80b06498db82d8664b3c1718b42313574c",
+    "helper_sha256": "ff92a61b8a0439539cc8cf9dd353efc29765d8094a4948b4824188de0bde9063",
+    "official_blob_shas": {
+      "base_flash_attn.py": "b57af3fd295ead399b2537a315d1a93bbcf02375",
+      "head_flash_attn.py": "b292a854b0d624ed694b182e467e4cd6437f1dc9",
+      "head_utils.py": "3413c5ad00ca3ce10533d07056b5fbc2d2832d9d"
+    }
+  },
+  "provenance_note": "Only the immutable captured-input receipt embeds a pre-run Not executed qualification string. Both GPU executions completed; this summary separates their observed verdicts.",
+  "runtime": {
+    "vllm": "0.29.0",
+    "torch": "2.13.0+cu130",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "compute_capability": [
+      12,
+      0
+    ],
+    "flash_attention_version": 2,
+    "runtime_source_sha256": "de5f7f44b80837474d3b7c9353440eef9bc56c197442cf3f01e532ec2155a0e8",
+    "compatibility_bindings": [
+      "stock vLLM globals and FA2 binary",
+      "unchanged upstream FA4DenseAttentionKernel.kernel/__call__",
+      "model-independent builder state; constructor not exercised"
+    ]
+  },
+  "geometry": {
+    "dtype": "bfloat16",
+    "query_heads": 16,
+    "kv_heads": 4,
+    "head_dimension": 256,
+    "kv_page_tokens": 528,
+    "actual_query_tokens_per_case": 2048,
+    "bf16_output_values_per_case": 8388608,
+    "tensor_parallel_size": 1
+  },
+  "assertions_completed": [
+    "pure decode and pure prefill single-call controls exact",
+    "call counts match expected one or two",
+    "output padding preserved",
+    "finite output differences"
+  ],
+  "original_head_mixed_byte_exact": false,
+  "diagnostic_head_forced_splits_one_byte_exact": true,
+  "full_upstream_runtime_qualified": false,
+  "upstream_constructors_qualified": false,
+  "model_or_service_qualified": false,
+  "mixed_graph_forced": false,
+  "cause_attribution": "No cause inferred; compare recorded operands and results",
+  "synthetic_driver_gpu_executed": true,
+  "cases": [
+    {
+      "nominal_concurrency": 32,
+      "query_lengths": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        526,
+        1492
+      ],
+      "max_seq_len": 3072,
+      "original_head_mixed": {
+        "base_calls": [
+          {
+            "tokens": 2048,
+            "qmax": 1492,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          }
+        ],
+        "calls": [
+          {
+            "tokens": 30,
+            "qmax": 1,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          },
+          {
+            "tokens": 2018,
+            "qmax": 1492,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          }
+        ],
+        "changed": 52260,
+        "byte_exact": false,
+        "decode_changed": 52260,
+        "prefill_changed": 0,
+        "mae": 5.937549190093705e-07,
+        "max_abs": 0.0009765625,
+        "num_split_decodes": 30,
+        "is_original_head_execution": true
+      },
+      "pure_controls": {
+        "pure_decode": {
+          "changed": 0,
+          "byte_exact": true
+        },
+        "pure_prefill": {
+          "changed": 0,
+          "byte_exact": true
+        }
+      },
+      "diagnostic_head_subcalls_forced_splits_one": {
+        "base_calls": [
+          {
+            "tokens": 2048,
+            "qmax": 1492,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          }
+        ],
+        "calls": [
+          {
+            "tokens": 30,
+            "qmax": 1,
+            "requested_num_splits": 0,
+            "effective_num_splits": 1,
+            "diagnostic_override": true
+          },
+          {
+            "tokens": 2018,
+            "qmax": 1492,
+            "requested_num_splits": 0,
+            "effective_num_splits": 1,
+            "diagnostic_override": true
+          }
+        ],
+        "changed": 0,
+        "byte_exact": true,
+        "decode_changed": 0,
+        "prefill_changed": 0,
+        "mae": 0.0,
+        "max_abs": 0.0,
+        "num_split_decodes": 30,
+        "is_original_head_execution": false
+      }
+    },
+    {
+      "nominal_concurrency": 64,
+      "query_lengths": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        646,
+        1342
+      ],
+      "max_seq_len": 3072,
+      "original_head_mixed": {
+        "base_calls": [
+          {
+            "tokens": 2048,
+            "qmax": 1342,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          }
+        ],
+        "calls": [
+          {
+            "tokens": 60,
+            "qmax": 1,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          },
+          {
+            "tokens": 1988,
+            "qmax": 1342,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          }
+        ],
+        "changed": 100507,
+        "byte_exact": false,
+        "decode_changed": 100507,
+        "prefill_changed": 0,
+        "mae": 1.124639538829797e-06,
+        "max_abs": 0.0009765625,
+        "num_split_decodes": 60,
+        "is_original_head_execution": true
+      },
+      "pure_controls": {
+        "pure_decode": {
+          "changed": 0,
+          "byte_exact": true
+        },
+        "pure_prefill": {
+          "changed": 0,
+          "byte_exact": true
+        }
+      },
+      "diagnostic_head_subcalls_forced_splits_one": {
+        "base_calls": [
+          {
+            "tokens": 2048,
+            "qmax": 1342,
+            "requested_num_splits": 0,
+            "effective_num_splits": 0,
+            "diagnostic_override": false
+          }
+        ],
+        "calls": [
+          {
+            "tokens": 60,
+            "qmax": 1,
+            "requested_num_splits": 0,
+            "effective_num_splits": 1,
+            "diagnostic_override": true
+          },
+          {
+            "tokens": 1988,
+            "qmax": 1342,
+            "requested_num_splits": 0,
+            "effective_num_splits": 1,
+            "diagnostic_override": true
+          }
+        ],
+        "changed": 0,
+        "byte_exact": true,
+        "decode_changed": 0,
+        "prefill_changed": 0,
+        "mae": 0.0,
+        "max_abs": 0.0,
+        "num_split_decodes": 60,
+        "is_original_head_execution": false
+      }
+    }
+  ],
+  "input_kind": "synthetic",
+  "synthetic_seed": 20261006,
+  "synthetic_cache": {
+    "kv_length": 3072,
+    "shared_random_blocks": 64,
+    "checkpoint_required": false,
+    "private_fixtures_required": false
+  },
+  "captured_input_supplement": {
+    "source_receipt_sha256": "6fd95338710e55f3aacb60b63b08ad200c2eff9a56203a342ab9187c08442050",
+    "raw_operands_distributed": false,
+    "recorded_base_reproduces_saved_output": true,
+    "original_head_mixed_byte_exact": false,
+    "diagnostic_head_forced_splits_one_byte_exact": true,
+    "pure_controls_byte_exact": true,
+    "padding_preserved": true,
+    "cases": [
+      {
+        "nominal_concurrency": 32,
+        "changed": 10538,
+        "decode_changed": 10538,
+        "prefill_changed": 0,
+        "mae": 6.023521450515545e-07,
+        "max_abs": 0.0078125
+      },
+      {
+        "nominal_concurrency": 64,
+        "changed": 19506,
+        "decode_changed": 19506,
+        "prefill_changed": 0,
+        "mae": 1.0285896223649615e-06,
+        "max_abs": 0.015625
+      }
+    ]
+  }
+}

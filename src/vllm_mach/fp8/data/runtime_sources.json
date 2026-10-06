@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "profile": "qwen35-4b-block-fp8-v1",
+  "packages": {
+    "vllm": "0.29.0",
+    "torch": "2.13.0",
+    "triton": "3.7.1",
+    "flashinfer-python": "0.6.18",
+    "flashinfer-cubin": "0.6.18",
+    "nvidia-cutlass-dsl": "4.6.2",
+    "cuda-bindings": "13.3.1"
+  },
+  "base_image": "docker.m.daocloud.io/vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+  "patch_sha256": "7bfccdca9130522bb0d0248f441e9900ff5176c24d6dfb985b473bb228ff0dce",
+  "files": {
+    "vllm/_custom_ops.py": {
+      "upstream_sha256": "d384c2684db4b605031266acd6f8c0235df773ba89c91852d697aed02108baa1",
+      "installed_sha256": "582bbf6ec1d9af1f3f9e6655838cedf1bf257cc0268e3075280e5bbc7d2ad858"
+    },
+    "vllm/compilation/passes/fusion/act_quant_fusion.py": {
+      "upstream_sha256": "1fa9c3ca4fb424685b7053c3dda89dda16c98dc5645d85f0f28dca58429792b3",
+      "installed_sha256": "b62bf52421e1dc37fecbc34c43238268ae360856ab252b97f815010e1f2574de"
+    },
+    "vllm/v1/attention/backends/flash_attn.py": {
+      "upstream_sha256": "5d9c676d8d03ec4e583183f9f42fac33c223768fdc3d6088dff97b5ac0cd4c3a",
+      "installed_sha256": "de5f7f44b80837474d3b7c9353440eef9bc56c197442cf3f01e532ec2155a0e8"
+    },
+    "vllm/model_executor/kernels/linear/scaled_mm/cutlass.py": {
+      "upstream_sha256": "d01b6fe09e3c3fa3991045f6ac7b469a58a550c56426ffd8900badbbe7e5355b",
+      "installed_sha256": "d01b6fe09e3c3fa3991045f6ac7b469a58a550c56426ffd8900badbbe7e5355b"
+    },
+    "vllm/model_executor/kernels/linear/scaled_mm/BlockScaledMMLinearKernel.py": {
+      "upstream_sha256": "26807d4a0a78dbbdcb5724c15905f3a39007924f858494cce9e88953e4cbbc76",
+      "installed_sha256": "26807d4a0a78dbbdcb5724c15905f3a39007924f858494cce9e88953e4cbbc76"
+    },
+    "vllm/model_executor/kernels/linear/scaled_mm/ScaledMMLinearKernel.py": {
+      "upstream_sha256": "d43d9aa7b3bff81f2ca9495c95995c7070c9e5bb2eed4531211c7f20d2e27c2f",
+      "installed_sha256": "d43d9aa7b3bff81f2ca9495c95995c7070c9e5bb2eed4531211c7f20d2e27c2f"
+    },
+    "vllm/model_executor/layers/quantization/input_quant_fp8.py": {
+      "upstream_sha256": "b16ee19f3f75affbaad6feb2099583932f8e4d5c51616b84d8aa5316a72b6ef2",
+      "installed_sha256": "b16ee19f3f75affbaad6feb2099583932f8e4d5c51616b84d8aa5316a72b6ef2"
+    },
+    "vllm/model_executor/layers/quantization/compressed_tensors/schemes/compressed_tensors_w8a8_fp8.py": {
+      "upstream_sha256": "7ff9cc219dde01271ffc7e46466cf757414f311b25bad558374d0e6c0c5a7ec4",
+      "installed_sha256": "7ff9cc219dde01271ffc7e46466cf757414f311b25bad558374d0e6c0c5a7ec4"
+    }
+  },
+  "upstream_attribution": {
+    "mixed_fa2": {
+      "pr": "https://github.com/vllm-project/vllm/pull/58013",
+      "head": "e17555d2673e632cbe85365a53490a138e4b2fae",
+      "author": "LiRunGuo",
+      "signed_off_by": "RunguoLi <li19107254665@gmail.com>",
+      "scope": "Narrow backport with measured Mach eligibility guards"
+    },
+    "silu_related": {
+      "pr": "https://github.com/vllm-project/vllm/pull/45055",
+      "head": "42cff10c75958b8cb1ba1cb991ac8bab9f242aa1",
+      "scope": "Related warp scheduling; Mach uses its separate narrow scalar implementation"
+    }
+  },
+  "qualification": "See docs/fp8-profile.md and its linked release results."
+}

@@ -33,6 +33,8 @@ changes and installation requirements. For older EXL3 releases, see the
 
 The explicit **Qwen3.5-4B MXFP8 champion** profile runs on one RTX 5090 / TP1. Its source-built image passed complete checkpoint reconstruction, repeated startup, fixed-M precision and all six serving points. All 1040 generated output hashes and both 10479-token precision records match the previous champion. The required [L0 asset is publicly available](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1) with its manifest and model license. See the [complete profile guide](docs/mxfp8-champion.md) and [October 6 qualification](docs/mxfp8-qualification-20261006.md) for commands, measured performance and scope.
 
+The independent **Qwen3.5-4B block-FP8 profile** provides four selectable optimizations on RTX 5090 / TP1: n64 GEMM, ordered low-M GEMM, SiLU block quantization and mixed FA2. See the [build and launch guide](docs/fp8-profile.md) for the dedicated image, feature switches and qualification status.
+
 ## Supported configurations
 
 The validated deployment uses **Linux x86-64, Python 3.12, and two RTX 5090 GPUs
@@ -189,6 +191,7 @@ the [Dense](docs/images/quality-throughput-tradeoff.png) and
 | [Setup and usage](docs/installation.md) | CUDA setup, kernel and extension installation, launch commands, and memory |
 | [Native MXFP6 integration](docs/native-mxfp6.md) | Checkpoint loading, graph lifecycle, request eligibility, and fallbacks |
 | [MXFP8 4B champion](docs/mxfp8-champion.md) / [model reconstruction](docs/mxfp8-model.md) | Qualified TP1 profile, build/run/benchmark steps and public model asset |
+| [Block-FP8 4B profile](docs/fp8-profile.md) | Dedicated build, TP1 launch, four independent switches and precision contract |
 | [Qwen3.5 MoE](docs/qwen35-moe.md) | MoE schedules, compilation, model-specific validation, and benchmark reproduction |
 | [GDN decode](docs/gdn-decode.md) | Persistent decode, BA overlap, state precision, and validation |
 | [Fidelity](docs/profile-fidelity-20260917.md) | Current default/full precision diagnostics and raw data |

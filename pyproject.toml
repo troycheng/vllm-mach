@@ -33,6 +33,9 @@ vllm-mach-serve = "vllm_mach.mxfp6.serve:main"
 vllm-mach-mxfp8-serve = "vllm_mach.mxfp8.serve:main"
 vllm-mach-mxfp8-prepare = "vllm_mach.mxfp8.prepare_model:main"
 vllm-mach-mxfp8-bench = "vllm_mach.mxfp8.benchmark:main"
+vllm-mach-fp8-serve = "vllm_mach.fp8.serve:main"
+vllm-mach-fp8-install = "vllm_mach.fp8.install:main"
+vllm-mach-fp8-bench = "vllm_mach.mxfp8.benchmark:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -42,9 +45,15 @@ exclude = ["vllm_mach.exl3*"]
 [tool.setuptools.package-data]
 "vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json", "gdn/*.cu"]
 "vllm_mach.mxfp8" = ["data/*.json", "data/*.patch"]
+"vllm_mach.fp8" = ["data/*.json", "data/*.patch"]
 
 [tool.pytest.ini_options]
 testpaths = [
+    "tests/test_fp8_profile_cpu.py",
+    "tests/test_fp8_compile_choices_cpu.py",
+    "tests/test_fp8_linear_cpu.py",
+    "tests/test_fp8_activation_cpu.py",
+    "tests/test_fp8_attention_cpu.py",
     "tests/native_mxfp6",
     "tests/test_mxfp6_warmup.py",
     "tests/test_deployment.py",
