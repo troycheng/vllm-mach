@@ -40,7 +40,10 @@ def register_dense_kernel() -> bool:
     if not _optional_runtime_is_installed():
         return False
     dense = importlib.import_module(f"{__name__}.dense")
-    return dense.register_dense_kernel()
+    registered = dense.register_dense_kernel()
+    from .dense_mxfp8 import register_dense_mxfp8_kernel
+
+    return register_dense_mxfp8_kernel() or registered
 
 
 def __getattr__(name: str) -> Any:

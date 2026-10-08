@@ -272,6 +272,7 @@ def test_gdn_quantized_handoff_uses_projected_qkv_not_original(monkeypatch):
 
     projection = object()
     layer = types.SimpleNamespace(
+        tp_size=2,
         num_k_heads=16,
         num_v_heads=48,
         in_proj_ba=types.SimpleNamespace(weight=torch.zeros(48, hidden, dtype=torch.bfloat16)),

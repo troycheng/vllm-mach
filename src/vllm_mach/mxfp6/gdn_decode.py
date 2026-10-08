@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Native Qwen 27B dense / 35B MoE TP2 GDN decode paths, prepared before profiling.
+"""Native TP2 GDN and optional Qwen3.5-4B MXFP8 TP1 decode paths.
 
 Persistent uses FP32 or FP16 SSM at physical M1/2/4/8. BA overlap uses M16/24/32
 with FP32 or FP16 SSM. Prefill, speculative, mixed and unsupported calls
 retain the original vLLM method. Shared persistent scratch assumes vLLM's
 serialized worker execution, including CUDA Graph replay.
+Set VLLM_MACH_GDN_TP1=1 to test the TP1 adapter; TP2 behavior is unchanged.
 """
 
 from __future__ import annotations
@@ -18,6 +19,49 @@ import torch
 PERSISTENT_ROWS = (1, 2, 4, 8)
 OVERLAP_ROWS = (16, 24, 32)
 _STATS = Counter()
+_AUX_STREAMS: dict[int, torch.cuda.Stream] = {}
+_COMPILED_OP_REGISTERED = False
+
+
+def _compiled_forward(x: torch.Tensor, layer_name: str) -> torch.Tensor:
+    from vllm.forward_context import get_forward_context
+
+    layer = get_forward_context().no_compile_layers[layer_name]
+    return _forward(layer, layer._mach_gdn_original,
+                    layer._mach_gdn_persistent, layer._mach_gdn_aux, x)
+
+
+def _compiled_fake(x: torch.Tensor, layer_name: str) -> torch.Tensor:
+    return torch.empty_like(x)
+
+
+def _compiled_dispatch(layer_name, x):
+    return torch.ops.vllm.mach_gdn_forward(x, layer_name)
+
+
+def _prepare_compiled_dispatch(model):
+    global _COMPILED_OP_REGISTERED
+    from vllm.config import CompilationMode
+    from vllm.utils.torch_utils import direct_register_custom_op
+
+    owner = next((m for m in model.modules()
+                  if getattr(m, "vllm_config", None) is not None), None)
+    if owner is None:
+        return False
+    config = owner.vllm_config.compilation_config
+    if config.mode != CompilationMode.VLLM_COMPILE:
+        return False
+    if not _COMPILED_OP_REGISTERED:
+        direct_register_custom_op(
+            op_name="mach_gdn_forward", op_func=_compiled_forward,
+            mutates_args=[], fake_impl=_compiled_fake,
+        )
+        _COMPILED_OP_REGISTERED = True
+    # Prefill state updates must execute outside captured piecewise regions,
+    # just like vLLM's original GDN attention custom op.
+    if "vllm::mach_gdn_forward" not in config.splitting_ops:
+        config.splitting_ops.append("vllm::mach_gdn_forward")
+    return True
 
 
 def enabled(name: str) -> bool:
@@ -56,14 +100,14 @@ def select_path(rows, state_dtype, metadata, *, persistent, overlap):
 
 
 def _layer_geometry(layer):
-    """Return (hidden, local value heads, packed QKV) for supported TP2 layers."""
+    """Return hidden width, local value heads and packed QKV width."""
     hidden = layer.in_proj_ba.weight.shape[1]
-    heads = layer.num_v_heads // 2
-    return hidden, heads, (2 * (layer.num_k_heads // 2) + heads) * 128
+    heads = layer.num_v_heads // layer.tp_size
+    return hidden, heads, (2 * (layer.num_k_heads // layer.tp_size) + heads) * 128
 
 
 def _eligible_layer(layer):
-    if type(layer).__name__ != "QwenGatedDeltaNetAttention" or layer.tp_size != 2:
+    if type(layer).__name__ != "QwenGatedDeltaNetAttention" or layer.tp_size not in (1, 2):
         return False
     weight = getattr(layer.in_proj_ba, "weight", None)
     if weight is None or weight.ndim != 2:
@@ -71,7 +115,8 @@ def _eligible_layer(layer):
     hidden, heads, qkv_dim = _layer_geometry(layer)
     return (
         layer.num_k_heads == 16
-        and (hidden, layer.num_v_heads) in ((5120, 48), (2048, 32))
+        and (layer.tp_size, hidden, layer.num_v_heads) in (
+            (2, 5120, 48), (2, 2048, 32), (1, 2560, 32))
         and layer.head_k_dim == layer.head_v_dim == 128
         and not layer.gqa_interleaved_layout
         and not layer.disable_tp_for_ba_proj
@@ -97,6 +142,11 @@ def _eligible_layer(layer):
 
 def _forward(layer, original, persistent, aux, hidden_states, quantized=None):
     from vllm.forward_context import get_forward_context
+
+    # CUDA streams cannot be pickled into vLLM's AOT model cache. Warmup owns
+    # the process-local streams; the serialized forward stores only a device id.
+    if isinstance(aux, int):
+        aux = _AUX_STREAMS[aux]
     from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
 
     hidden, heads, qkv_dim = _layer_geometry(layer)
@@ -225,7 +275,7 @@ def _forward(layer, original, persistent, aux, hidden_states, quantized=None):
 
 @torch.inference_mode()
 def prepare(model):
-    """Install once on loaded native MXFP6 layers, compile/warm before capture."""
+    """Install on eligible native MX layers and warm before graph capture."""
     persistent, overlap = enabled("PERSISTENT"), enabled("BA_OVERLAP")
     if not (persistent or overlap):
         return
@@ -233,15 +283,18 @@ def prepare(model):
     from vllm.model_executor.layers.mamba.mamba_utils import is_conv_state_dim_first
 
     from .dense import Mxfp6Sm120LinearKernel
+    from .dense_mxfp8 import Mxfp8Sm120LinearKernel
 
     layers = []
     for layer in model.modules():
         if not _eligible_layer(layer) or hasattr(layer, "_mach_gdn_prepared"):
             continue
-        kernel = getattr(
-            getattr(layer.in_proj_qkvz, "scheme", None), "ocp_mx_linear", None
-        )
-        if not isinstance(kernel, Mxfp6Sm120LinearKernel):
+        scheme = getattr(layer.in_proj_qkvz, "scheme", None)
+        native_tp2 = layer.tp_size == 2 and isinstance(
+            getattr(scheme, "ocp_mx_linear", None), Mxfp6Sm120LinearKernel)
+        native_tp1 = layer.tp_size == 1 and enabled("TP1") and isinstance(
+            getattr(scheme, "kernel", None), Mxfp8Sm120LinearKernel)
+        if not (native_tp2 or native_tp1):
             continue
         if layer.get_state_dtype()[1] not in (torch.float16, torch.float32):
             continue
@@ -256,11 +309,13 @@ def prepare(model):
         if any(hasattr(m, "_mach_gdn_prepared") for m in model.modules()):
             return
         init_logger("vllm.mach.gdn").warning(
-            "Mach GDN requested but no eligible native MXFP6 layers found"
+            "Mach GDN requested but no eligible native MX layers found"
         )
         return
     device = layers[0].in_proj_ba.weight.device
     aux = torch.cuda.Stream(device=device) if overlap else None
+    if aux is not None:
+        _AUX_STREAMS[device.index] = aux
     if persistent:
         from .gdn import persistent as kernel
     from .gdn_output import prepare as prepare_output
@@ -320,10 +375,18 @@ def prepare(model):
                 indices,
             )
     torch.cuda.synchronize(device)
+    compiled = _prepare_compiled_dispatch(model)
     for layer in layers:
-        layer._forward_method = partial(
-            _forward, layer, layer._forward_method, persistent, aux
-        )
+        if compiled:
+            layer._mach_gdn_original = layer._forward_method
+            layer._mach_gdn_persistent = persistent
+            layer._mach_gdn_aux = device.index if aux is not None else None
+            layer._forward_method = partial(_compiled_dispatch, layer.prefix)
+        else:
+            layer._forward_method = partial(
+                _forward, layer, layer._forward_method, persistent,
+                device.index if aux is not None else None,
+            )
         layer._mach_gdn_prepared = True
     _STATS["prepared_layers"] += len(layers)
     init_logger("vllm.mach.gdn").info(

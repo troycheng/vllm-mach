@@ -22,15 +22,16 @@ apt install -y cuda-toolkit-13-0
 ## 2. Install MXFP6 kernels
 
 Build MXFP6 from the official project's pinned revision
-[`cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`](https://github.com/Nekofish-L/mxfp6_sm120/commit/cd4e964c391fcb8aaf1a27d28a63d778e3a38ece).
+[`cfbc5074a53cae70c8d090629b59028587f2057d`](https://github.com/Nekofish-L/mxfp6_sm120/commit/cfbc5074a53cae70c8d090629b59028587f2057d).
 It retains package version **0.2.1** and includes the scale-initialization,
-SwiGLU and GDN producer operations used by the current Dense profile.
+SwiGLU and GDN producer operations used by the current Dense profile, plus
+native MXFP8 W8A8 dispatch and its independent workspace pool.
 The original 0.2.1 release does not contain these operations.
 
 ```bash
 git clone https://github.com/Nekofish-L/mxfp6_sm120.git
 cd mxfp6_sm120
-git checkout cd4e964c391fcb8aaf1a27d28a63d778e3a38ece
+git checkout cfbc5074a53cae70c8d090629b59028587f2057d
 git submodule update --init --depth 1 third_party/cutlass
 export CUDA_HOME=/usr/local/cuda
 export PATH="$CUDA_HOME/bin:$PATH"
@@ -155,3 +156,33 @@ Additional memory per GPU for the validated models:
 
 Allow for these approximate allocations when sizing the KV cache. Set the same
 `--kv-cache-memory-bytes` when comparing profiles.
+
+
+## MXFP8 single-GPU serving
+
+The same Mach plugin registers `Mxfp8Sm120LinearKernel` for compressed-tensors
+MXFP8 checkpoints. It loads E4M3 weights and E8M0/32 scales directly, repacks only
+the scales, and dynamically quantizes BF16 activations with the shared native
+quantizer. W8A8 uses its own planned workspace and the existing pre-capture
+warmup hooks. The W6A8 selector and producer fusions keep their existing path.
+
+After installing the runtime and applying the Mach profile above:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 vllm-mach-serve \
+  --model /data1/models/Qwen3.5-4B-MXFP8 \
+  --tensor-parallel-size 1 \
+  --host 127.0.0.1 --port 8000
+```
+
+For a local `mxfp8-quantized` checkpoint, the launcher defaults to
+`--quantization compressed-tensors`, BF16 and TP1. MXFP6 retains Quark and TP2
+as defaults. The MXFP8 profile disables the default TP2 all-reduce and dense
+prefill fusions. Decode CUDA Graph sizes remain 1, 2, 4, 8, 16, 24 and 32.
+Look for `Using Mxfp8Sm120LinearKernel for MXFP8 GEMM` in the worker log.
+
+The native W8A8 kernel requires SM120, BF16 output, and positive weight N/K
+dimensions divisible by 128. The tested checkpoint is dense Qwen3.5-4B with
+TP1; this integration does not add MXFP8 MoE kernels. An older 0.2.1 extension
+without W8A8 can still run W6A8, but the MXFP8 selector will fall back to vLLM's
+other backends. Rebuild the pinned source to use the native W8A8 implementation.

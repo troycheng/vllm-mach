@@ -292,3 +292,17 @@ def test_fidelity_uses_current_model_aware_profiles(tmp_path, family):
         historical = tool.profile_flags("default", tmp_path)
         assert historical["VLLM_MACH_GDN_PERSISTENT"] == "0"
         assert historical["VLLM_SM120_OWNER_PREFILL"] == "0"
+
+
+def test_single_gpu_mxfp8_fidelity_profile(tmp_path):
+    tool = module("tools/fidelity_native_mxfp6.py")
+    (tmp_path / "config.json").write_text(json.dumps({
+        "model_type": "qwen3_5_text",
+        "quantization_config": {"format": "mxfp8-quantized"},
+    }))
+    flags = tool.profile_flags("mxfp8", tmp_path, tensor_parallel_size=1)
+    assert flags["VLLM_PLUGINS"] == "mach"
+    assert flags["VLLM_QWEN3_5_FUSED_AR_NORM"] == "0"
+    assert flags["VLLM_MACH_FUSED_AR_QUANT"] == "0"
+    assert flags["VLLM_SM120_OWNER_PREFILL"] == "0"
+    assert flags["VLLM_SM120_LOSSLESS_PREFILL"] == "0"

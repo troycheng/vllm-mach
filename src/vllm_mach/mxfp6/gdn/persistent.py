@@ -54,9 +54,6 @@ _scratch_cache: dict = {}
 # Stream that last launched with the shared per-device barrier and cached scratch.
 _barrier_stream: dict = {}
 
-_launch_count = 0
-
-
 # Compiled modules by layer geometry.  The kernel is B-dynamic and takes the
 # query scale and the conv-state strides as runtime parameters, but the layer
 # geometry is a compile-time parameter of its translation unit, so there is
@@ -225,7 +222,6 @@ def execute(
     The dispatch layer has already validated the call against the registry
     and the op contract.  Both state pools are updated in place.
     """
-    global _launch_count
     geometry = _geometry_from_tensors(
         hidden_states, w_ba, mixed_qkv, conv_weight, conv_state, A_log, ssm_state
     )
@@ -262,30 +258,4 @@ def execute(
         barrier,
         float(scale),
     )
-    _launch_count += 1
     return output, conv_state, ssm_state
-
-
-def launch_count() -> int:
-    """Host-side dispatches so far (a CUDA-graph capture counts once)."""
-    return _launch_count
-
-
-def _geometry_tag(geometry: tuple) -> str:
-    hidden, n_ba, qkv_dim, h_q, hv, d, conv_width, conv_state_len, state_bits = geometry
-    return (
-        f"sm120_persistent_b_dynamic_h{hidden}_nba{n_ba}_qkv{qkv_dim}"
-        f"_hq{h_q}_hv{hv}_d{d}_w{conv_width}_s{conv_state_len}_fp{state_bits}"
-    )
-
-
-def compiled_variant_keys() -> list:
-    """Compiled-kernel descriptors resident in this process."""
-    return sorted(_geometry_tag(geometry) for geometry in _modules)
-
-
-def variant_plan(rows) -> set:
-    """Distinct compiled kernels this impl needs for its registry rows: one
-    B-dynamic module per layer geometry (batch size, conv-state layout and
-    scale are runtime parameters)."""
-    return {_geometry_tag(geometry_key(row)) for row in rows}

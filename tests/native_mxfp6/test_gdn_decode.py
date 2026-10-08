@@ -168,18 +168,20 @@ def test_persistent_state_dtype_is_part_of_jit_and_scratch_key():
 
 
 @pytest.mark.parametrize(
-    "hidden, total_heads, expected",
+    "tp, hidden, total_heads, expected",
     [
-        (5120, 48, (5120, 24, 5120)),
-        (2048, 32, (2048, 16, 4096)),
+        (2, 5120, 48, (5120, 24, 5120)),
+        (2, 2048, 32, (2048, 16, 4096)),
+        (1, 2560, 32, (2560, 32, 8192)),
     ],
 )
-def test_tp2_geometry_keeps_hidden_and_qkv_widths_distinct(
-    hidden, total_heads, expected
+def test_geometry_keeps_hidden_and_qkv_widths_distinct(
+    tp, hidden, total_heads, expected
 ):
     from vllm_mach.mxfp6.gdn_decode import _layer_geometry
 
     layer = SimpleNamespace(
+        tp_size=tp,
         in_proj_ba=SimpleNamespace(weight=torch.empty(total_heads, hidden)),
         num_v_heads=total_heads,
         num_k_heads=16,
@@ -217,10 +219,10 @@ def test_graph_readiness_does_not_reuse_dense_geometry(monkeypatch):
     assert persistent.ready_for_graph_capture(signature, x, conv, 128**-0.5)
 
 
-@pytest.mark.parametrize("hidden, heads", [(5120, 24), (2048, 16)])
+@pytest.mark.parametrize("tp, hidden, heads", [(2, 5120, 24), (2, 2048, 16), (1, 2560, 32)])
 @pytest.mark.parametrize("rows", [4, 16, 24, 32])
 @torch.inference_mode()
-def test_gpu_adapter_matches_native_decode(monkeypatch, hidden, heads, rows):
+def test_gpu_adapter_matches_native_decode(monkeypatch, tp, hidden, heads, rows):
     if not torch.cuda.is_available() or torch.cuda.get_device_capability() != (12, 0):
         pytest.skip("requires SM120")
     import vllm.forward_context
@@ -233,7 +235,7 @@ def test_gpu_adapter_matches_native_decode(monkeypatch, hidden, heads, rows):
     from vllm_mach.mxfp6.gdn_decode import _forward
 
     torch.manual_seed(20260917)
-    qkv_dim = (16 + heads) * 128
+    qkv_dim = (2 * (16 // tp) + heads) * 128
 
     def rand(*shape):
         return torch.randn(*shape, device="cuda", dtype=torch.bfloat16) * 0.1
@@ -268,8 +270,9 @@ def test_gpu_adapter_matches_native_decode(monkeypatch, hidden, heads, rows):
         out.copy_(core * torch.nn.functional.silu(z))
 
     layer = SimpleNamespace(
+        tp_size=tp,
         num_k_heads=16,
-        num_v_heads=heads * 2,
+        num_v_heads=heads * tp,
         in_proj_ba=BA(),
         in_proj_qkvz=lambda _: (mixed, None),
         split_ba=lambda ba: ba.chunk(2, -1),
@@ -327,3 +330,8 @@ def test_gpu_adapter_matches_native_decode(monkeypatch, hidden, heads, rows):
         assert relative < 0.02
         if aux is not None:
             assert torch.equal(result, reference)
+
+
+@pytest.mark.parametrize("rows", [1, 2, 8])
+def test_tp1_small_batch_adapter(monkeypatch, rows):
+    test_gpu_adapter_matches_native_decode(monkeypatch, 1, 2560, 32, rows)

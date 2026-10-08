@@ -1,0 +1,2736 @@
+{
+  "date": "2026-09-30",
+  "model": "Qwen3.5-4B-MXFP8",
+  "tp": 1,
+  "flashinfer_backend": "cutlass",
+  "autotune": "exact measured batch",
+  "cold_contract": {
+    "gpu": 4,
+    "tests_per_trial": 30,
+    "trials": 5,
+    "cache": "8GB eviction before each single-GEMM CUDA graph replay",
+    "timing": "GPU GEMM only; quantization and eviction excluded"
+  },
+  "cold": {
+    "1": {
+      "rows": [
+        {
+          "m": 1,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 11.895,
+              "samples_us": [
+                11.968,
+                11.895,
+                11.935,
+                11.813,
+                11.798
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS1_10collective13CollectiveMmaINS1_42MainloopSm120TmaWarpSpecializedBlockScaledILi5ELi3ENS5_IJNS4_1CILi1EEESB_SB_EEENS1_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS5_IJNSA_ILi128EEENSA_ILi8EEESG_EEENS5_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS5_IJNS5_IJlSB_lEEENS4_6LayoutINS5_IJNS5_IJNS5_IJNSA_ILi32EEENSA_ILi4EEEEEEiEEESR_NS5_IJSB_iEEEEEENS5_IJNS5_IJNS5_IJNSA_ILi16EEESP_EEEiEEENS5_IJNS5_IJNSA_ILi0EEESB_EEENSA_ILi512EEEEEENS5_IJSX_iEEEEEEEEEEESL_S14_NS4_8TiledMMAINS4_8MMA_AtomIJNS4_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISJ_SJ_fSK_Li32EEEEEENSN_INS5_IJSH_SB_SB_EEENS5_IJSB_SX_SX_EEEEENS5_IJSG_NSN_INS5_IJSH_EEENS5_IJSB_EEEEESO_EEEEENS5_IJNS4_13SM90_TMA_LOADES1K_EEENS5_IJNS4_14ComposedLayoutINS4_7SwizzleILi3ELi4ELi3EEENS4_18smem_ptr_flag_bitsILi8EEENSN_INS5_IJSH_SG_EEENS5_IJSG_SB_EEEEEEENSN_INS5_IJNS5_IJSQ_SB_EEENS5_IJNS5_IJSO_SB_EEESP_SB_EEEEEENS5_IJNS5_IJSV_SZ_EEENS5_IJSY_SB_SZ_EEEEEEEEEEENS5_IJNS4_9Copy_AtomIJNS4_17SM75_U32x4_LDSM_NEhEEENS24_IJNS4_13UniversalCopyISK_SK_EESK_EEEEEENS4_8identityES1L_S23_NS5_IJNS24_IJNS4_17SM75_U32x1_LDSM_NEhEEES29_EEES2B_EENS_8epilogue10collective18CollectiveEpilogueINS2G_22Sm90TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEEJSI_NS5_IJSG_SH_EEEvNS5_IJSB_llEEENS_10bfloat16_tES2M_NS2G_6fusion15FusionCallbacksINS2G_23Sm120TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEENS2O_17LinearCombinationIS2N_fvfLNS_15FloatRoundStyleE2EEESI_S2L_JEEES1K_NS1M_IS1O_NS1P_ILi16EEENSN_INS5_IJNSA_ILi64EEESH_EEENS5_IJSB_S2X_EEEEEEENS4_17SM75_U16x4_LDSM_TENS4_14SM90_TMA_STOREES31_NS4_17SM90_U16x4_STSM_TENS24_IJNS4_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS1_16StreamKSchedulerEvEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03750700503587723
+            },
+            "flashinfer": {
+              "us": 16.203,
+              "samples_us": [
+                16.284,
+                16.202,
+                16.257,
+                16.203,
+                16.194
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03750700503587723
+            },
+            "block_fp8": {
+              "us": 17.323,
+              "samples_us": [
+                17.284,
+                17.431,
+                17.464,
+                17.323,
+                17.322
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.036329273134469986
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        },
+        {
+          "m": 1,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 20.408,
+              "samples_us": [
+                20.485,
+                20.291000000000004,
+                20.408,
+                20.186,
+                20.434
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS1_10collective13CollectiveMmaINS1_42MainloopSm120TmaWarpSpecializedBlockScaledILi5ELi3ENS5_IJNS4_1CILi1EEESB_SB_EEENS1_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS5_IJNSA_ILi128EEENSA_ILi8EEESG_EEENS5_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS5_IJNS5_IJlSB_lEEENS4_6LayoutINS5_IJNS5_IJNS5_IJNSA_ILi32EEENSA_ILi4EEEEEEiEEESR_NS5_IJSB_iEEEEEENS5_IJNS5_IJNS5_IJNSA_ILi16EEESP_EEEiEEENS5_IJNS5_IJNSA_ILi0EEESB_EEENSA_ILi512EEEEEENS5_IJSX_iEEEEEEEEEEESL_S14_NS4_8TiledMMAINS4_8MMA_AtomIJNS4_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISJ_SJ_fSK_Li32EEEEEENSN_INS5_IJSH_SB_SB_EEENS5_IJSB_SX_SX_EEEEENS5_IJSG_NSN_INS5_IJSH_EEENS5_IJSB_EEEEESO_EEEEENS5_IJNS4_13SM90_TMA_LOADES1K_EEENS5_IJNS4_14ComposedLayoutINS4_7SwizzleILi3ELi4ELi3EEENS4_18smem_ptr_flag_bitsILi8EEENSN_INS5_IJSH_SG_EEENS5_IJSG_SB_EEEEEEENSN_INS5_IJNS5_IJSQ_SB_EEENS5_IJNS5_IJSO_SB_EEESP_SB_EEEEEENS5_IJNS5_IJSV_SZ_EEENS5_IJSY_SB_SZ_EEEEEEEEEEENS5_IJNS4_9Copy_AtomIJNS4_17SM75_U32x4_LDSM_NEhEEENS24_IJNS4_13UniversalCopyISK_SK_EESK_EEEEEENS4_8identityES1L_S23_NS5_IJNS24_IJNS4_17SM75_U32x1_LDSM_NEhEEES29_EEES2B_EENS_8epilogue10collective18CollectiveEpilogueINS2G_22Sm90TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEEJSI_NS5_IJSG_SH_EEEvNS5_IJSB_llEEENS_10bfloat16_tES2M_NS2G_6fusion15FusionCallbacksINS2G_23Sm120TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEENS2O_17LinearCombinationIS2N_fvfLNS_15FloatRoundStyleE2EEESI_S2L_JEEES1K_NS1M_IS1O_NS1P_ILi16EEENSN_INS5_IJNSA_ILi64EEESH_EEENS5_IJSB_S2X_EEEEEEENS4_17SM75_U16x4_LDSM_TENS4_14SM90_TMA_STOREES31_NS4_17SM90_U16x4_STSM_TENS24_IJNS4_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS1_16StreamKSchedulerEvEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03798047453165054
+            },
+            "flashinfer": {
+              "us": 36.066,
+              "samples_us": [
+                36.088,
+                36.066,
+                36.025,
+                36.102,
+                36.021
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03798047453165054
+            },
+            "block_fp8": {
+              "us": 36.955,
+              "samples_us": [
+                36.955,
+                36.966,
+                37.042,
+                36.941,
+                36.833
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.03763950988650322
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.00019870957476086915
+        },
+        {
+          "m": 1,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 21.099,
+              "samples_us": [
+                20.974,
+                21.099,
+                21.16,
+                21.087,
+                21.153
+              ],
+              "kernel_name": "void cutlass::device_kernel<mxfp8_release_direct::KernelConfig<128, 8, 128, true, cutlass::gemm::KernelTmaWarpSpecializedMxf8f6f4Sm120, cutlass::gemm::collective::StageCount<2> >::GemmKernel>(mxfp8_release_direct::KernelConfig<128, 8, 128, true, cutlass::gemm::KernelTmaWarpSpecializedMxf8f6f4Sm120, cutlass::gemm::collective::StageCount<2> >::GemmKernel::Params)",
+              "relative_rmse": 0.03814318776130676
+            },
+            "flashinfer": {
+              "us": 21.085,
+              "samples_us": [
+                21.218,
+                21.102,
+                21.059,
+                20.981,
+                21.085
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03814318776130676
+            },
+            "block_fp8": {
+              "us": 21.047,
+              "samples_us": [
+                20.956,
+                21.285,
+                21.088,
+                20.749,
+                21.047
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.037550099194049835
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        },
+        {
+          "m": 1,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 24.688,
+              "samples_us": [
+                24.878,
+                24.688,
+                24.67,
+                24.74,
+                24.625
+              ],
+              "kernel_name": "void cutlass::device_kernel<mxfp8_release_direct::KernelConfig<128, 8, 128, true, cutlass::gemm::KernelTmaWarpSpecializedMxf8f6f4Sm120, cutlass::gemm::collective::StageCount<2> >::GemmKernel>(mxfp8_release_direct::KernelConfig<128, 8, 128, true, cutlass::gemm::KernelTmaWarpSpecializedMxf8f6f4Sm120, cutlass::gemm::collective::StageCount<2> >::GemmKernel::Params)",
+              "relative_rmse": 0.037673383951187134
+            },
+            "flashinfer": {
+              "us": 24.89,
+              "samples_us": [
+                24.622,
+                24.913,
+                24.89,
+                24.872,
+                25.004
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.037673383951187134
+            },
+            "block_fp8": {
+              "us": 24.837,
+              "samples_us": [
+                24.837,
+                24.402000000000005,
+                24.892,
+                24.896,
+                24.338
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.03693050891160965
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        },
+        {
+          "m": 1,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 34.948,
+              "samples_us": [
+                34.714,
+                34.948,
+                34.818,
+                34.96999999999999,
+                35.025000000000006
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS1_10collective13CollectiveMmaINS1_42MainloopSm120TmaWarpSpecializedBlockScaledILi5ELi3ENS5_IJNS4_1CILi1EEESB_SB_EEENS1_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS5_IJNSA_ILi128EEENSA_ILi8EEESG_EEENS5_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS5_IJNS5_IJlSB_lEEENS4_6LayoutINS5_IJNS5_IJNS5_IJNSA_ILi32EEENSA_ILi4EEEEEEiEEESR_NS5_IJSB_iEEEEEENS5_IJNS5_IJNS5_IJNSA_ILi16EEESP_EEEiEEENS5_IJNS5_IJNSA_ILi0EEESB_EEENSA_ILi512EEEEEENS5_IJSX_iEEEEEEEEEEESL_S14_NS4_8TiledMMAINS4_8MMA_AtomIJNS4_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISJ_SJ_fSK_Li32EEEEEENSN_INS5_IJSH_SB_SB_EEENS5_IJSB_SX_SX_EEEEENS5_IJSG_NSN_INS5_IJSH_EEENS5_IJSB_EEEEESO_EEEEENS5_IJNS4_13SM90_TMA_LOADES1K_EEENS5_IJNS4_14ComposedLayoutINS4_7SwizzleILi3ELi4ELi3EEENS4_18smem_ptr_flag_bitsILi8EEENSN_INS5_IJSH_SG_EEENS5_IJSG_SB_EEEEEEENSN_INS5_IJNS5_IJSQ_SB_EEENS5_IJNS5_IJSO_SB_EEESP_SB_EEEEEENS5_IJNS5_IJSV_SZ_EEENS5_IJSY_SB_SZ_EEEEEEEEEEENS5_IJNS4_9Copy_AtomIJNS4_17SM75_U32x4_LDSM_NEhEEENS24_IJNS4_13UniversalCopyISK_SK_EESK_EEEEEENS4_8identityES1L_S23_NS5_IJNS24_IJNS4_17SM75_U32x1_LDSM_NEhEEES29_EEES2B_EENS_8epilogue10collective18CollectiveEpilogueINS2G_22Sm90TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEEJSI_NS5_IJSG_SH_EEEvNS5_IJSB_llEEENS_10bfloat16_tES2M_NS2G_6fusion15FusionCallbacksINS2G_23Sm120TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEENS2O_17LinearCombinationIS2N_fvfLNS_15FloatRoundStyleE2EEESI_S2L_JEEES1K_NS1M_IS1O_NS1P_ILi16EEENSN_INS5_IJNSA_ILi64EEESH_EEENS5_IJSB_S2X_EEEEEEENS4_17SM75_U16x4_LDSM_TENS4_14SM90_TMA_STOREES31_NS4_17SM90_U16x4_STSM_TENS24_IJNS4_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS1_25StaticPersistentSchedulerEvEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03763251006603241
+            },
+            "flashinfer": {
+              "us": 35.202,
+              "samples_us": [
+                35.52100000000001,
+                35.202,
+                34.802,
+                35.427,
+                34.928
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03763251006603241
+            },
+            "block_fp8": {
+              "us": 34.454,
+              "samples_us": [
+                34.222,
+                34.722,
+                34.794,
+                34.312,
+                34.454
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.03745747730135918
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        }
+      ],
+      "weighted_128_gemm_ms": {
+        "native": 2.913336,
+        "flashinfer": 3.565112,
+        "block_fp8": 3.603888
+      }
+    },
+    "16": {
+      "rows": [
+        {
+          "m": 16,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            4,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 11.797,
+              "samples_us": [
+                11.877,
+                11.742,
+                11.94,
+                11.69,
+                11.797
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS1_10collective13CollectiveMmaINS1_42MainloopSm120TmaWarpSpecializedBlockScaledILi5ELi3ENS5_IJNS4_1CILi1EEESB_SB_EEENS1_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS5_IJNSA_ILi128EEENSA_ILi8EEESG_EEENS5_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS5_IJNS5_IJlSB_lEEENS4_6LayoutINS5_IJNS5_IJNS5_IJNSA_ILi32EEENSA_ILi4EEEEEEiEEESR_NS5_IJSB_iEEEEEENS5_IJNS5_IJNS5_IJNSA_ILi16EEESP_EEEiEEENS5_IJNS5_IJNSA_ILi0EEESB_EEENSA_ILi512EEEEEENS5_IJSX_iEEEEEEEEEEESL_S14_NS4_8TiledMMAINS4_8MMA_AtomIJNS4_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISJ_SJ_fSK_Li32EEEEEENSN_INS5_IJSH_SB_SB_EEENS5_IJSB_SX_SX_EEEEENS5_IJSG_NSN_INS5_IJSH_EEENS5_IJSB_EEEEESO_EEEEENS5_IJNS4_13SM90_TMA_LOADES1K_EEENS5_IJNS4_14ComposedLayoutINS4_7SwizzleILi3ELi4ELi3EEENS4_18smem_ptr_flag_bitsILi8EEENSN_INS5_IJSH_SG_EEENS5_IJSG_SB_EEEEEEENSN_INS5_IJNS5_IJSQ_SB_EEENS5_IJNS5_IJSO_SB_EEESP_SB_EEEEEENS5_IJNS5_IJSV_SZ_EEENS5_IJSY_SB_SZ_EEEEEEEEEEENS5_IJNS4_9Copy_AtomIJNS4_17SM75_U32x4_LDSM_NEhEEENS24_IJNS4_13UniversalCopyISK_SK_EESK_EEEEEENS4_8identityES1L_S23_NS5_IJNS24_IJNS4_17SM75_U32x1_LDSM_NEhEEES29_EEES2B_EENS_8epilogue10collective18CollectiveEpilogueINS2G_22Sm90TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEEJSI_NS5_IJSG_SH_EEEvNS5_IJSB_llEEENS_10bfloat16_tES2M_NS2G_6fusion15FusionCallbacksINS2G_23Sm120TmaWarpSpecializedILi1ELi1ELi4ELb0ELb1EEENS2O_17LinearCombinationIS2N_fvfLNS_15FloatRoundStyleE2EEESI_S2L_JEEES1K_NS1M_IS1O_NS1P_ILi16EEENSN_INS5_IJNSA_ILi64EEESH_EEENS5_IJSB_S2X_EEEEEEENS4_17SM75_U16x4_LDSM_TENS4_14SM90_TMA_STOREES31_NS4_17SM90_U16x4_STSM_TENS24_IJNS4_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS1_16StreamKSchedulerEvEEEEvNT_6ParamsE",
+              "relative_rmse": 0.037744421511888504
+            },
+            "flashinfer": {
+              "us": 16.804,
+              "samples_us": [
+                16.861,
+                16.856,
+                16.786,
+                16.804,
+                16.779
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.037744347006082535
+            },
+            "block_fp8": {
+              "us": 17.34,
+              "samples_us": [
+                17.34,
+                17.358,
+                17.277,
+                17.309,
+                17.447
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.036872927099466324
+            }
+          },
+          "quantized_rmse": 5.7864690461428836e-05,
+          "changing_graph_rmse": 4.4338761654216796e-05
+        },
+        {
+          "m": 16,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            4,
+            8,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 22.214,
+              "samples_us": [
+                21.951,
+                22.329,
+                22.214,
+                22.353,
+                22.194999999999997
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS1_10collective13CollectiveMmaINS1_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS5_IJNS4_1CILi1EEESB_SB_EEENS1_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS5_IJNSA_ILi128EEENSA_ILi16EEESG_EEENS5_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS5_IJNS5_IJlSB_lEEENS4_6LayoutINS5_IJNS5_IJNS5_IJNSA_ILi32EEENSA_ILi4EEEEEEiEEESR_NS5_IJSB_iEEEEEENS5_IJNS5_IJNS5_IJSH_SP_EEEiEEENS5_IJNS5_IJNSA_ILi0EEESB_EEENSA_ILi512EEEEEENS5_IJSW_iEEEEEEEEEEESL_S13_NS4_8TiledMMAINS4_8MMA_AtomIJNS4_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISJ_SJ_fSK_Li32EEEEEENSN_INS5_IJSP_NSA_ILi2EEESB_EEENS5_IJSB_SP_SW_EEEEENS5_IJSG_NSN_INS5_IJNSA_ILi8EEES1B_EEENS5_IJSB_S1F_EEEEESO_EEEEENS5_IJNS4_13SM90_TMA_LOADES1L_EEENS5_IJNS4_14ComposedLayoutINS4_7SwizzleILi3ELi4ELi3EEENS4_18smem_ptr_flag_bitsILi8EEENSN_INS5_IJS1F_SG_EEENS5_IJSG_SB_EEEEEEENSN_INS5_IJNS5_IJSQ_SB_EEENS5_IJNS5_IJSO_SB_EEESP_SB_EEEEEENS5_IJNS5_IJSU_SY_EEENS5_IJSX_SB_SY_EEEEEEEEEEENS5_IJNS4_9Copy_AtomIJNS4_17SM75_U32x4_LDSM_NEhEEENS25_IJNS4_13UniversalCopyISK_SK_EESK_EEEEEENS4_8identityES1M_S24_NS5_IJNS25_IJNS4_17SM75_U32x2_LDSM_NEhEEES2A_EEES2C_EENS_8epilogue10collective18CollectiveEpilogueINS2H_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSI_NS5_IJNSA_ILi64EEESH_EEEvNS5_IJSB_llEEENS_10bfloat16_tES2O_NS2H_6fusion15FusionCallbacksINS2H_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2Q_17LinearCombinationIS2P_fvfLNS_15FloatRoundStyleE2EEESI_S2N_JEEES1L_NS1N_IS1P_NS1Q_ILi16EEENSN_INS5_IJS2M_S1F_EEENS5_IJSB_S2M_EEEEEEENS4_17SM75_U16x4_LDSM_TENS4_14SM90_TMA_STOREES32_NS4_17SM90_U16x4_STSM_TENS25_IJNS4_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS1_16StreamKSchedulerEvEEEEvNT_6ParamsE",
+              "relative_rmse": 0.0379658080637455
+            },
+            "flashinfer": {
+              "us": 36.104,
+              "samples_us": [
+                36.035,
+                36.103,
+                36.143,
+                36.104,
+                36.209
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03796583041548729
+            },
+            "block_fp8": {
+              "us": 37.038,
+              "samples_us": [
+                37.028,
+                37.074,
+                36.959,
+                37.124,
+                37.038
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.03698906674981117
+            }
+          },
+          "quantized_rmse": 7.905920028861146e-06,
+          "changing_graph_rmse": 0.000109247921500355
+        },
+        {
+          "m": 16,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            563,
+            1,
+            1,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 20.961,
+              "samples_us": [
+                21.083,
+                20.961,
+                20.801,
+                20.805,
+                21.106999999999996
+              ],
+              "kernel_name": "void mxfp8_cache_hint::gemm<128, 16, 128, 3, true, 2560, 4, true>(unsigned char const*, unsigned char const*, unsigned char const*, unsigned char const*, __nv_bfloat16*, int, int, int)",
+              "relative_rmse": 0.03773144260048866
+            },
+            "flashinfer": {
+              "us": 21.014000000000003,
+              "samples_us": [
+                21.135,
+                21.18,
+                20.719,
+                21.014000000000003,
+                20.962
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03773144260048866
+            },
+            "block_fp8": {
+              "us": 21.087,
+              "samples_us": [
+                21.181,
+                21.063,
+                21.087,
+                21.177,
+                20.882
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.03699349984526634
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        },
+        {
+          "m": 16,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            563,
+            1,
+            1,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 24.563,
+              "samples_us": [
+                24.516,
+                24.469,
+                24.563,
+                24.567,
+                24.821
+              ],
+              "kernel_name": "void mxfp8_cache_hint::gemm<128, 16, 128, 3, true, 2560, 4, true>(unsigned char const*, unsigned char const*, unsigned char const*, unsigned char const*, __nv_bfloat16*, int, int, int)",
+              "relative_rmse": 0.03771050646901131
+            },
+            "flashinfer": {
+              "us": 24.967,
+              "samples_us": [
+                24.967,
+                24.577,
+                25.289,
+                24.760000000000005,
+                25.134
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.03771050646901131
+            },
+            "block_fp8": {
+              "us": 24.754,
+              "samples_us": [
+                24.865,
+                24.614,
+                24.925,
+                24.754,
+                24.742
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.036912787705659866
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        },
+        {
+          "m": 16,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            624,
+            1,
+            1,
+            0
+          ],
+          "backends": {
+            "native": {
+              "us": 34.946,
+              "samples_us": [
+                34.895,
+                35.023,
+                35.226,
+                34.946,
+                34.568
+              ],
+              "kernel_name": "void mxfp8_irregular::gemm<96, 16, 256, 1, true, 2560, 2, true>(unsigned char const*, unsigned char const*, unsigned char const*, unsigned char const*, __nv_bfloat16*, int, int, int)",
+              "relative_rmse": 0.037718139588832855
+            },
+            "flashinfer": {
+              "us": 35.455,
+              "samples_us": [
+                35.469,
+                35.455,
+                35.33,
+                34.732,
+                35.51
+              ],
+              "kernel_name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi4ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEENSE_ILi32EEESK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJSL_NSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESP_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISN_SN_fSO_Li32EEEEEENSR_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSR_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESL_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSR_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSR_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSL_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISO_SO_EESO_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSM_NS9_IJNSE_ILi64EEESL_EEEvNS9_IJSF_llEEENS_10bfloat16_tES2P_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2R_17LinearCombinationIS2Q_fvfLNS_15FloatRoundStyleE2EEESM_S2O_JEEES1P_NS1R_IS1T_NS1U_ILi16EEENSR_INS9_IJS2N_S1J_EEENS9_IJSF_S2N_EEEEEEENS8_17SM75_U16x4_LDSM_TENS8_14SM90_TMA_STOREES33_NS8_17SM90_U16x4_STSM_TENS29_IJNS8_17SM90_U32x2_STSM_NENS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+              "relative_rmse": 0.037718139588832855
+            },
+            "block_fp8": {
+              "us": 34.636,
+              "samples_us": [
+                34.532,
+                34.636,
+                34.643,
+                35.004,
+                34.38
+              ],
+              "kernel_name": "void cutlass::device_kernel<vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel>(vllm::cutlass_3x_gemm_fp8_blockwise<cutlass::bfloat16_t, 128, 1, 128, cute::tuple<cute::C<128>, cute::C<32>, cute::C<128> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::epilogue::collective::EpilogueScheduleAuto, cutlass::gemm::KernelTmaWarpSpecializedBlockwiseCooperativeSm120, true>::GemmKernel::Params)",
+              "relative_rmse": 0.037148475646972656
+            }
+          },
+          "quantized_rmse": 0.0,
+          "changing_graph_rmse": 0.0
+        }
+      ],
+      "weighted_128_gemm_ms": {
+        "native": 2.9638240000000002,
+        "flashinfer": 3.5949359999999997,
+        "block_fp8": 3.6112399999999996
+      }
+    }
+  },
+  "model_profiles": {
+    "bs1_native": {
+      "gpu": 6,
+      "batch": 1,
+      "steps": 20,
+      "input_tokens": 3000,
+      "gemm_count_per_step": 128,
+      "gemm_sum_ms": 2.5627237000000003,
+      "all_kernel_sum_ms": 4.19398115,
+      "memset_bytes_counts": {
+        "4": 20
+      },
+      "cuda_allocation_calls": {},
+      "workspace": {
+        "init": [
+          {
+            "stats": {
+              "layouts": 4,
+              "max_reduction_bytes": 327680,
+              "max_barrier_bytes": 384,
+              "arena_bytes": 328064,
+              "lanes": 3,
+              "total_arena_bytes": 984192,
+              "planning": 0,
+              "frozen": 1,
+              "persistent_launches": 1180,
+              "fallback_launches": 64
+            },
+            "barriers_zero": true
+          }
+        ],
+        "before": [
+          {
+            "stats": {
+              "layouts": 4,
+              "max_reduction_bytes": 327680,
+              "max_barrier_bytes": 384,
+              "arena_bytes": 328064,
+              "lanes": 3,
+              "total_arena_bytes": 984192,
+              "planning": 0,
+              "frozen": 1,
+              "persistent_launches": 1180,
+              "fallback_launches": 64
+            },
+            "barriers_zero": true
+          }
+        ],
+        "after": [
+          {
+            "stats": {
+              "layouts": 4,
+              "max_reduction_bytes": 327680,
+              "max_barrier_bytes": 384,
+              "arena_bytes": 328064,
+              "lanes": 3,
+              "total_arena_bytes": 984192,
+              "planning": 0,
+              "frozen": 1,
+              "persistent_launches": 1180,
+              "fallback_launches": 64
+            },
+            "barriers_zero": true
+          }
+        ]
+      }
+    },
+    "bs1_flashinfer": {
+      "gpu": 6,
+      "batch": 1,
+      "steps": 20,
+      "input_tokens": 3000,
+      "gemm_count_per_step": 128,
+      "gemm_sum_ms": 2.7739814,
+      "all_kernel_sum_ms": 4.41932495,
+      "memset_bytes_counts": {
+        "4": 20
+      },
+      "cuda_allocation_calls": {}
+    },
+    "bs16_native": {
+      "gpu": 4,
+      "batch": 16,
+      "steps": 20,
+      "input_tokens": 3000,
+      "gemm_count_per_step": 128,
+      "gemm_sum_ms": 2.6900061,
+      "all_kernel_sum_ms": 5.93939575,
+      "memset_bytes_counts": {
+        "64": 20
+      },
+      "cuda_allocation_calls": {},
+      "workspace": {
+        "init": [
+          {
+            "stats": {
+              "layouts": 4,
+              "max_reduction_bytes": 327680,
+              "max_barrier_bytes": 384,
+              "arena_bytes": 328064,
+              "lanes": 3,
+              "total_arena_bytes": 984192,
+              "planning": 0,
+              "frozen": 1,
+              "persistent_launches": 1180,
+              "fallback_launches": 64
+            },
+            "barriers_zero": true
+          }
+        ],
+        "before": [
+          {
+            "stats": {
+              "layouts": 4,
+              "max_reduction_bytes": 327680,
+              "max_barrier_bytes": 384,
+              "arena_bytes": 328064,
+              "lanes": 3,
+              "total_arena_bytes": 984192,
+              "planning": 0,
+              "frozen": 1,
+              "persistent_launches": 1180,
+              "fallback_launches": 256
+            },
+            "barriers_zero": true
+          }
+        ],
+        "after": [
+          {
+            "stats": {
+              "layouts": 4,
+              "max_reduction_bytes": 327680,
+              "max_barrier_bytes": 384,
+              "arena_bytes": 328064,
+              "lanes": 3,
+              "total_arena_bytes": 984192,
+              "planning": 0,
+              "frozen": 1,
+              "persistent_launches": 1180,
+              "fallback_launches": 320
+            },
+            "barriers_zero": true
+          }
+        ]
+      }
+    },
+    "bs16_flashinfer": {
+      "gpu": 4,
+      "batch": 16,
+      "steps": 20,
+      "input_tokens": 3000,
+      "gemm_count_per_step": 128,
+      "gemm_sum_ms": 3.0206208500000002,
+      "all_kernel_sum_ms": 6.273723550000001,
+      "memset_bytes_counts": {
+        "64": 20
+      },
+      "cuda_allocation_calls": {}
+    }
+  },
+  "workspace_probe": {
+    "current": {
+      "stats": {
+        "layouts": 4,
+        "max_reduction_bytes": 327680,
+        "max_barrier_bytes": 384,
+        "arena_bytes": 328064,
+        "lanes": 1,
+        "total_arena_bytes": 328064,
+        "planning": 0,
+        "frozen": 1,
+        "persistent_launches": 14,
+        "fallback_launches": 7
+      },
+      "rows": [
+        {
+          "m": 1,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            4,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            4,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            563,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            563,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            624,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            13,
+            2,
+            1,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            2,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            665,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            13,
+            2,
+            1,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            2,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            665,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            14,
+            2,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 64,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            14,
+            2,
+            2,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 64,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            572,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            572,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            747,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            15,
+            2,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 128,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            15,
+            4,
+            2,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 128,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            73,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            789,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            700,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            15,
+            2,
+            2,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 256,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            51,
+            2,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 256,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            780,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            775,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            504,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            16,
+            2,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 1
+        },
+        {
+          "m": 512,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            379,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            786,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            789,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            786,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            786,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        }
+      ]
+    },
+    "expanded": {
+      "stats": {
+        "layouts": 8,
+        "max_reduction_bytes": 5242880,
+        "max_barrier_bytes": 640,
+        "arena_bytes": 5243520,
+        "lanes": 1,
+        "total_arena_bytes": 5243520,
+        "planning": 0,
+        "frozen": 1,
+        "persistent_launches": 21,
+        "fallback_launches": 0
+      },
+      "rows": [
+        {
+          "m": 1,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            12,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            1458,
+            1,
+            8,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 8,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            0,
+            1,
+            4,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            12,
+            2,
+            4,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            4,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            563,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            563,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 16,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            624,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            13,
+            2,
+            1,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            2,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 24,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            665,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            13,
+            2,
+            1,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            13,
+            2,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            576,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 32,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            665,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            14,
+            2,
+            4,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            14,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            572,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            572,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 64,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            747,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            15,
+            2,
+            8,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            15,
+            4,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            73,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            789,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 128,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            700,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            15,
+            2,
+            2,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            51,
+            2,
+            1,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            780,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            775,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 256,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            504,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            16,
+            2,
+            4,
+            0
+          ],
+          "persistent": 1,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 512,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            379,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            786,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 1024,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            789,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            781,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            786,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            786,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 2048,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 3000,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 2560,
+          "k": 4096,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 2560,
+          "k": 9216,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 10240,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 12288,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        },
+        {
+          "m": 4096,
+          "n": 18432,
+          "k": 2560,
+          "config": [
+            79,
+            1,
+            1,
+            0
+          ],
+          "persistent": 0,
+          "fallback": 0
+        }
+      ]
+    }
+  },
+  "geometry": {
+    "model": "Qwen3.5-4B",
+    "tp": 1,
+    "layers": 32,
+    "linear_attention_layers": 24,
+    "full_attention_layers": 8,
+    "gemms_per_forward": 128,
+    "config_path": "models/Qwen3.5-4B-MXFP8/config.json",
+    "config_sha256": "64695e02655fc8cab9ec405022c5fab493fcffb6000fa9fcac02adfbf58b7291",
+    "projections": [
+      {
+        "name": "gdn.in_proj_qkvz",
+        "n": 12288,
+        "k": 2560,
+        "count": 24
+      },
+      {
+        "name": "gdn.out_proj",
+        "n": 2560,
+        "k": 4096,
+        "count": 24
+      },
+      {
+        "name": "attn.qkv_gate_proj",
+        "n": 10240,
+        "k": 2560,
+        "count": 8
+      },
+      {
+        "name": "attn.o_proj",
+        "n": 2560,
+        "k": 4096,
+        "count": 8
+      },
+      {
+        "name": "mlp.gate_up_proj",
+        "n": 18432,
+        "k": 2560,
+        "count": 32
+      },
+      {
+        "name": "mlp.down_proj",
+        "n": 2560,
+        "k": 9216,
+        "count": 32
+      }
+    ]
+  }
+}

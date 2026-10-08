@@ -1,0 +1,187 @@
+{
+  "date": "2026-10-08",
+  "model": "Qwen3.5-4B-MXFP8",
+  "tensor_parallel_size": 1,
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "gpu_index": 4,
+  "profile": "native MXFP8 + NVFP4 candidate head/BF16 refinement + PDL v3",
+  "flags": {
+    "VLLM_MACH_MXFP8_BACKEND": "native",
+    "VLLM_MACH_MXFP8_PDL": "1",
+    "VLLM_MACH_MXFP8_NORM_QUANT": "0",
+    "VLLM_MACH_GDN_TP1": "0",
+    "VLLM_MACH_MXFP8_FUSED_MLP": "1",
+    "VLLM_MACH_FUSED_GEMMA_NORM": "1"
+  },
+  "contract": {
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "batches": [
+      16,
+      32
+    ],
+    "scored_repeats": 3,
+    "warmup": "One full 3000/1000 cohort of BS requests before each batch size",
+    "requests_per_scored_repeat": "BS",
+    "prompts": "First BS frozen ShareGPT prompts from docs/data/serving-prompts.json repeated to 3000 tokens",
+    "seed_base": 42000,
+    "sampling": "greedy, ignore_eos=true",
+    "compilation": "VLLM_COMPILE / FULL_AND_PIECEWISE",
+    "attention_backend": "TRITON_ATTN",
+    "max_num_seqs": 32,
+    "max_num_batched_tokens": 4096,
+    "max_model_len": 16384,
+    "gpu_memory_utilization": 0.92,
+    "prefix_caching": false,
+    "profiling_during_measurements": false,
+    "statistic": "Arithmetic mean of three per-cohort output throughput values; output tokens divided by entire cohort wall time"
+  },
+  "versions": {
+    "torch": "2.13.0+cu130",
+    "vllm": "0.29.0",
+    "flashinfer-python": "0.6.18",
+    "mxfp6-sm120": "0.2.1",
+    "vllm-mach": "0.1.1"
+  },
+  "git_commit": "2407ac0143ac67ba211e7237539ebd53f8645cd9",
+  "libraries": {
+    "mxfp6_torch.so": "b63a2190f13e24b449238e6efaea4cfc92a56b986e53de9bddcaef401512a170",
+    "mxfp8_torch.so": "a47cb15b500dfbd3bddf7a1db4b05f2f1656723c122a397e6fc1d66774757e96"
+  },
+  "model_config_sha256": "64695e02655fc8cab9ec405022c5fab493fcffb6000fa9fcac02adfbf58b7291",
+  "prompt_manifest_sha256": "14f46c98f8c5bef16c834b3252f8ab2a3f9e6c76f9e4caa874894e42a4f027a2",
+  "profiles": {
+    "bf16": {
+      "kv_cache_dtype_argument": "auto",
+      "cache_capacity_tokens": 665190,
+      "attention_block_size": 528,
+      "batches": {
+        "16": {
+          "output_throughput_tokens_s": 2518.6305910780247,
+          "throughput_samples_tokens_s": [
+            2521.156186826128,
+            2518.3637884198497,
+            2516.371797988096
+          ],
+          "mean_tpot_ms": 5.762496672435218,
+          "tpot_samples_ms": [
+            5.7583190023829625,
+            5.7625395081074045,
+            5.766631506815286
+          ],
+          "mean_ttft_ms": 568.1162046870062,
+          "scored_requests": 48,
+          "completion_tokens": 48000,
+          "all_completed": true,
+          "text_matches_repeated_runs": 32,
+          "text_comparisons_repeated_runs": 32
+        },
+        "32": {
+          "output_throughput_tokens_s": 3400.8498183374504,
+          "throughput_samples_tokens_s": [
+            3405.3314191901604,
+            3397.768454224762,
+            3399.4495815974296
+          ],
+          "mean_tpot_ms": 8.25692917278308,
+          "tpot_samples_ms": [
+            8.249977136218293,
+            8.26234472219835,
+            8.258465659932595
+          ],
+          "mean_ttft_ms": 1099.9846756652307,
+          "scored_requests": 96,
+          "completion_tokens": 96000,
+          "all_completed": true,
+          "text_matches_repeated_runs": 64,
+          "text_comparisons_repeated_runs": 64
+        }
+      }
+    },
+    "fp8_e4m3": {
+      "kv_cache_dtype_argument": "fp8_e4m3",
+      "cache_capacity_tokens": 1176198,
+      "attention_block_size": 1056,
+      "batches": {
+        "16": {
+          "output_throughput_tokens_s": 2775.082681638243,
+          "throughput_samples_tokens_s": [
+            2777.790855582685,
+            2774.8852908178574,
+            2772.5718985141857
+          ],
+          "mean_tpot_ms": 5.187460063944791,
+          "tpot_samples_ms": [
+            5.183672729815059,
+            5.187652887192902,
+            5.191054574826413
+          ],
+          "mean_ttft_ms": 556.8606119680529,
+          "scored_requests": 48,
+          "completion_tokens": 48000,
+          "all_completed": true,
+          "text_matches_repeated_runs": 32,
+          "text_comparisons_repeated_runs": 32
+        },
+        "32": {
+          "output_throughput_tokens_s": 3867.418024169599,
+          "throughput_samples_tokens_s": [
+            3868.192544639836,
+            3871.819841141794,
+            3862.2416867271663
+          ],
+          "mean_tpot_ms": 7.150092416474084,
+          "tpot_samples_ms": [
+            7.152851498673542,
+            7.141134385110435,
+            7.156291365638274
+          ],
+          "mean_ttft_ms": 1075.5305453494657,
+          "scored_requests": 96,
+          "completion_tokens": 96000,
+          "all_completed": true,
+          "text_matches_repeated_runs": 64,
+          "text_comparisons_repeated_runs": 64
+        }
+      }
+    }
+  },
+  "comparisons": {
+    "16": {
+      "throughput_gain_pct": 10.182203435020277,
+      "tpot_reduction_pct": 9.978949076727496,
+      "text_matches_vs_bf16": 12,
+      "text_comparisons_vs_bf16": 48
+    },
+    "32": {
+      "throughput_gain_pct": 13.71916523089034,
+      "tpot_reduction_pct": 13.404944297662247,
+      "text_matches_vs_bf16": 39,
+      "text_comparisons_vs_bf16": 96
+    }
+  },
+  "validation": {
+    "bf16": {
+      "preemption_log_lines": [],
+      "errors_before_measurements_completed": 0,
+      "shutdown_error_log_lines": 8,
+      "shutdown_error_note": "EngineDeadError reported after all measured requests completed, while the benchmark runner stopped its server process group with SIGTERM."
+    },
+    "fp8_e4m3": {
+      "preemption_log_lines": [],
+      "errors_before_measurements_completed": 0,
+      "shutdown_error_log_lines": 8,
+      "shutdown_error_note": "EngineDeadError reported after all measured requests completed, while the benchmark runner stopped its server process group with SIGTERM."
+    },
+    "total_scored_requests": 288,
+    "total_scored_completion_tokens": 288000
+  },
+  "notes": [
+    "Both KV configurations were freshly measured sequentially on GPU4; do not infer speedups by comparing against the older GPU2 report.",
+    "Only full-attention KV precision changes; Mamba cache options retain auto with BF16 model dtype.",
+    "The checkpoint has no KV cache quantization calibration scheme; no fidelity evaluation was run for this FP8 KV experiment.",
+    "Clocks were not locked; three repeats in one server lifecycle per arm do not establish long-term stability.",
+    "The interrupted GPU0 startup produced no scored data and is excluded."
+  ],
+  "audit_directory": "audit/mxfp8-fp8-kv-20261008"
+}

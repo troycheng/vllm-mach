@@ -1,0 +1,537 @@
+{
+  "date": "2026-09-30",
+  "model": "Qwen3.5-4B-MXFP8",
+  "tp": 1,
+  "compilation": "vLLM default: VLLM_COMPILE / FULL_AND_PIECEWISE",
+  "profile_contract": {
+    "input_tokens": 3000,
+    "steps": 20,
+    "bs1_gpu": 6,
+    "bs16_gpu": 4,
+    "model_forward": "median union of execute_context GPU intervals across streams per step; excludes lm_head",
+    "kernel_sum": "sum of GPU kernel durations including lm_head; counts overlap twice"
+  },
+  "profiles": {
+    "default_bs1": {
+      "kernels_per_step": 530.0,
+      "kernel_sum_ms": 4.14888255,
+      "model_forward_median_ms": 3.397810546875,
+      "model_forward_samples_ms": [
+        3.3967529296875,
+        3.3988017578125,
+        3.3976826171875,
+        3.3943857421875,
+        3.3979384765625,
+        3.3997939453125,
+        3.3955380859375,
+        5.4867412109375,
+        3.39973046875,
+        3.396275390625,
+        3.397681640625,
+        3.3962099609375,
+        3.3986416015625,
+        3.3969140625,
+        3.399921875,
+        3.3991220703125,
+        3.3966904296875,
+        3.40075390625,
+        3.3983232421875,
+        3.3969775390625
+      ],
+      "persistent_gdn_kernels_per_step": 0.0,
+      "fused_silu_quant_kernels_per_step": 0.0,
+      "allocations": {},
+      "workspace": [
+        {
+          "stats": {
+            "layouts": 8,
+            "max_reduction_bytes": 5242880,
+            "max_barrier_bytes": 640,
+            "arena_bytes": 5243520,
+            "lanes": 3,
+            "total_arena_bytes": 15730560,
+            "planning": 0,
+            "frozen": 1,
+            "persistent_launches": 4012,
+            "fallback_launches": 0
+          },
+          "barriers_zero": true,
+          "warmup_file": "/data/lxy/detailed_benchmark/vllm-mach/src/vllm_mach/mxfp6/warmup.py",
+          "mlp_env": "0",
+          "layers": [
+            {
+              "type": "<class 'vllm.model_executor.models.qwen2_moe.Qwen2MoeMLP'>",
+              "act": "<class 'vllm.model_executor.layers.activation.SiluAndMul'>",
+              "up_type": "<class 'vllm.model_executor.layers.linear.MergedColumnParallelLinear'>",
+              "down_type": "<class 'vllm.model_executor.layers.linear.RowParallelLinear'>",
+              "up": [
+                18432,
+                2560
+              ],
+              "down": [
+                2560,
+                9216
+              ],
+              "eligible": true,
+              "prepared": false
+            }
+          ]
+        }
+      ]
+    },
+    "default_bs16": {
+      "kernels_per_step": 626.0,
+      "kernel_sum_ms": 5.86019645,
+      "model_forward_median_ms": 5.1646376953125,
+      "model_forward_samples_ms": [
+        5.17463671875,
+        5.171341796875,
+        5.174349609375,
+        5.17425390625,
+        5.16423828125,
+        5.164845703125,
+        5.1672783203125,
+        7.3397998046875,
+        5.1609736328125,
+        5.1594697265625,
+        5.163150390625,
+        5.16590234375,
+        5.1580615234375,
+        5.1644296875,
+        5.16558203125,
+        5.1617744140625,
+        5.168078125,
+        5.15991796875,
+        5.158830078125,
+        5.1611328125
+      ],
+      "persistent_gdn_kernels_per_step": 0.0,
+      "fused_silu_quant_kernels_per_step": 0.0,
+      "allocations": {},
+      "workspace": [
+        {
+          "stats": {
+            "layouts": 8,
+            "max_reduction_bytes": 5242880,
+            "max_barrier_bytes": 640,
+            "arena_bytes": 5243520,
+            "lanes": 3,
+            "total_arena_bytes": 15730560,
+            "planning": 0,
+            "frozen": 1,
+            "persistent_launches": 4012,
+            "fallback_launches": 0
+          },
+          "barriers_zero": true
+        }
+      ]
+    },
+    "mlp_bs16": {
+      "kernels_per_step": 594.0,
+      "kernel_sum_ms": 5.82639815,
+      "model_forward_median_ms": 5.1159658203125,
+      "model_forward_samples_ms": [
+        5.124494140625,
+        5.1252939453125,
+        5.125326171875,
+        5.1248154296875,
+        5.1184462890625,
+        5.116078125,
+        5.1167177734375,
+        7.1652421875,
+        5.10740625,
+        5.11271875,
+        5.1154697265625,
+        5.1094873046875,
+        5.115853515625,
+        5.1078232421875,
+        5.112462890625,
+        5.1116953125,
+        5.1189267578125,
+        5.11626953125,
+        5.10987109375,
+        5.1099033203125
+      ],
+      "persistent_gdn_kernels_per_step": 0.0,
+      "fused_silu_quant_kernels_per_step": 32.0,
+      "allocations": {},
+      "workspace": [
+        {
+          "stats": {
+            "layouts": 8,
+            "max_reduction_bytes": 5242880,
+            "max_barrier_bytes": 640,
+            "arena_bytes": 5243520,
+            "lanes": 3,
+            "total_arena_bytes": 15730560,
+            "planning": 0,
+            "frozen": 1,
+            "persistent_launches": 4012,
+            "fallback_launches": 0
+          },
+          "barriers_zero": true,
+          "warmup_file": "/data/lxy/detailed_benchmark/vllm-mach/src/vllm_mach/mxfp6/warmup.py",
+          "mlp_env": "1",
+          "layers": [
+            {
+              "type": "<class 'vllm.model_executor.models.qwen2_moe.Qwen2MoeMLP'>",
+              "act": "<class 'vllm.model_executor.layers.activation.SiluAndMul'>",
+              "up_type": "<class 'vllm.model_executor.layers.linear.MergedColumnParallelLinear'>",
+              "down_type": "<class 'vllm.model_executor.layers.linear.RowParallelLinear'>",
+              "up": [
+                18432,
+                2560
+              ],
+              "down": [
+                2560,
+                9216
+              ],
+              "eligible": true,
+              "prepared": true
+            }
+          ]
+        }
+      ]
+    },
+    "optimized_bs1": {
+      "kernels_per_step": 450.0,
+      "kernel_sum_ms": 4.0219396000000005,
+      "model_forward_median_ms": 3.261044921875,
+      "model_forward_samples_ms": [
+        3.2636689453125,
+        3.2597646484375,
+        3.2609169921875,
+        3.263763671875,
+        3.2650126953125,
+        3.2623876953125,
+        3.2581640625,
+        5.276568359375,
+        3.2592529296875,
+        3.2584853515625,
+        3.2611728515625,
+        3.2577802734375,
+        3.261267578125,
+        3.2621328125,
+        3.2607568359375,
+        3.2581005859375,
+        3.259380859375,
+        3.260693359375,
+        3.26162109375,
+        3.2641484375
+      ],
+      "persistent_gdn_kernels_per_step": 24.0,
+      "fused_silu_quant_kernels_per_step": 32.0,
+      "allocations": {},
+      "workspace": [
+        {
+          "stats": {
+            "layouts": 8,
+            "max_reduction_bytes": 5242880,
+            "max_barrier_bytes": 640,
+            "arena_bytes": 5243520,
+            "lanes": 3,
+            "total_arena_bytes": 15730560,
+            "planning": 0,
+            "frozen": 1,
+            "persistent_launches": 4036,
+            "fallback_launches": 0
+          },
+          "barriers_zero": true,
+          "warmup_file": "/data/lxy/detailed_benchmark/vllm-mach/src/vllm_mach/mxfp6/warmup.py",
+          "mlp_env": "1",
+          "layers": [
+            {
+              "type": "<class 'vllm.model_executor.models.qwen2_moe.Qwen2MoeMLP'>",
+              "act": "<class 'vllm.model_executor.layers.activation.SiluAndMul'>",
+              "up_type": "<class 'vllm.model_executor.layers.linear.MergedColumnParallelLinear'>",
+              "down_type": "<class 'vllm.model_executor.layers.linear.RowParallelLinear'>",
+              "up": [
+                18432,
+                2560
+              ],
+              "down": [
+                2560,
+                9216
+              ],
+              "eligible": true,
+              "prepared": true
+            }
+          ]
+        }
+      ]
+    },
+    "optimized_bs16": {
+      "kernels_per_step": 594.0,
+      "kernel_sum_ms": 6.2344231,
+      "model_forward_median_ms": 5.0212001953125,
+      "model_forward_samples_ms": [
+        5.020591796875,
+        5.0333603515625,
+        5.0156640625,
+        5.0283349609375,
+        5.0212646484375,
+        5.0198876953125,
+        5.0250732421875,
+        7.0477080078125,
+        5.0154716796875,
+        5.0140009765625,
+        5.025423828125,
+        5.0129130859375,
+        5.01054296875,
+        5.0211357421875,
+        5.0293916015625,
+        5.0203046875,
+        5.025423828125,
+        5.0294248046875,
+        5.0280166015625,
+        5.0083037109375
+      ],
+      "persistent_gdn_kernels_per_step": 0.0,
+      "fused_silu_quant_kernels_per_step": 32.0,
+      "allocations": {},
+      "workspace": [
+        {
+          "stats": {
+            "layouts": 8,
+            "max_reduction_bytes": 5242880,
+            "max_barrier_bytes": 640,
+            "arena_bytes": 5243520,
+            "lanes": 3,
+            "total_arena_bytes": 15730560,
+            "planning": 0,
+            "frozen": 1,
+            "persistent_launches": 4132,
+            "fallback_launches": 0
+          },
+          "barriers_zero": true,
+          "warmup_file": "/data/lxy/detailed_benchmark/vllm-mach/src/vllm_mach/mxfp6/warmup.py",
+          "mlp_env": "1",
+          "layers": [
+            {
+              "type": "<class 'vllm.model_executor.models.qwen2_moe.Qwen2MoeMLP'>",
+              "act": "<class 'vllm.model_executor.layers.activation.SiluAndMul'>",
+              "up_type": "<class 'vllm.model_executor.layers.linear.MergedColumnParallelLinear'>",
+              "down_type": "<class 'vllm.model_executor.layers.linear.RowParallelLinear'>",
+              "up": [
+                18432,
+                2560
+              ],
+              "down": [
+                2560,
+                9216
+              ],
+              "eligible": true,
+              "prepared": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "fidelity": {
+    "32": {
+      "queries": 256,
+      "tokens": 10479,
+      "baseline_query_mae_vs_bf16": 0.05814335354405448,
+      "baseline_repeat": {
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "arms": {
+        "mlp": {
+          "query_mae_vs_bf16": 0.059746338182052536,
+          "delta": 0.0016029846379980476,
+          "delta_ci95": [
+            -0.0008028009098157545,
+            0.004133420241840148
+          ],
+          "repeat": {
+            "max_abs": 0.0,
+            "mean_abs": 0.0
+          }
+        },
+        "optimized": {
+          "query_mae_vs_bf16": 0.06028081995849413,
+          "delta": 0.002137466414439646,
+          "delta_ci95": [
+            -0.00039556186276943316,
+            0.004795552198688993
+          ],
+          "repeat": {
+            "max_abs": 0.0,
+            "mean_abs": 0.0
+          }
+        }
+      }
+    },
+    "4": {
+      "queries": 256,
+      "tokens": 10479,
+      "baseline_query_mae_vs_bf16": 0.060708421700281415,
+      "baseline_repeat": {
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "arms": {
+        "optimized": {
+          "query_mae_vs_bf16": 0.06005893503920814,
+          "delta": -0.0006494866610732854,
+          "delta_ci95": [
+            -0.0034095417914626154,
+            0.0021086429164527618
+          ],
+          "repeat": {
+            "max_abs": 0.0,
+            "mean_abs": 0.0
+          }
+        }
+      }
+    }
+  },
+  "serving": {
+    "default_bs1": {
+      "completed": 8,
+      "requested": 8,
+      "duration_s": 34.134239024017006,
+      "prompt_tokens": 24000,
+      "completion_tokens": 8000,
+      "request_throughput_per_s": 0.2343687812806128,
+      "output_throughput_tokens_per_s": 234.3687812806128,
+      "total_throughput_tokens_per_s": 937.4751251224512,
+      "mean_ttft_ms": 66.6006488900166,
+      "p99_ttft_ms": 67.12207379285246,
+      "mean_tpot_ms": 4.2042625850431055,
+      "p99_tpot_ms": 4.204820485790731,
+      "mean_itl_ms": 4.2419205682502445,
+      "p99_itl_ms": 4.439085628837348,
+      "median_itl_ms": 4.206017823889852
+    },
+    "default_bs16": {
+      "completed": 64,
+      "requested": 64,
+      "duration_s": 27.89005199400708,
+      "prompt_tokens": 192000,
+      "completion_tokens": 64000,
+      "request_throughput_per_s": 2.2947250157063923,
+      "output_throughput_tokens_per_s": 2294.7250157063922,
+      "total_throughput_tokens_per_s": 9178.900062825569,
+      "mean_ttft_ms": 318.73142468975857,
+      "p99_ttft_ms": 992.7165556396358,
+      "mean_tpot_ms": 6.652199049816367,
+      "p99_tpot_ms": 6.8475545123983945,
+      "mean_itl_ms": 6.664689914857817,
+      "p99_itl_ms": 12.436649156734331,
+      "median_itl_ms": 6.031166994944215
+    },
+    "optimized_bs1": {
+      "completed": 8,
+      "requested": 8,
+      "duration_s": 33.07158312294632,
+      "prompt_tokens": 24000,
+      "completion_tokens": 8000,
+      "request_throughput_per_s": 0.24189951748784883,
+      "output_throughput_tokens_per_s": 241.89951748784884,
+      "total_throughput_tokens_per_s": 967.5980699513954,
+      "mean_ttft_ms": 67.43236773763783,
+      "p99_ttft_ms": 69.43793857237324,
+      "mean_tpot_ms": 4.070454599250488,
+      "p99_tpot_ms": 4.070926496833171,
+      "mean_itl_ms": 4.072463036942471,
+      "p99_itl_ms": 4.2120071477256715,
+      "median_itl_ms": 4.072949406690896
+    },
+    "optimized_bs16": {
+      "completed": 64,
+      "requested": 64,
+      "duration_s": 27.383489100961015,
+      "prompt_tokens": 192000,
+      "completion_tokens": 64000,
+      "request_throughput_per_s": 2.337174775794146,
+      "output_throughput_tokens_per_s": 2337.174775794146,
+      "total_throughput_tokens_per_s": 9348.699103176585,
+      "mean_ttft_ms": 317.5448504407541,
+      "p99_ttft_ms": 990.1182325836271,
+      "mean_tpot_ms": 6.527039049045355,
+      "p99_tpot_ms": 6.719344783102622,
+      "mean_itl_ms": 6.527633396228322,
+      "p99_itl_ms": 7.75574334198609,
+      "median_itl_ms": 5.906444974243641
+    }
+  },
+  "quant_microbench": [
+    {
+      "m": 1,
+      "us": {
+        "cuda": 2.186292075066309,
+        "triton4": 0.9318376362743371,
+        "triton8": 0.9229507241566934,
+        "triton16": 0.9357114423785293,
+        "triton32": 0.9749347191128179
+      }
+    },
+    {
+      "m": 16,
+      "us": {
+        "cuda": 2.3708426575858477,
+        "triton4": 1.2686715452011372,
+        "triton8": 1.0596483073116543,
+        "triton16": 1.030922766555967,
+        "triton32": 1.0300693182738332
+      }
+    },
+    {
+      "m": 32,
+      "us": {
+        "cuda": 2.423855207642713,
+        "triton4": 1.7726976550756905,
+        "triton8": 1.2633426603978004,
+        "triton16": 1.184478479370098,
+        "triton32": 1.1774628891846988
+      }
+    },
+    {
+      "m": 128,
+      "us": {
+        "cuda": 3.412693117945086,
+        "triton4": 5.059482377598263,
+        "triton8": 2.889433927308514,
+        "triton16": 1.807599266207438,
+        "triton32": 1.8024035448467204
+      }
+    },
+    {
+      "m": 4096,
+      "us": {
+        "cuda": 107.40131748037622,
+        "triton4": 143.6395000708617,
+        "triton8": 110.95143981192557,
+        "triton16": 110.21232506142982,
+        "triton32": 108.80876996169077
+      }
+    }
+  ],
+  "tests": {
+    "regression": 133,
+    "producer_final": 3,
+    "distinct_tests": 134
+  },
+  "serving_contract": {
+    "gpu": 4,
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "bs16_requests": 64,
+    "bs1_requests": 8,
+    "warmup_requests": "equal to concurrency",
+    "warmup_output_tokens": 64,
+    "attention": "TRITON_ATTN",
+    "baseline_flags": {
+      "VLLM_MACH_MXFP8_FUSED_MLP": "0",
+      "VLLM_MACH_GDN_TP1": "0"
+    },
+    "optimized_flags": {
+      "VLLM_MACH_MXFP8_FUSED_MLP": "1",
+      "VLLM_MACH_GDN_TP1": "1"
+    },
+    "scope": "one matched run per arm and batch, default compilation in both"
+  }
+}

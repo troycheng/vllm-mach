@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Launch Qwen dense or Qwen3.5-35B-A3B native MXFP6 inference (default TP2)."""
+"""Launch native MXFP6 (default TP2) or dense MXFP8 (default TP1) inference."""
 
 from __future__ import annotations
 
@@ -11,16 +11,36 @@ import sys
 from pathlib import Path
 
 
-def _is_qwen35_moe(model: str | Path) -> bool:
+def _model_config(model: str | Path) -> dict:
     config_path = Path(model) / "config.json"
-    config = json.loads(config_path.read_text()) if config_path.is_file() else {}
+    return json.loads(config_path.read_text()) if config_path.is_file() else {}
+
+
+def _is_qwen35_moe(model: str | Path) -> bool:
+    config = _model_config(model)
     return config.get("model_type") in ("qwen3_5_moe", "qwen3_5_moe_text")
+
+
+def _is_mxfp8(model: str | Path) -> bool:
+    config = _model_config(model)
+    return config.get("quantization_config", {}).get("format") == "mxfp8-quantized"
+
+
+def _tp_size(args) -> int:
+    size = getattr(args, "tensor_parallel_size", None)
+    if size is None:
+        return 1 if _is_mxfp8(args.model) else 2
+    if size < 1:
+        raise ValueError("tensor_parallel_size must be positive")
+    return size
 
 
 def profile_environment(args: argparse.Namespace) -> dict[str, str]:
     dense = not _is_qwen35_moe(args.model)
-    lossless = dense if args.lossless_prefill is None else args.lossless_prefill
-    owner = dense if args.owner_prefill is None else args.owner_prefill
+    tp_size = _tp_size(args)
+    native_tp2 = dense and not _is_mxfp8(args.model) and tp_size == 2
+    lossless = native_tp2 if args.lossless_prefill is None else args.lossless_prefill
+    owner = native_tp2 if args.owner_prefill is None else args.owner_prefill
     # Explicit values prevent stale profile flags from changing this run.
     env = {
         "VLLM_PLUGINS": "mach",
@@ -29,8 +49,8 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "MXFP6_AUTOTUNE": "off",
         "VLLM_USE_V2_MODEL_RUNNER": "1",
         "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
-        "VLLM_QWEN3_5_FUSED_AR_NORM": str(int(getattr(args, "fused_ar_norm", True))),
-        "VLLM_MACH_FUSED_AR_QUANT": str(int(dense and getattr(args, "fused_ar_quant", True)
+        "VLLM_QWEN3_5_FUSED_AR_NORM": str(int(tp_size == 2 and getattr(args, "fused_ar_norm", True))),
+        "VLLM_MACH_FUSED_AR_QUANT": str(int(native_tp2 and getattr(args, "fused_ar_quant", True)
                                              and getattr(args, "fused_ar_norm", True))),
         "VLLM_QWEN3_5_FP16_SSM": str(int(args.fp16_ssm)),
         "VLLM_FLASHINFER_ALLREDUCE_BACKEND": "trtllm",
@@ -57,11 +77,8 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
 def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str], dict]:
     env = dict(os.environ)
     env.update(profile_environment(args))
-    config = {
-        "mode": "NONE",
-        "cudagraph_mode": "FULL_DECODE_ONLY",
-        "cudagraph_capture_sizes": [1, 2, 4, 8, 16, 24, 32],
-    }
+    mxfp8 = _is_mxfp8(args.model)
+    moe = _is_qwen35_moe(args.model)
     command = [
         sys.executable,
         "-m",
@@ -69,17 +86,17 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "serve",
         str(args.model),
         "--quantization",
-        "quark",
+        "compressed-tensors" if mxfp8 else "quark",
         "--dtype",
         "bfloat16",
         "--tensor-parallel-size",
-        "2",
+        str(_tp_size(args)),
         "--max-num-seqs",
         "32",
         "--max-model-len",
         "16384",
         "--max-num-batched-tokens",
-        "2048" if _is_qwen35_moe(args.model) else "4096",
+        "2048" if moe else "4096",
         "--no-enable-prefix-caching",
         "--attention-backend",
         "TRITON_ATTN",
@@ -88,9 +105,14 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "--limit-mm-per-prompt",
         '{"image":0,"video":0}',
     ]
-    # MoE uses vLLM's default compilation and graph policy, including piecewise
-    # prefill capture. Keep the validated dense decode-only profile unchanged.
-    if not _is_qwen35_moe(args.model):
+    # MXFP8 and MoE use vLLM's default compilation and graph policy.
+    # Retain the validated decode-only policy for dense MXFP6 TP2.
+    if not moe and not mxfp8:
+        config = {
+            "mode": "NONE",
+            "cudagraph_mode": "FULL_DECODE_ONLY",
+            "cudagraph_capture_sizes": [1, 2, 4, 8, 16, 24, 32],
+        }
         command += ["--compilation-config", json.dumps(config)]
     if args.fp16_ssm:
         command += ["--mamba-ssm-cache-dtype", "float16"]
@@ -100,6 +122,7 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, required=True)
+    parser.add_argument("--tensor-parallel-size", "-tp", type=int, default=None)
     parser.add_argument("--fp16-ssm", action="store_true")
     parser.add_argument(
         "--fused-ar-norm",

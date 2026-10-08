@@ -229,3 +229,50 @@ python -m pytest -q
 Model directory names are Qwen3.8-27B-MXFP6, Qwen3.8-27B-FP8-official,
 Qwen3.8-27B-NVFP4 and Qwen3.8-27B-official (BF16/tokenizer).
 Use a separate plotting environment with `docs/data/requirements-plot.txt`.
+
+
+## Qwen3.5-4B single-GPU MXFP8 comparison (2026-09-30)
+
+This run uses the native W8A8 backend on one RTX 5090, TP1, vLLM 0.29.0
+with the Mach profile, PyTorch 2.13.0+cu130, and the supplied
+`/data1/models/Qwen3.5-4B-MXFP8` checkpoint. The machine-readable
+[summary](data/mxfp8-4b-comparison.json) and
+[raw request timings, contracts and gold logprobs](data/mxfp8-4b-comparison.raw.json.gz)
+retain both repetitions and every fidelity query.
+
+### Fidelity against BF16
+
+The existing teacher-forced decode procedure scores the frozen 256-query
+manifest: 64 queries each from math, code, English and Chinese, and 10,479 gold
+tokens. All arms use the BF16 4B tokenizer and the same token IDs. The vocabularies
+of all four checkpoints match. Each physical batch M4/M32 has its own fresh BF16
+reference; every scored decode step asserts its actual row count. Each arm
+repeats the first cohort and reproduces all its gold logprobs exactly.
+
+The metric averages absolute gold-token logprob errors within each query, then
+weights all 256 queries equally. Lower is better. Confidence intervals use
+20,000 query bootstrap resamples, seed 20260910. M4 and M32 below are physical
+decode batches, not client request concurrency.
+
+| Checkpoint | M4 MAE [95% CI] | M32 MAE [95% CI] |
+|---|---:|---:|
+| Block FP8 | 0.05307 [0.04866, 0.05768] | 0.05207 [0.04799, 0.05627] |
+| MXFP8 | 0.05918 [0.05437, 0.06414] | 0.06112 [0.05648, 0.06585] |
+| MXFP6 | 0.10261 [0.09525, 0.11029] | 0.09949 [0.09218, 0.10707] |
+
+MXFP8 has lower error than MXFP6 and slightly higher error than block FP8 on
+this corpus. The paired query-level confidence intervals for both differences
+exclude zero at M4 and M32; exact values are in the summary. This is a fidelity
+diagnostic, not task accuracy or an evaluation of unconstrained generated text.
+
+The supplied MXFP8 checkpoint also changes 105 norm tensors relative to BF16,
+with maximum absolute difference 0.015625. Of these, 81 match the result of
+adding one and subtracting one in BF16. The raw artifact retains the tensor-level
+check. We used the supplied weights unchanged, so these are checkpoint-level
+comparisons and do not isolate GEMM arithmetic or quantization format alone.
+
+All fidelity arms use TP1, FP32 SSM, BF16 activations and full BF16 LM heads,
+without CPU offload. BF16 uses eager execution; all quantized arms use
+compilation mode NONE and decode CUDA Graphs. W6A8 and W8A8 logs confirm
+`Mxfp6Sm120LinearKernel` and `Mxfp8Sm120LinearKernel` respectively. Fidelity runs
+used dedicated GPUs 1 and 2, each with TP1; the throughput service stayed on GPU 0.

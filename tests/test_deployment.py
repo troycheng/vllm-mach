@@ -273,3 +273,58 @@ def test_native_installer_defaults_include_ar_norm(monkeypatch, tmp_path):
         ROOT / "native" / "owner_prefill",
         ROOT / "native" / "ar_norm",
     ]
+
+
+def test_mxfp8_launcher_defaults_to_tp1(tmp_path):
+    from vllm_mach.mxfp6.serve import build_command
+
+    (tmp_path / "config.json").write_text(json.dumps({
+        "quantization_config": {"format": "mxfp8-quantized"}}))
+    args = argparse.Namespace(model=tmp_path, fp16_ssm=False, owner_prefill=None,
+                              lossless_prefill=None, nvfp4_lm_head=False,
+                              verify_prefill=False)
+    cmd, env = build_command(args, [])
+    assert cmd[cmd.index("--quantization") + 1] == "compressed-tensors"
+    assert cmd[cmd.index("--tensor-parallel-size") + 1] == "1"
+    assert "--compilation-config" not in cmd
+    for name in ("VLLM_MACH_FUSED_AR_QUANT", "VLLM_QWEN3_5_FUSED_AR_NORM",
+                 "VLLM_SM120_OWNER_PREFILL", "VLLM_SM120_LOSSLESS_PREFILL"):
+        assert env[name] == "0"
+    args.tensor_parallel_size = 2
+    cmd, _ = build_command(args, [])
+    assert cmd[cmd.index("--tensor-parallel-size") + 1] == "2"
+
+
+def test_mxfp8_registration_preserves_existing_backends():
+    from vllm.model_executor.kernels import linear
+    from vllm.platforms import PlatformEnum
+    from vllm_mach.mxfp6.dense_mxfp8 import (
+        Mxfp8Sm120LinearKernel, register_dense_mxfp8_kernel,
+    )
+
+    kernels = linear._POSSIBLE_MXFP8_KERNELS[PlatformEnum.CUDA]
+    original = list(kernels)
+    w6a8 = list(linear._POSSIBLE_MXFP6_KERNELS[PlatformEnum.CUDA])
+    try:
+        assert register_dense_mxfp8_kernel()
+        assert register_dense_mxfp8_kernel()
+        assert kernels[0] is Mxfp8Sm120LinearKernel
+        assert kernels.count(Mxfp8Sm120LinearKernel) == 1
+        assert kernels[1:] == [k for k in original if k is not Mxfp8Sm120LinearKernel]
+        assert linear._POSSIBLE_MXFP6_KERNELS[PlatformEnum.CUDA] == w6a8
+    finally:
+        kernels[:] = original
+
+
+def test_mxfp8_missing_runtime_allows_selector_fallback(monkeypatch):
+    from vllm_mach.mxfp6 import dense_mxfp8
+
+    monkeypatch.setattr(dense_mxfp8, "is_mxfp6_sm120_available", lambda cc: True)
+
+    def missing():
+        raise ImportError("old W6A8-only wheel")
+
+    monkeypatch.setattr(dense_mxfp8, "_runtime", missing)
+    supported, reason = dense_mxfp8.Mxfp8Sm120LinearKernel.is_supported(120)
+    assert not supported
+    assert "old W6A8-only wheel" in reason

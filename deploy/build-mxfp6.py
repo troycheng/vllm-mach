@@ -10,7 +10,7 @@ import urllib.request
 
 from install import patch_file
 
-REVISION = "cd4e964c391fcb8aaf1a27d28a63d778e3a38ece"  # exact TP2 producers; package version 0.2.1
+REVISION = "cfbc5074a53cae70c8d090629b59028587f2057d"  # native W6A8/W8A8 shared workspace; package version 0.2.1
 CUTLASS = "e6233cbac5d7c7a865c19c91cd684ceece19513c"
 WORK = Path("/opt/mach-build")
 
@@ -27,7 +27,8 @@ def archive(repo, revision, parent):
 def main():
     source = archive("Nekofish-L/mxfp6_sm120", REVISION, WORK)
     cutlass = archive("NVIDIA/cutlass", CUTLASS, WORK / "cutlass-source")
-    for name in ("0001-sm120-mxfp6-small-tile-runtime.patch", "0003-sm120-streamk-persistent-workspace.patch"):
+    for name in ("0001-sm120-mxfp6-small-tile-runtime.patch", "0003-sm120-streamk-persistent-workspace.patch",
+                 "0004-sm120-single-stage-mainloop.patch", "0005-sm120-static-problem-shape.patch"):
         patch_file(cutlass, source / "patches/cutlass" / name)
     env = dict(os.environ)
     cuda = Path(env["CUDA_HOME"])
@@ -41,6 +42,8 @@ def main():
     subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "--force-reinstall", str(wheel)], check=True)
     # This needs no GPU, but catches the dispatcher ABI mismatch of the PyPI wheel.
     subprocess.run([sys.executable, "-c", "import torch, mxfp6; mxfp6.load_library(); "
+                    "import mxfp6.mxfp8 as mxfp8; mxfp8.load_library(); "
+                    "assert hasattr(torch.ops.mxfp8_sm120, 'gemm_from_float'); "
                     "assert callable(mxfp6.gemm_from_gdn); "
                     "assert hasattr(torch.ops.mxfp6, 'gemm_from_swiglu'); "
                     "assert hasattr(torch.ops.mxfp6, 'gemm_w6a8_pdl')"], check=True)

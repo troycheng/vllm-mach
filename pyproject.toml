@@ -40,4 +40,4 @@ exclude = ["vllm_mach.exl3*"]
 "vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json", "gdn/*.cu"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/native_mxfp6", "tests/test_mxfp6_warmup.py", "tests/test_deployment.py"]
+testpaths = ["tests/native_mxfp6", "tests/test_mxfp6_warmup.py", "tests/test_deployment.py", "tests/test_mach_compile_cache.py"]
