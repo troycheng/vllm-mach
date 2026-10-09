@@ -15,6 +15,11 @@ def register() -> None:
     if installed != "0.29.0":
         raise RuntimeError(f"vLLM Mach requires vLLM 0.29.0; found {installed}.")
     profile = os.environ.get("VLLM_MACH_PROFILE")
+    if profile == "qwen35-2b-mxfp8-champion-v1":
+        from .mxfp8.two_b.profile import install_worker_hook
+
+        install_worker_hook()
+        return
     if profile == "qwen35-4b-block-fp8-v1":
         from .fp8.worker import install_worker_hook
 

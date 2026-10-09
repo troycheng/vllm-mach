@@ -33,12 +33,13 @@ All profiles below target Linux x86-64, Python 3.12, RTX 5090 GPUs with 32 GiB e
 |---|---|---|---|
 | Qwen3.8-27B Dense | Native MXFP6 | 2, TP2 | [MXFP6 setup](#native-mxfp6-dense-and-moe) |
 | Qwen3.5-35B-A3B MoE | Native MXFP6 | 2, TP2 | [MXFP6 setup](#native-mxfp6-dense-and-moe) / [MoE guide](docs/qwen35-moe.md) |
+| Qwen3.5-2B | MXFP8 champion, `qwen35-2b-mxfp8-champion-v1` | 1, TP1 | [2B setup](#mxfp8-2b-champion) |
 | Qwen3.5-4B | MXFP8 champion, `qwen35-4b-mxfp8-champion-v1` | 1, TP1 | [MXFP8 setup](#mxfp8-4b-champion) |
 | Qwen3.5-4B | Existing block-FP8, `qwen35-4b-block-fp8-v1` | 1, TP1 | [Block-FP8 setup](#block-fp8-4b) |
 
-MXFP8 uses E4M3 values with E8M0 group-32 scales; block-FP8 uses the checkpoint's FP32 block scales. They have separate model and runtime entry points. MXFP6 and block-FP8 retain BF16 KV by default; the MXFP8 champion uses calibrated FP8 KV.
+MXFP8 uses E4M3 values with E8M0 group-32 scales; block-FP8 uses the checkpoint's FP32 block scales. They have separate model and runtime entry points. MXFP6 and block-FP8 retain BF16 KV by default. The 2B MXFP8 champion retains BF16 KV and the complete BF16 head; the 4B MXFP8 champion uses calibrated FP8 KV.
 
-This README describes **`main`**, including the two 4B profiles added after [v0.1.1](docs/releases/0.1.1.md). Use the source builds below for these features; the v0.1.1 tag contains the earlier native MXFP6 release. Each profile guide records its qualified dependencies and revisions.
+This README describes **`main`**, including the 2B MXFP8 profile and two 4B profiles added after [v0.1.1](docs/releases/0.1.1.md). Use the source builds below for these features; the v0.1.1 tag contains the earlier native MXFP6 release. Each profile guide records its qualified dependencies and revisions.
 
 ## Installation
 
@@ -71,6 +72,29 @@ Use a supported checkpoint, such as [nekofish/Qwen3.8-27B-MXFP6](https://hugging
 | Full: append `--fp16-ssm --nvfp4-lm-head` | FP16 | NVFP4 candidate search with BF16 refinement |
 
 Full uses lower-precision state and approximate candidate search to improve throughput. Its candidate search handles eligible greedy decode; requests for full logits or unsupported sampling use the BF16 head. These switches belong to the MXFP6 launcher.
+
+### MXFP8 2B champion
+
+Use the shared MXFP8 image, but select the 2B preparation and serving entry points. Start with the [complete 2B guide](docs/mxfp8-2b-champion.md) for the public BF16 download, exact SHA-256 checks, runtime contract and measurement boundary.
+
+```bash
+docker buildx build --load --build-arg MAX_JOBS=2 \
+  -f deploy/Dockerfile.mxfp8 -t vllm-mach:mxfp8-champion .
+
+mkdir -p "$PWD/mxfp8-2b-output" "$PWD/mxfp8-2b-runs"
+docker run --rm --entrypoint vllm-mach-mxfp8-2b-prepare \
+  -v /absolute/path/to/pinned-qwen35-2b-bf16:/input/bf16:ro \
+  -v "$PWD/mxfp8-2b-output:/output" vllm-mach:mxfp8-champion \
+  --bf16 /input/bf16 --output /output/model
+
+docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
+  --entrypoint vllm-mach-mxfp8-2b-serve \
+  -v "$PWD/mxfp8-2b-output/model:/model:ro" \
+  -v "$PWD/mxfp8-2b-runs:/runs" \
+  vllm-mach:mxfp8-champion /model --run-dir /runs/serve --host 0.0.0.0
+```
+
+Preparation reconstructs a self-contained 438-tensor checkpoint on CPU from [Qwen/Qwen3.5-2B revision `15852e8c…`](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc). The launcher uses native MXFP8, ordered FP32 GDN, small-row BF16 BA, pinned reset IDs and exact 2048-token piecewise graphs. It keeps BF16 KV and the full BF16 vocabulary head. [Model preparation](docs/mxfp8-2b-model.md) gives the source and output hashes.
 
 ### MXFP8 4B champion
 
@@ -116,7 +140,7 @@ The example assumes tokenizer files are in the checkpoint directory. A separate 
 
 ## Usage
 
-All three launchers expose vLLM's OpenAI-compatible API. Once the server reports ready, `http://localhost:8000/v1/models` lists its served model name. The MXFP6 example uses `mach`; the 4B defaults are `q35-mx8-study` and `q35-fp8-study`.
+All four launchers expose vLLM's OpenAI-compatible API. Once the server reports ready, `http://localhost:8000/v1/models` lists its served model name. The MXFP6 example uses `mach`; the 2B default is `q35-2b-study`, and the 4B defaults are `q35-mx8-study` and `q35-fp8-study`.
 
 The 4B images include the same reproducible 3k/1k benchmark client. In a second terminal, while the MXFP8 server is running:
 
@@ -134,6 +158,7 @@ For block-FP8, use image `vllm-mach:fp8`, entry point `vllm-mach-fp8-bench`, mod
 |---|---|---|
 | MXFP6 Dense | Native W6A8; TP2 AllReduce/residual/RMSNorm fusion; fused SwiGLU, GDN and MXFP8 activation producers; persistent GDN and BA overlap; lossless and owner prefill | [Native integration](docs/native-mxfp6.md), [producer fusion](docs/dense-producer-fusion.md), [AR/Norm/quantization](docs/ar-norm-mxfp8.md), [GDN](docs/gdn-decode.md), [prefill](docs/long-prefill.md) |
 | MXFP6 MoE | Grouped native expert kernels; prefill/decode graphs; fused TP2 communication; non-expert projection dispatch tuned at selected physical M values from 32 to 160 | [MoE serving](docs/qwen35-moe.md), [projection dispatch](docs/moe-projection-20260923.md) |
+| MXFP8 2B | Native W8A8, ordered FP32 GDN with pinned reset-ID uploads, small-row BF16 BA, BF16 KV/head and exact2048 piecewise graphs | [2B champion](docs/mxfp8-2b-champion.md) |
 | MXFP8 4B | Native W8A8 and dual-activation MLP/QKVZ kernels; small-M BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation choices and FULL/PW graph routing | [Complete champion components](docs/mxfp8-champion.md#required-parts) |
 | Block-FP8 4B | N64 GEMM tiles; ordered low-M GEMM; fused SiLU/block quantization; mixed decode/prefill FA2; matched RMS compilation choices | [Linear](docs/fp8-linear.md), [activation](docs/fp8-activation.md), [attention](docs/fp8-attention.md) |
 
@@ -142,6 +167,10 @@ Mach packages these integrations directly. The block-FP8 linear routes are also 
 ## Performance
 
 All throughput tables use **3000 input / 1000 output tokens**, measured in **output tokens/s**. `c` denotes concurrent requests; `M` in kernel and fidelity reports denotes physical batch rows. Results compare the complete configurations described in each linked report.
+
+### Qwen3.5-2B MXFP8 — one RTX 5090, TP1
+
+The first study measured **+9.05%** median paired six-point throughput against community block-FP8 on GPU1. The second study measured **+2.56%** median paired throughput for pinned GDN reset-ID uploads against that first champion on GPU7. Both used four controlled pairs at c4/c16/c24/c32/c48/c64. These percentages have different baselines and GPUs; they are not a measured combined gain over community FP8. The public package reproduced all 438 tensors and the complete checkpoint SHA. Its same-card six-point regression measured +0.38% against the selected champion; fixed-token M4/M32/M64 replay matched the reference logprobs exactly. See the [2B guide](docs/mxfp8-2b-champion.md) for setup and evidence boundaries.
 
 ### Qwen3.5-4B MXFP8 — one RTX 5090, TP1
 
@@ -213,6 +242,7 @@ MXFP6 logprob requests use the BF16 head, so that diagnostic does not assess can
 | [MXFP6 installation](docs/installation.md) | Manual build, launch flags, graph defaults and memory sizing |
 | [Native MXFP6](docs/native-mxfp6.md) / [MoE](docs/qwen35-moe.md) | Checkpoint loading, operators, graph lifecycle and model-specific setup |
 | [MXFP8 champion](docs/mxfp8-champion.md) / [model preparation](docs/mxfp8-model.md) | Complete TP1 profile, public model inputs and single-checkpoint reconstruction |
+| [MXFP8 2B champion](docs/mxfp8-2b-champion.md) / [2B model preparation](docs/mxfp8-2b-model.md) | Independent TP1 launcher, pinned public BF16 source and 438-tensor checkpoint reconstruction |
 | [MXFP8 runtime installation](docs/mxfp8-installation.md) | Source pins, package versions and build records |
 | [Block-FP8 profile](docs/fp8-profile.md) | Four feature switches, source installation and precision contract |
 | [4B benchmark protocol](docs/mxfp8-benchmark.md) | Generated requests, warmup, concurrency and metric definitions |

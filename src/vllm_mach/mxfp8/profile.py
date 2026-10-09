@@ -227,7 +227,8 @@ def install_worker_hook():
         if Worker._mach_mxfp8_champion_contract != contract:
             raise RuntimeError("MXFP8 profile contract changed after registration")
         return False
-    if getattr(Worker, "_mach_mxfp8_native_hook", False):
+    if (getattr(Worker, "_mach_mxfp8_native_hook", False)
+            or getattr(Worker, "_mach_2b_hook", False)):
         raise RuntimeError("Select the complete profile instead of stacking the standalone native hook")
     from . import compile_choices, graph_policy
     compile_choices.install()
