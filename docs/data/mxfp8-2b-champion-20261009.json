@@ -1,0 +1,404 @@
+{
+  "date": "2026-10-09",
+  "profile": "qwen35-2b-mxfp8-champion-v1",
+  "gpu": "RTX 5090 SM120 TP1",
+  "checkpoint_sha256": "115948c161e2cc8d02a4e7e580cefcf3c02513410a2af56e80dd63f9f48a1671",
+  "serving": {
+    "complete": true,
+    "comparison": "same GPU0 release wheel/reconstructed checkpoint versus frozen iter2 champion",
+    "pairs": 1,
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "scored_requests_per_arm": 1040,
+    "scored_output_tokens_per_arm": 1040000,
+    "points": [
+      {
+        "c": 4,
+        "requests": 40,
+        "release_tok_s": 1390.2734427258144,
+        "reference_tok_s": 1389.6282498689359,
+        "gain_pct": 0.04642916959549659,
+        "release_seconds": 28.771318483632058,
+        "reference_seconds": 28.784676767885685,
+        "release_mean_ttft_ms": 101.0853047017008,
+        "reference_mean_ttft_ms": 103.36066923337057,
+        "release_p99_ttft_ms": 147.38196786493063,
+        "reference_p99_ttft_ms": 152.0344175165519,
+        "matched_outputs": 40,
+        "mismatch_indices": [],
+        "hardware": {
+          "release": {
+            "samples": 9,
+            "gpu_clock_median_MHz": 2797.0,
+            "temperature_min_max": [
+              44.0,
+              54.0
+            ]
+          },
+          "reference": {
+            "samples": 9,
+            "gpu_clock_median_MHz": 2797.0,
+            "temperature_min_max": [
+              44.0,
+              51.0
+            ]
+          }
+        },
+        "source_sha256": {
+          "release": "a740570f2a143b74e6329c628e9fadad1ea68d466305ca073f1ee5906a7b0b1c",
+          "reference": "4e03fb280ad3002a46811007249ee0df59bac2128855b5d01ca6f804e4f2f13d"
+        }
+      },
+      {
+        "c": 16,
+        "requests": 160,
+        "release_tok_s": 4030.8516611651457,
+        "reference_tok_s": 4001.1778154198482,
+        "gain_pct": 0.74162776847706,
+        "release_seconds": 39.69384473795071,
+        "reference_seconds": 39.98822531290352,
+        "release_mean_ttft_ms": 136.67231095023453,
+        "reference_mean_ttft_ms": 139.3754145858111,
+        "release_p99_ttft_ms": 530.9986780211327,
+        "reference_p99_ttft_ms": 537.48604637105,
+        "matched_outputs": 160,
+        "mismatch_indices": [],
+        "hardware": {
+          "release": {
+            "samples": 13,
+            "gpu_clock_median_MHz": 2782.0,
+            "temperature_min_max": [
+              55.0,
+              66.0
+            ]
+          },
+          "reference": {
+            "samples": 13,
+            "gpu_clock_median_MHz": 2782.0,
+            "temperature_min_max": [
+              55.0,
+              65.0
+            ]
+          }
+        },
+        "source_sha256": {
+          "release": "8792661faf75d71c6515d057634c6c637d0075d987edf39eaae09e507de6e4d3",
+          "reference": "b8185c1b8e2e40910c7d210d42aab7edc4a8b8df7854e43b26a6bdacd0571787"
+        }
+      },
+      {
+        "c": 24,
+        "requests": 120,
+        "release_tok_s": 5420.437837498145,
+        "reference_tok_s": 5457.491202700897,
+        "gain_pct": -0.6789450285217824,
+        "release_seconds": 22.13843301916495,
+        "reference_seconds": 21.988125228788704,
+        "release_mean_ttft_ms": 194.63865293655545,
+        "reference_mean_ttft_ms": 191.46157022332773,
+        "release_p99_ttft_ms": 815.5171402031556,
+        "reference_p99_ttft_ms": 820.6281300866978,
+        "matched_outputs": 111,
+        "mismatch_indices": [
+          51,
+          52,
+          56,
+          57,
+          58,
+          60,
+          63,
+          66,
+          71
+        ],
+        "hardware": {
+          "release": {
+            "samples": 8,
+            "gpu_clock_median_MHz": 2767.0,
+            "temperature_min_max": [
+              60.0,
+              67.0
+            ]
+          },
+          "reference": {
+            "samples": 7,
+            "gpu_clock_median_MHz": 2767.0,
+            "temperature_min_max": [
+              61.0,
+              67.0
+            ]
+          }
+        },
+        "source_sha256": {
+          "release": "8dc798859c7ddf827ccebaf0281ba84a6487ceea6610bff431a1cd407c2c2087",
+          "reference": "49d158fd6d9e9f47fa7df29de7932adb846cab007ede1e63ed560272e7283dcf"
+        }
+      },
+      {
+        "c": 32,
+        "requests": 160,
+        "release_tok_s": 6540.767803843436,
+        "reference_tok_s": 6525.354081207651,
+        "gain_pct": 0.2362128161010446,
+        "release_seconds": 24.46195994084701,
+        "reference_seconds": 24.519742225296795,
+        "release_mean_ttft_ms": 232.36395916319452,
+        "reference_mean_ttft_ms": 222.75696944852825,
+        "release_p99_ttft_ms": 1090.1690853014588,
+        "reference_p99_ttft_ms": 1114.0797839593142,
+        "matched_outputs": 132,
+        "mismatch_indices": [
+          46,
+          49,
+          51,
+          52,
+          54,
+          56,
+          57,
+          58,
+          59,
+          61,
+          62,
+          99,
+          101,
+          102,
+          105,
+          110,
+          112,
+          121,
+          122,
+          123,
+          129,
+          130,
+          132,
+          133,
+          148,
+          149,
+          151,
+          159
+        ],
+        "hardware": {
+          "release": {
+            "samples": 8,
+            "gpu_clock_median_MHz": 2767.0,
+            "temperature_min_max": [
+              63.0,
+              68.0
+            ]
+          },
+          "reference": {
+            "samples": 8,
+            "gpu_clock_median_MHz": 2767.0,
+            "temperature_min_max": [
+              63.0,
+              67.0
+            ]
+          }
+        },
+        "source_sha256": {
+          "release": "afb854cb49055f244903c48fb2f522caa975b10f5ce705d902e803045c5cf748",
+          "reference": "3327242605cc6911772be0634c9e4c39e77ad5611db27fa9046943cc73e83ab5"
+        }
+      },
+      {
+        "c": 48,
+        "requests": 240,
+        "release_tok_s": 7827.717501233169,
+        "reference_tok_s": 7713.554599348831,
+        "gain_pct": 1.4800297374439442,
+        "release_seconds": 30.66027867794037,
+        "reference_seconds": 31.11405991995707,
+        "release_mean_ttft_ms": 296.30682940090384,
+        "reference_mean_ttft_ms": 306.8581566757833,
+        "release_p99_ttft_ms": 1643.8428130839013,
+        "reference_p99_ttft_ms": 1679.9010141007595,
+        "matched_outputs": 224,
+        "mismatch_indices": [
+          96,
+          97,
+          99,
+          102,
+          109,
+          112,
+          118,
+          121,
+          122,
+          125,
+          126,
+          129,
+          130,
+          132,
+          135,
+          140
+        ],
+        "hardware": {
+          "release": {
+            "samples": 10,
+            "gpu_clock_median_MHz": 2636.0,
+            "temperature_min_max": [
+              65.0,
+              71.0
+            ]
+          },
+          "reference": {
+            "samples": 11,
+            "gpu_clock_median_MHz": 2760.0,
+            "temperature_min_max": [
+              65.0,
+              68.0
+            ]
+          }
+        },
+        "source_sha256": {
+          "release": "82cbeb59d70bb30f9368d0befa9728c27d53edc4ad55f8ad85c86b1dd23b444f",
+          "reference": "b9efc65d98e87dc0f47733701112a1f88726c2dc2e3549a0daac687f5d324f77"
+        }
+      },
+      {
+        "c": 64,
+        "requests": 320,
+        "release_tok_s": 8540.097533504915,
+        "reference_tok_s": 8534.707889047462,
+        "gain_pct": 0.06314972378105299,
+        "release_seconds": 37.470298055093735,
+        "reference_seconds": 37.49396044481546,
+        "release_mean_ttft_ms": 359.149959795468,
+        "reference_mean_ttft_ms": 349.9801207566634,
+        "release_p99_ttft_ms": 2167.144088312052,
+        "reference_p99_ttft_ms": 2205.4515107162297,
+        "matched_outputs": 270,
+        "mismatch_indices": [
+          65,
+          69,
+          74,
+          81,
+          82,
+          85,
+          86,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          110,
+          112,
+          115,
+          122,
+          123,
+          125,
+          126,
+          129,
+          130,
+          139,
+          149,
+          150,
+          154,
+          163,
+          167,
+          171,
+          175,
+          181,
+          189,
+          244,
+          251,
+          252,
+          253,
+          262,
+          265,
+          273,
+          275,
+          278,
+          293,
+          302,
+          305,
+          306,
+          307,
+          308,
+          310,
+          312,
+          314
+        ],
+        "hardware": {
+          "release": {
+            "samples": 12,
+            "gpu_clock_median_MHz": 2760.0,
+            "temperature_min_max": [
+              66.0,
+              71.0
+            ]
+          },
+          "reference": {
+            "samples": 13,
+            "gpu_clock_median_MHz": 2760.0,
+            "temperature_min_max": [
+              66.0,
+              71.0
+            ]
+          }
+        },
+        "source_sha256": {
+          "release": "f389a8b4857dbbefdb8796ec1ed9b4af7955834635cda726bb9efab1547d2881",
+          "reference": "cbf7d7346d0ccf8ea01c184be22ec0da9173a716721443a09158da56bbdc237f"
+        }
+      }
+    ],
+    "primary_tok_s": {
+      "release": 5676.975727891866,
+      "reference": 5655.592168329316
+    },
+    "primary_gain_pct": 0.37809585497157183,
+    "matched_outputs": 937
+  },
+  "fidelity": [
+    {
+      "rows": 4,
+      "queries": 256,
+      "gold_tokens": 10479,
+      "vs_previous_mae": 0.0,
+      "vs_previous_max": 0.0,
+      "vs_bf16_mae": 0.04894174546141768,
+      "domain_bf16_mae": {
+        "math": 0.047167121203039133,
+        "code": 0.03309932177280367,
+        "english": 0.08132442359260457,
+        "chinese": 0.04778315761769822
+      },
+      "records_sha256": "a9ab1631754753c53092503199503c9549336a1b783d70ce28f4f288cf86ca6a"
+    },
+    {
+      "rows": 32,
+      "queries": 256,
+      "gold_tokens": 10479,
+      "records_sha256": "c7402abf718d063d141351b8222de01be50abdf9ae9919eb6d53bfe694da6b8e",
+      "vs_previous_mae": 0.0,
+      "vs_previous_max": 0.0,
+      "vs_bf16_mae": 0.04898393125339612
+    },
+    {
+      "rows": 64,
+      "queries": 256,
+      "gold_tokens": 10479,
+      "vs_previous_mae": 0.0,
+      "vs_previous_max": 0.0,
+      "vs_bf16_mae": 0.0482327949251865,
+      "domain_bf16_mae": {
+        "math": 0.04576147357296246,
+        "code": 0.034140146150657254,
+        "english": 0.07877769395538539,
+        "chinese": 0.049367860755488456
+      },
+      "records_sha256": "a69a2113b3a0c358c542e213067fadcadc9da11f8c34d9593e80551a16b9fc25"
+    }
+  ],
+  "quality_reference": {
+    "4": "frozen first champion M4",
+    "32": "frozen selected iter2 champion M32",
+    "64": "fresh selected iter2 champion on the same GPU"
+  },
+  "cpu_tests": {
+    "macos_passed": 200,
+    "macos_skipped": 10,
+    "subtests_passed": 60,
+    "linux_torch_builder_passed": 9
+  }
+}

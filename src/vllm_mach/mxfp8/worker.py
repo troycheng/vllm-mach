@@ -52,6 +52,9 @@ def install_worker_hook() -> bool:
     """Register the standalone native opt-in hooks without touching CUDA."""
     from vllm.v1.worker.gpu_worker import Worker
 
+    if (getattr(Worker, "_mach_2b_hook", False)
+            or getattr(Worker, "_mach_mxfp8_champion_hook", False)):
+        raise RuntimeError("A complete MXFP8 profile is already installed")
     if getattr(Worker, "_mach_mxfp8_native_hook", False):
         return False
 
