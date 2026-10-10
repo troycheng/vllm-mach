@@ -49,8 +49,10 @@ def _eligible(module):
         and type(down) is RowParallelLinear
         and up.tp_size == down.tp_size == 1 and down.input_is_parallel
         and up.bias is None and down.bias is None
-        and tuple(up.weight.shape) == (18432, 2560)
-        and tuple(down.weight.shape) == (2560, 9216)
+        and (tuple(up.weight.shape), tuple(down.weight.shape)) in (
+            ((12288, 2048), (2048, 6144)),  # Qwen3.5-2B
+            ((18432, 2560), (2560, 9216)),  # Qwen3.5-4B
+        )
         and up.weight.is_cuda and down.weight.is_cuda
         and all(isinstance(getattr(getattr(layer, "scheme", None), "kernel", None),
                            Mxfp8Sm120LinearKernel) for layer in (up, down))

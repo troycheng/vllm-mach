@@ -8,20 +8,28 @@ pytestmark = pytest.mark.skipif(
     not Mxfp8Sm120LinearKernel.is_supported()[0], reason="requires native SM120")
 
 
+@pytest.mark.parametrize("n,k", [(2560, 9216), (2048, 6144)], ids=["4b", "2b"])
+@pytest.mark.parametrize("pdl", [False, True], ids=["no-pdl", "pdl"])
 @torch.inference_mode()
-def test_fused_mlp_compiled_graph(monkeypatch):
+def test_fused_mlp_compiled_graph(monkeypatch, n, k, pdl):
     import mxfp6.mxfp8 as mx
     from vllm_mach.mxfp6 import mxfp8_mlp  # registers the custom op
 
     monkeypatch.setenv("VLLM_MACH_MXFP8_BACKEND", "native")
+    monkeypatch.setenv("VLLM_MACH_MXFP8_PDL", str(int(pdl)))
     torch.manual_seed(71)
-    n, k = 2560, 9216
     w = mx.quantize_mxfp8(torch.randn(n, k, device="cuda", dtype=torch.bfloat16))
     values = w.dequantized_values()
-    mx.begin_workspace_planning()
-    for m in (1, 16, 32, 128):
-        mx.warmup(torch.zeros(m, k, device="cuda", dtype=torch.bfloat16), w)
-    mx.finalize_workspace_planning()
+    if not mx.workspace_stats().get("frozen", 0):
+        mx.begin_workspace_planning()
+        # Plan both geometries once: later parameter cases share the frozen
+        # arena, whose capacity cannot change after graph capture.
+        for rows, cols in ((2560, 9216), (2048, 6144)):
+            problem = w if (rows, cols) == (n, k) else mx.quantize_mxfp8(
+                torch.randn(rows, cols, device="cuda", dtype=torch.bfloat16))
+            for m in (1, 16, 32, 128):
+                mx.warmup(torch.zeros(m, cols, device="cuda", dtype=torch.bfloat16), problem)
+        mx.finalize_workspace_planning()
 
     def fused(x):
         return torch.ops.vllm.mach_swiglu_mxfp8_down(x, values, w.scales)
@@ -83,16 +91,17 @@ def test_compiled_gdn_reads_runtime_context(monkeypatch):
     torch.testing.assert_close(compiled(x), x + 2)
 
 
+@pytest.mark.parametrize("n,k", [(2560, 9216), (2048, 6144)], ids=["4b", "2b"])
 @torch.inference_mode()
-def test_fused_mlp_flashinfer_graph(monkeypatch):
+def test_fused_mlp_flashinfer_graph(monkeypatch, n, k):
     import mxfp6.mxfp8 as mx
     import flashinfer
     from vllm_mach.mxfp6 import mxfp8_mlp
 
     monkeypatch.setenv('VLLM_MACH_MXFP8_BACKEND', 'flashinfer')
-    w = mx.quantize_mxfp8(torch.randn(2560, 9216, device='cuda', dtype=torch.bfloat16))
+    w = mx.quantize_mxfp8(torch.randn(n, k, device='cuda', dtype=torch.bfloat16))
     for m in (1, 16):
-        x = torch.randn(m, 18432, device='cuda', dtype=torch.bfloat16)
+        x = torch.randn(m, 2*k, device='cuda', dtype=torch.bfloat16)
         fn = lambda: mxfp8_mlp._down(x, w.dequantized_values(), w.scales)
         fn()
         graph = torch.cuda.CUDAGraph()
@@ -105,7 +114,7 @@ def test_fused_mlp_flashinfer_graph(monkeypatch):
             values, scales = torch.ops.mxfp6.quantize_mxfp8(
                 (torch.nn.functional.silu(gate) * up).contiguous())
             reference = flashinfer.mm_mxfp8(
-                values.view(m, 9216).view(torch.float8_e4m3fn),
+                values.view(m, k).view(torch.float8_e4m3fn),
                 w.dequantized_values().T, scales, w.scales,
                 out_dtype=torch.bfloat16, backend='cutlass')
             error = (out.float() - reference.float()).norm()

@@ -141,8 +141,9 @@ def test_native_pdl_quantizer_replay(dtype):
                 assert torch.equal(scales, ref_scales)
 
 
+@pytest.mark.parametrize("n,k", [(2560, 9216), (2048, 6144)], ids=["4b", "2b"])
 @torch.inference_mode()
-def test_gemm_norm_quant_swiglu_dependency_chain(monkeypatch):
+def test_gemm_norm_quant_swiglu_dependency_chain(monkeypatch, n, k):
     """Exercise GEMM -> norm -> quant/GEMM -> SwiGLU/quant -> GEMM twice.
 
     In contrast to quantizing external input, every consumer here reads a
@@ -156,9 +157,9 @@ def test_gemm_norm_quant_swiglu_dependency_chain(monkeypatch):
     if not hasattr(torch.ops.mxfp6, "quantize_mxfp8_pdl"):
         pytest.skip("use both rebuilt native libraries")
     monkeypatch.setenv("VLLM_MACH_MXFP8_BACKEND", "native")
-    up = mx.quantize_mxfp8(torch.randn(18432, 2560, device="cuda", dtype=torch.bfloat16))
-    down = mx.quantize_mxfp8(torch.randn(2560, 9216, device="cuda", dtype=torch.bfloat16))
-    weight = torch.randn(2560, device="cuda", dtype=torch.bfloat16)
+    up = mx.quantize_mxfp8(torch.randn(2*k, n, device="cuda", dtype=torch.bfloat16))
+    down = mx.quantize_mxfp8(torch.randn(n, k, device="cuda", dtype=torch.bfloat16))
+    weight = torch.randn(n, device="cuda", dtype=torch.bfloat16)
     planning = not mx.workspace_stats().get("frozen", 0)
     if planning:
         mx.begin_workspace_planning()
@@ -184,8 +185,8 @@ def test_gemm_norm_quant_swiglu_dependency_chain(monkeypatch):
         return y, r
 
     for m in (1, 16, 32):
-        x = torch.randn(m, 9216, device="cuda", dtype=torch.bfloat16)
-        r = torch.randn(m, 2560, device="cuda", dtype=torch.bfloat16)
+        x = torch.randn(m, k, device="cuda", dtype=torch.bfloat16)
+        r = torch.randn(m, n, device="cuda", dtype=torch.bfloat16)
         graphs, outputs = [], []
         for pdl in (False, True):
             monkeypatch.setenv("VLLM_MACH_MXFP8_PDL", str(int(pdl)))

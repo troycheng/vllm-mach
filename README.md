@@ -189,6 +189,7 @@ the [Dense](docs/images/quality-throughput-tradeoff.png) and
 | [Qwen3.5 MoE](docs/qwen35-moe.md) | MoE schedules, compilation, model-specific validation, and benchmark reproduction |
 | [GDN decode](docs/gdn-decode.md) | Persistent decode, BA overlap, state precision, and validation |
 | [Fidelity](docs/profile-fidelity-20260917.md) | Current default/full precision diagnostics and raw data |
+| [Qwen3.5-2B MXFP8 TP1 measurements](docs/mxfp8-2b-20261010.md) | Fused MLP validation, checkpoint fidelity, and KV/SSM throughput comparisons |
 | [Historical releases](docs/public-install.md) / [benchmark archive](docs/benchmarks.md) | Earlier EXL3 and checkpoint-hybrid configurations; not current setup instructions |
 
 ## Limitations
