@@ -1,0 +1,207 @@
+{
+  "profile": "qwen35-2b-mxfp8-champion-v1",
+  "implementation": "mixed-lean-stockmath-w4-v1",
+  "date": "2026-10-10",
+  "reference_commit": "574f704c978d2b4d78ad23c5a07b796b591d7e92",
+  "hardware": "RTX 5090 SM120, TP1, same physical GPU per pair",
+  "input_tokens": 3000,
+  "output_tokens": 1000,
+  "independent_pairs_per_point": 4,
+  "requests_per_arm": {
+    "4": 40,
+    "16": 160,
+    "24": 120,
+    "32": 96,
+    "48": 240,
+    "64": 192
+  },
+  "throughput_formula": "total output tokens / total scored seconds in each arm",
+  "combined_six_point_gain": null,
+  "points": [
+    {
+      "c": 4,
+      "published_same_gpu_reference_tps": 1407.8360304649123,
+      "lean_tps": 1405.6545194646867,
+      "measured_gain_pct": -0.15495490618357977,
+      "mean_ttft_change_pct": 0.550716888568914,
+      "evidence": "this coverage four pairs, published request counts"
+    },
+    {
+      "c": 16,
+      "published_same_gpu_reference_tps": 4071.6611790077795,
+      "lean_tps": 4065.493446230726,
+      "measured_gain_pct": -0.15147951919114444,
+      "mean_ttft_change_pct": 1.7534193336702364,
+      "evidence": "this coverage four pairs, published request counts"
+    },
+    {
+      "c": 24,
+      "published_same_gpu_reference_tps": 5515.668552404577,
+      "lean_tps": 5491.549404314996,
+      "measured_gain_pct": -0.4372842178681391,
+      "mean_ttft_change_pct": 0.8205883825259885,
+      "evidence": "this coverage four pairs, published request counts"
+    },
+    {
+      "c": 32,
+      "published_same_gpu_reference_tps": 6546.322634264872,
+      "lean_tps": 6655.771358998815,
+      "measured_gain_pct": 1.671911557812078,
+      "mean_ttft_change_pct": -5.418073317005168,
+      "evidence": "prior iter8 four pairs, 3 waves"
+    },
+    {
+      "c": 48,
+      "published_same_gpu_reference_tps": 7888.469715972052,
+      "lean_tps": 7990.925025947431,
+      "measured_gain_pct": 1.2987982924994368,
+      "mean_ttft_change_pct": -2.594301521676856,
+      "evidence": "this coverage four pairs, published request counts"
+    },
+    {
+      "c": 64,
+      "published_same_gpu_reference_tps": 8680.303413398364,
+      "lean_tps": 8813.15368110846,
+      "measured_gain_pct": 1.5304795395174597,
+      "mean_ttft_change_pct": -3.4311031874470266,
+      "evidence": "prior iter8 four pairs, 3 waves"
+    }
+  ],
+  "coverage_paired_gains": {
+    "4": {
+      "range_pct": [
+        -0.49646805544285577,
+        0.06200343981814793
+      ],
+      "median_pct": -0.09221609103438055
+    },
+    "16": {
+      "range_pct": [
+        -0.5883987823637193,
+        0.37395786173211043
+      ],
+      "median_pct": -0.1951344655083065
+    },
+    "24": {
+      "range_pct": [
+        -1.466583099679486,
+        -0.015891038517412692
+      ],
+      "median_pct": -0.1289919180405552
+    },
+    "48": {
+      "range_pct": [
+        0.5565979946981603,
+        2.117362382847099
+      ],
+      "median_pct": 1.2647331292078512
+    }
+  },
+  "fidelity": {
+    "cohort": 32,
+    "queries": 256,
+    "gold_logprobs": 10479,
+    "matched_observer_changed_logprobs": 0,
+    "repeat_max_abs": 0,
+    "same_call": {
+      "calls": 72,
+      "layers": 18,
+      "all_output_and_fp32_state_exact": true,
+      "initial_ages_observed": [
+        0
+      ]
+    },
+    "transition_steps": 20,
+    "scope": "cohort32 full-model replay; 18-layer same-call mixed output/state; arithmetic pure/mixed transition probe"
+  },
+  "source_result_sha256": {
+    "LEAN_FINAL_SUMMARY.json": "d2ab447e83388cb3c97c1a7167313ebb6870a30d120b608a242ca8513ec7e049",
+    "QUALITY_RECONCILIATION.json": "9141ca0523a732703b8867cb0e2ba2da8af3289fd3b29f47609c628b079ce094",
+    "missing_points_20261010/SIX_POINTS.json": "148a21fd18e2f8d2f39eb6b8ce3b4c172f051f14ff0759476d7b9141d3b18f44",
+    "missing_points_20261010/SUMMARY.json": "4a896ded66f4e3cd960f640856b048035827b37c37058c6846c094cd7935de38",
+    "packaging_summary": "d329fd5becfd7c3a8a4cc5b530cfc9a3dda8f0febc01193e0945f87c0d36972e",
+    "packaging_raw_archive": "282c8a7e015e69514d7af09d7f4fe8ac4c23dda4eb301d17a8404436c0450104",
+    "packaging_reverse_raw_archive": "f5e189edd8ad0fffca81e3c5182d6270ee6e543403e912f8bd5544ab51e10a7a"
+  },
+  "packaging_regression": {
+    "points": [
+      {
+        "c": 4,
+        "pairs": 1,
+        "reference_tps": 1406.6032802226257,
+        "package_tps": 1401.8531294742445,
+        "change_pct": -0.33770365924565837
+      },
+      {
+        "c": 32,
+        "pairs": 1,
+        "reference_tps": 6680.311340434889,
+        "package_tps": 6682.7585758306495,
+        "change_pct": 0.03663355300445037
+      },
+      {
+        "c": 64,
+        "pairs": 2,
+        "reference_tps": 8807.726941661453,
+        "package_tps": 8767.315268212858,
+        "change_pct": -0.45882068910927387
+      }
+    ],
+    "scored_requests_total": 984,
+    "scored_requests_successful": 984,
+    "request_counts_per_arm": {
+      "4": 12,
+      "32": 96,
+      "64": 192
+    },
+    "c64_orders": [
+      "reference, package",
+      "package, reference"
+    ],
+    "c64_paired_changes_pct": [
+      -0.973940875110435,
+      0.0576754700037041
+    ],
+    "max_host_cpu_busy_pct": 2.813299232736573,
+    "foreign_gpu_processes": 0,
+    "all_contracts_and_prompt_hashes_matched": true,
+    "runtime_versions": {
+      "vllm": "0.29.0",
+      "torch": "2.13.0+cu130",
+      "triton": "3.7.1",
+      "flashinfer-python": "0.6.18",
+      "flashinfer-cubin": "0.6.18",
+      "nvidia-cutlass-dsl": "4.6.2",
+      "cuda-bindings": "13.3.1",
+      "b12x": "1.2.6",
+      "mxfp6-sm120": "0.2.1"
+    },
+    "model_sha256": "115948c161e2cc8d02a4e7e580cefcf3c02513410a2af56e80dd63f9f48a1671",
+    "mxfp8_binary_sha256": "4013503536da72b28f6164bcbeebd99c0ba6384963263db195388a12b5683f58",
+    "package_wheel_sha256": "9b6df62db55b2b31f2b2d5d229ca483296e268041562cfc2b421a09019b76a51",
+    "fresh_fidelity": {
+      "queries": 256,
+      "gold_logprobs": 10479,
+      "vs_published_original_changed": 0,
+      "repeat_max_abs": 0,
+      "vs_experimental_lean": {
+        "changed": 32,
+        "mae": 2.7989158471732528e-08,
+        "max_abs": 0.00013971328735351562,
+        "exactly_reproduces_previously_recorded_original_vs_observed_difference": true
+      },
+      "reference_sha256": "226e915b62fc26647865ce90d654e32c13ce1bd8392066240d1222aad6f77670",
+      "observed_lean_sha256": "a39e26da324c47e58fe21f68e40864eca30011ba212b9e79ae830de7dae40597",
+      "package_sha256": "c01568549f7c3142b3622d4156fb7f6b28513eec80b3e349c470f0b5e3e6a116"
+    },
+    "fresh_kernel_replay": {
+      "steps": 8,
+      "bf16_output_bitwise_equal": true,
+      "materialized_fp32_state_bitwise_equal": true
+    },
+    "cpu_tests": {
+      "completed": 147,
+      "optional_dependency_skips": 5
+    }
+  }
+}

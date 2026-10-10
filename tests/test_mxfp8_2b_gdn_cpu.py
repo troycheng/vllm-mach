@@ -87,7 +87,8 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
                    "assert not any(x in sys.modules for x in ('torch','vllm','triton'))")
         subprocess.run([sys.executable, "-c", program], check=True)
         self.assertEqual({p.name for p in GDN.glob("*.py")}, {
-            "__init__.py", "dispatch.py", "worker.py", "ordered_allm_triton.py", "metadata_reset.py"})
+            "__init__.py", "dispatch.py", "worker.py", "ordered_allm_triton.py",
+            "metadata_reset.py", "mixed.py", "mixed_ordered_triton.py"})
 
     def test_frozen_kernels_and_installed_source_guards(self):
         pins = {"ordered_allm_triton.py": "e6bfb1aea77d9360e934fbc023b92fe963549f9e704f790607e43a4edbfc10f1",

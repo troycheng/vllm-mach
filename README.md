@@ -172,6 +172,8 @@ All throughput tables use **3000 input / 1000 output tokens**, measured in **out
 
 The first study measured **+9.05%** median paired six-point throughput against community block-FP8 on GPU1. The second study measured **+2.56%** median paired throughput for pinned GDN reset-ID uploads against that first champion on GPU7. Both used four controlled pairs at c4/c16/c24/c32/c48/c64. These percentages have different baselines and GPUs; they are not a measured combined gain over community FP8. The public package reproduced all 438 tensors and the complete checkpoint SHA. Its same-card six-point regression measured +0.38% against the selected champion; fixed-token M4/M32/M64 replay matched the reference logprobs exactly. See the [2B guide](docs/mxfp8-2b-champion.md) for setup and evidence boundaries.
 
+The October 10 update extends ordered FP32 GDN to mixed batches with 24–160 decode requests. Against the previous release on the same GPU, throughput changed by **−0.15%, −0.15%, −0.44%, +1.67%, +1.30% and +1.53%** at c4/c16/c24/c32/c48/c64 (3000 input / 1000 output tokens, four pairs per point). Fixed-token replay with matched observers preserved all 10,479 gold logprobs across 256 queries at cohort32. The [six-point results](docs/mxfp8-2b-champion.md#mixed-decode-update-october-10) include TTFT and request counts. The standard 2B launcher enables this update automatically.
+
 ### Qwen3.5-4B MXFP8 — one RTX 5090, TP1
 
 The October 6 source-built champion completes all 1,040 scored requests. Its output hashes match the previous champion at all six points. Community FP8 is the October 5 screen using the same public workload; each implementation has one complete screen.

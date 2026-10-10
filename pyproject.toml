@@ -54,6 +54,7 @@ exclude = ["vllm_mach.exl3*"]
 testpaths = [
     "tests/test_mxfp8_2b_model.py",
     "tests/test_mxfp8_2b_gdn_cpu.py",
+    "tests/test_mxfp8_2b_mixed_cpu.py",
     "tests/test_mxfp8_2b_ba_graph_cpu.py",
     "tests/test_mxfp8_2b_profile_cpu.py",
     "tests/test_fp8_profile_cpu.py",
