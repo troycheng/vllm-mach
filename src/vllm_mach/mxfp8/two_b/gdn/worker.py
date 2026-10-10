@@ -10,6 +10,7 @@ import importlib
 import inspect
 import os
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parent
 GDN_SHA = "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719"
@@ -251,6 +252,8 @@ def _register_gdn():
     GDN._forward_core = core
     GDN._forward_core_decode_non_spec = decode
     GDN._two_b_gdn_ordered_installed = True
+    from . import mixed
+    mixed.install(sys.modules[__name__], gdn)
 
 def _prepare_layers(worker):
     _claim_worker(worker)
@@ -466,6 +469,8 @@ def inspect_worker(worker):
         "normal_gpu_counter_allocated":False,
         "existing_outer_custom_op_only":True,
         "bound_pool_shapes":[list(x.kv_cache[1].shape) for x in layers]}
+    from . import mixed
+    record["mixed_decode"] = mixed.snapshot()
     return record
 
 def _claim_worker(worker):

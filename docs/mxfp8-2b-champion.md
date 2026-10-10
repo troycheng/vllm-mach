@@ -2,6 +2,8 @@
 
 `qwen35-2b-mxfp8-champion-v1` serves Qwen3.5-2B on one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It has its own checkpoint builder, launcher and worker profile. Use a self-contained checkpoint reconstructed from the [public BF16 model](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc); no private quantized checkpoint, calibration fixture or replacement-code asset is needed. The [model guide](mxfp8-2b-model.md) describes the exact conversion and file identities.
 
+The current update includes `mixed-lean-stockmath-w4-v1` in the package. The same launcher enables it automatically; no experimental startup hook or extra model asset is needed.
+
 ## Build and prepare
 
 Build the shared MXFP8 image from this repository on a Linux host with Docker Buildx and the NVIDIA container runtime. `Dockerfile.mxfp8` pins the vLLM base, installs the hashed build dependencies and builds the official MXFP8 kernel source. It also installs Mach and its MXFP8 runtime source profile; there is no separate 2B Dockerfile or experimental wheel to install.
@@ -92,5 +94,26 @@ The packaged release was checked on October 9 against the selected champion on t
 Fresh fixed-token replay at M4, M32 and M64 matched the selected implementation's logprobs exactly: 256 queries and 10,479 scored tokens at each shape, with zero repeat difference. M4/M32 used the frozen records; M64 used a fresh same-GPU reference. BF16 MAE was 0.048942 / 0.048984 / 0.048233 respectively. The free-running HTTP comparison produced identical text in 937 of 1,040 requests. Numerical fidelity is assessed by the fixed-token replay with controlled physical rows.
 
 The CPU suite passed 200 tests and 60 subtests, with 10 optional-dependency skips on macOS. All nine builder tests also passed with PyTorch on Linux. The [machine-readable results](data/mxfp8-2b-champion-20261009.json) include point metrics, input/output counts, source result hashes, GPU clocks and the fidelity record hashes.
+
+## Mixed decode update (October 10)
+
+Mixed prefill/decode batches now retain ordered W4 state for 24–160 decode requests. Only the prefill slots are materialized before stock convolution and prefill; the mixed recurrent kernel uses the stock mixed path's FP32 normalization and update order. Pure decode, slot allocation/reset and the BF16 head/KV stay on their existing paths. The runtime receipt identifies this implementation as `gdn.mixed_decode.protocol = mixed-lean-stockmath-w4-v1` and includes source hashes and eager/capture-construction counters.
+
+The following comparison uses the previous packaged release (PR #9, `574f704`) as its reference on the same RTX 5090, with 3000 input / 1000 output tokens and four independent pairs per point. Throughput is total output tokens divided by total scored duration for each arm.
+
+| Concurrency | Previous release tok/s | Mixed decode tok/s | Throughput change | Mean TTFT change |
+|---|---:|---:|---:|---:|
+| 4 | 1407.84 | 1405.65 | −0.15% | +0.55% |
+| 16 | 4071.66 | 4065.49 | −0.15% | +1.75% |
+| 24 | 5515.67 | 5491.55 | −0.44% | +0.82% |
+| 32 | 6546.32 | 6655.77 | +1.67% | −5.42% |
+| 48 | 7888.47 | 7990.93 | +1.30% | −2.59% |
+| 64 | 8680.30 | 8813.15 | +1.53% | −3.43% |
+
+c4/c16/c24/c48 use 40/160/120/240 requests per arm, in AB/BA/BA/AB order. c32/c64 use three waves (96/192 requests per arm), from the earlier target and independent audit. Every scored window is retained. c48 improved in all four pairs (+0.56% to +2.12%); c24 ranged from −1.47% to −0.016%. These runs establish a c32–c64 improvement and no new low-concurrency gain; their different request counts are kept separate in the [machine-readable results](data/mxfp8-2b-mixed-gdn-20261010.json).
+
+With matched observers, fixed-token replay at cohort32 preserved all 10,479 gold logprobs across 256 queries, with zero repeat difference. Same-call checks covered 18 layers and 72 mixed calls with bitwise-equal BF16 output and FP32 state; a 20-step arithmetic handoff checked pure/mixed W4 transitions. This update does not add full-model fidelity measurements for other cohort sizes. The JIT body is unchanged from that qualified implementation, and CPU regression tests cover the mixed boundary, prefill-slot isolation and fallback behavior.
+
+The installed-wheel regression completed 984 scored requests: c4 −0.34%, c32 +0.04% and c64 −0.46% against the selected experimental implementation. c4/c32 have one pair; c64 has two opposing-order pairs (−0.97% and +0.06%). All runs used the same checkpoint, native binary, graph sizes and KV capacity. Fresh cohort32 replay matched the earlier released reference on all 10,479 gold logprobs, with zero repeat difference. Its 32 tiny differences from the observed experimental record exactly reproduced the previously recorded reference/observer difference (MAE 2.80e-8); the result file retains both comparisons. The packaged kernel also passed eight-step bitwise output/state replay, and the MXFP8 CPU suite completed 147 tests with five optional-dependency skips.
 
 See [runtime installation](mxfp8-installation.md) for the shared source profile and build pins, and [model preparation](mxfp8-2b-model.md) for source assets, conversion details and validation.
