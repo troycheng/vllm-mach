@@ -13,261 +13,81 @@
   <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.29.0-6C5CE7">
 </p>
 
-<p align="center">
-  <a href="#supported-configurations">Choose a profile</a> ·
-  <a href="#installation">Install and run</a> ·
-  <a href="#optimizations">Optimizations</a> ·
-  <a href="#performance">Performance</a> ·
-  <a href="#documentation">Documentation</a>
-</p>
+vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX 5090 (SM120)**. The [MXFP6 SM120 library](https://github.com/Nekofish-L/mxfp6_sm120) supplies native MXFP6/MXFP8 kernels; Mach integrates model loading, fusion, recurrent state, attention, graph policies and serving launchers. Existing block-FP8 checkpoints have a separate optimization path.
 
-vLLM Mach provides model-specific runtime extensions for **vLLM 0.29.0 on SM120**: native quantized kernels, fused communication and activation operations, optimized GDN decode, and CUDA Graph policies. It packages the source patches, native builds, model preparation and launch settings needed to run each profile.
+## Performance by model size
 
-The [MXFP6 SM120 project](https://github.com/Nekofish-L/mxfp6_sm120) supplies reusable MXFP6/MXFP8 operators. Mach connects those operators to serving, and also provides an independent optimization path for existing block-FP8 checkpoints.
+**3,000 input / 1,000 output tokens · output tokens/s · text-only, non-speculative inference.** These are complete-profile comparisons with each study's recorded FP8 baseline. TP1 uses one 32 GiB RTX 5090; TP2 uses two.
 
-## Supported configurations
+| Model / profile | GPUs | Measured gain over its FP8 baseline | Details |
+|---|---|---:|---|
+| Qwen3.5-2B · MXFP8 · Triton + hybrid | 1 · TP1 | +17.53% to +25.89% | [Data](docs/performance.md#qwen35-2b) |
+| Qwen3.5-4B · MXFP8 champion | 1 · TP1 | +20.83% to +36.77% | [Data](docs/performance.md#qwen35-4b) |
+| Qwen3.5-4B block-FP8 · Block-FP8 · all four features | 1 · TP1 | +5.97% to +9.03% | [Data](docs/performance.md#qwen35-4b-block-fp8) |
+| Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
+| Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
 
-All profiles below target Linux x86-64, Python 3.12, RTX 5090 GPUs with 32 GiB each, BF16 model activations, and text-only, non-speculative inference.
+![Serving throughput by model size](docs/assets/model-throughput.svg)
 
-| Model | Weight format / profile | GPUs | Start here |
-|---|---|---|---|
-| Qwen3.8-27B Dense | Native MXFP6 | 2, TP2 | [MXFP6 setup](#native-mxfp6-dense-and-moe) |
-| Qwen3.5-35B-A3B MoE | Native MXFP6 | 2, TP2 | [MXFP6 setup](#native-mxfp6-dense-and-moe) / [MoE guide](docs/qwen35-moe.md) |
-| Qwen3.5-2B | MXFP8 champion, `qwen35-2b-mxfp8-champion-v1` | 1, TP1 | [2B setup](#mxfp8-2b-champion) |
-| Qwen3.5-4B | MXFP8 champion, `qwen35-4b-mxfp8-champion-v1` | 1, TP1 | [MXFP8 setup](#mxfp8-4b-champion) |
-| Qwen3.5-4B | Existing block-FP8, `qwen35-4b-block-fp8-v1` | 1, TP1 | [Block-FP8 setup](#block-fp8-4b) |
+The [complete performance report](docs/performance.md) contains every measured point, absolute throughput, gains, latency, precision and source data. The 2B comparison with its preceding champion is paired on the same GPU; its community FP8 reference is historical. Other study scopes and dates are listed beside their tables.
 
-MXFP8 uses E4M3 values with E8M0 group-32 scales; block-FP8 uses the checkpoint's FP32 block scales. They have separate model and runtime entry points. MXFP6 and block-FP8 retain BF16 KV by default. The 2B MXFP8 champion retains BF16 KV and the complete BF16 head; the 4B MXFP8 champion uses calibrated FP8 KV.
+MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤32. The 4B MXFP8 champion uses calibrated FP8 KV and its own refined head. Numerical results are in the [fidelity table](docs/performance.md#numerical-fidelity).
 
-This README describes **`main`**, including the 2B MXFP8 profile and two 4B profiles added after [v0.1.1](docs/releases/0.1.1.md). Use the source builds below for these features; the v0.1.1 tag contains the earlier native MXFP6 release. Each profile guide records its qualified dependencies and revisions.
+## Choose and run a profile
 
-## Installation
-
-Use Docker Buildx, the NVIDIA container runtime and a compatible GPU driver. From a Linux host:
+Use Linux x86-64, Python 3.12, Docker Buildx and the NVIDIA container runtime. Clone `main`; the 2B/4B profiles were added after the v0.1.1 release.
 
 ```bash
-git clone --branch main https://github.com/troycheng/vllm-mach.git
+git clone https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
-git rev-parse HEAD
 ```
 
-Choose one of the following builds. Each Dockerfile installs the corresponding native extensions and versioned runtime patches against its vLLM 0.29.0 base. `MAX_JOBS` controls native compilation parallelism.
+| Model / checkpoint | Build file | Serving command | Setup |
+|---|---|---|---|
+| Qwen3.5-2B MXFP8 | `deploy/Dockerfile.mxfp8` | `vllm-mach-mxfp8-2b-serve` | [Prepare and serve](docs/mxfp8-2b-champion.md) |
+| Qwen3.5-4B MXFP8 | `deploy/Dockerfile.mxfp8` | `vllm-mach-mxfp8-serve` | [Prepare and serve](docs/mxfp8-champion.md) |
+| Qwen3.5-4B block-FP8 | `deploy/Dockerfile.fp8` | `vllm-mach-fp8-serve` | [Existing checkpoint](docs/fp8-profile.md) |
+| Qwen3.8-27B MXFP6 | `deploy/Dockerfile` | `vllm-mach-serve` | [Install and launch](docs/installation.md) |
+| Qwen3.5-35B-A3B MXFP6 | `deploy/Dockerfile` | `vllm-mach-serve` | [MoE setup](docs/qwen35-moe.md) |
 
-### Native MXFP6 Dense and MoE
-
-```bash
-docker buildx build --load --build-arg MAX_JOBS=2 \
-  -f deploy/Dockerfile -t vllm-mach:mxfp6 .
-
-docker run --rm --gpus '"device=0,1"' --ipc=host -p 8000:8000 \
-  -v /absolute/path/to/mxfp6-checkpoint:/model:ro \
-  vllm-mach:mxfp6 --model /model --served-model-name mach --host 0.0.0.0
-```
-
-Use a supported checkpoint, such as [nekofish/Qwen3.8-27B-MXFP6](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6). The launcher reads `config.json` to select Dense or MoE. See [manual installation and memory settings](docs/installation.md) and the [MoE launch configuration](docs/qwen35-moe.md).
-
-| MXFP6 mode | Recurrent state | LM head |
-|---|---|---|
-| Default | FP32 | BF16 |
-| Full: append `--fp16-ssm --nvfp4-lm-head` | FP16 | NVFP4 candidate search with BF16 refinement |
-
-Full uses lower-precision state and approximate candidate search to improve throughput. Its candidate search handles eligible greedy decode; requests for full logits or unsupported sampling use the BF16 head. These switches belong to the MXFP6 launcher.
-
-### MXFP8 2B champion
-
-Use the shared MXFP8 image, but select the 2B preparation and serving entry points. Start with the [complete 2B guide](docs/mxfp8-2b-champion.md) for the public BF16 download, exact SHA-256 checks, runtime contract and measurement boundary.
+For example, build the shared MXFP8 image and run a [prepared 2B checkpoint](docs/mxfp8-2b-model.md):
 
 ```bash
 docker buildx build --load --build-arg MAX_JOBS=2 \
   -f deploy/Dockerfile.mxfp8 -t vllm-mach:mxfp8-champion .
-
-mkdir -p "$PWD/mxfp8-2b-output" "$PWD/mxfp8-2b-runs"
-docker run --rm --entrypoint vllm-mach-mxfp8-2b-prepare \
-  -v /absolute/path/to/pinned-qwen35-2b-bf16:/input/bf16:ro \
-  -v "$PWD/mxfp8-2b-output:/output" vllm-mach:mxfp8-champion \
-  --bf16 /input/bf16 --output /output/model
-
+mkdir -p "$PWD/runs"
 docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   --entrypoint vllm-mach-mxfp8-2b-serve \
-  -v "$PWD/mxfp8-2b-output/model:/model:ro" \
-  -v "$PWD/mxfp8-2b-runs:/runs" \
+  -v /absolute/path/to/prepared-2b:/model:ro -v "$PWD/runs:/runs" \
   vllm-mach:mxfp8-champion /model --run-dir /runs/serve --host 0.0.0.0 \
   --attention-backend TRITON_ATTN --hybrid-head
 ```
 
-Preparation reconstructs a self-contained 438-tensor checkpoint on CPU from [Qwen/Qwen3.5-2B revision `15852e8c…`](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc). The champion command selects Triton attention and the K128 hybrid greedy head alongside native MXFP8, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16, pinned reset IDs, exact FULL16/FULL24 PDL chains and exact 2048-token piecewise graphs. It keeps BF16 KV and the full BF16 vocabulary-head weights for candidate refinement and fallback. [Model preparation](docs/mxfp8-2b-model.md) gives the source and output hashes.
+The two switches select the current 2B champion explicitly. The default shared-image entrypoint serves 4B, so keep the 2B `--entrypoint` override. The server exposes vLLM's OpenAI-compatible API; `/v1/models` lists the served model name.
 
-### MXFP8 4B champion
+For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `--fp16-ssm --nvfp4-lm-head` to select full. For block-FP8, use `--features n64 ordered silu fa2`. Each guide includes its checkpoint preparation, exact dependencies, numerical behavior and benchmark command.
 
-Build the image, then [prepare one checkpoint](docs/mxfp8-model.md) from the pinned public `Qwen/Qwen3.5-4B` BF16 revision and the [47 MB L0 asset](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1). The preparation guide includes downloads and SHA-256 verification.
+## What the selected profiles include
 
-```bash
-docker buildx build --load --build-arg MAX_JOBS=2 \
-  -f deploy/Dockerfile.mxfp8 -t vllm-mach:mxfp8-champion .
-
-mkdir -p "$PWD/mxfp8-model" "$PWD/mxfp8-run"
-docker run --rm --entrypoint vllm-mach-mxfp8-prepare \
-  -e OMP_NUM_THREADS=4 -e MKL_NUM_THREADS=4 \
-  -v /absolute/path/to/pinned-bf16:/input/bf16:ro \
-  -v /absolute/path/to/qwen35-4b-mxfp8-asym-l0-v1.safetensors:/input/l0.safetensors:ro \
-  -v "$PWD/mxfp8-model:/output" vllm-mach:mxfp8-champion \
-  --bf16 /input/bf16 --l0-codes /input/l0.safetensors --output /output/model
-
-docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
-  -v "$PWD/mxfp8-model/model:/model:ro" -v "$PWD/mxfp8-run:/runs" \
-  vllm-mach:mxfp8-champion /model --run-dir /runs --host 0.0.0.0
-```
-
-Preparation requires a new output checkpoint directory and runs on CPU. Serving loads that single checkpoint. The profile includes FP32 SSM state, dual-activation MXFP8 projections, FP8 KV and an NVFP4 coarse head with indexed BF16 score refinement. See the [complete profile](docs/mxfp8-champion.md) for its numerical path, startup compilation and configuration.
-
-### Block-FP8 4B
-
-Use an existing compatible Qwen3.5-4B compressed-tensors block-FP8 checkpoint. This path keeps its weights, BF16 KV/head and FP32 SSM state.
-
-```bash
-docker buildx build --load --build-arg MAX_JOBS=2 \
-  -f deploy/Dockerfile.fp8 -t vllm-mach:fp8 .
-
-mkdir -p "$PWD/fp8-run"
-docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
-  -v /absolute/path/to/block-fp8-checkpoint:/model:ro \
-  -v "$PWD/fp8-run:/runs" \
-  vllm-mach:fp8 /model --run-dir /runs --host 0.0.0.0 \
-  --features n64 ordered silu fa2
-```
-
-The example assumes tokenizer files are in the checkpoint directory. A separate tokenizer can be mounted and selected with `--tokenizer`. Choose any nonempty subset of the four features for comparisons; see the [profile guide](docs/fp8-profile.md) for operator eligibility and launch receipts.
-
-## Usage
-
-All four launchers expose vLLM's OpenAI-compatible API. Once the server reports ready, `http://localhost:8000/v1/models` lists its served model name. The MXFP6 example uses `mach`; the 2B default is `q35-2b-study`, and the 4B defaults are `q35-mx8-study` and `q35-fp8-study`.
-
-The 4B images include the same reproducible 3k/1k benchmark client. In a second terminal, while the MXFP8 server is running:
-
-```bash
-docker run --rm --network host --entrypoint vllm-mach-mxfp8-bench \
-  -v "$PWD/mxfp8-run:/runs" vllm-mach:mxfp8-champion \
-  --base-url http://127.0.0.1:8000 --model q35-mx8-study --outdir /runs/sixpoint
-```
-
-For block-FP8, use image `vllm-mach:fp8`, entry point `vllm-mach-fp8-bench`, model `q35-fp8-study`, and `--points 4 16 32 64`. Each benchmark needs a new output directory. See the [benchmark protocol](docs/mxfp8-benchmark.md) and [stock FP8 comparison setup](docs/fp8-qualification.md#serving).
-
-## Optimizations
-
-| Profile | Main components | Details |
+| Profile | Implemented optimizations | Details |
 |---|---|---|
-| MXFP6 Dense | Native W6A8; TP2 AllReduce/residual/RMSNorm fusion; fused SwiGLU, GDN and MXFP8 activation producers; persistent GDN and BA overlap; lossless and owner prefill | [Native integration](docs/native-mxfp6.md), [producer fusion](docs/dense-producer-fusion.md), [AR/Norm/quantization](docs/ar-norm-mxfp8.md), [GDN](docs/gdn-decode.md), [prefill](docs/long-prefill.md) |
-| MXFP6 MoE | Grouped native expert kernels; prefill/decode graphs; fused TP2 communication; non-expert projection dispatch tuned at selected physical M values from 32 to 160 | [MoE serving](docs/qwen35-moe.md), [projection dispatch](docs/moe-projection-20260923.md) |
-| MXFP8 2B | Native W8A8, BF16 BA M1–8/M16, ordered FP32 GDN with mixed D1–160 and pinned reset IDs, exact FULL16/FULL24 PDL, BF16 KV/head weights and exact2048 piecewise graphs; K128 hybrid greedy head and Triton attention | [2B champion](docs/mxfp8-2b-champion.md) |
-| MXFP8 4B | Native W8A8 and dual-activation MLP/QKVZ kernels; small-M BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation choices and FULL/PW graph routing | [Complete champion components](docs/mxfp8-champion.md#required-parts) |
-| Block-FP8 4B | N64 GEMM tiles; ordered low-M GEMM; fused SiLU/block quantization; mixed decode/prefill FA2; matched RMS compilation choices | [Linear](docs/fp8-linear.md), [activation](docs/fp8-activation.md), [attention](docs/fp8-attention.md) |
+| 2B MXFP8 | Native projections; BF16 BA M1–8/M16; ordered FP32 GDN with mixed D1–160; pinned reset-ID uploads; FULL16/FULL24 PDL; exact2048 piecewise graphs; Triton attention; K128 hybrid greedy head | [Champion components](docs/mxfp8-2b-champion.md#champion-components) |
+| 4B MXFP8 | Dual-activation MLP/QKVZ; M64 pipeline variant; BF16 BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation and graph routing | [Complete profile](docs/mxfp8-champion.md#required-parts) |
+| 4B block-FP8 | N64 GEMM tiles; ordered low-M GEMM; fused SiLU quantization; mixed FA2; matched RMS compilation choices | [Block-FP8 profile](docs/fp8-profile.md) |
+| 27B Dense MXFP6 | Native W6A8; compact greedy sampling; TP2 AllReduce/residual/RMSNorm and activation fusion; persistent GDN; BA overlap; lossless and owner prefill | [Configuration breakdown](docs/dense-gains-aligned-baseline-20260920.md) |
+| 35B-A3B MoE MXFP6 | Grouped experts; prefill/decode graphs; compact greedy sampling; fused TP2 communication; GDN integration; projection dispatch for selected physical rows32–160 | [MoE breakdown](docs/moe-gains-fp8-baseline-20260920.md) |
 
-Mach packages these integrations directly. The block-FP8 linear routes are also submitted in [vLLM PR #60385](https://github.com/vllm-project/vllm/pull/60385). Mixed FA2 builds on [LiRunGuo's PR #58013](https://github.com/vllm-project/vllm/pull/58013); the SiLU work is related to [PR #45055](https://github.com/vllm-project/vllm/pull/45055).
-
-## Performance
-
-All throughput tables use **3000 input / 1000 output tokens**, measured in **output tokens/s**. `c` denotes concurrent requests; `M` in kernel and fidelity reports denotes physical batch rows. Results compare the complete configurations described in each linked report.
-
-### Qwen3.5-2B MXFP8 — one RTX 5090, TP1
-
-The selected champion uses **Triton attention + the hybrid greedy head**, enabled by `--attention-backend TRITON_ATTN --hybrid-head` in the setup command above. The 3000-input / 1000-output comparison covers all six points on GPU0; previous/new values are paired, while community FP8 is the historical GPU1 reference.
-
-| Concurrency | Community FP8 tok/s | Previous FA2/full-head tok/s | Triton + hybrid tok/s | vs. community FP8 | vs. previous |
-|---|---:|---:|---:|---:|---:|
-| c4 | 1261.89 | 1395.31 | 1588.27 | +25.86% | +13.83% |
-| c16 | 3814.33 | 4295.10 | 4801.96 | +25.89% | +11.80% |
-| c24 | 5069.68 | 5594.33 | 6209.52 | +22.48% | +11.00% |
-| c32 | 5870.22 | 6595.49 | 7259.99 | +23.67% | +10.08% |
-| c48 | 6837.60 | 7896.46 | 8036.47 | +17.53% | +1.77% |
-| c64 | 7578.86 | 8702.23 | 9008.34 | +18.86% | +3.52% |
-
-All 2,560 scored requests completed. A later c32 check of the same Triton + hybrid runtime measured **7216.58 tok/s**. Six-cohort fixed-gold MAE is 0.04783–0.04947 against the frozen BF16 anchor; M32 increased 2.58% with the attention backend change. Actual-generation checks found no omitted BF16 winner or lower-scored selection across **129,878 hybrid decisions**, with one equal-score token tie. See [precision, TTFT and source results](docs/mxfp8-2b-champion.md#hybrid-head-and-triton-attention).
-
-The first study measured **+9.05%** median paired six-point throughput against community block-FP8 on GPU1. The second study measured **+2.56%** median paired throughput for pinned GDN reset-ID uploads against that first champion on GPU7. Both used four controlled pairs at c4/c16/c24/c32/c48/c64. These percentages have different baselines and GPUs; they are not a measured combined gain over community FP8. The public package reproduced all 438 tensors and the complete checkpoint SHA. Its same-card six-point regression measured +0.38% against the selected champion; fixed-token M4/M32/M64 replay matched the reference logprobs exactly. See the [2B guide](docs/mxfp8-2b-champion.md) for setup and evidence boundaries.
-
-The earlier October 10 mixed-decode qualification covered 24–160 decode requests. Against the previous release on the same GPU, throughput changed by **−0.15%, −0.15%, −0.44%, +1.67%, +1.30% and +1.53%** at c4/c16/c24/c32/c48/c64 (3000 input / 1000 output tokens, four pairs per point). Fixed-token replay with matched observers preserved all 10,479 gold logprobs across 256 queries at cohort32. The [six-point results](docs/mxfp8-2b-champion.md#earlier-mixed-decode-qualification-october-10) include TTFT and request counts. These six points belong to that earlier implementation.
-
-The preceding base integration added native BF16 BA M16, mixed decode D1–160 and the complete PDL chain for actual FULL16/FULL24 graphs. Its same-GPU0 experiment measured **4243.24 → 4290.80 tok/s (+1.12%) at c16** and **5531.48 → 5612.54 tok/s (+1.47%) at c24**, using two target pairs and two independent audit pairs per point. The [base optimization record](docs/mxfp8-2b-champion.md#base-optimizations-ba-m16-low-d-and-full-pdl) separates that experiment from package validation. These components are included in the selected Triton + hybrid configuration above.
-
-### Qwen3.5-4B MXFP8 — one RTX 5090, TP1
-
-The October 6 source-built champion completes all 1,040 scored requests. Its output hashes match the previous champion at all six points. Community FP8 is the October 5 screen using the same public workload; each implementation has one complete screen.
-
-| Concurrency | Community FP8 | Mach MXFP8 | Gain |
-|---|---:|---:|---:|
-| c4 | 683.959 | 880.131 | +28.68% |
-| c16 | 2053.547 | 2481.298 | +20.83% |
-| c24 | 2559.262 | 3189.417 | +24.62% |
-| c32 | 2887.825 | 3672.696 | +27.18% |
-| c48 | 3220.549 | 4168.038 | +29.42% |
-| c64 | 3402.757 | 4653.929 | +36.77% |
-
-[Qualified revisions, precision and latency](docs/mxfp8-qualification-20261006.md) · [raw results](docs/data/mxfp8-qualification-20261006.json).
-
-### Qwen3.5-4B block-FP8 — one RTX 5090, TP1
-
-October 6, one stock/all-features pair per point on the same checkpoint and vLLM 0.29.0 stack; all 680 requests per arm succeed. This is a separate stock measurement from the MXFP8 table above.
-
-| Concurrency | Stock block-FP8 | Mach block-FP8 | Gain |
-|---|---:|---:|---:|
-| c4 | 678.538 | 739.843 | +9.03% |
-| c16 | 2018.890 | 2143.596 | +6.18% |
-| c32 | 2834.840 | 3004.000 | +5.97% |
-| c64 | 3363.733 | 3598.838 | +6.99% |
-
-Mean TTFT falls 3.82% at c32 and 7.06% at c64; it rises 4.05% at c4. [Precision, TTFT and reproduction](docs/fp8-qualification.md) · [raw results](docs/data/fp8-qualification-20261006.json).
-
-### Native MXFP6 — two RTX 5090 GPUs, TP2
-
-**Qwen3.8-27B Dense:** September 20 configuration study, one sweep per configuration. Default enables the communication, GDN, producer and prefill optimizations; full adds FP16 SSM and the NVFP4 candidate head.
-
-| Configuration | c4 | c16 | c24 | c32 |
-|---|---:|---:|---:|---:|
-| Stock FP8 | 264.57 | 802.79 | 1011.43 | 1150.97 |
-| Mach MXFP6 default | 380.17 | 1046.93 | 1374.53 | 1553.09 |
-| Mach MXFP6 full | 411.14 | 1141.40 | 1498.93 | 1718.24 |
-
-Mean of the four per-point gains over FP8: **+36.24% default / +48.77% full**. [Optimization breakdown and exact settings](docs/dense-gains-aligned-baseline-20260920.md) record the runtime, GPU-group and measurement-batch differences in this study.
-
-**Qwen3.5-35B-A3B MoE:** September 28 MXFP6 retest, two-sweep means, compared with the September 17 FP8 deployment. The measured default row has projection tuning off; full includes it. Current launchers enable eligible projection tuning by default.
-
-| Configuration | c4 | c16 | c24 | c32 |
-|---|---:|---:|---:|---:|
-| Stock FP8 | 679.89 | 1471.58 | 1774.64 | 1962.14 |
-| Mach MXFP6 default, projection off | 1008.56 | 2338.97 | 2920.74 | 3277.02 |
-| Mach MXFP6 full | 1096.93 | 2561.85 | 3073.56 | 3518.44 |
-
-Mean per-point gains over FP8: **+59.72% / +71.98%**, respectively. [Optimization breakdown and settings](docs/moe-gains-fp8-baseline-20260920.md) include the individual sweeps. [Projection testing](docs/moe-projection-20260923.md) also covers c32–c160. Earlier FP8/MXFP6/NVFP4 comparisons are available for [Dense](docs/native-fidelity.md) and [MoE](docs/qwen35-moe.md).
-
-### Numerical fidelity
-
-The fixed-gold diagnostic uses 256 queries and 10,479 gold-token logprobs per physical batch setting. These MAEs measure deviation from a reference, rather than task accuracy; the evaluation corpus is private.
-
-| Profile | Tested physical rows | Result |
-|---|---|---|
-| Block-FP8 4B | M4, M32, M64 | Raw records byte-identical to stock block-FP8; MAE 0 against stock |
-| MXFP8 2B Triton + hybrid | M4, M16, M24, M32, M48, M64 | MAE **0.04783–0.04947** against the shared BF16 M32 anchor; actual hybrid generation checked separately |
-| MXFP8 4B champion | M32, M64 | Raw records byte-identical to the accepted champion; MAE against same-M BF16 **0.04904 / 0.05329** |
-| MXFP6 Dense default / full | M32 | September 17 BF16-reference MAE **0.09064 / 0.08962**; stock FP8 0.06143, NVFP4 0.17328 |
-| MXFP6 MoE default / full | M32 | September 17 BF16-reference MAE **0.07261 / 0.07409**; stock FP8 0.05534, NVFP4 0.22836 |
-
-MXFP6 and MXFP8 2B logprob requests use the complete BF16 head; the [2B generation check](docs/mxfp8-2b-champion.md#hybrid-head-and-triton-attention) separately measures actual candidate selections. The 2B champion keeps BF16 KV and uses Triton attention. The 4B MXFP8 BF16 reference uses BF16 KV/FlashAttention, while its champion uses FP8 KV/FlashInfer. See the [MXFP6 methodology](docs/profile-fidelity-20260917.md), [4B MXFP8 qualification](docs/mxfp8-qualification-20261006.md#precision-and-startup) and [block-FP8 qualification](docs/fp8-qualification.md#precision) for the full comparisons.
+These components are already included in the source profiles. Component gains are not summed to produce the model-level tables.
 
 ## Documentation
 
-| Guide | Contents |
-|---|---|
-| [MXFP6 installation](docs/installation.md) | Manual build, launch flags, graph defaults and memory sizing |
-| [Native MXFP6](docs/native-mxfp6.md) / [MoE](docs/qwen35-moe.md) | Checkpoint loading, operators, graph lifecycle and model-specific setup |
-| [MXFP8 champion](docs/mxfp8-champion.md) / [model preparation](docs/mxfp8-model.md) | Complete TP1 profile, public model inputs and single-checkpoint reconstruction |
-| [MXFP8 2B champion](docs/mxfp8-2b-champion.md) / [2B model preparation](docs/mxfp8-2b-model.md) | Independent TP1 launcher, pinned public BF16 source and 438-tensor checkpoint reconstruction |
-| [MXFP8 runtime installation](docs/mxfp8-installation.md) | Source pins, package versions and build records |
-| [Block-FP8 profile](docs/fp8-profile.md) | Four feature switches, source installation and precision contract |
-| [4B benchmark protocol](docs/mxfp8-benchmark.md) | Generated requests, warmup, concurrency and metric definitions |
-| [Historical releases](docs/public-install.md) / [benchmark archive](docs/benchmarks.md) | Earlier EXL3 and hybrid-checkpoint work |
+- [Performance](docs/performance.md): throughput curves, all point values, latency and numerical fidelity.
+- [Guide index](docs/README.md): installation, model preparation, operator details and development.
+- [Benchmark protocol](docs/mxfp8-benchmark.md): fixed requests, warmup, counts and metrics.
+- [History](docs/archive.md): earlier EXL3 work, superseded experiments and release notes.
+
+The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.com/vllm-project/vllm/pull/60385). Mixed FA2 builds on [LiRunGuo's PR #58013](https://github.com/vllm-project/vllm/pull/58013); SiLU quantization work relates to [PR #45055](https://github.com/vllm-project/vllm/pull/45055). Mach includes its integrations directly.
 
 ## Contributing and license
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Include the checkpoint, runtime versions, GPU topology, workload, graph mode, correctness checks and baseline with performance reports.
-
-vLLM Mach is licensed under [Apache-2.0](LICENSE); derived notices are in [NOTICE](NOTICE). External components retain their own licenses. This project is independent of the vLLM project.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for performance and correctness evidence expected with changes. [Apache-2.0](LICENSE); derived notices are in [NOTICE](NOTICE). External components retain their own licenses. This project is independent of the vLLM project.

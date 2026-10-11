@@ -3,7 +3,7 @@
 This experiment evaluates the default and full profiles after commit `b20f5e0`,
 with fresh BF16, stock FP8 and stock NVFP4 runs for each model and physical batch
 size. The September 15/16 experiments remain in
-[native fidelity](native-fidelity.md) and its linked archives.
+[native fidelity](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md) and its linked archives.
 
 ## Protocol
 
@@ -65,7 +65,7 @@ for each MoE configuration and batch size; autotuning remains enabled.
 
 Logprob requests use the full BF16 LM head. Consequently this experiment includes
 full-profile FP16 recurrent arithmetic but does not evaluate NVFP4 candidate
-search. The [historical same-hidden-state head probe](native-fidelity.md#numerical-fidelity)
+search. The [historical same-hidden-state head probe](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md#numerical-fidelity)
 is a separate experiment.
 
 ## Results
@@ -124,7 +124,7 @@ query sampling conditional on one run; they exclude this execution variation.
 Repeated-cohort logprobs and the independent NVFP4 run are included in the raw
 results. This diagnostic does not replace the MoE throughput measurements,
 which retain the existing baseline services documented in the
-[throughput protocol](qwen35-moe.md#updated-defaultfull-chart-and-user-provided-baselines).
+[throughput protocol](moe-gains-fp8-baseline-20260920.md).
 
 ## Reproduction
 

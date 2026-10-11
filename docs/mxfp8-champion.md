@@ -122,23 +122,6 @@ A fresh run directory gives fresh compiler caches. Qualification must compare
 raw gold records and inspect live route/state/restart behavior; matching build
 or model hashes alone does not establish execution equivalence.
 
-## Historical acceptance anchors
+## Performance
 
-These October 5, 2026 frozen-champion measurements belong to the historical complete
-profile, **not this newly packaged implementation**. The six-point workload is
-3000 input/1000 output tokens, uniform IDs, TP1 on one RTX 5090. Champion and
-community FP8 were independent complete screens, not a component ABBA study.
-
-| Concurrency | Historical champion tok/s | Historical community FP8 tok/s |
-| ---: | ---: | ---: |
-| 4 | 881.119 | 683.959 |
-| 16 | 2493.357 | 2053.547 |
-| 24 | 3194.545 | 2559.262 |
-| 32 | 3667.963 | 2887.825 |
-| 48 | 4196.089 | 3220.549 |
-| 64 | 4634.680 | 3402.757 |
-
-Historical fixed-M raw records matched their accepted parents; same-M BF16
-anchor MAE was 0.049038113196 at M32 and 0.053286047365 at M64. The stored BF16
-anchor used FLASH_ATTN and BF16 KV; champion used FLASHINFER and FP8 KV. These
-short-gold errors are not task accuracy or universal output equivalence. The [packaged qualification](mxfp8-qualification-20261006.md) reports the new results separately. See the [benchmark contract](mxfp8-benchmark.md) for the reproducible public workload.
+The source-built champion measures +20.83–36.77% over the community FP8 screen across six concurrency points. See the [complete point table and charts](performance.md#qwen35-4b), [precision and build qualification](mxfp8-qualification-20261006.md), and [benchmark protocol](mxfp8-benchmark.md). Historical acceptance observations remain in the qualification JSON alongside the source-built results.

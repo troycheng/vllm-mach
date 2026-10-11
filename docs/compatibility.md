@@ -1,6 +1,6 @@
 # Compatibility
 
-Mach a10 pins vLLM 0.29.0; a9 pins 0.28.0. The plugin accepts both versions with their matching runtime profiles. It uses vLLM's quantization configuration, parameter loading, packed-module mapping, tensor-parallel linear, and CUDA Graph lifecycle APIs. See the [0.29 upgrade checks](dependency-upgrade.md) and [ExLlamaV3 1.5.0 port](exllamav3-1.5.0.md).
+Mach a10 pins vLLM 0.29.0; a9 pins 0.28.0. The plugin accepts both versions with their matching runtime profiles. It uses vLLM's quantization configuration, parameter loading, packed-module mapping, tensor-parallel linear, and CUDA Graph lifecycle APIs. See the [0.29 upgrade checks](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/dependency-upgrade.md) and [ExLlamaV3 1.5.0 port](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/exllamav3-1.5.0.md).
 
 Supported checkpoint records declare `quant_format: exl3` and contain `trellis`, an input scale (`suh` or `su`), an output scale (`svh` or `sv`), and at most one codebook marker (`mcg` or `mul1`). Invalid metadata is rejected before weight execution.
 
