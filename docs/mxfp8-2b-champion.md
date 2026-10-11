@@ -111,7 +111,7 @@ The accepted experimental champion `ba-m16-mixed-lowd-fullpdl-m16m24-v1` was com
 | 16 | 4243.236814 | 4290.796126 | +1.120826% | 143.092509 → 144.064691 |
 | 24 | 5531.482205 | 5612.540083 | +1.465392% | 175.356289 → 176.469588 |
 
-All four pairs improved at both points. Target and audit gains were +1.158940%/+1.082738% at c16 and +1.422104%/+1.508886% at c24. This measures the combined new native library plus complete PDL change against a baseline that already contained BA M16 and low-D. No other concurrency point was remeasured for this version; the six-point tables in this guide are historical qualifications.
+All four pairs improved at both points. Target and audit gains were +1.158940%/+1.082738% at c16 and +1.422104%/+1.508886% at c24. This measures the combined new native library plus complete PDL change against a baseline that already contained BA M16 and low-D. That qualification measured c16/c24. The current six-point snapshot below completes coverage of the installed version.
 
 Before this comparison, GPU3 independently measured the old D24 guard against D1 at c24: 5524.694995 → 5646.827819 tok/s (+2.210671%), with 480 requests completed. That experiment used a different card and baseline; its gain must not be multiplied into the GPU0 comparison.
 
@@ -127,6 +127,23 @@ The October 11 installed-wheel check compared the accepted prototype and package
 The individual AB/BA changes were −0.125690%/+0.157222% at c16 and +1.369248%/+0.574028% at c24. Throughput pools output tokens over scored durations; mean TTFT is weighted by request count, and per-run p99 values are retained without averaging. This is a packaging recheck against the accepted prototype, separate from the historical optimization comparison above; the percentages are not multiplied.
 
 The Mach CPU suite passed **224 tests and 72 subtests**, with 12 optional-dependency skips. Native GPU tests passed **15 tests**, with two skips, alongside the 72 real-weight BA eager/graph cases. Packaged M16/M24 precision each reproduced **256 queries and 10,479 gold logprobs exactly, with zero repeat differences**. The [machine-readable results](data/mxfp8-2b-full-pdl-20261011.json) record the historical experiment and package recheck separately, including paired windows, scored counts, durations and source evidence hashes.
+
+## Current six-point snapshot (October 11)
+
+The current installed champion has two observations at each of c4/c16/c24/c32/c48/c64 on GPU0, with 3000 input / 1000 output tokens. The table retains the original community block-FP8 baseline from the GPU1 study. Percentages compare these separate baseline and current-version measurements.
+
+| Concurrency | Original community FP8 tok/s | Current champion tok/s | Change from historical baseline |
+|---|---:|---:|---:|
+| 4 | 1261.89 | 1397.03 | +10.71% |
+| 16 | 3814.33 | 4309.64 | +12.99% |
+| 24 | 5069.68 | 5625.21 | +10.96% |
+| 32 | 5870.22 | 6595.24 | +12.35% |
+| 48 | 6837.60 | 7892.14 | +15.42% |
+| 64 | 7578.86 | 8665.28 | +14.33% |
+
+Each observation uses 40/160/120/160/240/320 scored requests at c4/c16/c24/c32/c48/c64. All 2,080 requests and 2,080,000 output tokens completed. Throughput pools output tokens over scored durations at each point. c4/c32/c48/c64 were completed in forward and reverse point order; c16/c24 reuse the latest unchanged-champion reference runs with the same published request counts. The native binary, checkpoint, BA/GDN/PDL sources, runtime versions and production geometry match across these runs, and the monitors reported no errors.
+
+The source is the accepted Mach runtime `db2131ef30f26f2e2930babe7c1baafcf7eeb649` and native runtime `a4cdc1b23a72cdedecb29707534fa4e3a595933f`, using the checkpoint hash documented above. The [snapshot JSON](data/mxfp8-2b-release-snapshot-20261011.json) records both observations per point, counts, durations, TTFT/TPOT, source hashes and runtime identity checks. Numerical qualification remains the fixed-token replay described in the current champion section.
 
 ## Earlier mixed decode qualification (October 10)
 
