@@ -102,6 +102,22 @@ class TwoBProfileContracts(unittest.TestCase):
             self.assertNotEqual(first["TRITON_CACHE_DIR"], second["TRITON_CACHE_DIR"])
             self.assertEqual(self.profile.run_contract()["mode"], "quality")
 
+    def test_attention_and_hybrid_selection_are_explicit_and_reset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.serve.configure_environment(directory, attention_backend="TRITON_ATTN", hybrid_head=True)
+            contract = self.profile.run_contract()
+            self.assertEqual(contract["attention_backend"], "TRITON_ATTN")
+            self.assertTrue(contract["hybrid_greedy_head"])
+            argv = self.serve.build_argv("/checkpoint", attention_backend="TRITON_ATTN")
+            self.assertEqual(argv[argv.index("--attention-backend")+1], contract["attention_backend"])
+            self.serve.configure_environment(directory)
+            self.assertEqual(self.profile.run_contract()["attention_backend"], "FLASH_ATTN")
+            self.assertFalse(self.profile.run_contract()["hybrid_greedy_head"])
+            for key, value in (("VLLM_MACH_2B_ATTENTION_BACKEND", "typo"),
+                               ("VLLM_MACH_2B_HYBRID_HEAD", "yes")):
+                with patch.dict(os.environ, {key: value}):
+                    with self.assertRaises(RuntimeError): self.profile.run_contract()
+
     def test_import_and_print_command_need_no_torch_and_do_not_write(self):
         with tempfile.TemporaryDirectory() as directory:
             program = f'''
@@ -115,13 +131,17 @@ sys.meta_path.insert(0, RejectGPU())
 import vllm_mach.mxfp8.two_b.profile
 import vllm_mach.plugin
 from vllm_mach.mxfp8.two_b.serve import main
-sys.argv = ['serve', '/checkpoint', '--run-dir', {directory!r}, '--print-command']
+sys.argv = ['serve', '/checkpoint', '--run-dir', {directory!r}, '--hybrid-head', '--attention-backend', 'TRITON_ATTN', '--print-command']
 main()
 assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
 '''
             result = subprocess.run([sys.executable, "-c", program], check=True, capture_output=True, text=True)
-            argv = json.loads(result.stdout)
+            printed = json.loads(result.stdout)
+            argv = printed["argv"]
             self.assertEqual(argv[:3], ["vllm", "serve", "/checkpoint"])
+            self.assertEqual(argv[argv.index("--attention-backend")+1], "TRITON_ATTN")
+            self.assertIn("--hybrid-head", printed["launch_command"])
+            self.assertNotIn("--print-command", printed["launch_command"])
             self.assertEqual(list(Path(directory).iterdir()), [])
 
     def lifecycle(self, events):
@@ -177,6 +197,16 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         with self.assertRaisesRegex(RuntimeError, "reallocation"):
             obj.initialize_from_config()
         self.assertEqual(events, before)
+
+    def test_hybrid_installs_after_capture_before_compiled_receipt(self):
+        events = []
+        Worker, _ = self.lifecycle(events)
+        hybrid = load("mxfp8.two_b.hybrid_head")
+        with patch.dict(os.environ, {"VLLM_MACH_2B_HYBRID_HEAD": "1"}), \
+                patch.object(hybrid, "install", side_effect=lambda obj: events.append("hybrid")):
+            self.profile.install_worker_hook()
+            obj = Worker(); obj.init_device(); obj.compile_or_warm_up_model()
+        self.assertEqual(events[-4:], ["prepare_pools", "compile", "hybrid", "compiled"])
 
     def test_quality_skips_production_dispatch_and_contract_drift_rejects_compile(self):
         for row in (4, 32, 64):

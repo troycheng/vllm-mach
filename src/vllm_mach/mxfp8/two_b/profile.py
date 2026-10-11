@@ -9,6 +9,7 @@ from pathlib import Path
 from ..profile import DEPENDENCIES, check_runtime_sources
 
 NAME = "qwen35-2b-mxfp8-champion-v1"
+ATTENTION_BACKENDS = ("FLASH_ATTN", "TRITON_ATTN")
 
 
 def quality_contract(rows):
@@ -40,8 +41,13 @@ def run_contract():
         raise RuntimeError("Select production without QUALITY_ROWS, or quality with rows4/32/64")
     if os.environ.get("VLLM_MACH_2B_PINNED_IDS", "1") != "1":
         raise RuntimeError("The 2B champion requires pinned reset-ID uploads")
+    backend = os.environ.get("VLLM_MACH_2B_ATTENTION_BACKEND", "FLASH_ATTN")
+    hybrid = os.environ.get("VLLM_MACH_2B_HYBRID_HEAD", "0")
+    if backend not in ATTENTION_BACKENDS or hybrid not in ("0", "1"):
+        raise RuntimeError("Select FLASH_ATTN/TRITON_ATTN and hybrid head 0/1")
     return {"mode": mode, "quality_rows": rows, **geometry,
-            "attention_backend": "FLASH_ATTN", "kv_dtype": "bfloat16",
+            "attention_backend": backend, "hybrid_greedy_head": hybrid == "1",
+            "kv_dtype": "bfloat16",
             "head_dtype": "bfloat16", "ssm_dtype": "float32",
             "production_throughput_profile": mode == "production"}
 
@@ -72,21 +78,22 @@ def _check_geometry(worker, contract):
     if any(getattr(text, k, None) != v for k, v in expected.items()):
         raise RuntimeError("The 2B profile requires Qwen3.5-2B text geometry")
     backend = cfg.attention_config.backend
-    if getattr(backend, "name", str(backend)) != "FLASH_ATTN":
-        raise RuntimeError("The 2B profile requires FlashAttention 2")
+    if getattr(backend, "name", str(backend)) != contract["attention_backend"]:
+        raise RuntimeError("The 2B attention backend differs from the selected contract")
     if (cfg.parallel_config.tensor_parallel_size != 1
             or cfg.parallel_config.pipeline_parallel_size != 1
             or cfg.parallel_config.data_parallel_size != 1
             or cfg.lora_config is not None
             or cfg.scheduler_config.max_num_batched_tokens != contract["max_num_batched_tokens"]
             or cfg.cache_config.cache_dtype not in ("auto", "bfloat16")
-            or os.environ.get("VLLM_FLASH_ATTN_VERSION") != "2"):
+            or (contract["attention_backend"] == "FLASH_ATTN"
+                and os.environ.get("VLLM_FLASH_ATTN_VERSION") != "2")):
         raise RuntimeError("2B TP1, BF16 KV, fixed prefill and non-LoRA contract changed")
 
 
 def inspect_worker(worker):
     worker = _worker(worker)
-    from . import ba, gdn, graph_policy, pdl
+    from . import ba, gdn, graph_policy, hybrid_head, pdl
     from ..worker import verify_worker_execution
     import torch
     contract = worker._mach_2b_contract
@@ -111,11 +118,15 @@ def inspect_worker(worker):
     if (len(heads) != 1 or heads[0].weight.dtype != torch.bfloat16
             or tuple(heads[0].weight.shape) != (248320, 2048)):
         raise RuntimeError("The 2B profile requires the complete BF16 vocabulary head")
+    hybrid = hybrid_head.inspect_worker(worker)
+    if hybrid["installed"] != contract["hybrid_greedy_head"]:
+        raise RuntimeError("The selected 2B hybrid head was not installed")
     return {"profile": NAME, "pid": os.getpid(), **contract,
             "versions": check_environment(),
             "runtime_sources": worker._mach_2b_runtime_sources,
             "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state,
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
+            "hybrid_head": hybrid,
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
 
 
@@ -189,6 +200,9 @@ def install_worker_hook():
             raise RuntimeError("2B profile changed before compilation")
         gdn.prepare_pools(self)
         result = original_compile(self, *args, **kwargs)
+        if contract["hybrid_greedy_head"]:
+            from .hybrid_head import install
+            install(self)
         write_receipt(self, "compiled")
         self._mach_2b_ready = True
         return result

@@ -57,6 +57,7 @@ testpaths = [
     "tests/test_mxfp8_2b_mixed_cpu.py",
     "tests/test_mxfp8_2b_ba_graph_cpu.py",
     "tests/test_mxfp8_2b_profile_cpu.py",
+    "tests/test_mxfp8_2b_hybrid_head_cpu.py",
     "tests/test_mxfp8_2b_pdl_cpu.py",
     "tests/test_fp8_profile_cpu.py",
     "tests/test_fp8_compile_choices_cpu.py",
