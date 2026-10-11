@@ -117,7 +117,7 @@ def install(gw, gdn):
         md = gw._metadata(self)
         eligible = (gw._READY and md is not None and self.prefix in gw._LAYERS
                     and md.spec_sequence_masks is None and md.num_spec_decodes == 0
-                    and md.num_prefills > 0 and 24 <= md.num_decodes <= 160
+                    and md.num_prefills > 0 and 1 <= md.num_decodes <= 160
                     and md.num_decode_tokens == md.num_decodes
                     and md.non_spec_state_indices_tensor is not None
                     and md.non_spec_state_indices_tensor.numel() >= md.num_decodes + md.num_prefills
@@ -150,7 +150,7 @@ def snapshot():
             "source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             "original_core_source_sha256": _ORIGINAL_SHA,
             "clone_core_source_sha256": _CLONE_SHA,
-            "scope": "non-spec mixed D24..160; stock convolution and prefill",
+            "scope": "non-spec mixed D1..160; stock convolution and prefill",
             "tile": {"BV": 32, "NV": 4, "decode_num_warps": 4,
                      "materialize_num_warps": 1},
             "validated_views": len(_VALIDATED),

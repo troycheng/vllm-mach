@@ -14,7 +14,7 @@ NAME = "qwen35-2b-mxfp8-champion-v1"
 def quality_contract(rows):
     if rows not in (4, 32, 64):
         raise ValueError("2B quality rows must be 4, 32 or 64")
-    captures = [4] if rows == 4 else ([4, 32] if rows == 32 else [4, 32, 64])
+    captures = [m for m in (4, 32, 64) if m <= rows]
     return {"max_model_len": 1024, "max_num_seqs": rows,
             "max_num_batched_tokens": max(8192, rows * 256),
             "kv_cache_memory_bytes": 4 * 2**30,
@@ -86,7 +86,7 @@ def _check_geometry(worker, contract):
 
 def inspect_worker(worker):
     worker = _worker(worker)
-    from . import ba, gdn, graph_policy
+    from . import ba, gdn, graph_policy, pdl
     from ..worker import verify_worker_execution
     import torch
     contract = worker._mach_2b_contract
@@ -103,7 +103,10 @@ def inspect_worker(worker):
         if any(state["capture_construction"].get(f"{name}|m{m}", 0) == 0
                for m in set(state["eligible_rows"]) & required):
             raise RuntimeError(f"Missing 2B GDN graph capture: {name}")
-    projection = ba.verify_capture(worker, required_rows=(4, 8) if contract["mode"] == "production" else (4,))
+    projection = ba.verify_capture(worker, required_rows=tuple(sorted(required & {4, 8, 16})))
+    if not projection["native_m16_available"]:
+        raise RuntimeError("The 2B champion requires native BF16 BA M16")
+    pdl_state = pdl.verify_capture(required)
     heads = [m for name, m in worker.get_model().named_modules() if name.endswith("lm_head")]
     if (len(heads) != 1 or heads[0].weight.dtype != torch.bfloat16
             or tuple(heads[0].weight.shape) != (248320, 2048)):
@@ -111,7 +114,7 @@ def inspect_worker(worker):
     return {"profile": NAME, "pid": os.getpid(), **contract,
             "versions": check_environment(),
             "runtime_sources": worker._mach_2b_runtime_sources,
-            "native": native, "gdn": state, "ba": projection, "graph": graph,
+            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state,
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
 
@@ -142,10 +145,11 @@ def install_worker_hook():
     if any(getattr(Worker, name, False) for name in
            ("_mach_mxfp8_native_hook", "_mach_mxfp8_champion_hook", "_two_b_gdn_ordered_worker_hook", "_two_b_ba_hook")):
         raise RuntimeError("Another MXFP8 worker profile is already installed")
-    from . import ba, gdn, graph_policy
+    from . import ba, gdn, graph_policy, pdl
     from ..worker import install_worker_backend
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
+    pdl.install()
     original_init, original_load = Worker.init_device, Worker.load_model
     original_cache = Worker.initialize_from_config
     original_compile, original_execute = Worker.compile_or_warm_up_model, Worker.execute_model
@@ -159,6 +163,7 @@ def install_worker_hook():
         result = original_init(self, *args, **kwargs)
         _check_geometry(self, contract)
         install_worker_backend(self)
+        pdl.prepare()
         gdn.install_runtime(self)
         ba.install(self)
         return result

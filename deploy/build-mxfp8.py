@@ -32,6 +32,7 @@ PATCHES = (
     "0003-sm120-streamk-persistent-workspace.patch",
     "0004-sm120-single-stage-mainloop.patch",
     "0005-sm120-static-problem-shape.patch",
+    "0006-sm120-pdl-release.patch",
 )
 BASE_PACKAGES = {"vllm": "0.29.0", "torch": "2.13.0", "triton": "3.7.1",
                  "flashinfer-python": "0.6.18", "flashinfer-cubin": "0.6.18",
@@ -59,11 +60,11 @@ def source_hashes(source: Path) -> dict[str, str]:
 
 
 def validate_source(source: Path) -> dict:
-    """Reject old MXFP6 revisions that do not implement all three dual variants."""
+    """Require both dual tile families plus the BA M16 and bool PDL dispatcher ABI."""
     required = ["CMakeLists.txt", "setup.py", "pyproject.toml", "python/mxfp6/mxfp8.py",
                 "python/mxfp6/mxfp8_dual.py", "csrc/mxfp8_dual_extension.cu",
-                "csrc/mxfp8_dual_mlp32.cu", "csrc/mxfp8_dual_qkvz32.cu",
-                "csrc/mxfp8_dual_qkvz64_pipereg.cu"]
+                "csrc/mxfp8_dual_small.cu", "csrc/mxfp8_dual_pipereg.cu", "csrc/mxfp8_bf16_ba.cu",
+                "csrc/mxfp8_extension.cu"]
     required += ["patches/cutlass/" + name for name in PATCHES]
     missing = [name for name in required if not (source / name).is_file()]
     if missing:
@@ -73,11 +74,14 @@ def validate_source(source: Path) -> dict:
     for target in ("mxfp6_torch", "mxfp8_torch"):
         if f"add_library({target}" not in cmake or target not in setup:
             raise RuntimeError(f"Standard CMake/wheel build lacks target {target}")
-    for name in ("mxfp8_dual_mlp32.cu", "mxfp8_dual_qkvz32.cu", "mxfp8_dual_qkvz64_pipereg.cu"):
+    for name in ("mxfp8_dual_small.cu", "mxfp8_dual_pipereg.cu", "mxfp8_bf16_ba.cu"):
         if name not in cmake:
             raise RuntimeError(f"Standard CMake target does not compile {name}")
     if "dual_gemm_out" not in (source / "csrc/mxfp8_dual_extension.cu").read_text():
         raise RuntimeError("Official dual_gemm_out dispatcher is missing")
+    extension = (source / "csrc/mxfp8_extension.cu").read_text()
+    if 'bf16_ba_m16(Tensor x, Tensor weight) -> Tensor' not in extension or 'bool use_pdl=False' not in extension:
+        raise RuntimeError("Official BA M16 / bool use_pdl dispatcher ABI is missing")
     return {"targets": ["mxfp6_torch", "mxfp8_torch"],
             "patch_sha256": {name: digest(source / "patches/cutlass" / name) for name in PATCHES},
             "source_sha256": source_hashes(source)}
@@ -124,12 +128,11 @@ def discover_toolchain(cuda_home: Path | None = None, site_paths: list[Path] | N
     nvcc = cuda / "bin/nvcc"
     if not nvcc.is_file():
         raise RuntimeError(f"CUDA compiler not found: {nvcc}")
-    libraries = sorted((cuda / "targets/x86_64-linux/lib").glob("libnvrtc.so.13.0.*"))
-    if not libraries:
-        libraries = sorted((cuda / "lib64").glob("libnvrtc.so.13.0.*"))
-    libraries = sorted({path.resolve() for path in libraries if path.is_file()})
+    libraries = sorted({path.resolve() for directory in (cuda / "targets/x86_64-linux/lib", cuda / "lib64")
+                        for pattern in ("libnvrtc.so", "libnvrtc.so.13", "libnvrtc.so.13.*")
+                        for path in directory.glob(pattern) if path.is_file()})
     if len(libraries) != 1:
-        raise RuntimeError(f"Expected one CUDA 13.0 NVRTC library, found: {libraries}")
+        raise RuntimeError(f"Expected one CUDA 13 NVRTC library, found: {libraries}")
     if site_paths is None:
         site_paths = [Path(value) for value in {sysconfig.get_path("purelib"),
                       sysconfig.get_path("platlib"), *sys.path} if value]
@@ -164,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--source-dir", type=Path, help="Explicit official source tree; snapshot without binaries/cache")
-    source.add_argument("--revision", help="Full official source commit containing dual MLP32/QKVZ32/QKVZ64")
+    source.add_argument("--revision", help="Full official source commit containing BA M16, dual kernels and bool PDL ABI")
     parser.add_argument("--work-dir", type=Path, default=Path("/opt/mach-build"))
     parser.add_argument("--cuda-home", type=Path)
     parser.add_argument("--max-jobs", type=int, default=int(os.environ.get("MAX_JOBS", "2")))
@@ -222,8 +225,12 @@ mxfp6.load_library()
 a=mxfp8.load_library(); b=mxfp8_dual.load_library()
 assert a == b
 for shape in mxfp8_dual.SUPPORTED_SHAPES: assert mxfp8_dual.select_variant(*shape)
+ba = str(torch.ops.mxfp8_sm120.bf16_ba_m16.default._schema)
+assert 'Tensor x' in ba and 'Tensor weight' in ba, ba
+gemm = str(torch.ops.mxfp8_sm120.gemm.default._schema)
+assert 'bool use_pdl=False' in gemm, gemm
 print(json.dumps({'library_sha256': __import__('hashlib').sha256(a.read_bytes()).hexdigest(),
- 'schemas': {n:str(getattr(torch.ops.mxfp8_sm120,n).default._schema) for n in ('gemm','allocate_workspace','dual_gemm_out')}}))
+ 'schemas': {n:str(getattr(torch.ops.mxfp8_sm120,n).default._schema) for n in ('gemm','allocate_workspace','dual_gemm_out','bf16_ba_m16')}}))
 """
     probe_result = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True)
     if probe_result.returncode:

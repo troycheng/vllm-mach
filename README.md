@@ -94,7 +94,7 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   vllm-mach:mxfp8-champion /model --run-dir /runs/serve --host 0.0.0.0
 ```
 
-Preparation reconstructs a self-contained 438-tensor checkpoint on CPU from [Qwen/Qwen3.5-2B revision `15852e8c…`](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc). The launcher uses native MXFP8, ordered FP32 GDN, small-row BF16 BA, pinned reset IDs and exact 2048-token piecewise graphs. It keeps BF16 KV and the full BF16 vocabulary head. [Model preparation](docs/mxfp8-2b-model.md) gives the source and output hashes.
+Preparation reconstructs a self-contained 438-tensor checkpoint on CPU from [Qwen/Qwen3.5-2B revision `15852e8c…`](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc). The launcher uses native MXFP8, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16, pinned reset IDs, exact FULL16/FULL24 PDL chains and exact 2048-token piecewise graphs. It keeps BF16 KV and the full BF16 vocabulary head. [Model preparation](docs/mxfp8-2b-model.md) gives the source and output hashes.
 
 ### MXFP8 4B champion
 
@@ -102,7 +102,6 @@ Build the image, then [prepare one checkpoint](docs/mxfp8-model.md) from the pin
 
 ```bash
 docker buildx build --load --build-arg MAX_JOBS=2 \
-  --build-arg MXFP6_REVISION=15a56aa2774552d0584d8fc6b621b41dc173f30b \
   -f deploy/Dockerfile.mxfp8 -t vllm-mach:mxfp8-champion .
 
 mkdir -p "$PWD/mxfp8-model" "$PWD/mxfp8-run"
@@ -158,7 +157,7 @@ For block-FP8, use image `vllm-mach:fp8`, entry point `vllm-mach-fp8-bench`, mod
 |---|---|---|
 | MXFP6 Dense | Native W6A8; TP2 AllReduce/residual/RMSNorm fusion; fused SwiGLU, GDN and MXFP8 activation producers; persistent GDN and BA overlap; lossless and owner prefill | [Native integration](docs/native-mxfp6.md), [producer fusion](docs/dense-producer-fusion.md), [AR/Norm/quantization](docs/ar-norm-mxfp8.md), [GDN](docs/gdn-decode.md), [prefill](docs/long-prefill.md) |
 | MXFP6 MoE | Grouped native expert kernels; prefill/decode graphs; fused TP2 communication; non-expert projection dispatch tuned at selected physical M values from 32 to 160 | [MoE serving](docs/qwen35-moe.md), [projection dispatch](docs/moe-projection-20260923.md) |
-| MXFP8 2B | Native W8A8, ordered FP32 GDN with pinned reset-ID uploads, small-row BF16 BA, BF16 KV/head and exact2048 piecewise graphs | [2B champion](docs/mxfp8-2b-champion.md) |
+| MXFP8 2B | Native W8A8, BF16 BA M1–8/M16, ordered FP32 GDN with mixed D1–160 and pinned reset IDs, exact FULL16/FULL24 PDL, BF16 KV/head and exact2048 piecewise graphs | [2B champion](docs/mxfp8-2b-champion.md) |
 | MXFP8 4B | Native W8A8 and dual-activation MLP/QKVZ kernels; small-M BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation choices and FULL/PW graph routing | [Complete champion components](docs/mxfp8-champion.md#required-parts) |
 | Block-FP8 4B | N64 GEMM tiles; ordered low-M GEMM; fused SiLU/block quantization; mixed decode/prefill FA2; matched RMS compilation choices | [Linear](docs/fp8-linear.md), [activation](docs/fp8-activation.md), [attention](docs/fp8-attention.md) |
 
@@ -172,7 +171,9 @@ All throughput tables use **3000 input / 1000 output tokens**, measured in **out
 
 The first study measured **+9.05%** median paired six-point throughput against community block-FP8 on GPU1. The second study measured **+2.56%** median paired throughput for pinned GDN reset-ID uploads against that first champion on GPU7. Both used four controlled pairs at c4/c16/c24/c32/c48/c64. These percentages have different baselines and GPUs; they are not a measured combined gain over community FP8. The public package reproduced all 438 tensors and the complete checkpoint SHA. Its same-card six-point regression measured +0.38% against the selected champion; fixed-token M4/M32/M64 replay matched the reference logprobs exactly. See the [2B guide](docs/mxfp8-2b-champion.md) for setup and evidence boundaries.
 
-The October 10 update extends ordered FP32 GDN to mixed batches with 24–160 decode requests. Against the previous release on the same GPU, throughput changed by **−0.15%, −0.15%, −0.44%, +1.67%, +1.30% and +1.53%** at c4/c16/c24/c32/c48/c64 (3000 input / 1000 output tokens, four pairs per point). Fixed-token replay with matched observers preserved all 10,479 gold logprobs across 256 queries at cohort32. The [six-point results](docs/mxfp8-2b-champion.md#mixed-decode-update-october-10) include TTFT and request counts. The standard 2B launcher enables this update automatically.
+The earlier October 10 mixed-decode qualification covered 24–160 decode requests. Against the previous release on the same GPU, throughput changed by **−0.15%, −0.15%, −0.44%, +1.67%, +1.30% and +1.53%** at c4/c16/c24/c32/c48/c64 (3000 input / 1000 output tokens, four pairs per point). Fixed-token replay with matched observers preserved all 10,479 gold logprobs across 256 queries at cohort32. The [six-point results](docs/mxfp8-2b-champion.md#earlier-mixed-decode-qualification-october-10) include TTFT and request counts. These six points belong to that earlier implementation.
+
+The current 2B champion adds native BF16 BA M16, mixed decode D1–160 and the complete PDL chain only for actual FULL16/FULL24 graphs. Its accepted experiment compared the new native library plus PDL against the preceding BA-M16/low-D champion on the same GPU0: **4243.24 → 4290.80 tok/s (+1.120826%) at c16**, and **5531.48 → 5612.54 tok/s (+1.465392%) at c24**. Each point combines two target pairs and two independent audit pairs; all 1,600 requests completed. Other concurrency points were not remeasured for this version. Earlier GPU3 low-D gains and other-card results cannot be multiplied into these gains. The [2B guide](docs/mxfp8-2b-champion.md#current-champion-ba-m16-low-d-and-full-pdl) distinguishes experiment qualification from package validation.
 
 ### Qwen3.5-4B MXFP8 — one RTX 5090, TP1
 

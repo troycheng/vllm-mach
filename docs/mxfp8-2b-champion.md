@@ -2,7 +2,7 @@
 
 `qwen35-2b-mxfp8-champion-v1` serves Qwen3.5-2B on one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It has its own checkpoint builder, launcher and worker profile. Use a self-contained checkpoint reconstructed from the [public BF16 model](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc); no private quantized checkpoint, calibration fixture or replacement-code asset is needed. The [model guide](mxfp8-2b-model.md) describes the exact conversion and file identities.
 
-The current update includes `mixed-lean-stockmath-w4-v1` in the package. The same launcher enables it automatically; no experimental startup hook or extra model asset is needed.
+The current update integrates native BF16 BA M16, mixed GDN D1–160 coverage and the complete FULL16/FULL24 PDL dependency chain. The same launcher enables these changes automatically from the prepared checkpoint.
 
 ## Build and prepare
 
@@ -10,7 +10,6 @@ Build the shared MXFP8 image from this repository on a Linux host with Docker Bu
 
 ```bash
 docker buildx build --load --build-arg MAX_JOBS=2 \
-  --build-arg MXFP6_REVISION=15a56aa2774552d0584d8fc6b621b41dc173f30b \
   -f deploy/Dockerfile.mxfp8 -t vllm-mach:mxfp8-champion .
 ```
 
@@ -61,7 +60,7 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
 
 After startup, `http://localhost:8000/v1/models` lists `q35-2b-study`. The launcher checks the installed package versions and runtime sources, hashes the full checkpoint, and checks the worker's graph and operator state before serving. `--print-command` displays its underlying vLLM arguments without starting a worker. `--quality-rows 4`, `32` or `64` selects a separate fixed-row numerical check mode; use the default production mode for serving and throughput measurements.
 
-The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and the complete BF16 vocabulary head, FP32 SSM, FlashAttention 2, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Native MXFP8 projections, ordered FP32 GDN, small-row BF16 BA and pinned asynchronous GDN reset-ID uploads run under the 2B profile. The graph policy preserves FULL decode captures at 4/8/16/24/32/48/64/96/128/160 rows and routes exact 2048-token prefill or mixed batches to PIECEWISE mode. Batches above 160 tokens with a size other than 2048 use NONE without padding. Prefix caching and LoRA are outside this profile.
+The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and the complete BF16 vocabulary head, FP32 SSM, FlashAttention 2, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Native MXFP8 projections, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16 and pinned asynchronous GDN reset-ID uploads run under the 2B profile. Exact FULL16/FULL24 captures also use the complete PDL dependency chain. The graph policy preserves FULL decode captures at 4/8/16/24/32/48/64/96/128/160 rows and routes exact 2048-token prefill or mixed batches to PIECEWISE mode. Batches above 160 tokens with a size other than 2048 use NONE without padding. Prefix caching and LoRA are outside this profile.
 
 ## Measurement boundary
 
@@ -80,7 +79,7 @@ Choose a new output directory for each run. The [benchmark protocol](mxfp8-bench
 
 The first 2B study measured a **+9.05%** median paired six-point throughput gain against community block-FP8 on GPU1. A second, independent study on GPU7 measured a further **+2.56%** median paired gain for pinned asynchronous GDN reset-ID uploads against the *first 2B champion*. Each study used 3000 input / 1000 output tokens at c4, c16, c24, c32, c48 and c64, with four controlled pairs. These are different comparisons on different GPUs; their percentages are not a directly measured combined gain over community FP8. The pinned-ID change kept the checkpoint and floating-point kernels unchanged, and its fresh M32 real-text logprobs matched the first champion token for token. Those logprob checks measure numerical fidelity, not task accuracy.
 
-The packaged release was checked on October 9 against the selected champion on the same RTX 5090. Each arm completed all 1,040 requests and 1,040,000 output tokens. Pooled throughput was **5,676.98 vs 5,655.59 output tok/s (+0.38%)** in this one-pair packaging regression, preserving the selected performance.
+The October 9 packaged release was checked against its selected champion on the same RTX 5090. Each arm completed all 1,040 requests and 1,040,000 output tokens. Pooled throughput was **5,676.98 vs 5,655.59 output tok/s (+0.38%)** in that one-pair packaging regression.
 
 | Concurrency | Selected champion tok/s | Packaged profile tok/s | Difference |
 |---|---:|---:|---:|
@@ -95,9 +94,43 @@ Fresh fixed-token replay at M4, M32 and M64 matched the selected implementation'
 
 The CPU suite passed 200 tests and 60 subtests, with 10 optional-dependency skips on macOS. All nine builder tests also passed with PyTorch on Linux. The [machine-readable results](data/mxfp8-2b-champion-20261009.json) include point metrics, input/output counts, source result hashes, GPU clocks and the fidelity record hashes.
 
-## Mixed decode update (October 10)
+## Current champion: BA M16, low-D and FULL PDL
 
-Mixed prefill/decode batches now retain ordered W4 state for 24–160 decode requests. Only the prefill slots are materialized before stock convolution and prefill; the mixed recurrent kernel uses the stock mixed path's FP32 normalization and update order. Pure decode, slot allocation/reset and the BF16 head/KV stay on their existing paths. The runtime receipt identifies this implementation as `gdn.mixed_decode.protocol = mixed-lean-stockmath-w4-v1` and includes source hashes and eager/capture-construction counters.
+The current integration contains three accepted changes:
+
+- BF16 BA uses the native `mxfp8_sm120::bf16_ba_m16` operator for aligned, contiguous CUDA BF16 X[16,2048] and W[32,2048]. It preserves the original weight and returns a fresh output; M1–8 retain the audited GEMV, and other shapes retain `F.linear`.
+- Mixed GDN eligibility expands from D24–160 to D1–160. Stock convolution and prefill, ordered FP32 W4 recurrence, prefill-slot materialization and state ownership use the same arithmetic and lifecycle.
+- The complete PDL dependency chain applies only while constructing actual FULL16/FULL24 graphs, with exact source/launch contracts. Eager calls, other FULL rows, PIECEWISE and NONE retain the standard path. The selected native GEMM ABI uses `bool use_pdl`; this change does not alter quantization or the checkpoint.
+
+Startup receipts require native BA M16 support and captured BA launches, and verify the PDL captures. The M16/M24 fidelity experiments use production geometry with teacher cohorts 16/24; the separate `--quality-rows` mode retains only 4/32/64. The official native build pins commit `a4cdc1b23a72cdedecb29707534fa4e3a595933f` (based on `29c48018`) and applies CUTLASS patches 0001/0003/0004/0005/0006 and runs dispatcher/schema checks without a GPU, including BA M16 and the GEMM `bool use_pdl` ABI.
+
+The accepted experimental champion `ba-m16-mixed-lowd-fullpdl-m16m24-v1` was compared with `ba-m16-mixed-lowd-v1` on the same RTX 5090 GPU0. The 3000-input / 1000-output protocol used five request waves, two target pairs and two independent audit pairs at each point. Every one of the 1,600 scored requests and 1,600,000 output tokens completed.
+
+| Concurrency | Previous experimental champion tok/s | Current experimental champion tok/s | Throughput change | Mean TTFT previous → current ms |
+|---|---:|---:|---:|---:|
+| 16 | 4243.236814 | 4290.796126 | +1.120826% | 143.092509 → 144.064691 |
+| 24 | 5531.482205 | 5612.540083 | +1.465392% | 175.356289 → 176.469588 |
+
+All four pairs improved at both points. Target and audit gains were +1.158940%/+1.082738% at c16 and +1.422104%/+1.508886% at c24. This measures the combined new native library plus complete PDL change against a baseline that already contained BA M16 and low-D. No other concurrency point was remeasured for this version; the six-point tables in this guide are historical qualifications.
+
+Before this comparison, GPU3 independently measured the old D24 guard against D1 at c24: 5524.694995 → 5646.827819 tok/s (+2.210671%), with 480 requests completed. That experiment used a different card and baseline; its gain must not be multiplied into the GPU0 comparison.
+
+M16/M24 fixed-token replay each covered 256 queries and 10,479 gold logprobs, with identical ordered records to the preceding champion and zero repeat differences. M16 final qualification ran on GPU0; M24 and reference records include GPU3, with migration identities recorded in the experiment audit. Component checks covered 100 cases and 96 changing/restored-input and graph checks per row. The packaged implementation also passed production-geometry M16/M24 replay on GPU0: each cohort size reproduced all 256 query records and 10,479 gold logprobs exactly, with zero repeat differences. The official BA kernel matched the prototype across 72 real-weight eager/graph cases spanning all 18 BA layers.
+
+The October 11 installed-wheel check compared the accepted prototype and package on the same GPU0, using 3000 input / 1000 output tokens, three waves per point and AB/BA order. All **480 requests and 480,000 output tokens** completed with no run-monitor errors.
+
+| Concurrency | Accepted prototype tok/s | Installed package tok/s | Throughput change | Mean TTFT prototype → package ms |
+|---|---:|---:|---:|---:|
+| 16 | 4294.184229 | 4294.860551 | +0.015750% | 170.377469 → 169.455197 |
+| 24 | 5547.555227 | 5601.402037 | +0.970640% | 218.870209 → 218.125896 |
+
+The individual AB/BA changes were −0.125690%/+0.157222% at c16 and +1.369248%/+0.574028% at c24. Throughput pools output tokens over scored durations; mean TTFT is weighted by request count, and per-run p99 values are retained without averaging. This is a packaging recheck against the accepted prototype, separate from the historical optimization comparison above; the percentages are not multiplied.
+
+The Mach CPU suite passed **224 tests and 72 subtests**, with 12 optional-dependency skips. Native GPU tests passed **15 tests**, with two skips, alongside the 72 real-weight BA eager/graph cases. Packaged M16/M24 precision each reproduced **256 queries and 10,479 gold logprobs exactly, with zero repeat differences**. The [machine-readable results](data/mxfp8-2b-full-pdl-20261011.json) record the historical experiment and package recheck separately, including paired windows, scored counts, durations and source evidence hashes.
+
+## Earlier mixed decode qualification (October 10)
+
+The earlier qualified mixed prefill/decode implementation retained ordered W4 state for 24–160 decode requests. Only the prefill slots are materialized before stock convolution and prefill; the mixed recurrent kernel uses the stock mixed path's FP32 normalization and update order. Pure decode, slot allocation/reset and the BF16 head/KV stay on their existing paths. The runtime receipt identifies this implementation as `gdn.mixed_decode.protocol = mixed-lean-stockmath-w4-v1` and includes source hashes and eager/capture-construction counters.
 
 The following comparison uses the previous packaged release (PR #9, `574f704`) as its reference on the same RTX 5090, with 3000 input / 1000 output tokens and four independent pairs per point. Throughput is total output tokens divided by total scored duration for each arm.
 

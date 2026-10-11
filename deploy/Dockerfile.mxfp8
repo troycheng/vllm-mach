@@ -18,9 +18,9 @@ RUN python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_U
     -r /opt/mach/deploy/requirements-mxfp8.txt
 
 # Standard official wheel build produces both mxfp6_torch and mxfp8_torch,
-# including MLP32, QKVZ32 and QKVZ64 pipereg. No old binary/cache is copied.
-# CUTLASS e6233c... is archived afresh; patches 0001/0003/0004/0005 all apply.
-ARG MXFP6_REVISION=15a56aa2774552d0584d8fc6b621b41dc173f30b
+# including BA M16 and both dual tile families. No old binary/cache is copied.
+# CUTLASS e6233c... is archived afresh; patches 0001/0003/0004/0005/0006 all apply.
+ARG MXFP6_REVISION=a4cdc1b23a72cdedecb29707534fa4e3a595933f
 COPY deploy/install.py deploy/build-mxfp8.py /opt/mach/deploy/
 RUN test -n "${MXFP6_REVISION}" \
     && python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \

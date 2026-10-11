@@ -36,7 +36,6 @@ not identify that source revision.
 
 ```bash
 docker buildx build --load -f deploy/Dockerfile.mxfp8 \
-  --build-arg MXFP6_REVISION=15a56aa2774552d0584d8fc6b621b41dc173f30b \
   --build-arg MAX_JOBS=2 -t vllm-mach:mxfp8-champion .
 
 docker run --rm --entrypoint vllm-mach-mxfp8-prepare \

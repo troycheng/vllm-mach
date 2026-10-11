@@ -60,7 +60,8 @@ def graph_api():
 
 
 def worker_fixture(Manager, Wrapper, sentinel, *, rows=None):
-    full = [4, 8, 16, 24, 32, 48, 64, 96, 128, 160] if rows is None else [m for m in (4, 32, 64) if m <= rows]
+    quality_captures = {4: [4], 32: [4, 32], 64: [4, 32, 64]}
+    full = [4, 8, 16, 24, 32, 48, 64, 96, 128, 160] if rows is None else quality_captures[rows]
     pw = full + [2048] if rows is None else full
     cfg = NS(parallel_config=NS(tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1),
              lora_config=None, speculative_config=None,
@@ -189,7 +190,11 @@ def ba_api(events):
         def __init__(self, fn): self.fn = fn
         def register_fake(self, fn): self.fake = fn
         def __call__(self, *args): return self.fn(*args)
+    def m16(x, weight):
+        events.append(("native_m16", x, weight))
+        return Tensor((16, 32))
     torch = NS(Tensor=Tensor, bfloat16="bf16", uint8="u8", equal=lambda a,b: a.shape == b.shape,
+               ops=NS(mxfp8_sm120=NS(bf16_ba_m16=m16)),
                library=NS(custom_op=lambda name, **kw: lambda fn: Op(fn)),
                cuda=NS(is_current_stream_capturing=lambda: True),
                empty=lambda shape, **kw: Tensor(shape),
@@ -273,6 +278,8 @@ class TwoBBAContracts(unittest.TestCase):
             self.assertEqual(receipt["ba_layer_count"], 18)
             self.assertEqual(receipt["clone_bytes"], 18*32*2048*2)
             self.assertEqual(receipt["precompile_invocations"], 18)
+            self.assertTrue(receipt["native_m16_available"])
+            self.assertEqual(receipt["kernel_rows"], [*range(1, 9), 16])
             private = layers[0][1]._two_b_ba_private_weight
             private.pointer = layers[0][1].weight.pointer
             with self.assertRaisesRegex(RuntimeError, "invalid/changed private"):
@@ -324,11 +331,92 @@ class TwoBBAContracts(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "small-M fallback"):
                 ba.verify_capture(object(), required_rows=(4,))
 
+    def test_m16_native_allocation_runtime_rows_and_exact_weight(self):
+        ba = load("ba")
+        events = []
+        modules, Method, kernel, cache = ba_api(events)
+        with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
+                patch.object(ba, "version", return_value="0.29.0"):
+            ba.install()
+            layer = NS(weight=Tensor(), bias=None)
+            method = Method()
+            method.process_weights_after_loading(layer)
+            x = Tensor((16, 2048))
+            y = method.apply(layer, x)
+            self.assertEqual(y.shape, (16, 32))
+            self.assertIsNot(y, method.apply(layer, x))
+            native = [event for event in events if isinstance(event, tuple)
+                      and event[0] == "native_m16"]
+            self.assertEqual(len(native), 2)
+            self.assertIs(native[0][1], x)
+            self.assertIs(native[0][2], layer.weight)
+            self.assertEqual(ba._COUNTS[16]["capture_kernel_calls"], 2)
+            self.assertEqual(method.apply(layer, Tensor((17, 2048))), "fallback")
+            self.assertEqual(method.apply(layer, Tensor((8, 2048))).shape, (8, 32))
+            with patch.object(ba, "inspect_worker", return_value={"native_m16_available": True}):
+                self.assertTrue(ba.verify_capture(object(), required_rows=(16,))["native_m16_available"])
+                ba._COUNTS[16]["capture_fallback_m16_input_layout"] = 1
+                with self.assertRaisesRegex(RuntimeError, "small-M fallback"):
+                    ba.verify_capture(object(), required_rows=(16,))
+
+    def test_m16_falls_back_without_copy_for_ineligible_inputs_or_native(self):
+        ba = load("ba")
+        events = []
+        modules, Method, kernel, cache = ba_api(events)
+        with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
+                patch.object(ba, "version", return_value="0.29.0"):
+            ba.install()
+            valid_x, valid_w = Tensor((16, 2048)), Tensor()
+            foreign_w = Tensor()
+            foreign_w.device = "cuda:1"
+            for x, weight, reason in (
+                (Tensor((16, 1024)), valid_w, "m16_shape_dtype_device"),
+                (valid_x, Tensor((31, 2048)), "m16_shape_dtype_device"),
+                (valid_x, Tensor(dtype="f32"), "m16_shape_dtype_device"),
+                (Tensor((16, 2048), cuda=False), valid_w, "m16_shape_dtype_device"),
+                (valid_x, Tensor(cuda=False), "m16_shape_dtype_device"),
+                (valid_x, foreign_w, "m16_shape_dtype_device"),
+                (Tensor((16, 2048), contiguous=False), valid_w, "m16_input_layout"),
+                (Tensor((16, 2048), pointer=17), valid_w, "m16_input_layout"),
+                (valid_x, Tensor(contiguous=False), "m16_weight_layout"),
+                (valid_x, Tensor(pointer=17), "m16_weight_layout"),
+            ):
+                with self.subTest(reason=reason, x=x, weight=weight):
+                    prior = ba._COUNTS.get(16, {}).get("capture_fallback_" + reason, 0)
+                    self.assertEqual(ba._small_impl(x, weight, Tensor()), "fallback")
+                    self.assertEqual(ba._COUNTS[16]["capture_fallback_" + reason], prior + 1)
+            self.assertFalse(any(isinstance(e, tuple) and e[0] == "native_m16" for e in events))
+            self.assertNotIn("capture_input_contiguous_copies", ba._COUNTS[16])
+            missing_modules, _, _, _ = ba_api([])
+            del missing_modules["torch"].ops.mxfp8_sm120.bf16_ba_m16
+            missing = load("ba")
+            with patch.dict(sys.modules, missing_modules), \
+                    patch.object(missing, "load_kernel", return_value=kernel), \
+                    patch.object(missing, "version", return_value="0.29.0"):
+                missing.install()
+                self.assertIsNone(missing._M16)
+                self.assertEqual(missing._small_impl(valid_x, valid_w, Tensor()), "fallback")
+                self.assertEqual(missing._COUNTS[16]["capture_fallback_native_m16_unavailable"], 1)
+
+    def test_m16_failed_native_launch_is_not_counted(self):
+        ba = load("ba")
+        modules, _, kernel, _ = ba_api([])
+        modules["torch"].ops.mxfp8_sm120.bf16_ba_m16 = lambda *args: (_ for _ in ()).throw(RuntimeError("launch failed"))
+        with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
+                patch.object(ba, "version", return_value="0.29.0"):
+            ba.install()
+            with self.assertRaisesRegex(RuntimeError, "launch failed"):
+                ba._small_impl(Tensor((16, 2048)), Tensor(), Tensor())
+            self.assertEqual(ba._COUNTS[16]["capture_kernel_calls"], 0)
+
     def test_kernel_launch_body_remains_frozen(self):
         tree = ast.parse((ROOT/"ba.py").read_text())
         launch = next(n for n in tree.body if isinstance(n, ast.FunctionDef)
                       and n.name == "_small_impl")
-        # Frozen source AST digest excludes formatting but pins the launch body.
+        # Pin the original M1..8 launch body; the dedicated M16 branch above it
+        # has independent routing/allocation coverage.
+        launch.body = [node for node in launch.body if not (
+            isinstance(node, ast.If) and ast.unparse(node.test) == "m == 16")]
         self.assertEqual(hashlib.sha256(ast.dump(launch).encode()).hexdigest(),
                          "7660d68ff55b431ea3e5b055bcfd1277d47e41c7f5207520058a440214341161")
 
