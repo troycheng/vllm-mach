@@ -1,0 +1,852 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-11",
+  "complete": true,
+  "champion": "qwen35-2b-mxfp8-triton-hybrid-20261011",
+  "selection": "User-selected Triton attention plus hybrid head; all six points covered by existing qualified measurements.",
+  "launch_command": "vllm-mach-mxfp8-2b-serve MODEL --run-dir RUN_DIR --attention-backend TRITON_ATTN --hybrid-head",
+  "mach_commit": "b8d55d86e5f10670cfdfc3d9cdcb6cda020e1ceb",
+  "mach_runtime_commit": "6e390a1a559d4464fb2b67fe09d855f1b442f763",
+  "native_commit": "a4cdc1b23a72cdedecb29707534fa4e3a595933f",
+  "checkpoint_sha256": "115948c161e2cc8d02a4e7e580cefcf3c02513410a2af56e80dd63f9f48a1671",
+  "native_binary_sha256": "c4522affbf2ce9d3ae35161650dc13eb6e4affc5dd4c8f37ecc708a367958f2d",
+  "package_manifest_sha256": "49c45fc3198dbea1703477f0c49e1a7b522d4c6501f4f302955f8f01125703b8",
+  "runtime": {
+    "vllm": "0.29.0",
+    "torch": "2.13.0+cu130",
+    "triton": "3.7.1",
+    "flashinfer": "0.6.18",
+    "b12x": "1.2.6"
+  },
+  "geometry": {
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "tp": 1,
+    "max_num_seqs": 160,
+    "max_model_len": 16384,
+    "max_num_batched_tokens": 2048,
+    "kv_cache_gib": 19,
+    "kv_dtype": "BF16",
+    "ssm_dtype": "FP32",
+    "complete_head_weights": "BF16",
+    "attention_backend": "TRITON_ATTN",
+    "hybrid_head": true,
+    "candidates": 128,
+    "hybrid_max_rows": 32
+  },
+  "throughput": {
+    "unit": "output tokens/second",
+    "aggregation": "sum(output_tokens)/sum(scored_seconds); no averaging of p99",
+    "paired_comparison": "Same GPU0, selected Triton+hybrid versus previous FA2/full BF16 head; c16/c24 reuse the installed-package audit.",
+    "community_comparison": "Historical community FP8 arm medians from GPU1; descriptive cross-card comparison.",
+    "points": [
+      {
+        "c": 4,
+        "community_fp8_tps": 1261.892459195426,
+        "previous": {
+          "output_tps": 1395.3051165127224,
+          "output_tokens": 40000,
+          "duration_s": 28.6675649122335,
+          "requests": 40,
+          "mean_ttft_ms": 92.56694972282276,
+          "mean_tpot_ms": 2.776188237636394,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_1_reference",
+              "metrics": {
+                "c": 4,
+                "completed": 40,
+                "requested": 40,
+                "duration_s": 28.6675649122335,
+                "prompt_tokens": 120000,
+                "completion_tokens": 40000,
+                "request_throughput_per_s": 1.3953051165127224,
+                "output_throughput_tokens_per_s": 1395.3051165127224,
+                "total_throughput_tokens_per_s": 5581.22046605089,
+                "mean_ttft_ms": 92.56694972282276,
+                "p99_ttft_ms": 139.05834903474897,
+                "mean_tpot_ms": 2.776188237636394,
+                "p99_tpot_ms": 2.8151505881523318,
+                "mean_itl_ms": 2.77616753605557,
+                "p99_itl_ms": 2.8909117402508855,
+                "mean_latency_ms": 2865.9789991215803,
+                "p99_latency_ms": 2896.3758301083
+              }
+            }
+          ]
+        },
+        "new": {
+          "output_tps": 1588.2700442385856,
+          "output_tokens": 40000,
+          "duration_s": 25.184634152799845,
+          "requests": 40,
+          "mean_ttft_ms": 98.90179886715487,
+          "mean_tpot_ms": 2.421406098805532,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_2_candidate",
+              "metrics": {
+                "c": 4,
+                "completed": 40,
+                "requested": 40,
+                "duration_s": 25.184634152799845,
+                "prompt_tokens": 120000,
+                "completion_tokens": 40000,
+                "request_throughput_per_s": 1.5882700442385855,
+                "output_throughput_tokens_per_s": 1588.2700442385856,
+                "total_throughput_tokens_per_s": 6353.080176954342,
+                "mean_ttft_ms": 98.90179886715487,
+                "p99_ttft_ms": 148.11110695824027,
+                "mean_tpot_ms": 2.421406098805532,
+                "p99_tpot_ms": 2.5108676476663234,
+                "mean_itl_ms": 2.4213862692908354,
+                "p99_itl_ms": 2.7322053676471114,
+                "mean_latency_ms": 2517.8864915738814,
+                "p99_latency_ms": 2588.500323216431
+              }
+            }
+          ]
+        },
+        "gain_vs_community_pct": 25.864136255418767,
+        "gain_vs_previous_pct": 13.829586478414079
+      },
+      {
+        "c": 16,
+        "community_fp8_tps": 3814.3333161740834,
+        "previous": {
+          "output_tps": 4295.09679241665,
+          "output_tokens": 160000,
+          "duration_s": 37.25177981611341,
+          "requests": 160,
+          "mean_ttft_ms": 124.03179405955598,
+          "mean_tpot_ms": 3.6011589715893315,
+          "runs": [
+            {
+              "source": "mxfp8_2b_hybrid_attention_20261011/PACKAGE_AUDIT_COMPLETE.json",
+              "run": "package_audit_v2_1_reference",
+              "metrics": {
+                "c": 16,
+                "completed": 160,
+                "requested": 160,
+                "duration_s": 37.25177981611341,
+                "prompt_tokens": 480000,
+                "completion_tokens": 160000,
+                "request_throughput_per_s": 4.29509679241665,
+                "output_throughput_tokens_per_s": 4295.09679241665,
+                "total_throughput_tokens_per_s": 17180.3871696666,
+                "mean_ttft_ms": 124.03179405955598,
+                "p99_ttft_ms": 486.8952555861322,
+                "mean_tpot_ms": 3.6011589715893315,
+                "p99_tpot_ms": 3.6720917938888684,
+                "mean_itl_ms": 3.60125247935921,
+                "p99_itl_ms": 20.87901582941413,
+                "mean_latency_ms": 3721.5896066772984,
+                "p99_latency_ms": 4081.5361953712995
+              }
+            }
+          ]
+        },
+        "new": {
+          "output_tps": 4801.955864194793,
+          "output_tokens": 160000,
+          "duration_s": 33.319756475277245,
+          "requests": 160,
+          "mean_ttft_ms": 134.0918363624951,
+          "mean_tpot_ms": 3.1978914620024055,
+          "runs": [
+            {
+              "source": "mxfp8_2b_hybrid_attention_20261011/PACKAGE_AUDIT_COMPLETE.json",
+              "run": "package_audit_v2_2_candidate",
+              "metrics": {
+                "c": 16,
+                "completed": 160,
+                "requested": 160,
+                "duration_s": 33.319756475277245,
+                "prompt_tokens": 480000,
+                "completion_tokens": 160000,
+                "request_throughput_per_s": 4.8019558641947935,
+                "output_throughput_tokens_per_s": 4801.955864194793,
+                "total_throughput_tokens_per_s": 19207.823456779173,
+                "mean_ttft_ms": 134.0918363624951,
+                "p99_ttft_ms": 516.0752247553316,
+                "mean_tpot_ms": 3.1978914620024055,
+                "p99_tpot_ms": 3.2697131394085153,
+                "mean_itl_ms": 3.1980530336953388,
+                "p99_itl_ms": 21.906330529600403,
+                "mean_latency_ms": 3328.785406902898,
+                "p99_latency_ms": 3711.026687314734
+              }
+            }
+          ]
+        },
+        "gain_vs_community_pct": 25.892402843580854,
+        "gain_vs_previous_pct": 11.800876587299381
+      },
+      {
+        "c": 24,
+        "community_fp8_tps": 5069.677071743112,
+        "previous": {
+          "output_tps": 5594.325153970394,
+          "output_tokens": 120000,
+          "duration_s": 21.450308428145945,
+          "requests": 120,
+          "mean_ttft_ms": 174.78658631832027,
+          "mean_tpot_ms": 4.108314282579511,
+          "runs": [
+            {
+              "source": "mxfp8_2b_hybrid_attention_20261011/PACKAGE_AUDIT_COMPLETE.json",
+              "run": "package_audit_v2_1_reference",
+              "metrics": {
+                "c": 24,
+                "completed": 120,
+                "requested": 120,
+                "duration_s": 21.450308428145945,
+                "prompt_tokens": 360000,
+                "completion_tokens": 120000,
+                "request_throughput_per_s": 5.594325153970394,
+                "output_throughput_tokens_per_s": 5594.325153970394,
+                "total_throughput_tokens_per_s": 22377.300615881577,
+                "mean_ttft_ms": 174.78658631832027,
+                "p99_ttft_ms": 753.5924876620993,
+                "mean_tpot_ms": 4.108314282579511,
+                "p99_tpot_ms": 4.224470111478989,
+                "mean_itl_ms": 4.10853502613727,
+                "p99_itl_ms": 23.175841346383095,
+                "mean_latency_ms": 4278.992554615252,
+                "p99_latency_ms": 4919.109094990417
+              }
+            }
+          ]
+        },
+        "new": {
+          "output_tps": 6209.524540632418,
+          "output_tokens": 120000,
+          "duration_s": 19.325151098892093,
+          "requests": 120,
+          "mean_ttft_ms": 192.81430379487574,
+          "mean_tpot_ms": 3.665692983481854,
+          "runs": [
+            {
+              "source": "mxfp8_2b_hybrid_attention_20261011/PACKAGE_AUDIT_COMPLETE.json",
+              "run": "package_audit_v2_2_candidate",
+              "metrics": {
+                "c": 24,
+                "completed": 120,
+                "requested": 120,
+                "duration_s": 19.325151098892093,
+                "prompt_tokens": 360000,
+                "completion_tokens": 120000,
+                "request_throughput_per_s": 6.209524540632419,
+                "output_throughput_tokens_per_s": 6209.524540632418,
+                "total_throughput_tokens_per_s": 24838.098162529674,
+                "mean_ttft_ms": 192.81430379487574,
+                "p99_ttft_ms": 760.9784315293655,
+                "mean_tpot_ms": 3.665692983481854,
+                "p99_tpot_ms": 3.780551971364263,
+                "mean_itl_ms": 3.6657959456183593,
+                "p99_itl_ms": 23.15749228000641,
+                "mean_latency_ms": 3854.841594293248,
+                "p99_latency_ms": 4474.829992721789
+              }
+            }
+          ]
+        },
+        "gain_vs_community_pct": 22.483630668361123,
+        "gain_vs_previous_pct": 10.99684715725553
+      },
+      {
+        "c": 32,
+        "community_fp8_tps": 5870.222273980189,
+        "previous": {
+          "output_tps": 6595.489524089714,
+          "output_tokens": 160000,
+          "duration_s": 24.25900297705084,
+          "requests": 160,
+          "mean_ttft_ms": 205.22494114993606,
+          "mean_tpot_ms": 4.6357667469524415,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_1_reference",
+              "metrics": {
+                "c": 32,
+                "completed": 160,
+                "requested": 160,
+                "duration_s": 24.25900297705084,
+                "prompt_tokens": 480000,
+                "completion_tokens": 160000,
+                "request_throughput_per_s": 6.595489524089714,
+                "output_throughput_tokens_per_s": 6595.489524089714,
+                "total_throughput_tokens_per_s": 26381.958096358856,
+                "mean_ttft_ms": 205.22494114993606,
+                "p99_ttft_ms": 1021.0789533518254,
+                "mean_tpot_ms": 4.6357667469524415,
+                "p99_tpot_ms": 4.760985531167382,
+                "mean_itl_ms": 4.635950746469616,
+                "p99_itl_ms": 24.30573495104909,
+                "mean_latency_ms": 4836.355921355425,
+                "p99_latency_ms": 5747.0848720707
+              }
+            }
+          ]
+        },
+        "new": {
+          "output_tps": 7259.99006032221,
+          "output_tokens": 160000,
+          "duration_s": 22.0385976661928,
+          "requests": 160,
+          "mean_ttft_ms": 224.48807231266983,
+          "mean_tpot_ms": 4.173916445513539,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_2_candidate",
+              "metrics": {
+                "c": 32,
+                "completed": 160,
+                "requested": 160,
+                "duration_s": 22.0385976661928,
+                "prompt_tokens": 480000,
+                "completion_tokens": 160000,
+                "request_throughput_per_s": 7.2599900603222105,
+                "output_throughput_tokens_per_s": 7259.99006032221,
+                "total_throughput_tokens_per_s": 29039.96024128884,
+                "mean_ttft_ms": 224.48807231266983,
+                "p99_ttft_ms": 1046.6100161569193,
+                "mean_tpot_ms": 4.173916445513539,
+                "p99_tpot_ms": 4.299342590957522,
+                "mean_itl_ms": 4.17400233837547,
+                "p99_itl_ms": 24.449929711408913,
+                "mean_latency_ms": 4394.230601380696,
+                "p99_latency_ms": 5299.919072263874
+              }
+            }
+          ]
+        },
+        "gain_vs_community_pct": 23.67487501286245,
+        "gain_vs_previous_pct": 10.075075304197512
+      },
+      {
+        "c": 48,
+        "community_fp8_tps": 6837.596724087279,
+        "previous": {
+          "output_tps": 7896.459572214782,
+          "output_tokens": 480000,
+          "duration_s": 60.78673557564616,
+          "requests": 480,
+          "mean_ttft_ms": 273.6945898330305,
+          "mean_tpot_ms": 5.784626203466161,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_1_reference",
+              "metrics": {
+                "c": 48,
+                "completed": 240,
+                "requested": 240,
+                "duration_s": 30.4286084799096,
+                "prompt_tokens": 720000,
+                "completion_tokens": 240000,
+                "request_throughput_per_s": 7.887314339676733,
+                "output_throughput_tokens_per_s": 7887.314339676733,
+                "total_throughput_tokens_per_s": 31549.25735870693,
+                "mean_ttft_ms": 279.58843307957676,
+                "p99_ttft_ms": 1576.6808777675026,
+                "mean_tpot_ms": 5.785271269830583,
+                "p99_tpot_ms": 5.978815426375974,
+                "mean_itl_ms": 5.785952041416133,
+                "p99_itl_ms": 26.727496460080147,
+                "mean_latency_ms": 6059.074431640329,
+                "p99_latency_ms": 7497.970945038833
+              }
+            },
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_BA_COMPLETE.json",
+              "run": "missing_BA_2_reference",
+              "metrics": {
+                "c": 48,
+                "completed": 240,
+                "requested": 240,
+                "duration_s": 30.358127095736563,
+                "prompt_tokens": 720000,
+                "completion_tokens": 240000,
+                "request_throughput_per_s": 7.905626036914021,
+                "output_throughput_tokens_per_s": 7905.626036914021,
+                "total_throughput_tokens_per_s": 31622.504147656084,
+                "mean_ttft_ms": 267.8007465864842,
+                "p99_ttft_ms": 1557.0337362494313,
+                "mean_tpot_ms": 5.7839811371017396,
+                "p99_tpot_ms": 5.978387239616593,
+                "mean_itl_ms": 5.7841543598750995,
+                "p99_itl_ms": 26.133839981630445,
+                "mean_latency_ms": 6045.997902551123,
+                "p99_latency_ms": 7458.976154504342
+              }
+            }
+          ]
+        },
+        "new": {
+          "output_tps": 8036.469609693067,
+          "output_tokens": 480000,
+          "duration_s": 59.727719174232334,
+          "requests": 480,
+          "mean_ttft_ms": 277.4473630745585,
+          "mean_tpot_ms": 5.67791963469128,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_2_candidate",
+              "metrics": {
+                "c": 48,
+                "completed": 240,
+                "requested": 240,
+                "duration_s": 29.856925115920603,
+                "prompt_tokens": 720000,
+                "completion_tokens": 240000,
+                "request_throughput_per_s": 8.038336133683934,
+                "output_throughput_tokens_per_s": 8038.336133683935,
+                "total_throughput_tokens_per_s": 32153.34453473574,
+                "mean_ttft_ms": 272.17089047383826,
+                "p99_ttft_ms": 1540.9506908245378,
+                "mean_tpot_ms": 5.681840643440682,
+                "p99_tpot_ms": 5.868177597030617,
+                "mean_itl_ms": 5.681963598459243,
+                "p99_itl_ms": 25.099190520122647,
+                "mean_latency_ms": 5948.32969327108,
+                "p99_latency_ms": 7304.549707453697
+              }
+            },
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_BA_COMPLETE.json",
+              "run": "missing_BA_1_candidate",
+              "metrics": {
+                "c": 48,
+                "completed": 240,
+                "requested": 240,
+                "duration_s": 29.87079405831173,
+                "prompt_tokens": 720000,
+                "completion_tokens": 240000,
+                "request_throughput_per_s": 8.034603952325082,
+                "output_throughput_tokens_per_s": 8034.603952325082,
+                "total_throughput_tokens_per_s": 32138.415809300328,
+                "mean_ttft_ms": 282.7238356752787,
+                "p99_ttft_ms": 1554.541189963929,
+                "mean_tpot_ms": 5.673998625941878,
+                "p99_tpot_ms": 5.850433896415055,
+                "mean_itl_ms": 5.67416832906361,
+                "p99_itl_ms": 25.333942896686494,
+                "mean_latency_ms": 5951.048462991214,
+                "p99_latency_ms": 7370.030720015056
+              }
+            }
+          ]
+        },
+        "gain_vs_community_pct": 17.53354188588565,
+        "gain_vs_previous_pct": 1.773073567943495
+      },
+      {
+        "c": 64,
+        "community_fp8_tps": 7578.863502078369,
+        "previous": {
+          "output_tps": 8702.232050997764,
+          "output_tokens": 320000,
+          "duration_s": 36.772175014950335,
+          "requests": 320,
+          "mean_ttft_ms": 349.9782046012115,
+          "mean_tpot_ms": 6.973757430100235,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_1_reference",
+              "metrics": {
+                "c": 64,
+                "completed": 320,
+                "requested": 320,
+                "duration_s": 36.772175014950335,
+                "prompt_tokens": 960000,
+                "completion_tokens": 320000,
+                "request_throughput_per_s": 8.702232050997765,
+                "output_throughput_tokens_per_s": 8702.232050997764,
+                "total_throughput_tokens_per_s": 34808.928203991054,
+                "mean_ttft_ms": 349.9782046012115,
+                "p99_ttft_ms": 2097.2444875817746,
+                "mean_tpot_ms": 6.973757430100235,
+                "p99_tpot_ms": 7.253256548877557,
+                "mean_itl_ms": 6.974720077349269,
+                "p99_itl_ms": 29.478201493620865,
+                "mean_latency_ms": 7316.761877271347,
+                "p99_latency_ms": 9259.953662827611
+              }
+            }
+          ]
+        },
+        "new": {
+          "output_tps": 9008.341662091349,
+          "output_tokens": 320000,
+          "duration_s": 35.5226313569583,
+          "requests": 320,
+          "mean_ttft_ms": 333.2564046722837,
+          "mean_tpot_ms": 6.7434899885802535,
+          "runs": [
+            {
+              "source": "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json",
+              "run": "missing_AB_2_candidate",
+              "metrics": {
+                "c": 64,
+                "completed": 320,
+                "requested": 320,
+                "duration_s": 35.5226313569583,
+                "prompt_tokens": 960000,
+                "completion_tokens": 320000,
+                "request_throughput_per_s": 9.008341662091349,
+                "output_throughput_tokens_per_s": 9008.341662091349,
+                "total_throughput_tokens_per_s": 36033.366648365394,
+                "mean_ttft_ms": 333.2564046722837,
+                "p99_ttft_ms": 2021.2564728222787,
+                "mean_tpot_ms": 6.7434899885802535,
+                "p99_tpot_ms": 6.969598468749209,
+                "mean_itl_ms": 6.744694115699615,
+                "p99_itl_ms": 26.165933054871854,
+                "mean_latency_ms": 7070.002903263958,
+                "p99_latency_ms": 8894.390006409958
+              }
+            }
+          ]
+        },
+        "gain_vs_community_pct": 18.861378881160352,
+        "gain_vs_previous_pct": 3.5175988102786437
+      }
+    ],
+    "scored_requests_both_arms": 2560,
+    "scored_output_tokens_both_arms": 2560000
+  },
+  "latest_c32_recheck": {
+    "comparison": "One fresh same-GPU0 current/candidate pair; old FA2/full-head is prior same-package GPU0 reference",
+    "triton_hybrid_tps": 7216.584605419204,
+    "fa2_hybrid_tps": 7210.056820184794,
+    "metrics": {
+      "current": {
+        "c": 32,
+        "completed": 160,
+        "requested": 160,
+        "duration_s": 22.171152802649885,
+        "prompt_tokens": 480000,
+        "completion_tokens": 160000,
+        "request_throughput_per_s": 7.216584605419204,
+        "output_throughput_tokens_per_s": 7216.584605419204,
+        "total_throughput_tokens_per_s": 28866.338421676817,
+        "mean_ttft_ms": 228.6852619232377,
+        "p99_ttft_ms": 1062.8709550155327,
+        "mean_tpot_ms": 4.196366518779003,
+        "p99_tpot_ms": 4.328896281597492,
+        "mean_itl_ms": 4.196452563149713,
+        "p99_itl_ms": 24.914438533596694,
+        "mean_latency_ms": 4420.855414183461,
+        "p99_latency_ms": 5337.72134962026
+      },
+      "candidate": {
+        "c": 32,
+        "completed": 160,
+        "requested": 160,
+        "duration_s": 22.191225948743522,
+        "prompt_tokens": 480000,
+        "completion_tokens": 160000,
+        "request_throughput_per_s": 7.210056820184794,
+        "output_throughput_tokens_per_s": 7210.056820184794,
+        "total_throughput_tokens_per_s": 28840.227280739175,
+        "mean_ttft_ms": 217.07144992542453,
+        "p99_ttft_ms": 1018.9446895336731,
+        "mean_tpot_ms": 4.211872911889566,
+        "p99_tpot_ms": 4.345969167762661,
+        "mean_itl_ms": 4.212249207314604,
+        "p99_itl_ms": 24.204706139862537,
+        "mean_latency_ms": 4424.732488903101,
+        "p99_latency_ms": 5320.194506202824
+      }
+    },
+    "role": "Separate same-version observation; the paired six-point comparison above retains its own reference arm."
+  },
+  "precision": {
+    "metric": "Gold-token raw-logprob MAE against the shared frozen BF16 M32 anchor; lower is better.",
+    "queries_per_cohort": 256,
+    "gold_tokens_per_cohort": 10479,
+    "domains": [
+      "math",
+      "code",
+      "english",
+      "chinese"
+    ],
+    "queries_per_domain": 64,
+    "bf16_anchor_sha256": "5ea1f9b6a24d6010203ad5acb6a671f3c87cb953b623da95c93f59028f597624",
+    "fixture_sha256": "f51cdf0fec03cf4b66f7391afcccf397dd6418509edafc2c7d1d222f9db29cf2",
+    "points": [
+      {
+        "previous_mae": 0.04904216073044943,
+        "new_mae": 0.04897896855017646,
+        "relative_delta_pct": -0.12885276531818632,
+        "paired_ci95": [
+          -0.001296441986015397,
+          0.0012064283339077607
+        ],
+        "rows": 4
+      },
+      {
+        "previous_mae": 0.04915289131626472,
+        "new_mae": 0.049287281043412685,
+        "relative_delta_pct": 0.2734116418162686,
+        "paired_ci95": [
+          -0.0012117376403562486,
+          0.0014534459766443117
+        ],
+        "rows": 16
+      },
+      {
+        "previous_mae": 0.04941809115383823,
+        "new_mae": 0.04782972899157243,
+        "relative_delta_pct": -3.214130949172518,
+        "paired_ci95": [
+          -0.002843540824277747,
+          -0.0003048674467783097
+        ],
+        "rows": 24
+      },
+      {
+        "previous_mae": 0.04822663468536079,
+        "new_mae": 0.04946947933678193,
+        "relative_delta_pct": 2.5770918073170157,
+        "paired_ci95": [
+          -2.2437976908765097e-05,
+          0.0025153970205631228
+        ],
+        "rows": 32
+      },
+      {
+        "previous_mae": 0.04865848108982146,
+        "new_mae": 0.048998622286014454,
+        "relative_delta_pct": 0.6990378420672617,
+        "paired_ci95": [
+          -0.0009232510560872069,
+          0.0016947786500934123
+        ],
+        "rows": 48
+      },
+      {
+        "previous_mae": 0.04845331017255585,
+        "new_mae": 0.04875406544717415,
+        "relative_delta_pct": 0.6207115128919491,
+        "paired_ci95": [
+          -0.0008245433342277549,
+          0.001506933019414003
+        ],
+        "rows": 64
+      }
+    ],
+    "coverage": "M4/M32/M48/M64 use packaged production-geometry replay; M16/M24 reuse qualified diagnostic records and package generation parity. First-cohort repeat differences are zero.",
+    "actual_generation": {
+      "scored_requests": 1536,
+      "scored_tokens": 196608,
+      "unscored_m48_padding_requests": 32,
+      "hybrid_decisions": 129878,
+      "omitted_full_bf16_winners": 0,
+      "lower_bf16_score_choices": 0,
+      "equal_score_token_id_differences": 1,
+      "tie_rows": 24,
+      "tie_bf16_score": 20.375,
+      "high_row_behavior": "Actual M48/M64 batches above 32 rows use the full BF16 head; smaller tails may use hybrid."
+    },
+    "m32_attribution": "Fixed-token replay uses the complete BF16 head. Restoring FA2 with hybrid enabled reproduces all old M32 gold logprobs exactly; the +2.5771% MAE change is caused by the attention backend.",
+    "domain_screen": {
+      "exploratory": true,
+      "multiple_comparisons": 16,
+      "rows": [
+        {
+          "m": 4,
+          "domain": "math",
+          "delta": -0.0014504972348982086,
+          "ci95": [
+            -0.0031132787492501287,
+            0.00021804028824644236
+          ]
+        },
+        {
+          "m": 4,
+          "domain": "code",
+          "delta": 0.00030274718980554196,
+          "ci95": [
+            -0.0015722377956030266,
+            0.0021275415166852854
+          ]
+        },
+        {
+          "m": 4,
+          "domain": "english",
+          "delta": 0.0009096985999656567,
+          "ci95": [
+            -0.0025587197059610154,
+            0.004303754549414109
+          ]
+        },
+        {
+          "m": 4,
+          "domain": "chinese",
+          "delta": 0.0069184354124640825,
+          "ci95": [
+            -0.0006670884881313053,
+            0.015359783067219562
+          ]
+        },
+        {
+          "m": 32,
+          "domain": "math",
+          "delta": 0.0006239705215270456,
+          "ci95": [
+            -0.0013848229958990591,
+            0.002740199861584138
+          ]
+        },
+        {
+          "m": 32,
+          "domain": "code",
+          "delta": 0.0011590068830830472,
+          "ci95": [
+            -6.116458262200328e-05,
+            0.002347626004098455
+          ]
+        },
+        {
+          "m": 32,
+          "domain": "english",
+          "delta": 0.001859160541504119,
+          "ci95": [
+            -0.0016610832929820293,
+            0.005383903421191728
+          ]
+        },
+        {
+          "m": 32,
+          "domain": "chinese",
+          "delta": 0.005156163157205217,
+          "ci95": [
+            -0.0013042222547486701,
+            0.01155064985816283
+          ]
+        },
+        {
+          "m": 48,
+          "domain": "math",
+          "delta": -9.144077704960395e-05,
+          "ci95": [
+            -0.0019245702158528976,
+            0.0017926077896989524
+          ]
+        },
+        {
+          "m": 48,
+          "domain": "code",
+          "delta": -0.00027027857773540264,
+          "ci95": [
+            -0.0023330541302457116,
+            0.0017909636996827323
+          ]
+        },
+        {
+          "m": 48,
+          "domain": "english",
+          "delta": 0.0013071151745834893,
+          "ci95": [
+            -0.001821200807984148,
+            0.004517920369644307
+          ]
+        },
+        {
+          "m": 48,
+          "domain": "chinese",
+          "delta": 0.004426421410993837,
+          "ci95": [
+            -0.0027964416519941603,
+            0.01196913249017458
+          ]
+        },
+        {
+          "m": 64,
+          "domain": "math",
+          "delta": -0.0005322337856902671,
+          "ci95": [
+            -0.002238262330565302,
+            0.0012661585642297255
+          ]
+        },
+        {
+          "m": 64,
+          "domain": "code",
+          "delta": -0.0007943955227982354,
+          "ci95": [
+            -0.002773731906639074,
+            0.001173929256708292
+          ]
+        },
+        {
+          "m": 64,
+          "domain": "english",
+          "delta": 0.0029395479908751005,
+          "ci95": [
+            0.000150017396912777,
+            0.005703212492512243
+          ]
+        },
+        {
+          "m": 64,
+          "domain": "chinese",
+          "delta": 0.0051775862300139685,
+          "ci95": [
+            -0.000470521516607734,
+            0.011097806558403039
+          ]
+        }
+      ]
+    },
+    "interpretation": "Numerical fidelity, not task accuracy or bitwise equivalence. Preserve per-shape MAE changes and equal-score ties."
+  },
+  "evidence_sha256": {
+    "mxfp8_2b_sixpoint_20261011/SIXPOINT_SUMMARY.json": "f54b84a954d3aca2f3eccc99740b5e25bc8ef36a0f931122d2a8c5b96423fbf0",
+    "mxfp8_2b_sixpoint_20261011/SIXPOINT_PRECISION.json": "919bc6bf5dedb4e80f1dce2e3ede7a6ad1105bb6a4857d2fd1cebdc6d52f8903",
+    "mxfp8_2b_sixpoint_20261011/PRECISION_ANALYSIS.json": "c88f9fbfa06a16a1e49ddfa38026e8af66d1ac25eb6968ce83cd6c311bd12827",
+    "mxfp8_2b_sixpoint_20261011/DOMAIN_PRECISION_SCREEN.json": "e2d94a3c024d5f455c724ea2ff7ed43408cfcc26b7d6d4e44fd9beb31e1605ac",
+    "mxfp8_2b_sixpoint_20261011/PACKAGE_SOURCE.json": "49c45fc3198dbea1703477f0c49e1a7b522d4c6501f4f302955f8f01125703b8",
+    "mxfp8_2b_sixpoint_20261011/BENCH_AB_COMPLETE.json": "9552ab0a723f0f25ddf3d94d755602a0d0153608dc9a459197a9691ec55e5adb",
+    "mxfp8_2b_sixpoint_20261011/BENCH_BA_COMPLETE.json": "fc1029d31cd10dfbb47ef74d1cb91423531fff591297c7cc036887aebf606530",
+    "mxfp8_2b_sixpoint_20261011/quality_candidate/COMPLETE.json": "19b8b0f793532a0252ed227c4482d6cbfb103936fa49bb1cb39ac39fce308a7a",
+    "mxfp8_2b_hybrid_attention_20261011/PACKAGE_AUDIT_COMPLETE.json": "f1d4e704cbbb228430a4263e304f6ba86348d3b129f5457dd4d113bfb3630d31",
+    "mxfp8_2b_hybrid_attention_20261011/PACKAGE_GEN_COMPLETE.json": "41dc710fb6899d10b3f404b7d911a715628cbbfee2e8f1f49e4a90a8c99a2258",
+    "mxfp8_2b_hybrid_attention_20261011/PACKAGE_GENERATION_PARITY.json": "738a720f7d41dac9811ef04980b0aafce1a4be1c6b175e5e80cbedf44edc6696",
+    "mxfp8_2b_hybrid_attention_20261011/ATTENTION_ANALYSIS_M24.json": "96ada85f992483ebb86997333d258cb2252071c60e869cb78a0d2e65bb27e554",
+    "mxfp8_2b_hybrid_attention_20261011/ATTENTION_QUALITY_M24.json": "3a327671277f422422c2c39e695dff265e9f58cf69bab331ad1d20bc74556059",
+    "mxfp8_2b_team_migration_20261011/ATTENTION_ANALYSIS_M16.json": "0ac0fc131b7d6f06fcdec74a63d54855b335a5413a2c32011aab05bdd13067e5",
+    "mxfp8_2b_attention_precision_20261011/RESULT.json": "7fad1845349d525b6aeaf871ae15fbbfb7aa4c9a48d099d73c42ecce61e53298",
+    "mxfp8_2b_attention_precision_20261011/ATTRIBUTION.json": "456cc110b4c9823767b44886a50d501d39bb8e5f2e92cf17ff54a60f8bfe79e5",
+    "mxfp8_2b_attention_precision_20261011/BENCH_AB_COMPLETE.json": "3440e779f6c9282824418774b8d608cb475a745fbd5c32f47d2a7762b390ceab"
+  },
+  "validation": {
+    "package_source_files_matched": 101,
+    "throughput_points": [
+      4,
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "precision_rows": [
+      4,
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "missing_gpu_tests": [],
+    "new_gpu_runs": 0
+  }
+}
