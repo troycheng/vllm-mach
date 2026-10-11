@@ -91,10 +91,11 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   --entrypoint vllm-mach-mxfp8-2b-serve \
   -v "$PWD/mxfp8-2b-output/model:/model:ro" \
   -v "$PWD/mxfp8-2b-runs:/runs" \
-  vllm-mach:mxfp8-champion /model --run-dir /runs/serve --host 0.0.0.0
+  vllm-mach:mxfp8-champion /model --run-dir /runs/serve --host 0.0.0.0 \
+  --attention-backend TRITON_ATTN --hybrid-head
 ```
 
-Preparation reconstructs a self-contained 438-tensor checkpoint on CPU from [Qwen/Qwen3.5-2B revision `15852e8c…`](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc). The launcher uses native MXFP8, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16, pinned reset IDs, exact FULL16/FULL24 PDL chains and exact 2048-token piecewise graphs. It keeps BF16 KV and the full BF16 vocabulary head. [Model preparation](docs/mxfp8-2b-model.md) gives the source and output hashes.
+Preparation reconstructs a self-contained 438-tensor checkpoint on CPU from [Qwen/Qwen3.5-2B revision `15852e8c…`](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc). The champion command selects Triton attention and the K128 hybrid greedy head alongside native MXFP8, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16, pinned reset IDs, exact FULL16/FULL24 PDL chains and exact 2048-token piecewise graphs. It keeps BF16 KV and the full BF16 vocabulary-head weights for candidate refinement and fallback. [Model preparation](docs/mxfp8-2b-model.md) gives the source and output hashes.
 
 ### MXFP8 4B champion
 
@@ -157,7 +158,7 @@ For block-FP8, use image `vllm-mach:fp8`, entry point `vllm-mach-fp8-bench`, mod
 |---|---|---|
 | MXFP6 Dense | Native W6A8; TP2 AllReduce/residual/RMSNorm fusion; fused SwiGLU, GDN and MXFP8 activation producers; persistent GDN and BA overlap; lossless and owner prefill | [Native integration](docs/native-mxfp6.md), [producer fusion](docs/dense-producer-fusion.md), [AR/Norm/quantization](docs/ar-norm-mxfp8.md), [GDN](docs/gdn-decode.md), [prefill](docs/long-prefill.md) |
 | MXFP6 MoE | Grouped native expert kernels; prefill/decode graphs; fused TP2 communication; non-expert projection dispatch tuned at selected physical M values from 32 to 160 | [MoE serving](docs/qwen35-moe.md), [projection dispatch](docs/moe-projection-20260923.md) |
-| MXFP8 2B | Native W8A8, BF16 BA M1–8/M16, ordered FP32 GDN with mixed D1–160 and pinned reset IDs, exact FULL16/FULL24 PDL, BF16 KV/head and exact2048 piecewise graphs; optional K128 hybrid greedy head and Triton attention | [2B champion](docs/mxfp8-2b-champion.md) |
+| MXFP8 2B | Native W8A8, BF16 BA M1–8/M16, ordered FP32 GDN with mixed D1–160 and pinned reset IDs, exact FULL16/FULL24 PDL, BF16 KV/head weights and exact2048 piecewise graphs; K128 hybrid greedy head and Triton attention | [2B champion](docs/mxfp8-2b-champion.md) |
 | MXFP8 4B | Native W8A8 and dual-activation MLP/QKVZ kernels; small-M BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation choices and FULL/PW graph routing | [Complete champion components](docs/mxfp8-champion.md#required-parts) |
 | Block-FP8 4B | N64 GEMM tiles; ordered low-M GEMM; fused SiLU/block quantization; mixed decode/prefill FA2; matched RMS compilation choices | [Linear](docs/fp8-linear.md), [activation](docs/fp8-activation.md), [attention](docs/fp8-attention.md) |
 
@@ -169,13 +170,24 @@ All throughput tables use **3000 input / 1000 output tokens**, measured in **out
 
 ### Qwen3.5-2B MXFP8 — one RTX 5090, TP1
 
-The opt-in **hybrid greedy head + Triton attention** adds **12.41% at c16** (4309.05 → 4843.83 tok/s) and **11.69% at c24** (5611.58 → 6267.61) over the BA-M16/low-D/PDL champion, measured with two opposite-order 3k/1k pairs on the same GPU. An independent packaged-code pair confirmed **+11.80% / +11.00%**. Enable it with `--attention-backend TRITON_ATTN --hybrid-head`. Actual-generation checks found no omitted BF16 winner or lower-scored selection across 64,895 hybrid decisions; one equal-score token tie differed. See the [configuration, attention fidelity and raw results](docs/mxfp8-2b-champion.md#hybrid-head-and-triton-attention).
+The selected champion uses **Triton attention + the hybrid greedy head**, enabled by `--attention-backend TRITON_ATTN --hybrid-head` in the setup command above. The 3000-input / 1000-output comparison covers all six points on GPU0; previous/new values are paired, while community FP8 is the historical GPU1 reference.
+
+| Concurrency | Community FP8 tok/s | Previous FA2/full-head tok/s | Triton + hybrid tok/s | vs. community FP8 | vs. previous |
+|---|---:|---:|---:|---:|---:|
+| c4 | 1261.89 | 1395.31 | 1588.27 | +25.86% | +13.83% |
+| c16 | 3814.33 | 4295.10 | 4801.96 | +25.89% | +11.80% |
+| c24 | 5069.68 | 5594.33 | 6209.52 | +22.48% | +11.00% |
+| c32 | 5870.22 | 6595.49 | 7259.99 | +23.67% | +10.08% |
+| c48 | 6837.60 | 7896.46 | 8036.47 | +17.53% | +1.77% |
+| c64 | 7578.86 | 8702.23 | 9008.34 | +18.86% | +3.52% |
+
+All 2,560 scored requests completed. A later c32 check of the same Triton + hybrid runtime measured **7216.58 tok/s**. Six-cohort fixed-gold MAE is 0.04783–0.04947 against the frozen BF16 anchor; M32 increased 2.58% with the attention backend change. Actual-generation checks found no omitted BF16 winner or lower-scored selection across **129,878 hybrid decisions**, with one equal-score token tie. See [precision, TTFT and source results](docs/mxfp8-2b-champion.md#hybrid-head-and-triton-attention).
 
 The first study measured **+9.05%** median paired six-point throughput against community block-FP8 on GPU1. The second study measured **+2.56%** median paired throughput for pinned GDN reset-ID uploads against that first champion on GPU7. Both used four controlled pairs at c4/c16/c24/c32/c48/c64. These percentages have different baselines and GPUs; they are not a measured combined gain over community FP8. The public package reproduced all 438 tensors and the complete checkpoint SHA. Its same-card six-point regression measured +0.38% against the selected champion; fixed-token M4/M32/M64 replay matched the reference logprobs exactly. See the [2B guide](docs/mxfp8-2b-champion.md) for setup and evidence boundaries.
 
 The earlier October 10 mixed-decode qualification covered 24–160 decode requests. Against the previous release on the same GPU, throughput changed by **−0.15%, −0.15%, −0.44%, +1.67%, +1.30% and +1.53%** at c4/c16/c24/c32/c48/c64 (3000 input / 1000 output tokens, four pairs per point). Fixed-token replay with matched observers preserved all 10,479 gold logprobs across 256 queries at cohort32. The [six-point results](docs/mxfp8-2b-champion.md#earlier-mixed-decode-qualification-october-10) include TTFT and request counts. These six points belong to that earlier implementation.
 
-The current 2B champion adds native BF16 BA M16, mixed decode D1–160 and the complete PDL chain only for actual FULL16/FULL24 graphs. Its accepted experiment compared the new native library plus PDL against the preceding BA-M16/low-D champion on the same GPU0: **4243.24 → 4290.80 tok/s (+1.120826%) at c16**, and **5531.48 → 5612.54 tok/s (+1.465392%) at c24**. Each point combines two target pairs and two independent audit pairs; all 1,600 requests completed. The [current six-point snapshot](docs/mxfp8-2b-champion.md#current-six-point-snapshot-october-11) now covers the installed champion at all six concurrencies, from 1,397.03 tok/s at c4 to 8,665.28 tok/s at c64, and compares those observations with the original community FP8 baseline. Earlier GPU3 low-D gains and other-card results cannot be multiplied into these gains. The [2B guide](docs/mxfp8-2b-champion.md#current-champion-ba-m16-low-d-and-full-pdl) distinguishes experiment qualification from package validation.
+The preceding base integration added native BF16 BA M16, mixed decode D1–160 and the complete PDL chain for actual FULL16/FULL24 graphs. Its same-GPU0 experiment measured **4243.24 → 4290.80 tok/s (+1.12%) at c16** and **5531.48 → 5612.54 tok/s (+1.47%) at c24**, using two target pairs and two independent audit pairs per point. The [base optimization record](docs/mxfp8-2b-champion.md#base-optimizations-ba-m16-low-d-and-full-pdl) separates that experiment from package validation. These components are included in the selected Triton + hybrid configuration above.
 
 ### Qwen3.5-4B MXFP8 — one RTX 5090, TP1
 
@@ -234,11 +246,12 @@ The fixed-gold diagnostic uses 256 queries and 10,479 gold-token logprobs per ph
 | Profile | Tested physical rows | Result |
 |---|---|---|
 | Block-FP8 4B | M4, M32, M64 | Raw records byte-identical to stock block-FP8; MAE 0 against stock |
+| MXFP8 2B Triton + hybrid | M4, M16, M24, M32, M48, M64 | MAE **0.04783–0.04947** against the shared BF16 M32 anchor; actual hybrid generation checked separately |
 | MXFP8 4B champion | M32, M64 | Raw records byte-identical to the accepted champion; MAE against same-M BF16 **0.04904 / 0.05329** |
 | MXFP6 Dense default / full | M32 | September 17 BF16-reference MAE **0.09064 / 0.08962**; stock FP8 0.06143, NVFP4 0.17328 |
 | MXFP6 MoE default / full | M32 | September 17 BF16-reference MAE **0.07261 / 0.07409**; stock FP8 0.05534, NVFP4 0.22836 |
 
-MXFP6 logprob requests use the BF16 head, so that diagnostic does not assess candidate-search generation. The MXFP8 BF16 reference uses BF16 KV/FlashAttention, while the champion uses FP8 KV/FlashInfer. See the [MXFP6 methodology](docs/profile-fidelity-20260917.md), [MXFP8 qualification](docs/mxfp8-qualification-20261006.md#precision-and-startup) and [block-FP8 qualification](docs/fp8-qualification.md#precision) for the full comparisons.
+MXFP6 and MXFP8 2B logprob requests use the complete BF16 head; the [2B generation check](docs/mxfp8-2b-champion.md#hybrid-head-and-triton-attention) separately measures actual candidate selections. The 2B champion keeps BF16 KV and uses Triton attention. The 4B MXFP8 BF16 reference uses BF16 KV/FlashAttention, while its champion uses FP8 KV/FlashInfer. See the [MXFP6 methodology](docs/profile-fidelity-20260917.md), [4B MXFP8 qualification](docs/mxfp8-qualification-20261006.md#precision-and-startup) and [block-FP8 qualification](docs/fp8-qualification.md#precision) for the full comparisons.
 
 ## Documentation
 
