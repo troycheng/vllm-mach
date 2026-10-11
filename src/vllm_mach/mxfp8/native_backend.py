@@ -39,6 +39,7 @@ _SM120_DEVICES: frozenset[int] = frozenset()
 _ORIGINAL_APPLY: Any = None
 _TARGET_CLASS: Any = None
 _COUNTS: Counter[str] = Counter()
+_PDL_SELECTOR: Any = None
 
 
 @dataclass
@@ -131,6 +132,16 @@ def verify_runtime(*, require_dual: bool = False) -> None:
             _verify_schema(require_dual=True)
 
 
+def set_pdl_selector(selector) -> None:
+    """Install a profile's capture-only selector before native op registration."""
+    global _PDL_SELECTOR
+    if not callable(selector):
+        raise TypeError("PDL selector must be callable")
+    if _REGISTERED or (_PDL_SELECTOR is not None and _PDL_SELECTOR is not selector):
+        raise RuntimeError("Install the PDL policy before native op registration")
+    _PDL_SELECTOR = selector
+
+
 def _native_impl(
     activation: torch.Tensor,
     weight: torch.Tensor,
@@ -186,6 +197,7 @@ def _native_impl(
         output,
         entry.workspace,
         *_DEFAULT_CONFIG,
+        **({"use_pdl": _PDL_SELECTOR(m)} if _PDL_SELECTOR is not None else {}),
     )
     with _LOCK:
         _COUNTS["native_calls"] += 1

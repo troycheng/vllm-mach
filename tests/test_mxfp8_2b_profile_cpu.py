@@ -64,7 +64,7 @@ class TwoBProfileContracts(unittest.TestCase):
                 self.assertEqual(json.loads(argv[argv.index("--compilation-config")+1]), contract["compilation_config"])
                 self.assertEqual(argv[argv.index("--kv-cache-dtype")+1], "bfloat16")
                 self.assertEqual(argv[argv.index("--attention-backend")+1], "FLASH_ATTN")
-        for row in (0, 8, 16, 128):
+        for row in (0, 8, 16, 24, 128):
             with self.assertRaises(ValueError): self.profile.quality_contract(row)
         for environment in ({"VLLM_MACH_MXFP8_MODE": "quality"},
                             {"VLLM_MACH_MXFP8_QUALITY_ROWS": "32"},
@@ -130,7 +130,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         Worker, modules = worker_api(events)
         stack.enter_context(patch.dict(sys.modules, modules))
         profile = self.profile
-        gdn, ba, graph = (load("mxfp8.two_b."+name) for name in ("gdn", "ba", "graph_policy"))
+        gdn, ba, graph, pdl = (load("mxfp8.two_b."+name) for name in ("gdn", "ba", "graph_policy", "pdl"))
         native = load("mxfp8.worker")
         stack.enter_context(patch.object(profile, "check_environment", return_value={}))
         stack.enter_context(patch.object(profile, "check_runtime_sources", return_value={"pinned": True}))
@@ -138,6 +138,8 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         stack.enter_context(patch.object(profile, "write_receipt", side_effect=lambda obj, phase: events.append(phase)))
         stack.enter_context(patch.object(native, "install_worker_backend", side_effect=lambda obj: events.append("native")))
         stack.enter_context(patch.object(ba, "install", side_effect=lambda obj: events.append("ba")))
+        stack.enter_context(patch.object(pdl, "install", side_effect=lambda: events.append("pdl_install")))
+        stack.enter_context(patch.object(pdl, "prepare", side_effect=lambda: events.append("pdl_prepare")))
         stack.enter_context(patch.object(graph, "install_dispatch", side_effect=lambda: events.append("graph")))
         for name in ("install_runtime", "prepare_layers", "prepare_pools"):
             stack.enter_context(patch.object(gdn, name, side_effect=lambda obj, label=name: events.append(label)))
@@ -166,7 +168,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         self.assertEqual(obj.compile_or_warm_up_model(), "compile")
         self.assertEqual(obj.execute_model(), "execute")
         obj.execute_model()
-        self.assertEqual(events, ["graph", "device", "geometry", "native", "install_runtime", "ba", "load",
+        self.assertEqual(events, ["graph", "pdl_install", "device", "geometry", "native", "pdl_prepare", "install_runtime", "ba", "load",
                                   "prepare_layers", "cache", "initialize_cache", "prepare_pools", "compile", "compiled",
                                   "execute", "serving", "execute"])
         state._CACHE_INITIALIZED = False
@@ -243,7 +245,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
 
     def test_inspection_requires_actual_graphs_and_all_eligible_gdn_captures(self):
         profile = self.profile
-        graph, gdn, ba = (load("mxfp8.two_b."+name) for name in ("graph_policy", "gdn", "ba"))
+        graph, gdn, ba, pdl = (load("mxfp8.two_b."+name) for name in ("graph_policy", "gdn", "ba", "pdl"))
         native = load("mxfp8.worker")
         for row in (None, 4, 32, 64):
             environment = {} if row is None else {
@@ -268,7 +270,8 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                          "layers": layers, "eligible_rows": eligible,
                          "capture_construction": {f"{name}|m{m}": 1 for name in layers for m in eligible}}
                 with patch.dict(sys.modules, modules), patch.object(gdn, "inspect_worker", return_value=state), \
-                        patch.object(ba, "verify_capture", return_value={}) as ba_verify, \
+                        patch.object(ba, "verify_capture", return_value={"native_m16_available": True}) as ba_verify, \
+                        patch.object(pdl, "verify_capture", return_value={"prepared": True}) as pdl_verify, \
                         patch.object(native, "verify_worker_execution", return_value={}) as native_verify, \
                         patch.object(profile, "check_environment", return_value={}), \
                         patch.object(graph, "_INSTALLED", False):
@@ -277,7 +280,12 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                     receipt = profile.inspect_worker(worker)
                     self.assertTrue(receipt["graph"]["ready"])
                     native_verify.assert_called_once_with(worker, require_capture=True)
-                    ba_verify.assert_called_once_with(worker, required_rows=(4, 8) if row is None else (4,))
+                    required = set(worker._mach_2b_contract["compilation_config"]["cudagraph_capture_sizes"])
+                    ba_verify.assert_called_once_with(worker, required_rows=tuple(sorted(required & {4, 8, 16})))
+                    pdl_verify.assert_called_once_with(required)
+                    with patch.object(ba, "verify_capture", return_value={"native_m16_available": False}):
+                        with self.assertRaisesRegex(RuntimeError, "requires native BF16 BA M16"):
+                            profile.inspect_worker(worker)
                     graph_entry = next(iter(worker.model_runner.cudagraph_manager.graphs))
                     worker.model_runner.cudagraph_manager.graphs[graph_entry] = None
                     with self.assertRaisesRegex(RuntimeError, "capture incomplete"):

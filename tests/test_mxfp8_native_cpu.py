@@ -365,6 +365,45 @@ class PackageGlueTests(unittest.TestCase):
         self.assertIs(output.shape[0], m)
         self.assertEqual(output.shape[1], 256)
 
+    def test_pdl_selector_is_fixed_before_registration(self):
+        backend, _, _, _, _, _, _ = self.make_backend()
+        selector = lambda m: m == 16
+        with self.assertRaisesRegex(TypeError, "callable"):
+            backend.set_pdl_selector(None)
+        backend.set_pdl_selector(selector)
+        backend.set_pdl_selector(selector)
+        self.assertIs(backend._PDL_SELECTOR, selector)
+        with self.assertRaisesRegex(RuntimeError, "before native op registration"):
+            backend.set_pdl_selector(lambda m: False)
+        utils = types.ModuleType("vllm.utils.torch_utils")
+        utils.direct_register_custom_op = lambda **kwargs: None
+        sys.modules[utils.__name__] = utils
+        backend._register_op()
+        with self.assertRaisesRegex(RuntimeError, "before native op registration"):
+            backend.set_pdl_selector(selector)
+
+    def test_pdl_keyword_only_when_selected_and_uses_runtime_rows(self):
+        backend, torch, Tensor, _, _, allocations, _ = self.make_backend()
+        calls, selected = [], []
+        torch.ops.mxfp8_sm120.gemm = lambda *args, **kwargs: calls.append((args, kwargs))
+        weight, scale = Tensor((256, 128), "e4m3"), Tensor((256, 4), "u8")
+        backend.gemm(Tensor((16, 128), "e4m3"), weight, scale, scale)
+        self.assertEqual(calls[-1][1], {})
+        def selector(m):
+            selected.append(m)
+            return torch.cuda.is_current_stream_capturing() and m == 16
+        backend.set_pdl_selector(selector)
+        for m in (4, 16):
+            backend.gemm(Tensor((m, 128), "e4m3"), weight, scale, scale)
+            self.assertEqual(calls[-1][1], {"use_pdl": False})
+        self.assertEqual(len(allocations), 2)
+        torch.cuda.is_current_stream_capturing = lambda: True
+        for m, expected in ((16, True), (4, False)):
+            backend.gemm(Tensor((m, 128), "e4m3"), weight, scale, scale)
+            self.assertEqual(calls[-1][1], {"use_pdl": expected})
+        self.assertEqual(selected, [4, 16, 16, 4])
+        self.assertEqual(len(allocations), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

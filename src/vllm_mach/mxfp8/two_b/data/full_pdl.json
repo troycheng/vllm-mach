@@ -1,0 +1,1969 @@
+{
+  "version": 1,
+  "torch_version": "2.13.0+cu130",
+  "triton_version": "3.7.1",
+  "rows": [
+    16,
+    24
+  ],
+  "kernels": [
+    {
+      "name": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+      "source_sha256": "6a2ff04cb2fdbfd0f37a88f77b81220668a6cfd03c32db4082caaf06f05693e7",
+      "pdl_source_sha256": "d1a411416481dd343d393b3f18acd96d6dff62e8592eb5649c370113e0bf87b5",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'out_ptr1': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_2', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 5, 'num_store': 1, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 33558528}, 'kernel_num_gb': 0.02516992, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_2(in_ptr0, in_ptr1, in_ptr2, out_ptr1, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp7 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    tl.extra.cuda.gdc_wait()\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp4 = tmp1 + tmp3\n        tmp5 = tmp4 * tmp4\n        tmp6 = tl.broadcast_to(tmp5, [XBLOCK, R0_BLOCK])\n        tmp8 = _tmp7 + tmp6\n        _tmp7 = tl.where(r0_mask & xmask, tmp8, _tmp7)\n    tmp7 = tl.sum(_tmp7, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp9 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp11 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp20 = tl.load(in_ptr2 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp10 = tmp9.to(tl.float32)\n        tmp12 = tmp11.to(tl.float32)\n        tmp13 = tmp10 + tmp12\n        tmp14 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp15 = (tmp7 / tmp14)\n        tmp16 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp17 = tmp15 + tmp16\n        tmp18 = libdevice.rsqrt(tmp17)\n        tmp19 = tmp13 * tmp18\n        tmp21 = tmp20.to(tl.float32)\n        tmp22 = tl.full([1, 1], 1.0, tl.float32)\n        tmp23 = tmp21 + tmp22\n        tmp24 = tmp19 * tmp23\n        tmp25 = tmp24.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp25, r0_mask & xmask)\n    tl.extra.cuda.gdc_launch_dependents()\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'out_ptr1': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_2', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 5, 'num_store': 1, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 33558528}, 'kernel_num_gb': 0.02516992, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_2(in_ptr0, in_ptr1, in_ptr2, out_ptr1, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp7 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp4 = tmp1 + tmp3\n        tmp5 = tmp4 * tmp4\n        tmp6 = tl.broadcast_to(tmp5, [XBLOCK, R0_BLOCK])\n        tmp8 = _tmp7 + tmp6\n        _tmp7 = tl.where(r0_mask & xmask, tmp8, _tmp7)\n    tmp7 = tl.sum(_tmp7, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp9 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp11 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp20 = tl.load(in_ptr2 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp10 = tmp9.to(tl.float32)\n        tmp12 = tmp11.to(tl.float32)\n        tmp13 = tmp10 + tmp12\n        tmp14 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp15 = (tmp7 / tmp14)\n        tmp16 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp17 = tmp15 + tmp16\n        tmp18 = libdevice.rsqrt(tmp17)\n        tmp19 = tmp13 * tmp18\n        tmp21 = tmp20.to(tl.float32)\n        tmp22 = tl.full([1, 1], 1.0, tl.float32)\n        tmp23 = tmp21 + tmp22\n        tmp24 = tmp19 * tmp23\n        tmp25 = tmp24.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp25, r0_mask & xmask)\n",
+      "boundary": {
+        "function_sha256": "50ba4c9e48f04fda214c0a83d2616b310d14a96585aaf7bcfdef0ad8c7dddd6c",
+        "size_hints": {
+          "x": 2048,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "out_ptr1": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "de8b49babe926f48c68f4a695052d74f572dce9245cab4688b15e8ac690c115e",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "R0_BLOCK": 1024,
+            "XBLOCK": 2
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 8
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "out_ptr1",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            16,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1"
+          ],
+          "intrinsic_alias_parameters": []
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "out_ptr1",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            24,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1"
+          ],
+          "intrinsic_alias_parameters": []
+        }
+      ]
+    },
+    {
+      "name": "triton_poi_fused_mul_silu_slice_3",
+      "source_sha256": "11ac3f3384098e353ac994312bf75152d2fc5cc1401bd1cecf557c2624111114",
+      "pdl_source_sha256": "9f71d9922263cdfe014539818d75290c5e0d765effa62b6fd74e89284ec89ae1",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.pointwise(\n    size_hints={'x': 16777216}, \n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_poi_fused_mul_silu_slice_3', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 2, 'num_store': 1, 'num_reduction': 0, 'autotune_hints': set(), 'tiling_scores': {'x': 100663296}, 'kernel_num_gb': 0.075497472, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False},\n    min_elem_per_thread=0\n)\n@triton.jit\ndef triton_poi_fused_mul_silu_slice_3(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:]\n    xmask = xindex < xnumel\n    x0 = (xindex % 6144)\n    x1 = xindex // 6144\n    x2 = xindex\n    tl.extra.cuda.gdc_wait()\n    tmp0 = tl.load(in_ptr0 + (x0 + 12288*x1), xmask).to(tl.float32)\n    tmp8 = tl.load(in_ptr0 + (6144 + x0 + 12288*x1), xmask).to(tl.float32)\n    tl.extra.cuda.gdc_launch_dependents()\n    tmp1 = tmp0.to(tl.float32)\n    tmp2 = -tmp1\n    tmp3 = libdevice.exp(tmp2)\n    tmp4 = tl.full([1], 1.0, tl.float32)\n    tmp5 = tmp3 + tmp4\n    tmp6 = (tmp1 / tmp5)\n    tmp7 = tmp6.to(tl.float32)\n    tmp9 = tmp7 * tmp8\n    tl.store(out_ptr0 + (x2), tmp9, xmask)\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.pointwise(\n    size_hints={'x': 16777216}, \n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_poi_fused_mul_silu_slice_3', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 2, 'num_store': 1, 'num_reduction': 0, 'autotune_hints': set(), 'tiling_scores': {'x': 100663296}, 'kernel_num_gb': 0.075497472, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False},\n    min_elem_per_thread=0\n)\n@triton.jit\ndef triton_poi_fused_mul_silu_slice_3(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:]\n    xmask = xindex < xnumel\n    x0 = (xindex % 6144)\n    x1 = xindex // 6144\n    x2 = xindex\n    tmp0 = tl.load(in_ptr0 + (x0 + 12288*x1), xmask).to(tl.float32)\n    tmp8 = tl.load(in_ptr0 + (6144 + x0 + 12288*x1), xmask).to(tl.float32)\n    tmp1 = tmp0.to(tl.float32)\n    tmp2 = -tmp1\n    tmp3 = libdevice.exp(tmp2)\n    tmp4 = tl.full([1], 1.0, tl.float32)\n    tmp5 = tmp3 + tmp4\n    tmp6 = (tmp1 / tmp5)\n    tmp7 = tmp6.to(tl.float32)\n    tmp9 = tmp7 * tmp8\n    tl.store(out_ptr0 + (x2), tmp9, xmask)\n",
+      "boundary": {
+        "function_sha256": "f1e92808d147fcc4baa558b8498091574da26652759cffb72644c093190e2de5",
+        "size_hints": {
+          "x": 16777216
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "out_ptr0": "*bf16",
+          "xnumel": "i32",
+          "XBLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "fbb5c264703d22892af20dbb781e14b85d3f57f6d07daa959e05bb20654c3feb",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "XBLOCK": 1024
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 4
+        },
+        {
+          "kwargs": {
+            "XBLOCK": 512
+          },
+          "num_warps": 8,
+          "num_stages": 1,
+          "num_ctas": 1
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_ptr0",
+            "out_ptr0",
+            "xnumel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                12288
+              ],
+              "stride": [
+                12288,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                6144
+              ],
+              "stride": [
+                6144,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            98304
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 1024
+            },
+            "num_warps": 4,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr0"
+          ],
+          "intrinsic_alias_parameters": []
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_ptr0",
+            "out_ptr0",
+            "xnumel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                12288
+              ],
+              "stride": [
+                12288,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                6144
+              ],
+              "stride": [
+                6144,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            147456
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 1024
+            },
+            "num_warps": 4,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr0"
+          ],
+          "intrinsic_alias_parameters": []
+        }
+      ]
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_fused_add_rms_norm_4",
+      "source_sha256": "164c9f1b9a79dc8a7e3400c39462053ee90185ef80c326086138cc240fbc284a",
+      "pdl_source_sha256": "1ada6613d628e5a2278e9789ca7d39f0f2637cbfb05a71df7c58a734d8d70264",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'out_ptr1': '*bf16', 'out_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_4', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 2, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 58724352}, 'kernel_num_gb': 0.041947136, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_4(in_ptr0, in_ptr1, in_ptr2, in_ptr3, out_ptr1, out_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp12 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    tl.extra.cuda.gdc_wait()\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp4 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp5 = tmp4.to(tl.float32)\n        tmp6 = tmp3 + tmp5\n        tmp7 = tmp6.to(tl.float32)\n        tmp8 = tmp7.to(tl.float32)\n        tmp9 = tmp1 + tmp8\n        tmp10 = tmp9 * tmp9\n        tmp11 = tl.broadcast_to(tmp10, [XBLOCK, R0_BLOCK])\n        tmp13 = _tmp12 + tmp11\n        _tmp12 = tl.where(r0_mask & xmask, tmp13, _tmp12)\n        tmp14 = tmp9.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp14, r0_mask & xmask)\n    tmp12 = tl.sum(_tmp12, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp15 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp17 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp19 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp31 = tl.load(in_ptr3 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp16 = tmp15.to(tl.float32)\n        tmp18 = tmp17.to(tl.float32)\n        tmp20 = tmp19.to(tl.float32)\n        tmp21 = tmp18 + tmp20\n        tmp22 = tmp21.to(tl.float32)\n        tmp23 = tmp22.to(tl.float32)\n        tmp24 = tmp16 + tmp23\n        tmp25 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp26 = (tmp12 / tmp25)\n        tmp27 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp28 = tmp26 + tmp27\n        tmp29 = libdevice.rsqrt(tmp28)\n        tmp30 = tmp24 * tmp29\n        tmp32 = tmp31.to(tl.float32)\n        tmp33 = tl.full([1, 1], 1.0, tl.float32)\n        tmp34 = tmp32 + tmp33\n        tmp35 = tmp30 * tmp34\n        tmp36 = tmp35.to(tl.float32)\n        tl.store(out_ptr2 + (r0_1 + 2048*x0), tmp36, r0_mask & xmask)\n    tl.extra.cuda.gdc_launch_dependents()\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'out_ptr1': '*bf16', 'out_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_4', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 2, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 58724352}, 'kernel_num_gb': 0.041947136, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_4(in_ptr0, in_ptr1, in_ptr2, in_ptr3, out_ptr1, out_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp12 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp4 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp5 = tmp4.to(tl.float32)\n        tmp6 = tmp3 + tmp5\n        tmp7 = tmp6.to(tl.float32)\n        tmp8 = tmp7.to(tl.float32)\n        tmp9 = tmp1 + tmp8\n        tmp10 = tmp9 * tmp9\n        tmp11 = tl.broadcast_to(tmp10, [XBLOCK, R0_BLOCK])\n        tmp13 = _tmp12 + tmp11\n        _tmp12 = tl.where(r0_mask & xmask, tmp13, _tmp12)\n        tmp14 = tmp9.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp14, r0_mask & xmask)\n    tmp12 = tl.sum(_tmp12, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp15 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp17 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp19 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp31 = tl.load(in_ptr3 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp16 = tmp15.to(tl.float32)\n        tmp18 = tmp17.to(tl.float32)\n        tmp20 = tmp19.to(tl.float32)\n        tmp21 = tmp18 + tmp20\n        tmp22 = tmp21.to(tl.float32)\n        tmp23 = tmp22.to(tl.float32)\n        tmp24 = tmp16 + tmp23\n        tmp25 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp26 = (tmp12 / tmp25)\n        tmp27 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp28 = tmp26 + tmp27\n        tmp29 = libdevice.rsqrt(tmp28)\n        tmp30 = tmp24 * tmp29\n        tmp32 = tmp31.to(tl.float32)\n        tmp33 = tl.full([1, 1], 1.0, tl.float32)\n        tmp34 = tmp32 + tmp33\n        tmp35 = tmp30 * tmp34\n        tmp36 = tmp35.to(tl.float32)\n        tl.store(out_ptr2 + (r0_1 + 2048*x0), tmp36, r0_mask & xmask)\n",
+      "boundary": {
+        "function_sha256": "8b4507891b4a080ba2cf67c16b6e443e85b91da40300718152a9119456d96137",
+        "size_hints": {
+          "x": 2048,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "in_ptr3": "*bf16",
+          "out_ptr1": "*bf16",
+          "out_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    7
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "b91191516516cd2c77a0fdee30cdbf53788bee8aedce5916a93a4b6fc5ab0451",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "R0_BLOCK": 1024,
+            "XBLOCK": 2
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 8
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "in_ptr3",
+            "out_ptr1",
+            "out_ptr2",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            16,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1",
+            "out_ptr2"
+          ],
+          "intrinsic_alias_parameters": []
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "in_ptr3",
+            "out_ptr1",
+            "out_ptr2",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            24,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1",
+            "out_ptr2"
+          ],
+          "intrinsic_alias_parameters": []
+        }
+      ]
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+      "source_sha256": "1cd2f245a33cde2f32331966979496c0e04152351117cb47d2fafffe4e20af7b",
+      "pdl_source_sha256": "85db7dcf54a86093b036be66b282c4ae56927f1457c9c5d81c2e5f022a48b046",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'out_ptr1': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_1', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 5, 'num_store': 1, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 33558528}, 'kernel_num_gb': 0.02516992, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_1(in_ptr0, in_ptr1, in_ptr2, out_ptr1, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp7 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    tl.extra.cuda.gdc_wait()\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp4 = tmp1 + tmp3\n        tmp5 = tmp4 * tmp4\n        tmp6 = tl.broadcast_to(tmp5, [XBLOCK, R0_BLOCK])\n        tmp8 = _tmp7 + tmp6\n        _tmp7 = tl.where(r0_mask & xmask, tmp8, _tmp7)\n    tmp7 = tl.sum(_tmp7, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp9 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp11 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp20 = tl.load(in_ptr2 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp10 = tmp9.to(tl.float32)\n        tmp12 = tmp11.to(tl.float32)\n        tmp13 = tmp10 + tmp12\n        tmp14 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp15 = (tmp7 / tmp14)\n        tmp16 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp17 = tmp15 + tmp16\n        tmp18 = libdevice.rsqrt(tmp17)\n        tmp19 = tmp13 * tmp18\n        tmp21 = tmp20.to(tl.float32)\n        tmp22 = tl.full([1, 1], 1.0, tl.float32)\n        tmp23 = tmp21 + tmp22\n        tmp24 = tmp19 * tmp23\n        tmp25 = tmp24.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp25, r0_mask & xmask)\n    tl.extra.cuda.gdc_launch_dependents()\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'out_ptr1': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_1', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 5, 'num_store': 1, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 33558528}, 'kernel_num_gb': 0.02516992, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_1(in_ptr0, in_ptr1, in_ptr2, out_ptr1, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp7 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp4 = tmp1 + tmp3\n        tmp5 = tmp4 * tmp4\n        tmp6 = tl.broadcast_to(tmp5, [XBLOCK, R0_BLOCK])\n        tmp8 = _tmp7 + tmp6\n        _tmp7 = tl.where(r0_mask & xmask, tmp8, _tmp7)\n    tmp7 = tl.sum(_tmp7, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp9 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp11 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp20 = tl.load(in_ptr2 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp10 = tmp9.to(tl.float32)\n        tmp12 = tmp11.to(tl.float32)\n        tmp13 = tmp10 + tmp12\n        tmp14 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp15 = (tmp7 / tmp14)\n        tmp16 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp17 = tmp15 + tmp16\n        tmp18 = libdevice.rsqrt(tmp17)\n        tmp19 = tmp13 * tmp18\n        tmp21 = tmp20.to(tl.float32)\n        tmp22 = tl.full([1, 1], 1.0, tl.float32)\n        tmp23 = tmp21 + tmp22\n        tmp24 = tmp19 * tmp23\n        tmp25 = tmp24.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp25, r0_mask & xmask)\n",
+      "boundary": {
+        "function_sha256": "50ba4c9e48f04fda214c0a83d2616b310d14a96585aaf7bcfdef0ad8c7dddd6c",
+        "size_hints": {
+          "x": 2048,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "out_ptr1": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "de8b49babe926f48c68f4a695052d74f572dce9245cab4688b15e8ac690c115e",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "R0_BLOCK": 1024,
+            "XBLOCK": 2
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 8
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "out_ptr1",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            16,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1"
+          ],
+          "intrinsic_alias_parameters": []
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "out_ptr1",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            24,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1"
+          ],
+          "intrinsic_alias_parameters": []
+        }
+      ]
+    },
+    {
+      "name": "triton_poi_fused_mul_silu_slice_2",
+      "source_sha256": "fde459bf2ca648d8ee02faa3e5df6f482e6a8a95b7f99a9a29b263809f5ecf7e",
+      "pdl_source_sha256": "4eee257d782c7f00cbce83c1521cc603c60baa8e4ade0ee3987b1f665eb1787c",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.pointwise(\n    size_hints={'x': 16777216}, \n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_poi_fused_mul_silu_slice_2', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 2, 'num_store': 1, 'num_reduction': 0, 'autotune_hints': set(), 'tiling_scores': {'x': 100663296}, 'kernel_num_gb': 0.075497472, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False},\n    min_elem_per_thread=0\n)\n@triton.jit\ndef triton_poi_fused_mul_silu_slice_2(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:]\n    xmask = xindex < xnumel\n    x0 = (xindex % 6144)\n    x1 = xindex // 6144\n    x2 = xindex\n    tl.extra.cuda.gdc_wait()\n    tmp0 = tl.load(in_ptr0 + (x0 + 12288*x1), xmask).to(tl.float32)\n    tmp8 = tl.load(in_ptr0 + (6144 + x0 + 12288*x1), xmask).to(tl.float32)\n    tl.extra.cuda.gdc_launch_dependents()\n    tmp1 = tmp0.to(tl.float32)\n    tmp2 = -tmp1\n    tmp3 = libdevice.exp(tmp2)\n    tmp4 = tl.full([1], 1.0, tl.float32)\n    tmp5 = tmp3 + tmp4\n    tmp6 = (tmp1 / tmp5)\n    tmp7 = tmp6.to(tl.float32)\n    tmp9 = tmp7 * tmp8\n    tl.store(out_ptr0 + (x2), tmp9, xmask)\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.pointwise(\n    size_hints={'x': 16777216}, \n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'out_ptr0': '*bf16', 'xnumel': 'i32', 'XBLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_poi_fused_mul_silu_slice_2', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 2, 'num_store': 1, 'num_reduction': 0, 'autotune_hints': set(), 'tiling_scores': {'x': 100663296}, 'kernel_num_gb': 0.075497472, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False},\n    min_elem_per_thread=0\n)\n@triton.jit\ndef triton_poi_fused_mul_silu_slice_2(in_ptr0, out_ptr0, xnumel, XBLOCK : tl.constexpr):\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:]\n    xmask = xindex < xnumel\n    x0 = (xindex % 6144)\n    x1 = xindex // 6144\n    x2 = xindex\n    tmp0 = tl.load(in_ptr0 + (x0 + 12288*x1), xmask).to(tl.float32)\n    tmp8 = tl.load(in_ptr0 + (6144 + x0 + 12288*x1), xmask).to(tl.float32)\n    tmp1 = tmp0.to(tl.float32)\n    tmp2 = -tmp1\n    tmp3 = libdevice.exp(tmp2)\n    tmp4 = tl.full([1], 1.0, tl.float32)\n    tmp5 = tmp3 + tmp4\n    tmp6 = (tmp1 / tmp5)\n    tmp7 = tmp6.to(tl.float32)\n    tmp9 = tmp7 * tmp8\n    tl.store(out_ptr0 + (x2), tmp9, xmask)\n",
+      "boundary": {
+        "function_sha256": "f1e92808d147fcc4baa558b8498091574da26652759cffb72644c093190e2de5",
+        "size_hints": {
+          "x": 16777216
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "out_ptr0": "*bf16",
+          "xnumel": "i32",
+          "XBLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "fbb5c264703d22892af20dbb781e14b85d3f57f6d07daa959e05bb20654c3feb",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "XBLOCK": 1024
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 4
+        },
+        {
+          "kwargs": {
+            "XBLOCK": 512
+          },
+          "num_warps": 8,
+          "num_stages": 1,
+          "num_ctas": 1
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_ptr0",
+            "out_ptr0",
+            "xnumel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                12288
+              ],
+              "stride": [
+                12288,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                6144
+              ],
+              "stride": [
+                6144,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            98304
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 1024
+            },
+            "num_warps": 4,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr0"
+          ],
+          "intrinsic_alias_parameters": []
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_ptr0",
+            "out_ptr0",
+            "xnumel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                12288
+              ],
+              "stride": [
+                12288,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                6144
+              ],
+              "stride": [
+                6144,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            147456
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 1024
+            },
+            "num_warps": 4,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr0"
+          ],
+          "intrinsic_alias_parameters": []
+        }
+      ]
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_fused_add_rms_norm_3",
+      "source_sha256": "928bb5e1701c471753584ca6af62b6b92d2535da07a83dd13ad4069fa371351f",
+      "pdl_source_sha256": "10378d346febbba3170f64983ff5a9ed2f049d54388ca555d3c74cba9b330f6b",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'out_ptr1': '*bf16', 'out_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_3', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 2, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 58724352}, 'kernel_num_gb': 0.041947136, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_3(in_ptr0, in_ptr1, in_ptr2, in_ptr3, out_ptr1, out_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp12 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    tl.extra.cuda.gdc_wait()\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp4 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp5 = tmp4.to(tl.float32)\n        tmp6 = tmp3 + tmp5\n        tmp7 = tmp6.to(tl.float32)\n        tmp8 = tmp7.to(tl.float32)\n        tmp9 = tmp1 + tmp8\n        tmp10 = tmp9 * tmp9\n        tmp11 = tl.broadcast_to(tmp10, [XBLOCK, R0_BLOCK])\n        tmp13 = _tmp12 + tmp11\n        _tmp12 = tl.where(r0_mask & xmask, tmp13, _tmp12)\n        tmp14 = tmp9.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp14, r0_mask & xmask)\n    tmp12 = tl.sum(_tmp12, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp15 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp17 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp19 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp31 = tl.load(in_ptr3 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp16 = tmp15.to(tl.float32)\n        tmp18 = tmp17.to(tl.float32)\n        tmp20 = tmp19.to(tl.float32)\n        tmp21 = tmp18 + tmp20\n        tmp22 = tmp21.to(tl.float32)\n        tmp23 = tmp22.to(tl.float32)\n        tmp24 = tmp16 + tmp23\n        tmp25 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp26 = (tmp12 / tmp25)\n        tmp27 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp28 = tmp26 + tmp27\n        tmp29 = libdevice.rsqrt(tmp28)\n        tmp30 = tmp24 * tmp29\n        tmp32 = tmp31.to(tl.float32)\n        tmp33 = tl.full([1, 1], 1.0, tl.float32)\n        tmp34 = tmp32 + tmp33\n        tmp35 = tmp30 * tmp34\n        tmp36 = tmp35.to(tl.float32)\n        tl.store(out_ptr2 + (r0_1 + 2048*x0), tmp36, r0_mask & xmask)\n    tl.extra.cuda.gdc_launch_dependents()\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'in_ptr3': '*bf16', 'out_ptr1': '*bf16', 'out_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (4,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]], (7,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_3', 'mutated_arg_names': [], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 2, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 58724352}, 'kernel_num_gb': 0.041947136, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_3(in_ptr0, in_ptr1, in_ptr2, in_ptr3, out_ptr1, out_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp12 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp4 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp5 = tmp4.to(tl.float32)\n        tmp6 = tmp3 + tmp5\n        tmp7 = tmp6.to(tl.float32)\n        tmp8 = tmp7.to(tl.float32)\n        tmp9 = tmp1 + tmp8\n        tmp10 = tmp9 * tmp9\n        tmp11 = tl.broadcast_to(tmp10, [XBLOCK, R0_BLOCK])\n        tmp13 = _tmp12 + tmp11\n        _tmp12 = tl.where(r0_mask & xmask, tmp13, _tmp12)\n        tmp14 = tmp9.to(tl.float32)\n        tl.store(out_ptr1 + (r0_1 + 2048*x0), tmp14, r0_mask & xmask)\n    tmp12 = tl.sum(_tmp12, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp15 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp17 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp19 = tl.load(in_ptr2 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp31 = tl.load(in_ptr3 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp16 = tmp15.to(tl.float32)\n        tmp18 = tmp17.to(tl.float32)\n        tmp20 = tmp19.to(tl.float32)\n        tmp21 = tmp18 + tmp20\n        tmp22 = tmp21.to(tl.float32)\n        tmp23 = tmp22.to(tl.float32)\n        tmp24 = tmp16 + tmp23\n        tmp25 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp26 = (tmp12 / tmp25)\n        tmp27 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp28 = tmp26 + tmp27\n        tmp29 = libdevice.rsqrt(tmp28)\n        tmp30 = tmp24 * tmp29\n        tmp32 = tmp31.to(tl.float32)\n        tmp33 = tl.full([1, 1], 1.0, tl.float32)\n        tmp34 = tmp32 + tmp33\n        tmp35 = tmp30 * tmp34\n        tmp36 = tmp35.to(tl.float32)\n        tl.store(out_ptr2 + (r0_1 + 2048*x0), tmp36, r0_mask & xmask)\n",
+      "boundary": {
+        "function_sha256": "8b4507891b4a080ba2cf67c16b6e443e85b91da40300718152a9119456d96137",
+        "size_hints": {
+          "x": 2048,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "in_ptr3": "*bf16",
+          "out_ptr1": "*bf16",
+          "out_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    7
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "b91191516516cd2c77a0fdee30cdbf53788bee8aedce5916a93a4b6fc5ab0451",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "R0_BLOCK": 1024,
+            "XBLOCK": 2
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 8
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "in_ptr3",
+            "out_ptr1",
+            "out_ptr2",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            16,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1",
+            "out_ptr2"
+          ],
+          "intrinsic_alias_parameters": []
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "in_ptr3",
+            "out_ptr1",
+            "out_ptr2",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            24,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "out_ptr1",
+            "out_ptr2"
+          ],
+          "intrinsic_alias_parameters": []
+        }
+      ]
+    },
+    {
+      "name": "triton_red_fused__to_copy_add_fused_add_rms_norm_3",
+      "source_sha256": "1b32a4d2fa8e4a2082e0cf953df64e02b94b905fcd666151b0a12f82fb796d5e",
+      "pdl_source_sha256": "cd37061c647ac2782b15905b03f078f9bff38bc095a38fed99c1766f522b4359",
+      "source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_out_ptr0': '*bf16', 'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': True, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_3', 'mutated_arg_names': ['in_out_ptr0'], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 1, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 41947136}, 'kernel_num_gb': 0.033558528, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_3(in_out_ptr0, in_ptr0, in_ptr1, in_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp12 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    tl.extra.cuda.gdc_wait()\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_out_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp4 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp5 = tmp4.to(tl.float32)\n        tmp6 = tmp3 + tmp5\n        tmp7 = tmp6.to(tl.float32)\n        tmp8 = tmp7.to(tl.float32)\n        tmp9 = tmp1 + tmp8\n        tmp10 = tmp9 * tmp9\n        tmp11 = tl.broadcast_to(tmp10, [XBLOCK, R0_BLOCK])\n        tmp13 = _tmp12 + tmp11\n        _tmp12 = tl.where(r0_mask & xmask, tmp13, _tmp12)\n    tmp12 = tl.sum(_tmp12, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp14 = tl.load(in_out_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp16 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp18 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp30 = tl.load(in_ptr2 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp15 = tmp14.to(tl.float32)\n        tmp17 = tmp16.to(tl.float32)\n        tmp19 = tmp18.to(tl.float32)\n        tmp20 = tmp17 + tmp19\n        tmp21 = tmp20.to(tl.float32)\n        tmp22 = tmp21.to(tl.float32)\n        tmp23 = tmp15 + tmp22\n        tmp24 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp25 = (tmp12 / tmp24)\n        tmp26 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp27 = tmp25 + tmp26\n        tmp28 = libdevice.rsqrt(tmp27)\n        tmp29 = tmp23 * tmp28\n        tmp31 = tmp30.to(tl.float32)\n        tmp32 = tl.full([1, 1], 1.0, tl.float32)\n        tmp33 = tmp31 + tmp32\n        tmp34 = tmp29 * tmp33\n        tmp35 = tmp34.to(tl.float32)\n        tl.store(in_out_ptr0 + (r0_1 + 2048*x0), tmp35, r0_mask & xmask)\n    tl.extra.cuda.gdc_launch_dependents()\n",
+      "original_source": "\nimport triton\nimport triton.language as tl\n\nfrom torch._inductor.runtime import triton_helpers, triton_heuristics\nfrom torch._inductor.runtime.triton_helpers import libdevice, math as tl_math\nfrom torch._inductor.runtime.hints import AutotuneHint, ReductionHint, TileHint, DeviceProperties\ntriton_helpers.set_driver_to_gpu()\n\n@triton_heuristics.reduction(\n    size_hints={'x': 2048, 'r0_': 2048},\n    reduction_hint=ReductionHint.INNER,\n    filename=__file__,\n    triton_meta={'signature': {'in_out_ptr0': '*bf16', 'in_ptr0': '*bf16', 'in_ptr1': '*bf16', 'in_ptr2': '*bf16', 'xnumel': 'i32', 'r0_numel': 'i32', 'XBLOCK': 'constexpr', 'R0_BLOCK': 'constexpr'}, 'device': DeviceProperties(type='cuda', index=0, multi_processor_count=170, cc=120, major=12, regs_per_multiprocessor=65536, max_threads_per_multi_processor=1536, max_threads_per_block=1024, warp_size=32), 'constants': {}, 'native_matmul': False, 'enable_fp_fusion': True, 'launch_pdl': False, 'disable_ftz': False, 'configs': [{(0,): [['tt.divisibility', 16]], (1,): [['tt.divisibility', 16]], (2,): [['tt.divisibility', 16]], (3,): [['tt.divisibility', 16]], (5,): [['tt.divisibility', 16]]}]},\n    inductor_meta={'grid_type': 'Grid1D', 'kernel_name': 'triton_red_fused__to_copy_add_fused_add_rms_norm_3', 'mutated_arg_names': ['in_out_ptr0'], 'optimize_mem': True, 'no_x_dim': False, 'atomic_add_found': False, 'num_load': 7, 'num_store': 1, 'num_reduction': 1, 'autotune_hints': set(), 'tiling_scores': {'x': 0, 'r0_': 41947136}, 'kernel_num_gb': 0.033558528, 'kernel_flop': 0, 'backend_hash': '17BFA8DD7BD831FE3D265196C8C35E9052331D6614CD86DD88A4293D2A846B67', 'assert_indirect_indexing': True, 'autotune_local_cache': True, 'autotune_pointwise': True, 'autotune_remote_cache': None, 'force_disable_caches': False, 'dynamic_scale_rblock': True, 'incremental_autotune': False, 'max_autotune': False, 'max_autotune_pointwise': False, 'min_split_scan_rblock': 256, 'spill_threshold': 16, 'store_cubin': False, 'deterministic': False, 'batch_invariant': False, 'force_filter_reduction_configs': False, 'mix_order_reduction_allow_multi_stages': True, 'dynamic_disable_pipelining': True, 'are_deterministic_algorithms_enabled': False}\n)\n@triton.jit\ndef triton_red_fused__to_copy_add_fused_add_rms_norm_3(in_out_ptr0, in_ptr0, in_ptr1, in_ptr2, xnumel, r0_numel, XBLOCK : tl.constexpr, R0_BLOCK : tl.constexpr):\n    r0_numel = 2048\n    rnumel = r0_numel\n    RBLOCK: tl.constexpr = R0_BLOCK\n    xoffset = tl.program_id(0) * XBLOCK\n    xindex = xoffset + tl.arange(0, XBLOCK)[:, None]\n    xmask = xindex < xnumel\n    r0_base = tl.arange(0, R0_BLOCK)[None, :]\n    rbase = r0_base\n    x0 = xindex\n    _tmp12 = tl.full([XBLOCK, R0_BLOCK], 0, tl.float32)\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp0 = tl.load(in_out_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp2 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp4 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp1 = tmp0.to(tl.float32)\n        tmp3 = tmp2.to(tl.float32)\n        tmp5 = tmp4.to(tl.float32)\n        tmp6 = tmp3 + tmp5\n        tmp7 = tmp6.to(tl.float32)\n        tmp8 = tmp7.to(tl.float32)\n        tmp9 = tmp1 + tmp8\n        tmp10 = tmp9 * tmp9\n        tmp11 = tl.broadcast_to(tmp10, [XBLOCK, R0_BLOCK])\n        tmp13 = _tmp12 + tmp11\n        _tmp12 = tl.where(r0_mask & xmask, tmp13, _tmp12)\n    tmp12 = tl.sum(_tmp12, 1)[:, None]\n    for r0_offset in tl.range(0, r0_numel, R0_BLOCK):\n        r0_index = r0_offset + r0_base\n        r0_mask = r0_index < r0_numel\n        roffset = r0_offset\n        rindex = r0_index\n        r0_1 = r0_index\n        tmp14 = tl.load(in_out_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp16 = tl.load(in_ptr0 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp18 = tl.load(in_ptr1 + (r0_1 + 2048*x0), r0_mask & xmask, eviction_policy='evict_first', other=0.0).to(tl.float32)\n        tmp30 = tl.load(in_ptr2 + (r0_1), r0_mask, eviction_policy='evict_last', other=0.0).to(tl.float32)\n        tmp15 = tmp14.to(tl.float32)\n        tmp17 = tmp16.to(tl.float32)\n        tmp19 = tmp18.to(tl.float32)\n        tmp20 = tmp17 + tmp19\n        tmp21 = tmp20.to(tl.float32)\n        tmp22 = tmp21.to(tl.float32)\n        tmp23 = tmp15 + tmp22\n        tmp24 = tl.full([1, 1], 2048.0, tl.float32)\n        tmp25 = (tmp12 / tmp24)\n        tmp26 = tl.full([1, 1], 1e-06, tl.float32)\n        tmp27 = tmp25 + tmp26\n        tmp28 = libdevice.rsqrt(tmp27)\n        tmp29 = tmp23 * tmp28\n        tmp31 = tmp30.to(tl.float32)\n        tmp32 = tl.full([1, 1], 1.0, tl.float32)\n        tmp33 = tmp31 + tmp32\n        tmp34 = tmp29 * tmp33\n        tmp35 = tmp34.to(tl.float32)\n        tl.store(in_out_ptr0 + (r0_1 + 2048*x0), tmp35, r0_mask & xmask)\n",
+      "boundary": {
+        "function_sha256": "631ad7c50634b430b32d6871f23531a73a979bae4af2cdbfc8f26411a582b877",
+        "size_hints": {
+          "x": 2048,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_out_ptr0": "*bf16",
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "semantic_key": "1e9098fc5f44a93704d871eb734bb835719ed62cfce8b8d180eb3238d03b8365",
+      "allowed_configs": [
+        {
+          "kwargs": {
+            "R0_BLOCK": 1024,
+            "XBLOCK": 2
+          },
+          "num_ctas": 1,
+          "num_stages": 1,
+          "num_warps": 8
+        },
+        {
+          "kwargs": {
+            "XBLOCK": 2,
+            "R0_BLOCK": 512
+          },
+          "num_warps": 8,
+          "num_stages": 1,
+          "num_ctas": 1
+        }
+      ],
+      "layouts": [
+        {
+          "rows": 16,
+          "argument_names": [
+            "in_out_ptr0",
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                16,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            16,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "in_out_ptr0"
+          ],
+          "intrinsic_alias_parameters": [
+            "in_out_ptr0"
+          ]
+        },
+        {
+          "rows": 24,
+          "argument_names": [
+            "in_out_ptr0",
+            "in_ptr0",
+            "in_ptr1",
+            "in_ptr2",
+            "xnumel",
+            "r0_numel"
+          ],
+          "argument_layout": [
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                24,
+                2048
+              ],
+              "stride": [
+                2048,
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            {
+              "shape": [
+                2048
+              ],
+              "stride": [
+                1
+              ],
+              "dtype": "torch.bfloat16",
+              "device": "cuda:0",
+              "storage_offset": 0
+            },
+            24,
+            2048
+          ],
+          "selected_config": {
+            "kwargs": {
+              "XBLOCK": 2,
+              "R0_BLOCK": 1024
+            },
+            "num_warps": 8,
+            "num_stages": 1,
+            "num_ctas": 1
+          },
+          "written_parameters": [
+            "in_out_ptr0"
+          ],
+          "intrinsic_alias_parameters": [
+            "in_out_ptr0"
+          ]
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "component_sha256": "8c2ca113c5597e9697fb9f0b7171ae8dc97e7062de1c7acd70f972bca3e96a74",
+    "chain_sha256": "4bf474168db729b7df8fec43ccc2cd8197d945a996a3985de3db242185aeb43d",
+    "quality_sha256": "9f4ca856ba3e6a8828251428bb2b1df90b60b40524b4399c7f1b4d5ba5821db6"
+  }
+}

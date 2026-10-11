@@ -15,6 +15,7 @@ LAYERS = 18
 KERNEL_SHA256 = "59756281b45716c0c5f25b18e331612de529e24a33cc4b37ec93efc7ab3e7379"
 _INSTALLED = False
 _GEMV: Any = None
+_M16: Any = None
 _OP: Any = None
 _COUNTS: dict[int, Counter] = {}
 _PRECOMPILE_COUNT = 0
@@ -47,6 +48,26 @@ def _small_impl(x: "torch.Tensor", weight: "torch.Tensor",
     counts = _COUNTS.setdefault(m, Counter())
     capturing = torch.cuda.is_current_stream_capturing()
     phase = "capture" if capturing else "eager"
+    if m == 16:
+        reason = None
+        if _M16 is None:
+            reason = "native_m16_unavailable"
+        elif (tuple(x.shape) != (16, SHAPE[1]) or tuple(weight.shape) != SHAPE
+              or x.dtype != torch.bfloat16 or weight.dtype != torch.bfloat16
+              or not x.is_cuda or not weight.is_cuda or x.device != weight.device):
+            reason = "m16_shape_dtype_device"
+        elif not x.is_contiguous() or x.data_ptr() % 16:
+            reason = "m16_input_layout"
+        elif not weight.is_contiguous() or weight.data_ptr() % 16:
+            reason = "m16_weight_layout"
+        if reason:
+            counts[f"{phase}_fallback_{reason}"] += 1
+            return torch.nn.functional.linear(x, weight)
+        # Native allocates a fresh output on the current device/stream. Use the
+        # original weight exactly as F.linear does; M1..8 retain their clone.
+        y = _M16(x, weight)
+        counts[f"{phase}_kernel_calls"] += 1
+        return y
     reason = None
     if not 1 <= m <= 8:
         reason = "rows"
@@ -79,7 +100,7 @@ def _fake(x: "torch.Tensor", weight: "torch.Tensor",
 
 def install(worker=None) -> bool:
     """After init_device, before load_model; only the exact 2B profile is accepted."""
-    global _INSTALLED, _GEMV, _OP
+    global _INSTALLED, _GEMV, _M16, _OP
     del worker
     if not enabled():
         raise RuntimeError("2B BA requires qwen35-2b-mxfp8-champion-v1")
@@ -93,6 +114,9 @@ def install(worker=None) -> bool:
         if getattr(UnquantizedLinearMethod, marker, False):
             raise RuntimeError(f"conflicting BA adapter: {marker}")
     _GEMV = load_kernel()
+    # The worker loads the native extension before installing BA. Resolve its
+    # capability here, without a CUDA query or extension load at module import.
+    _M16 = getattr(torch.ops.mxfp8_sm120, "bf16_ba_m16", None)
     # Resolve forward annotations for torch.library's schema inference.
     globals()["torch"] = torch
     _small_impl.__annotations__ = {name: torch.Tensor for name in
@@ -159,20 +183,22 @@ def inspect_worker(worker) -> dict:
             "ba_shape": list(SHAPE), "ba_layer_count": len(names), "ba_layers": sorted(names),
             "clone_bytes": clone_bytes, "clone_bitwise_equal": True,
             "precompile_invocations": _PRECOMPILE_COUNT,
+            "native_m16_available": _M16 is not None,
+            "kernel_rows": list(range(1, 9)) + ([16] if _M16 is not None else []),
             "counts_by_m": {str(m): dict(c) for m, c in sorted(_COUNTS.items())},
             "adapter_sha256": sha(__file__), "kernel_path": str(Path(_GEMV.__file__).resolve()),
             "kernel_sha256": sha(_GEMV.__file__), "b12x_version": version("b12x"),
             "vllm_version": version("vllm"),
             "receipt_semantics": "Actual eager/capture launches; graph replay does not increment Python counters",
-            "arithmetic": "128-thread strided FP32 accumulation and reduction, then BF16; not cuBLAS bitwise equivalence"}
+            "arithmetic": "M1..8: 128-thread strided FP32 accumulation and reduction, then BF16; not cuBLAS bitwise equivalence. M16: full-K BF16 MMA, FP32 accumulation, then BF16; audited F.linear-equivalent operation order"}
 
 
 def verify_capture(worker, *, required_rows=(4,)) -> dict:
     receipt = inspect_worker(worker)
-    if not required_rows or any(type(m) is not int or not 1 <= m <= 8 for m in required_rows):
-        raise ValueError("required_rows must contain actual captured M in 1..8")
+    if not required_rows or any(type(m) is not int or m not in (*range(1, 9), 16) for m in required_rows):
+        raise ValueError("required_rows must contain actual captured M in 1..8 or 16")
     missing = [m for m in required_rows if _COUNTS.get(m, {}).get("capture_kernel_calls", 0) == 0]
-    bad = {m: dict(c) for m, c in _COUNTS.items() if 1 <= m <= 8
+    bad = {m: dict(c) for m, c in _COUNTS.items() if m in (*range(1, 9), 16)
            and any("fallback" in key and value for key, value in c.items())}
     if missing or bad:
         raise RuntimeError(f"2B BA capture missing={missing}, small-M fallback={bad}")

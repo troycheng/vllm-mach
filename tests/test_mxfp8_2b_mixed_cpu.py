@@ -165,23 +165,23 @@ class MixedPortContracts(unittest.TestCase):
             layer = Layer()
             qkv, out = FakeTensor("qkv", 200), FakeTensor("out", 200)
 
-            def run(decodes, prefills, *, actual=None, ids=None, spec=0, tokens=None):
+            def run(decodes, prefills, *, actual=None, ids=None, spec=0, tokens=None, masks=None):
                 layer.decode_tokens = decodes
                 layer.ids = FakeTensor("ids", ids if ids is not None else decodes + prefills)
                 layer.md = NS(num_decodes=decodes, num_prefills=prefills,
                               num_decode_tokens=decodes if tokens is None else tokens,
                               num_actual_tokens=actual if actual is not None else decodes + prefills,
-                              num_spec_decodes=spec, spec_sequence_masks=None,
+                              num_spec_decodes=spec, spec_sequence_masks=masks,
                               non_spec_state_indices_tensor=layer.ids)
                 events.clear()
                 return layer._forward_core(qkv, FakeTensor("b", 200),
                                            FakeTensor("a", 200), out, "sentinel")
 
-            for d in (24, 160):
+            for d in (1, 23, 24, 160):
                 self.assertEqual(run(d, 2), "stock-result")
                 self.assertEqual([e[0] for e in events if isinstance(e, tuple)],
                                  (["validate", "materialize", "decode", "after"]
-                                  if d == 24 else ["materialize", "decode", "after"]))
+                                  if d == 1 else ["materialize", "decode", "after"]))
                 materialize = next(e for e in events if isinstance(e, tuple)
                                    and e[0] == "materialize")
                 decode = next(e for e in events if isinstance(e, tuple)
@@ -196,8 +196,7 @@ class MixedPortContracts(unittest.TestCase):
                 self.assertIs(materialize[2][2], decode[2][8])
                 self.assertNotIn("stock-decode", [e[0] for e in events if isinstance(e, tuple)])
 
-            for d, p, actual, ids, spec, tokens in ((23, 1, None, None, 0, None),
-                                                    (161, 1, None, None, 0, None),
+            for d, p, actual, ids, spec, tokens in ((161, 1, None, None, 0, None),
                                                     (0, 2, 2, None, 0, None),
                                                     (24, 0, 24, None, 0, None),
                                                     (24, 1, None, 24, 0, None),
@@ -209,7 +208,13 @@ class MixedPortContracts(unittest.TestCase):
                 self.assertIn(("fallback", d, p), events)
                 self.assertFalse(any(e[0] in ("materialize", "decode") for e in events
                                      if isinstance(e, tuple)))
-            self.assertEqual(mixed.snapshot()["counts_by_layer"]["layer.0"]["eager_mixed_hit"], 2)
+            run(1, 2, masks=object())
+            self.assertIn(("fallback", 1, 2), events)
+            self.assertFalse(any(e[0] in ("materialize", "decode") for e in events
+                                 if isinstance(e, tuple)))
+            self.assertEqual(mixed.snapshot()["counts_by_layer"]["layer.0"]["eager_mixed_hit"], 4)
+            self.assertEqual(mixed.snapshot()["scope"],
+                             "non-spec mixed D1..160; stock convolution and prefill")
 
 
 if __name__ == "__main__":
