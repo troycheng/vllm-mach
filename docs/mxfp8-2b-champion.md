@@ -2,7 +2,7 @@
 
 `qwen35-2b-mxfp8-champion-v1` serves Qwen3.5-2B on one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It has its own checkpoint builder, launcher and worker profile. Use a self-contained checkpoint reconstructed from the [public BF16 model](https://huggingface.co/Qwen/Qwen3.5-2B/tree/15852e8c16360a2fea060d615a32b45270f8a8fc); no private quantized checkpoint, calibration fixture or replacement-code asset is needed. The [model guide](mxfp8-2b-model.md) describes the exact conversion and file identities.
 
-The current update integrates native BF16 BA M16, mixed GDN D1–160 coverage and the complete FULL16/FULL24 PDL dependency chain. The same launcher enables these changes automatically from the prepared checkpoint.
+The default profile integrates native BF16 BA M16, mixed GDN D1–160 coverage and the complete FULL16/FULL24 PDL dependency chain. An opt-in hybrid greedy head with Triton attention adds **12.41% at c16 and 11.69% at c24** in the paired 3k/1k comparison below.
 
 ## Build and prepare
 
@@ -58,9 +58,32 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   --host 0.0.0.0 --served-model-name q35-2b-study
 ```
 
-After startup, `http://localhost:8000/v1/models` lists `q35-2b-study`. The launcher checks the installed package versions and runtime sources, hashes the full checkpoint, and checks the worker's graph and operator state before serving. `--print-command` displays its underlying vLLM arguments without starting a worker. `--quality-rows 4`, `32` or `64` selects a separate fixed-row numerical check mode; use the default production mode for serving and throughput measurements.
+After startup, `http://localhost:8000/v1/models` lists `q35-2b-study`. The launcher checks the installed package versions and runtime sources, hashes the full checkpoint, and checks the worker's graph and operator state before serving. `--print-command` displays JSON containing the underlying vLLM `argv` and a reproducible Mach `launch_command`, including the head selection, without starting a worker. `--quality-rows 4`, `32` or `64` selects a separate fixed-row numerical check mode; use the default production mode for serving and throughput measurements.
 
 The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and the complete BF16 vocabulary head, FP32 SSM, FlashAttention 2, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Native MXFP8 projections, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16 and pinned asynchronous GDN reset-ID uploads run under the 2B profile. Exact FULL16/FULL24 captures also use the complete PDL dependency chain. The graph policy preserves FULL decode captures at 4/8/16/24/32/48/64/96/128/160 rows and routes exact 2048-token prefill or mixed batches to PIECEWISE mode. Batches above 160 tokens with a size other than 2048 use NONE without padding. Prefix caching and LoRA are outside this profile.
+
+## Hybrid head and Triton attention
+
+Add `--attention-backend TRITON_ATTN --hybrid-head` to the 2B serve command above. These switches independently select attention and head behavior; omitting them reproduces the FA2/full-head profile. The checkpoint, complete BF16 head weights, BF16 KV, FP32 SSM, cache capacity and scheduler geometry stay the same.
+
+For eligible greedy decode batches of at most 32 rows, the head uses an NVFP4 sidecar to propose 128 vocabulary candidates, refines their scores with the original BF16 weights and selects the result. The sidecar is built after model graph capture and kept separate from the tied BF16 embedding/head parameter. Prefill, larger batches, stochastic sampling, logprob requests, penalties, grammar and other logits processing use the original full head. Worker receipts record the selected backend and head setup; `vllm_mach.mxfp8.two_b.hybrid_head.inspect_worker` also returns actual successful dispatch counts.
+
+On the same RTX 5090, two opposite-order pairs measured the complete combination against the default champion. Each arm completed 560 requests and 560,000 output tokens. Throughput is total output tokens divided by total scored time per point.
+
+| Concurrency | Default champion tok/s | Hybrid + Triton tok/s | Gain |
+|---|---:|---:|---:|
+| c16 | 4309.05 | 4843.83 | +12.41% |
+| c24 | 5611.58 | 6267.61 | +11.69% |
+
+Mean time per output token fell from 3.589 to 3.169 ms at c16 and from 4.093 to 3.633 ms at c24. Mean TTFT increased from 124.16 to 134.04 ms and from 176.95 to 190.38 ms, respectively.
+
+An independent run of the packaged code completed another 560 requests / 560,000 output tokens across both arms. It measured **4295.10 → 4801.96 tok/s (+11.80%) at c16** and **5594.33 → 6209.52 (+11.00%) at c24**. Runtime counters recorded 284,909 successfully executed hybrid rows. The wheel contains all 101 source-manifest files with matching hashes.
+
+The packaged head was separately checked on actual free-running generation: 256 frozen real-text prompts at cohorts 16 and 24, 128 output tokens per request, totaling 512 requests and 65,536 generated tokens. For all 64,895 actual hybrid decisions, the candidate set contained the same-state full-BF16 winner and the chosen token had the full-BF16 maximum score. One M24 decision selected a different token tied at BF16 score 20.375. Random sampling, logprobs and penalty requests all exercised the original fallback. The head is a candidate approximation, so this is an observed fidelity result rather than a guarantee of identical output for every prompt.
+
+Triton attention's fixed-token check used the original 256 queries / 10,479 gold tokens at each cohort, with zero repeat difference. Against the same BF16 reference, M24 MAE improved from 0.04941809 to 0.04782973 (−3.21%); the paired 95% interval for the absolute change was [−0.00284354, −0.00030487]. M16 changed from 0.04915289 to 0.04928728 (+0.27%), with interval [−0.00121174, +0.00145345]. Attention changes numerical results; these are logprob fidelity measurements.
+
+The [result data](data/mxfp8-2b-hybrid-triton-20261011.json) include individual runs, source hashes and actual-path counters. The six-point table farther below remains the FA2/full-head snapshot; this combination has been qualified at c16/c24.
 
 ## Measurement boundary
 

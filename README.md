@@ -157,7 +157,7 @@ For block-FP8, use image `vllm-mach:fp8`, entry point `vllm-mach-fp8-bench`, mod
 |---|---|---|
 | MXFP6 Dense | Native W6A8; TP2 AllReduce/residual/RMSNorm fusion; fused SwiGLU, GDN and MXFP8 activation producers; persistent GDN and BA overlap; lossless and owner prefill | [Native integration](docs/native-mxfp6.md), [producer fusion](docs/dense-producer-fusion.md), [AR/Norm/quantization](docs/ar-norm-mxfp8.md), [GDN](docs/gdn-decode.md), [prefill](docs/long-prefill.md) |
 | MXFP6 MoE | Grouped native expert kernels; prefill/decode graphs; fused TP2 communication; non-expert projection dispatch tuned at selected physical M values from 32 to 160 | [MoE serving](docs/qwen35-moe.md), [projection dispatch](docs/moe-projection-20260923.md) |
-| MXFP8 2B | Native W8A8, BF16 BA M1–8/M16, ordered FP32 GDN with mixed D1–160 and pinned reset IDs, exact FULL16/FULL24 PDL, BF16 KV/head and exact2048 piecewise graphs | [2B champion](docs/mxfp8-2b-champion.md) |
+| MXFP8 2B | Native W8A8, BF16 BA M1–8/M16, ordered FP32 GDN with mixed D1–160 and pinned reset IDs, exact FULL16/FULL24 PDL, BF16 KV/head and exact2048 piecewise graphs; optional K128 hybrid greedy head and Triton attention | [2B champion](docs/mxfp8-2b-champion.md) |
 | MXFP8 4B | Native W8A8 and dual-activation MLP/QKVZ kernels; small-M BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation choices and FULL/PW graph routing | [Complete champion components](docs/mxfp8-champion.md#required-parts) |
 | Block-FP8 4B | N64 GEMM tiles; ordered low-M GEMM; fused SiLU/block quantization; mixed decode/prefill FA2; matched RMS compilation choices | [Linear](docs/fp8-linear.md), [activation](docs/fp8-activation.md), [attention](docs/fp8-attention.md) |
 
@@ -168,6 +168,8 @@ Mach packages these integrations directly. The block-FP8 linear routes are also 
 All throughput tables use **3000 input / 1000 output tokens**, measured in **output tokens/s**. `c` denotes concurrent requests; `M` in kernel and fidelity reports denotes physical batch rows. Results compare the complete configurations described in each linked report.
 
 ### Qwen3.5-2B MXFP8 — one RTX 5090, TP1
+
+The opt-in **hybrid greedy head + Triton attention** adds **12.41% at c16** (4309.05 → 4843.83 tok/s) and **11.69% at c24** (5611.58 → 6267.61) over the BA-M16/low-D/PDL champion, measured with two opposite-order 3k/1k pairs on the same GPU. An independent packaged-code pair confirmed **+11.80% / +11.00%**. Enable it with `--attention-backend TRITON_ATTN --hybrid-head`. Actual-generation checks found no omitted BF16 winner or lower-scored selection across 64,895 hybrid decisions; one equal-score token tie differed. See the [configuration, attention fidelity and raw results](docs/mxfp8-2b-champion.md#hybrid-head-and-triton-attention).
 
 The first study measured **+9.05%** median paired six-point throughput against community block-FP8 on GPU1. The second study measured **+2.56%** median paired throughput for pinned GDN reset-ID uploads against that first champion on GPU7. Both used four controlled pairs at c4/c16/c24/c32/c48/c64. These percentages have different baselines and GPUs; they are not a measured combined gain over community FP8. The public package reproduced all 438 tensors and the complete checkpoint SHA. Its same-card six-point regression measured +0.38% against the selected champion; fixed-token M4/M32/M64 replay matched the reference logprobs exactly. See the [2B guide](docs/mxfp8-2b-champion.md) for setup and evidence boundaries.
 

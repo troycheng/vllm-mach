@@ -7,11 +7,14 @@ from pathlib import Path
 import sys
 import tempfile
 
-from .profile import NAME, quality_contract
+from .profile import ATTENTION_BACKENDS, NAME, quality_contract
 
 
-def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-study", quality_rows=None):
+def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-study",
+               quality_rows=None, attention_backend="FLASH_ATTN"):
     from .graph_policy import CAPTURE_SIZES
+    if attention_backend not in ATTENTION_BACKENDS:
+        raise ValueError("Unsupported 2B attention backend")
     cfg = quality_contract(quality_rows) if quality_rows is not None else {
         "max_model_len": 16384, "max_num_seqs": 160, "max_num_batched_tokens": 2048,
         "kv_cache_memory_bytes": 19 * 2**30,
@@ -25,14 +28,17 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-
             "--max-num-batched-tokens", str(cfg["max_num_batched_tokens"]),
             "--kv-cache-memory", str(cfg["kv_cache_memory_bytes"]), "--kv-cache-dtype", "bfloat16",
             "--no-enable-prefix-caching", "--mamba-ssm-cache-dtype", "float32",
-            "--attention-backend", "FLASH_ATTN", "--quantization", "compressed-tensors",
+            "--attention-backend", attention_backend, "--quantization", "compressed-tensors",
             "--linear-backend", "flashinfer_cutlass", "--seed", "20260907",
             *(["--enable-chunked-prefill", "--logprobs-mode", "raw_logprobs", "--disable-log-stats"]
               if quality_rows is not None else []),
             "--compilation-config", json.dumps(cfg["compilation_config"], separators=(",", ":"))]
 
 
-def configure_environment(directory, *, quality_rows=None):
+def configure_environment(directory, *, quality_rows=None, attention_backend="FLASH_ATTN",
+                          hybrid_head=False):
+    if attention_backend not in ATTENTION_BACKENDS:
+        raise ValueError("Unsupported 2B attention backend")
     if quality_rows is not None:
         quality_contract(quality_rows)
     from ..install import load_manifest
@@ -46,6 +52,8 @@ def configure_environment(directory, *, quality_rows=None):
                 "VLLM_MACH_MXFP8_RUN_DIR": str(directory), "MX8_NATIVE_POLICY": "all",
                 "VLLM_USE_V2_MODEL_RUNNER": "1", "VLLM_FLASH_ATTN_VERSION": "2",
                 "VLLM_MACH_2B_PINNED_IDS": "1", "TORCHINDUCTOR_COMPILE_THREADS": "1",
+                "VLLM_MACH_2B_ATTENTION_BACKEND": attention_backend,
+                "VLLM_MACH_2B_HYBRID_HEAD": "1" if hybrid_head else "0",
                 "VLLM_USE_AOT_COMPILE": "1", "VLLM_DISABLE_COMPILE_CACHE": "0",
                 "TORCH_COMPILE_FORCE_DISABLE_CACHES": "0", "TORCHINDUCTOR_FORCE_DISABLE_CACHES": "0",
                 "VLLM_MACH_MXFP8_MODE": "production" if quality_rows is None else "quality",
@@ -70,15 +78,22 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--served-model-name", default="q35-2b-study")
     parser.add_argument("--quality-rows", type=int, choices=(4, 32, 64))
+    parser.add_argument("--attention-backend", choices=ATTENTION_BACKENDS, default="FLASH_ATTN")
+    parser.add_argument("--hybrid-head", action="store_true",
+                        help="Use K128 NVFP4 proposals with BF16 refinement for eligible greedy decode")
     parser.add_argument("--print-command", action="store_true")
     args = parser.parse_args()
     model = args.model.resolve()
     argv = build_argv(model, host=args.host, port=args.port,
-                      served_model_name=args.served_model_name, quality_rows=args.quality_rows)
+                      served_model_name=args.served_model_name, quality_rows=args.quality_rows,
+                      attention_backend=args.attention_backend)
     if args.print_command:
-        print(json.dumps(argv, indent=2))
+        launch = [sys.executable, "-m", __package__ + ".serve",
+                  *[arg for arg in sys.argv[1:] if arg != "--print-command"]]
+        print(json.dumps({"argv": argv, "launch_command": launch}, indent=2))
         return
-    settings = configure_environment(args.run_dir, quality_rows=args.quality_rows)
+    settings = configure_environment(args.run_dir, quality_rows=args.quality_rows,
+                                     attention_backend=args.attention_backend, hybrid_head=args.hybrid_head)
     from .profile import check_environment, check_runtime_sources, run_contract
     from .model import validate_model
     check_environment()
