@@ -27,11 +27,29 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 | Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
 | Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
 
-![Serving throughput by model size](docs/assets/model-throughput.svg)
+MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤32. The 4B MXFP8 champion uses calibrated FP8 KV and its own refined head.
 
-See the [performance report](docs/performance.md) for per-concurrency throughput, latency, precision and source data.
+### Qwen3.5-2B · MXFP8
 
-MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤32. The 4B MXFP8 champion uses calibrated FP8 KV and its own refined head. Numerical results are in the [fidelity table](docs/performance.md#numerical-fidelity).
+![2B FP8 and MXFP8 champion throughput](docs/assets/qwen35-2b-throughput.svg)
+
+### Qwen3.5-4B · MXFP8
+
+![4B FP8 and MXFP8 champion throughput](docs/assets/qwen35-4b-throughput.svg)
+
+### Qwen3.8-27B Dense · FP8, NVFP4 and MXFP6
+
+![27B FP8, NVFP4 and MXFP6 throughput](docs/assets/qwen38-27b-throughput.svg)
+
+![27B precision against BF16](docs/assets/qwen38-27b-precision.svg)
+
+### Qwen3.5-35B-A3B MoE · FP8, NVFP4 and MXFP6
+
+![35B-A3B FP8, NVFP4 and MXFP6 throughput](docs/assets/qwen35-35b-a3b-throughput.svg)
+
+![35B-A3B precision against BF16](docs/assets/qwen35-35b-a3b-precision.svg)
+
+See the [performance report](docs/performance.md) for all point values, gains against FP8 and NVFP4, latency, precision and source data. The [4B block-FP8 comparison](docs/performance.md#qwen35-4b-block-fp8) has its own chart.
 
 ## Choose and run a profile
 
@@ -79,7 +97,7 @@ For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `
 
 ## Documentation
 
-- [Performance](docs/performance.md): throughput curves, all point values, latency and numerical fidelity.
+- [Performance](docs/performance.md): per-model FP8/NVFP4 comparisons, all point values, latency and numerical fidelity.
 - [Guide index](docs/README.md): installation, model preparation, operator details and development.
 - [Benchmark protocol](docs/mxfp8-benchmark.md): fixed requests, warmup, counts and metrics.
 - [Releases](https://github.com/troycheng/vllm-mach/releases): packages and release notes.

@@ -14,7 +14,7 @@ Start with [performance by model size](performance.md), then use the guide for t
 
 ## Performance and precision
 
-- [Complete performance report](performance.md): charts, all concurrency points, throughput, latency and fidelity.
+- [Complete performance report](performance.md): per-model FP8/NVFP4 throughput charts, all concurrency points, latency and BF16-reference fidelity.
 - [MXFP8 benchmark protocol](mxfp8-benchmark.md): public fixed requests and metric definitions.
 - [4B MXFP8 validation](mxfp8-champion.md#validation) and [block-FP8 validation](fp8-profile.md#precision-and-qualification): source identities and numerical checks.
 - [Dense optimization breakdown](dense-gains-aligned-baseline-20260920.md), [MoE breakdown](moe-gains-fp8-baseline-20260920.md) and [MXFP6 fidelity](profile-fidelity-20260917.md).
