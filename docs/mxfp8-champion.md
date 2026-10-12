@@ -1,11 +1,10 @@
 # Qwen3.5-4B MXFP8 champion profile
 
-`qwen35-4b-mxfp8-champion-v1` is an explicit TP1 integration for one RTX 5090 (SM120), Linux x86-64 and Python 3.12. It is separate from the released TP2 MXFP6 Dense/MoE profiles. The public-base source build passed checkpoint reconstruction, two starts in the same run directory, fixed-M precision and all six serving points. See the [October 6 qualification](mxfp8-qualification-20261006.md) for exact revisions, results and limits. The dual kernels are merged in [mxfp6 PR #8](https://github.com/Nekofish-L/mxfp6_sm120/pull/8) at `15a56aa2774552d0584d8fc6b621b41dc173f30b`. Download the exact L0 model asset from the [versioned release](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1), then follow the [model preparation guide](mxfp8-model.md).
+`qwen35-4b-mxfp8-champion-v1` serves Qwen3.5-4B on one RTX 5090 (SM120), Linux x86-64 and Python 3.12. Download the L0 model asset from the [versioned release](https://github.com/troycheng/vllm-mach/releases/tag/qwen35-4b-mxfp8-assets-v1), then follow the [model preparation guide](mxfp8-model.md).
 
 ## Required parts
 
-The complete profile includes all thirteen parts below. A subset is not the
-champion, and historical whole-profile gains do not identify a kernel's gain.
+The profile combines the following optimizations:
 
 | Part | Required behavior |
 | --- | --- |
@@ -23,9 +22,7 @@ champion, and historical whole-profile gains do not identify a kernel's gain.
 | 12. Fixed model | BF16 revision `851bf6…` source, exact L0 codes, 595 verified output tensors, tokenizer/config and KV metadata |
 | 13. Build/run/measurement | Official source wheel, bundled Mach runtime installer, unified lifecycle/receipts and fixed six-point client |
 
-The FP4 head and FP8 KV are approximate numerical paths. FP32 state and BF16
-refinement do not make the whole profile BF16-equivalent. FlashInfer's head
-backend named `b12x` is distinct from the standalone BA package.
+FP4 candidate scoring and FP8 KV reduce precision; measured BF16 error is listed in [Validation](#validation). The FlashInfer `b12x` head backend and the standalone BA package are separate implementations.
 
 ## Build, prepare, serve, benchmark
 
@@ -57,9 +54,7 @@ docker run --rm --network host --entrypoint vllm-mach-mxfp8-bench \
 
 Create the host output/run parents first; `/output/model` and `/runs/sixpoint`
 must be new. Download the versioned L0 asset and check its [exact SHA-256](mxfp8-model.md#download-the-l0-asset) before model preparation.
-The image builds both official kernel libraries from source and applies Mach's
-bundled source profile. It does not consume experimental images, old runtime
-patch directories, old binaries, parent caches or calibration requests.
+The image builds both official kernel libraries from source and applies Mach's bundled source profile.
 
 For a faster package mirror, set Docker build argument `PIP_INDEX_URL` to its
 HTTPS simple index. Both build-tool wheels are verified against fixed PyPI
@@ -91,8 +86,7 @@ are disabled by the profile.
 Both quality modes resolve to `FULL_AND_PIECEWISE`; PIECEWISE covers only the
 same small capture sizes, with no PW2048. Authorized fixed-gold fixtures use
 256 queries/10479 gold tokens per M, whole-cohort queuing, raw decode logprobs and one repeat of the first cohort.
-They are not bundled or claimed public. Quality mode must not be used to score
-production throughput.
+Use production mode for throughput measurements.
 
 Keep these receipts with any qualification result:
 
@@ -105,8 +99,7 @@ Keep these receipts with any qualification result:
   native/dual/BA/GDN/head/KV/graph/parallel/compile preparation. Python and graph
   construction counters do not count CUDA graph replay.
 - Benchmark `sixpoint.json` and raw phase files: all six points, zero failures,
-  1040 scored requests and 1,040,000 scored output tokens. `complete=true`
-  certifies the client protocol, not quality, backend coverage or release acceptance.
+  1040 scored requests and 1,040,000 scored output tokens.
 
 Each launcher invocation creates an independent `cache/startup-*` directory
 inside its run directory. It preserves the original AOT compilation mode and
@@ -118,10 +111,17 @@ Torch caches off is incompatible with its AOT precompiler. This design costs
 startup compilation time and retained cache storage. After stopping all workers
 that use a run directory, its old startup-cache subdirectories may be removed.
 
-A fresh run directory gives fresh compiler caches. Qualification must compare
-raw gold records and inspect live route/state/restart behavior; matching build
-or model hashes alone does not establish execution equivalence.
-
 ## Performance
 
-The source-built champion measures +20.83–36.77% over the community FP8 screen across six concurrency points. See the [complete point table and charts](performance.md#qwen35-4b), [precision and build qualification](mxfp8-qualification-20261006.md), and [benchmark protocol](mxfp8-benchmark.md). Historical acceptance observations remain in the qualification JSON alongside the source-built results.
+The champion improves throughput by **20.83–36.77%** over community FP8 across c4/c16/c24/c32/c48/c64. See the [point table and charts](performance.md#qwen35-4b) and [benchmark protocol](mxfp8-benchmark.md).
+
+## Validation
+
+The October 6 source build used Mach `ace36a3db9e5ca1db422346c9c307f2aa840bcdd` and native kernels `15a56aa2774552d0584d8fc6b621b41dc173f30b`. The [measurement record](data/mxfp8-qualification-20261006.json) contains build identities, runtime hashes and all serving results.
+
+| Physical rows | Queries | Gold tokens | Changed logprobs vs accepted champion | MAE vs BF16 |
+|---:|---:|---:|---:|---:|
+| 32 | 256 | 10479 | 0 | 0.049038113196 |
+| 64 | 256 | 10479 | 0 | 0.053286047365 |
+
+The BF16 reference uses FLASH_ATTN and BF16 KV; this profile uses FLASHINFER and FP8 KV. Two starts in the same run directory rebuilt all 23 compiler bindings and eligible QKVZ/BA pairs. All 1,040 production requests completed and matched the accepted champion's output hashes. Native GPU tests covered packed activations, scales, output and changing-input graph replay.

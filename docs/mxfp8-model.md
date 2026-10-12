@@ -3,7 +3,7 @@
 `vllm-mach-mxfp8-prepare` reconstructs the fixed
 `qwen35-4b-mxfp8-champion-v1` checkpoint on CPU. Reconstruction from the public
 BF16 source and the exact L0 asset has passed full file and **595-tensor**
-validation in a clean public-base environment. The reconstructed checkpoint also passed [packaged GPU precision and six-point serving qualification](mxfp8-qualification-20261006.md).
+validation in a clean public-base environment. The reconstructed checkpoint also passed [packaged GPU precision and six-point serving qualification](mxfp8-champion.md#validation).
 See the [complete profile guide](mxfp8-champion.md) for build and serving steps.
 
 ## Inputs and access

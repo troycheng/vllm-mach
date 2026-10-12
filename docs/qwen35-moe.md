@@ -91,6 +91,6 @@ router/shared-expert schedule`.
 
 [Current performance](performance.md#qwen35-35b-a3b) lists the September 28 two-sweep means against the historical September 17 FP8 baseline at c4/c16/c24/c32. Full reaches 1096.93 / 2561.85 / 3073.56 / 3518.44 output tok/s. The measured default row had projection tuning disabled; the current launcher enables eligible tuning by default.
 
-The [configuration breakdown](moe-gains-fp8-baseline-20260920.md) records graph, sampler, communication, state and head increments. [Projection dispatch](moe-projection-20260923.md) covers physical rows 32–160. [Numerical fidelity](profile-fidelity-20260917.md) records default/full against BF16, FP8 and NVFP4 at controlled physical rows. Earlier September 17 serving and migration details remain in the [archived MoE report](archive.md#native-mxfp6-history).
+The [configuration breakdown](moe-gains-fp8-baseline-20260920.md) records graph, sampler, communication, state and head increments. [Projection dispatch](moe-projection-20260923.md) covers physical rows 32–160. [Numerical fidelity](profile-fidelity-20260917.md) records default/full against BF16, FP8 and NVFP4 at controlled physical rows.
 
 The September 28 cold-cache diagnostic recorded zero host dispatches for persistent GDN and BA overlap. Those routes are available and configured, but that sweep does not establish an isolated throughput gain from them.

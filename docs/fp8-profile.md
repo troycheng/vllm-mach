@@ -2,13 +2,13 @@
 
 `qwen35-4b-block-fp8-v1` is an explicit, independent profile for the existing Qwen3.5-4B compressed-tensors block-FP8 checkpoint on one RTX 5090 (SM120). It provides four separately selectable optimizations: n64 GEMM, ordered low-M GEMM, SiLU/block quantization and mixed FA2. It uses BF16 activations, KV cache and the ordinary model head, with FP32 SSM state.
 
-The [October 6 qualification](fp8-qualification.md) records byte-identical fixed-gold M4/M32/M64 results and one stock/all serving pair at c4/c16/c32/c64, with measured throughput changes of +9.03%/+6.18%/+5.97%/+6.99%. All 680 requests per arm succeed. The final source build has verified runtime byte identity to the tested image.
+[Validation](#precision-and-qualification) records byte-identical fixed-gold M4/M32/M64 results and one stock/all serving pair at c4/c16/c32/c64, with measured throughput changes of +9.03%/+6.18%/+5.97%/+6.99%. All 680 requests per arm succeed. The final source build has verified runtime byte identity to the tested image.
 
 The profile keeps the checkpoint's block-FP8 weights and FP32 block scales. MXFP8 E8M0 scales have a different format and cannot use this entry. The [MXFP8 champion profile](mxfp8-champion.md) and native MXFP6 profiles have their own installers and launchers.
 
 ## Build
 
-Build from the checkout containing `deploy/Dockerfile.fp8`. The existing `v0.1.1` MXFP6 release instructions do not install this profile.
+Build from `main` using `deploy/Dockerfile.fp8`.
 
 ```bash
 docker buildx build --load \
@@ -98,8 +98,10 @@ The launcher selects the packaged `production` recipe through `VLLM_MACH_FP8_COM
 
 The worker installs the recipe before generated modules are compiled and verifies binding coverage and actual launch configurations after warmup. Its receipt records the policy mode and hash, required/missing bindings and observed configurations. These are compilation/configuration records, not GPU execution counts. The separate `quality4`, `quality32` and `quality64` recipes belong to the matching precision-validation drivers; the serving launcher uses `production`. Model records still must pass against the matching stock arm after a recipe change.
 
-Each final fixed-M check covers 256 queries and 10,479 gold logprobs, with MAE zero and raw record bytes equal to its stock reference. The initial M4 RMS autotune mismatch was repaired by the exact recipes above. The [qualification report](fp8-qualification.md) separates these private-corpus precision checks from the public 3k/1k serving protocol, reports mean/p99 TTFT as well as throughput, and makes no statistical significance or individual feature-gain claim. The client summaries' `complete:false` means four selected points of a six-point protocol; all selected points succeed.
+Each fixed-M check at M4/M32/M64 uses 256 queries and 10,479 gold logprobs. All values and output record bytes match stock block-FP8; MAE, maximum absolute difference and repeat difference are zero. Build, checkpoint and record hashes are in the [measurement record](data/fp8-qualification-20261006.json).
 
-The final image is `sha256:f1423984dfd1d79d1de4bcb72a6ec7bc7e51ea3c29d8d1a5cc218d66a93fc55e`. All 85 compared installed runtime files, including both native libraries, are byte-identical to tested image `sha256:9eabff48de8a713589928824aef0b353dd92cab4e8e5fa05810b804441fe33e9`; only the native build-metadata source hash changes after whitespace cleanup. Checkpoint file hashes in the receipt are previously frozen identities reused through the same read-only model mount, with no inferred download source or new full-checkpoint hash pass.
+Serving completes 680 requests per arm across c4/c16/c32/c64. See the [throughput and latency tables](performance.md#qwen35-4b-block-fp8). Mean/p99 TTFT at c4 changes from 184.98/303.63 ms to 192.46/307.45 ms; the other three points improve both latency measures.
 
-The mixed FA2 algorithm is attributed to [LiRunGuo's vLLM PR #58013](https://github.com/vllm-project/vllm/pull/58013). Mach's contribution is its narrow backport and qualification. The SiLU entry is related to [vLLM PR #45055](https://github.com/vllm-project/vllm/pull/45055), while this profile retains its separately qualified scalar CUDA implementation. Upstream acceptance and Mach release qualification are separate milestones.
+For a stock comparison, use the same server settings and checkpoint/tokenizer with `VLLM_PLUGINS=''` and separate vLLM/Inductor/Triton caches. Benchmark both arms with the [public protocol](mxfp8-benchmark.md), selecting `--points 4 16 32 64` and separate output directories.
+
+The mixed FA2 algorithm is attributed to [LiRunGuo's vLLM PR #58013](https://github.com/vllm-project/vllm/pull/58013). The SiLU entry is related to [vLLM PR #45055](https://github.com/vllm-project/vllm/pull/45055).

@@ -34,6 +34,6 @@ CUDA_HOME=/usr/local/cuda MAX_JOBS=2 python setup.py bdist_wheel
 uv pip install --no-deps dist/vllm_mach_fp8_activation-*.whl
 ```
 
-Run `tests/test_fp8_activation_cpu.py` without Torch to verify opt-out identity, metadata selection, registration and worker lifecycle. The SM120 GPU suite passes FP8-byte/FP32-scale comparisons, fallback, changing-input graphs and mutation/fake/actual dynamic-compile contracts. The combined profile's [qualification](fp8-qualification.md) has byte-identical fixed-gold M4/M32/M64 records and successful four-point 3k/1k serving. It does not isolate SiLU's end-to-end gain or establish arbitrary-model/context equivalence.
+Run `tests/test_fp8_activation_cpu.py` without Torch to verify opt-out identity, metadata selection, registration and worker lifecycle. The SM120 GPU suite passes FP8-byte/FP32-scale comparisons, fallback, changing-input graphs and mutation/fake/actual dynamic-compile contracts. The combined profile's [qualification](fp8-profile.md#precision-and-qualification) has byte-identical fixed-gold M4/M32/M64 records and successful four-point 3k/1k serving.
 
 Historical prototype gains are not combined with the new measurements. The related upstream [#45055](https://github.com/vllm-project/vllm/pull/45055) includes the same warp scheduling direction plus vectorization/ROCm handling. Exact-source upstream component results and acceptance remain separate from Mach model/service qualification.
