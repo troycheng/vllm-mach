@@ -82,7 +82,7 @@ For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `
 - [Performance](docs/performance.md): throughput curves, all point values, latency and numerical fidelity.
 - [Guide index](docs/README.md): installation, model preparation, operator details and development.
 - [Benchmark protocol](docs/mxfp8-benchmark.md): fixed requests, warmup, counts and metrics.
-- [History](docs/archive.md): earlier EXL3 work, superseded experiments and release notes.
+- [Releases](https://github.com/troycheng/vllm-mach/releases): packages and release notes.
 
 The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.com/vllm-project/vllm/pull/60385). Mixed FA2 builds on [LiRunGuo's PR #58013](https://github.com/vllm-project/vllm/pull/58013); SiLU quantization work relates to [PR #45055](https://github.com/vllm-project/vllm/pull/45055). Mach includes its integrations directly.
 

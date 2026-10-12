@@ -16,7 +16,7 @@ Start with [performance by model size](performance.md), then use the guide for t
 
 - [Complete performance report](performance.md): charts, all concurrency points, throughput, latency and fidelity.
 - [MXFP8 benchmark protocol](mxfp8-benchmark.md): public fixed requests and metric definitions.
-- [4B MXFP8 qualification](mxfp8-qualification-20261006.md) and [block-FP8 qualification](fp8-qualification.md): source identities and numerical checks.
+- [4B MXFP8 validation](mxfp8-champion.md#validation) and [block-FP8 validation](fp8-profile.md#precision-and-qualification): source identities and numerical checks.
 - [Dense optimization breakdown](dense-gains-aligned-baseline-20260920.md), [MoE breakdown](moe-gains-fp8-baseline-20260920.md) and [MXFP6 fidelity](profile-fidelity-20260917.md).
 - [Normalized current data](data/model-performance.json); original receipts remain alongside it in `data/`.
 
@@ -24,13 +24,12 @@ Start with [performance by model size](performance.md), then use the guide for t
 
 | Area | Guides |
 |---|---|
-| Native integration and compatibility | [MXFP6](native-mxfp6.md), [MXFP8 installation](mxfp8-installation.md), [compatibility](compatibility.md) |
+| Native integration and compatibility | [MXFP6](native-mxfp6.md), [MXFP8 installation](mxfp8-installation.md) |
 | GDN and scheduling | [MXFP6 GDN](gdn-decode.md), [MXFP8 GDN](mxfp8-gdn.md), [FP16 SSM](fp16-ssm.md) |
 | Fusion and prefill | [Producers](dense-producer-fusion.md), [AR/Norm/MXFP8](ar-norm-mxfp8.md), [lossless prefill](lossless-prefill.md), [observed-shape prefill](long-prefill.md) |
 | MoE | [Projection dispatch](moe-projection-20260923.md), [model integration](qwen35-moe.md) |
-| Block-FP8 | [Linear](fp8-linear.md), [activation](fp8-activation.md), [attention](fp8-attention.md), [FA2 source check](fp8-fa2-source-check.md) |
-| Diagnostics | [B12X audit](b12x-audit.md); earlier EXL3 paths are in [history](archive.md) |
+| Block-FP8 | [Linear](fp8-linear.md), [activation](fp8-activation.md), [attention](fp8-attention.md) |
 
-## History and contribution
+## Contributing
 
-[Historical studies and release notes](archive.md) retain the earlier EXL3 and native results without mixing them into current setup. See [contribution requirements](../CONTRIBUTING.md) for source, correctness and performance evidence.
+See [contribution requirements](../CONTRIBUTING.md) for source, correctness and performance evidence.
