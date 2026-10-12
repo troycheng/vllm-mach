@@ -12,6 +12,29 @@ SOURCE_REV = 'eaa0acd6f5700913d10a422f6d4075614b9fb6be'
 SOURCE_BASE = f'https://github.com/troycheng/vllm-mach/blob/{SOURCE_REV}/docs/'
 GUIDE_BASE = 'https://github.com/troycheng/vllm-mach/blob/main/docs/'
 SOURCES = {}
+# Blue brand accents and neutral references, with GitHub-compatible backgrounds.
+CHART_THEME = {
+    'background': ('#ffffff', '#0d1117'),
+    'text': ('#111827', '#e6edf3'),
+    'muted': ('#526071', '#9da7b3'),
+    'axis': ('#8c98a8', '#6e7681'),
+    'grid': ('#cfd7e3', '#30363d'),
+    'fp8': ('#9ba6b7', '#778394'),
+    'nvfp4': ('#526279', '#a2b0c3'),
+    'default': ('#9bc4f7', '#284f7d'),
+    'full': ('#007bff', '#379bff'),
+    'emphasis': ('#0066cc', '#58a6ff'),
+    'interval': ('#354152', '#c9d1d9'),
+}
+
+
+def themed_svg(svg):
+    for role,(light,_) in CHART_THEME.items():
+        svg=svg.replace(light, f'var(--chart-{role}, {light})')
+    light=' '.join(f'--chart-{role}: {pair[0]};' for role,pair in CHART_THEME.items())
+    dark=' '.join(f'--chart-{role}: {pair[1]};' for role,pair in CHART_THEME.items())
+    css=f':root {{ {light} }} @media (prefers-color-scheme: dark) {{ :root {{ {dark} }} }}'
+    return svg.replace('<style type="text/css">', '<style type="text/css">'+css+'\n', 1)
 
 
 def load(name):
@@ -205,9 +228,11 @@ def plots(data, dest, preview_dir=None):
     plt.rcParams.update({'font.family':'DejaVu Sans', 'font.size':11, 'svg.fonttype':'none',
                          'svg.hashsalt':'mach-performance-20261012', 'axes.spines.top':False,
                          'axes.spines.right':False, 'axes.titleweight':'bold',
-                         'text.color':'#202936', 'axes.labelcolor':'#202936',
+                         'text.color':CHART_THEME['text'][0], 'axes.labelcolor':CHART_THEME['text'][0],
+                         'xtick.color':CHART_THEME['text'][0], 'ytick.color':CHART_THEME['text'][0],
+                         'axes.edgecolor':CHART_THEME['axis'][0], 'grid.color':CHART_THEME['grid'][0],
                          'hatch.linewidth':.6})
-    colors = {'fp8':'#8994a4', 'nvfp4':'#d58a21', 'default':'#537da2', 'full':'#087f8c'}
+    colors = {key:CHART_THEME[key][0] for key in ('fp8','nvfp4','default','full')}
     dest.mkdir(parents=True,exist_ok=True)
 
     def save(fig, name):
@@ -217,7 +242,7 @@ def plots(data, dest, preview_dir=None):
             fig.savefig(preview_dir/Path(name).with_suffix('.png'),dpi=150,facecolor='white')
         plt.close(fig)
         path=dest/name
-        path.write_text('\n'.join(line.rstrip() for line in path.read_text().splitlines())+'\n')
+        path.write_text('\n'.join(line.rstrip() for line in themed_svg(path.read_text()).splitlines())+'\n')
 
     for m in data['models']:
         large='nvfp4_tps' in m['points'][0]
@@ -245,16 +270,16 @@ def plots(data, dest, preview_dir=None):
             if large:
                 gain=f"Full {p['gain_pct']:+.1f}% vs FP8\n{p['nvfp4_gain_pct']:+.1f}% vs NVFP4"
             ax.text(i,top+ymax*.075,gain,ha='center',va='bottom',fontsize=10,
-                    color=colors['full'],fontweight='bold',linespacing=1.4)
+                    color=CHART_THEME['emphasis'][0],fontweight='bold',linespacing=1.4)
         ax.set(xlabel='Concurrent requests',ylabel='Output tokens/s',
                xticks=x,xticklabels=[f"c{p['c']}" for p in m['points']],
                ylim=(0,ymax*(1.32 if large else 1.24)))
         ax.yaxis.set_major_formatter(FuncFormatter(lambda y,_:f'{y:,.0f}'))
-        ax.set_axisbelow(True);ax.grid(axis='y',alpha=.18)
+        ax.set_axisbelow(True);ax.grid(axis='y',alpha=.65)
         ax.legend(frameon=False,fontsize=10,loc='lower left',bbox_to_anchor=(0,1.005),
                   ncols=len(series),borderaxespad=0)
         fig.suptitle(f"{m['title']} — throughput",fontsize=18,fontweight='bold',x=.09,ha='left',y=.975)
-        fig.text(.09,.89,f"Mach: {m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color='#4b5563')
+        fig.text(.09,.89,f"Mach: {m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color=CHART_THEME['muted'][0])
         fig.subplots_adjust(left=.09,right=.985,bottom=.14,top=.78)
         save(fig,f"{m['id']}-throughput.svg")
         if not large:
@@ -269,15 +294,15 @@ def plots(data, dest, preview_dir=None):
                 [intervals[k][1]-quality[k] for k in keys]]
         fig,ax=plt.subplots(figsize=(11.6,3.5))
         bars=ax.barh(list(range(4)),values,height=.55,color=[colors[k] for k in keys],
-                     xerr=bounds,error_kw={'ecolor':'#354152','capsize':3,'elinewidth':1},zorder=3)
+                     xerr=bounds,error_kw={'ecolor':CHART_THEME['interval'][0],'capsize':3,'elinewidth':1},zorder=3)
         bars[1].set_hatch('//');bars[1].set_edgecolor('#ffffff')
         for i,k in enumerate(keys):
             ax.text(intervals[k][1]+.004,i,f'{quality[k]:.5f}',va='center',fontsize=11)
         ax.set(yticks=list(range(4)),yticklabels=labels,xlim=(0,.285),
                xlabel='Gold-token logprob MAE vs BF16 · lower is better')
-        ax.invert_yaxis();ax.set_axisbelow(True);ax.grid(axis='x',alpha=.18)
+        ax.invert_yaxis();ax.set_axisbelow(True);ax.grid(axis='x',alpha=.65)
         fig.suptitle(f"{m['title']} — precision",fontsize=18,fontweight='bold',x=.09,ha='left',y=.97)
-        fig.text(.09,.86,'M32 · 256 queries / 10,479 fixed tokens · error bars: 95% query-bootstrap intervals',fontsize=10,color='#4b5563')
+        fig.text(.09,.86,'M32 · 256 queries / 10,479 fixed tokens · error bars: 95% query-bootstrap intervals',fontsize=10,color=CHART_THEME['muted'][0])
         fig.subplots_adjust(left=.23,right=.97,bottom=.19,top=.78)
         save(fig,f"{m['id']}-precision.svg")
 
