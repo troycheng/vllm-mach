@@ -49,7 +49,7 @@ The default launcher also enables persistent GDN at physical M1/2/4/8 and
 BA overlap at M16/24/32. Persistent changes arithmetic and supports FP32 or FP16 SSM storage
 with FP32 accumulation. Both routes have independent opt-outs and
 retain native execution for unsupported calls. See [GDN validation](gdn-decode.md)
-and the [current measurements](native-fidelity.md).
+and the [current measurements](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md).
 
 FP16 SSM is opt-in because it changes state precision. Owner prefill retains
 the source series' geometry checks and numerical verification mode; it chooses
@@ -95,7 +95,7 @@ including CPU routing/data checks and GPU graph/prefill checks. The standalone
 persistent harness additionally passed 16 FP32/FP16 × SD/DS × M1/2/4/8 cases with
 changing inputs, slot reuse, null-slot protection and bitwise graph/eager
 agreement. The rebuilt wheel includes the GDN CUDA source and matches the
-package source. [Measured serving/fidelity results](native-fidelity.md) and
+package source. [Measured serving/fidelity results](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md) and
 [individual GDN ablations](gdn-decode.md) are recorded separately.
 
 The final September 15 rerun passed **113/113 tests**, with no skips, including
@@ -127,7 +127,7 @@ greedy, logprob, stochastic and token-bias requests successfully. These are
 smoke checks, not a broad model-quality evaluation or a bitwise-equivalence claim.
 
 This earlier integration acceptance uses uniform token-ID prompts; the README's
-current [profile comparison](native-fidelity.md) uses frozen ShareGPT
+current [profile comparison](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md) uses frozen ShareGPT
 prefixes and separately validated stock baselines. Do not combine the two
 workloads' throughput numbers.
 

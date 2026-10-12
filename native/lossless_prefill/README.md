@@ -6,7 +6,7 @@ The codec uses 256-value blocks, fixed 512-byte slots, 384-byte compressed paylo
 
 ## Build and enable
 
-Use the complete [a6 runtime profile](../../profiles/vllm-0.28.0/README.md#checkpointtemporal-serving-configuration) with vLLM 0.28.0 and FlashInfer 0.6.18. This extension requires CUDA **13.0** and targets `sm_120f`, matching the tested reference compiler and fast-math settings. Other compiler versions are rejected by this source profile; they require new numerical validation.
+Use the complete [a6 runtime profile](https://github.com/troycheng/vllm-mach/blob/v0.1.0a6/profiles/vllm-0.28.0/README.md) with vLLM 0.28.0 and FlashInfer 0.6.18. This extension requires CUDA **13.0** and targets `sm_120f`, matching the tested reference compiler and fast-math settings. Other compiler versions are rejected by this source profile; they require new numerical validation.
 
 ```bash
 cd native/lossless_prefill

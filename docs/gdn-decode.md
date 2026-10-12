@@ -73,7 +73,7 @@ c4/c16/c24/c32, 20/80/120/160 requests, per-point 128-token warmups and identica
 prompt seeds/arrival schedules. Separate GPUs are used for fidelity and serving.
 No HTTP throughput figure is inferred from the earlier forward microbenchmarks.
 
-See [native fidelity and serving](native-fidelity.md) for measured results and
+See [native fidelity and serving](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md) for measured results and
 [physical-M4 raw data](data/gdn-m4-fidelity.json) for the persistent diagnostic.
 
 ## Physical-M4 result (September 16)
@@ -103,7 +103,7 @@ python docs/data/plot_comparison.py --gdn-m4-only
 
 ## Isolated serving ablations
 
-The [complete result table](native-fidelity.md#serving-throughput) retains the
+The [complete result table](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md#serving-throughput) retains the
 previous default/full, persistent-only and combined profiles. The README's
 main comparison now includes the September 17 Dense prefill-default retest;
 the ablation data below retain the September 16 configurations.
