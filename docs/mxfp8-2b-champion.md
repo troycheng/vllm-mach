@@ -68,6 +68,9 @@ After startup, `http://localhost:8000/v1/models` lists `q35-2b-study`. The launc
 
 The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and complete BF16 vocabulary-head weights, FP32 SSM, Triton attention, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Eligible greedy head calls use the candidate/refinement path described below. Native MXFP8 projections, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16 and pinned asynchronous GDN reset-ID uploads run under the 2B profile. Exact FULL16/FULL24 captures also use the complete PDL dependency chain. The graph policy preserves FULL decode captures at 4/8/16/24/32/48/64/96/128/160 rows and routes exact 2048-token prefill or mixed batches to PIECEWISE mode. Batches above 160 tokens with a size other than 2048 use NONE without padding. Prefix caching and LoRA are outside this profile.
 
+Add `--ssm-dtype bfloat16` to select BF16 state with native GDN/FLA; FP32 remains the default.
+See [BF16 SSM measurements and configuration](mxfp8-bf16-ssm-20261012.md).
+
 ## Champion components
 
 | Component | Selected behavior |

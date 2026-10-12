@@ -12,6 +12,8 @@ import json
 import os
 from pathlib import Path
 
+from .ssm import selected_dtype, select_gdn
+
 NAME = "qwen35-4b-mxfp8-champion-v1"
 DEPENDENCIES = {
     "vllm": "0.29.0", "torch": "2.13.0", "triton": "3.7.1",
@@ -33,7 +35,7 @@ def quality_contract(rows):
             "enable_chunked_prefill": True, "enable_prefix_caching": False,
             "attention_backend": "FLASHINFER", "language_model_only": True,
             "seed": 20260907, "logprobs_mode": "raw_logprobs", "disable_log_stats": True,
-            "mamba_ssm_cache_dtype": "float32", "kv_cache_dtype": "fp8_e4m3",
+            "mamba_ssm_cache_dtype": selected_dtype(), "kv_cache_dtype": "fp8_e4m3",
             "quantization": "compressed-tensors",
             "kernel_config": {"linear_backend": "flashinfer_cutlass"},
             "compilation_config": {"cudagraph_capture_sizes": captures,
@@ -56,7 +58,8 @@ def run_contract():
         raise RuntimeError("Compact head selection must be 0 or 1")
     geometry = quality_contract(int(rows)) if rows else {"kv_cache_memory_bytes": 19 * 2**30}
     return {"mode": mode, "quality_rows": int(rows) if rows else None, **geometry,
-            "production_throughput_profile": mode == "production", "compact_greedy_head": compact == "1"}
+            "production_throughput_profile": mode == "production", "compact_greedy_head": compact == "1",
+            "ssm_dtype": selected_dtype()}
 
 
 def _quality_graph_receipt(worker, rows):
@@ -147,16 +150,17 @@ def _verify_quality_capture(worker, rows):
                    and row["parallel"] and row["calls"] > 0}
         if not pairs["ready"] or len(pairs["pairs"]) != 24 or not pairs["aot_modules"] or covered != set(range(1, 24)):
             raise RuntimeError(f"Quality M{m} projection pair capture incomplete: {covered}")
-    state = gdn.inspect_worker(worker)
-    if (state["profile_mode"] != "quality" or state["quality_rows"] != rows
-            or not state["ready"] or not state["cache_initialized"]
-            or state["layer_count"] != 24):
-        raise RuntimeError("Quality GDN runtime contract changed")
-    for m in graph["full_sizes"]:
-        covered = {key.rsplit("|m", 1)[0] for key, count in state["capture_construction"].items()
-                   if key.endswith(f"|m{m}") and count > 0}
-        if covered != set(state["layers"]):
-            raise RuntimeError(f"Quality M{m} GDN capture incomplete: {covered}")
+    state = select_gdn(gdn).inspect_worker(worker)
+    if selected_dtype() == "float32":
+        if (state["profile_mode"] != "quality" or state["quality_rows"] != rows
+                or not state["ready"] or not state["cache_initialized"]
+                or state["layer_count"] != 24):
+            raise RuntimeError("Quality GDN runtime contract changed")
+        for m in graph["full_sizes"]:
+            covered = {key.rsplit("|m", 1)[0] for key, count in state["capture_construction"].items()
+                       if key.endswith(f"|m{m}") and count > 0}
+            if covered != set(state["layers"]):
+                raise RuntimeError(f"Quality M{m} GDN capture incomplete: {covered}")
     ba.verify_capture(worker, required_rows=(4,))
     compile_choices.verify_coverage(require_complete=True)
     return graph
@@ -202,7 +206,7 @@ def write_receipt(worker, phase):
         "runtime_sources": worker._mach_mxfp8_runtime_sources,
         "native": native_backend.inspect(worker),
         "dual": dual.inspect_worker(worker), "ba": ba.inspect_worker(worker),
-        "gdn": gdn.inspect_worker(worker), "kv": kv.inspect_scales(worker),
+        "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_scales(worker),
         "graph": (_quality_graph_receipt(worker, worker._mach_mxfp8_contract["quality_rows"])
                   if worker._mach_mxfp8_contract["mode"] == "quality"
                   else graph_policy.inspect_worker(worker)),
@@ -235,7 +239,8 @@ def install_worker_hook():
     if (getattr(Worker, "_mach_mxfp8_native_hook", False)
             or getattr(Worker, "_mach_2b_hook", False)):
         raise RuntimeError("Select the complete profile instead of stacking the standalone native hook")
-    from . import compile_choices, graph_policy
+    from . import compile_choices, gdn, graph_policy
+    gdn = select_gdn(gdn)
     compile_choices.install()
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
@@ -256,7 +261,7 @@ def install_worker_hook():
         self._mach_mxfp8_steps = 0
         result = original_init(self, *args, **kwargs)
         from .worker import install_worker_backend
-        from . import ba, dual, gdn
+        from . import ba, dual
         install_worker_backend(self)
         dual.install(self)
         ba.install(self)
@@ -266,7 +271,7 @@ def install_worker_hook():
     @wraps(original_load)
     def load(self, *args, **kwargs):
         result = original_load(self, *args, **kwargs)
-        from . import ba, dual, gdn, kv, projection_parallel
+        from . import ba, dual, kv, projection_parallel
         kv.install_scales(self)
         dual.prepare_model(self)
         ba.prepare_model(self)
@@ -278,14 +283,15 @@ def install_worker_hook():
 
     @wraps(original_cache)
     def initialize_cache(self, *args, **kwargs):
+        if contract["ssm_dtype"] == "bfloat16":
+            gdn.check_cache_initialization(self)
         result = original_cache(self, *args, **kwargs)
-        from . import gdn
         gdn.initialize_cache(self)
         return result
 
     @wraps(original_compile)
     def compile_model(self, *args, **kwargs):
-        from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
+        from . import ba, compile_choices, dual, graph_policy, head, kv
         from . import projection_parallel
         from .worker import verify_worker_execution
         if run_contract() != self._mach_mxfp8_contract:

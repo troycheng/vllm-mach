@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from ..profile import DEPENDENCIES, check_runtime_sources
+from ..ssm import selected_dtype, select_gdn
 
 NAME = "qwen35-2b-mxfp8-champion-v1"
 ATTENTION_BACKENDS = ("FLASH_ATTN", "TRITON_ATTN")
@@ -48,7 +49,7 @@ def run_contract():
     return {"mode": mode, "quality_rows": rows, **geometry,
             "attention_backend": backend, "hybrid_greedy_head": hybrid == "1",
             "kv_dtype": "bfloat16",
-            "head_dtype": "bfloat16", "ssm_dtype": "float32",
+            "head_dtype": "bfloat16", "ssm_dtype": selected_dtype(),
             "production_throughput_profile": mode == "production"}
 
 
@@ -102,14 +103,15 @@ def inspect_worker(worker):
     _check_geometry(worker, contract)
     graph = graph_policy.verify_capture(worker)
     native = verify_worker_execution(worker, require_capture=True)
-    state = gdn.inspect_worker(worker)
+    state = select_gdn(gdn).inspect_worker(worker)
     required = set(contract["compilation_config"]["cudagraph_capture_sizes"])
-    if not state["ready"] or state["layer_count"] != 18 or not state["pinned_ids_enabled"]:
-        raise RuntimeError("2B GDN startup is incomplete")
-    for name in state["layers"]:
-        if any(state["capture_construction"].get(f"{name}|m{m}", 0) == 0
-               for m in set(state["eligible_rows"]) & required):
-            raise RuntimeError(f"Missing 2B GDN graph capture: {name}")
+    if contract["ssm_dtype"] == "float32":
+        if not state["ready"] or state["layer_count"] != 18 or not state["pinned_ids_enabled"]:
+            raise RuntimeError("2B GDN startup is incomplete")
+        for name in state["layers"]:
+            if any(state["capture_construction"].get(f"{name}|m{m}", 0) == 0
+                   for m in set(state["eligible_rows"]) & required):
+                raise RuntimeError(f"Missing 2B GDN graph capture: {name}")
     projection = ba.verify_capture(worker, required_rows=tuple(sorted(required & {4, 8, 16})))
     if not projection["native_m16_available"]:
         raise RuntimeError("The 2B champion requires native BF16 BA M16")
@@ -160,6 +162,7 @@ def install_worker_hook():
         raise RuntimeError("Another MXFP8 worker profile is already installed")
     from . import ba, gdn, graph_policy, pdl
     from ..worker import install_worker_backend
+    gdn = select_gdn(gdn)
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
     pdl.install()
@@ -191,9 +194,12 @@ def install_worker_hook():
 
     @wraps(original_cache)
     def cache(self, *args, **kwargs):
-        from .gdn import worker as state
-        if state._READY or state._CACHE_INITIALIZED:
-            raise RuntimeError("2B GDN does not support live cache reallocation")
+        if contract["ssm_dtype"] == "float32":
+            from .gdn import worker as state
+            if state._READY or state._CACHE_INITIALIZED:
+                raise RuntimeError("2B GDN does not support live cache reallocation")
+        else:
+            gdn.check_cache_initialization(self)
         result = original_cache(self, *args, **kwargs)
         gdn.initialize_cache(self)
         return result

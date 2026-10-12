@@ -1,0 +1,756 @@
+{
+  "schema_version": 2,
+  "base_commit": "f5972b021194f00332001de91e787c44ccf9cb76",
+  "artifact_root": "/data/lxy/detailed_benchmark/mxfp8-bf16-ssm-20261012",
+  "comparison": "Merged MXFP8: ordered FP32 GDN versus BF16 state with native vLLM/FLA fallback",
+  "throughput": {
+    "2b": {
+      "points": [
+        {
+          "concurrency": 4,
+          "float32_tps": 1673.5753085437102,
+          "bfloat16_tps": 1695.4554633527544,
+          "gain_pct": 1.3073899153115187,
+          "historical_community_fp8_tps": 1261.892459195426,
+          "float32_gain_vs_community_fp8_pct": 32.62424197469016,
+          "bfloat16_gain_vs_community_fp8_pct": 34.35815793952561
+        },
+        {
+          "concurrency": 16,
+          "float32_tps": 4956.663796255953,
+          "bfloat16_tps": 5153.406749158421,
+          "gain_pct": 3.9692616039659567,
+          "historical_community_fp8_tps": 3814.3333161740834,
+          "float32_gain_vs_community_fp8_pct": 29.948365425695634,
+          "bfloat16_gain_vs_community_fp8_pct": 35.106355999519145
+        },
+        {
+          "concurrency": 24,
+          "float32_tps": 6355.081586126828,
+          "bfloat16_tps": 6678.139767915673,
+          "gain_pct": 5.0834623821994995,
+          "historical_community_fp8_tps": 5069.677071743112,
+          "float32_gain_vs_community_fp8_pct": 25.354761184853047,
+          "bfloat16_gain_vs_community_fp8_pct": 31.727123313981043
+        },
+        {
+          "concurrency": 32,
+          "float32_tps": 7336.913490395978,
+          "bfloat16_tps": 7618.723212280677,
+          "gain_pct": 3.840984662741187,
+          "historical_community_fp8_tps": 5870.222273980189,
+          "float32_gain_vs_community_fp8_pct": 24.985275649900185,
+          "bfloat16_gain_vs_community_fp8_pct": 29.785940918297648
+        },
+        {
+          "concurrency": 48,
+          "float32_tps": 8707.261674797222,
+          "bfloat16_tps": 9123.736416106241,
+          "gain_pct": 4.7830736787718875,
+          "historical_community_fp8_tps": 6837.596724087279,
+          "float32_gain_vs_community_fp8_pct": 27.343890348542278,
+          "bfloat16_gain_vs_community_fp8_pct": 33.434842449327526
+        },
+        {
+          "concurrency": 64,
+          "float32_tps": 9598.738207268638,
+          "bfloat16_tps": 10053.657574326911,
+          "gain_pct": 4.739366333731088,
+          "historical_community_fp8_tps": 7578.863502078369,
+          "float32_gain_vs_community_fp8_pct": 26.651419498930863,
+          "bfloat16_gain_vs_community_fp8_pct": 32.65389423585574
+        }
+      ],
+      "pooled": {
+        "float32_tps": 6591.804017223874,
+        "bfloat16_tps": 6853.643808951954,
+        "gain_pct": 3.9722023143272,
+        "historical_community_fp8_reconstructed_tps": 5151.203665745319,
+        "float32_gain_vs_community_fp8_pct": 27.966286036374697,
+        "bfloat16_gain_vs_community_fp8_pct": 33.049365811870146
+      },
+      "community_fp8_reference": {
+        "source": "docs/data/mxfp8-2b-triton-hybrid-sixpoint-20261011.json",
+        "sha256": "2085f611b0078e430e0cae63b4d8ab0f202ad17473d99fe170accb8006d0ee96",
+        "scope": "Historical FP8 baseline, not rerun in this experiment. 2B uses historical GPU1 per-point medians versus current GPU0; descriptive cross-card comparison.",
+        "pooled_method": "Reconstructed with the current request weights: sum(output_tokens) / sum(output_tokens / historical_point_tps). Not a separately observed pooled run.",
+        "gain_formula": "100 * (merged_tps / historical_community_fp8_tps - 1)"
+      }
+    },
+    "4b": {
+      "points": [
+        {
+          "concurrency": 4,
+          "float32_tps": 920.9704770857606,
+          "bfloat16_tps": 941.287551538474,
+          "gain_pct": 2.206050569286755,
+          "historical_community_fp8_tps": 683.9592274311776,
+          "float32_gain_vs_community_fp8_pct": 34.65283311473883,
+          "bfloat16_gain_vs_community_fp8_pct": 37.62334270622727
+        },
+        {
+          "concurrency": 16,
+          "float32_tps": 2619.4488300846847,
+          "bfloat16_tps": 2750.3753049977945,
+          "gain_pct": 4.998245180795413,
+          "historical_community_fp8_tps": 2053.547069808179,
+          "float32_gain_vs_community_fp8_pct": 27.55728215810347,
+          "bfloat16_gain_vs_community_fp8_pct": 33.93290786632448
+        },
+        {
+          "concurrency": 24,
+          "float32_tps": 3384.49344807711,
+          "bfloat16_tps": 3660.494402926099,
+          "gain_pct": 8.154867458992964,
+          "historical_community_fp8_tps": 2559.262243795155,
+          "float32_gain_vs_community_fp8_pct": 32.24488644267309,
+          "bfloat16_gain_vs_community_fp8_pct": 43.029281653368834
+        },
+        {
+          "concurrency": 32,
+          "float32_tps": 3846.0113814130364,
+          "bfloat16_tps": 4197.832848639754,
+          "gain_pct": 9.1476969862075,
+          "historical_community_fp8_tps": 2887.824845075892,
+          "float32_gain_vs_community_fp8_pct": 33.18021652078291,
+          "bfloat16_gain_vs_community_fp8_pct": 45.36313917367918
+        },
+        {
+          "concurrency": 48,
+          "float32_tps": 4379.412304117127,
+          "bfloat16_tps": 4835.588496319089,
+          "gain_pct": 10.416379197115265,
+          "historical_community_fp8_tps": 3220.5493315162103,
+          "float32_gain_vs_community_fp8_pct": 35.98339454888377,
+          "bfloat16_gain_vs_community_fp8_pct": 50.14794057020487
+        },
+        {
+          "concurrency": 64,
+          "float32_tps": 4856.910889625465,
+          "bfloat16_tps": 5371.9915123233,
+          "gain_pct": 10.605107534463244,
+          "historical_community_fp8_tps": 3402.756586123198,
+          "float32_gain_vs_community_fp8_pct": 42.73459669235415,
+          "bfloat16_gain_vs_community_fp8_pct": 57.87175416046071
+        }
+      ],
+      "pooled": {
+        "float32_tps": 3440.760783658134,
+        "bfloat16_tps": 3704.146072516188,
+        "gain_pct": 7.654856161724455,
+        "historical_community_fp8_reconstructed_tps": 2553.692796707726,
+        "float32_gain_vs_community_fp8_pct": 34.7366757698512,
+        "bfloat16_gain_vs_community_fp8_pct": 45.050574497122376
+      },
+      "community_fp8_reference": {
+        "source": "docs/data/mxfp8-qualification-20261006.json",
+        "sha256": "c4746833405c6c69c669fa72797a8fbd99605e5fe87033e33823762bc5f3f76f",
+        "scope": "Historical FP8 baseline, not rerun in this experiment; descriptive comparison.",
+        "pooled_method": "Reconstructed with the current request weights: sum(output_tokens) / sum(output_tokens / historical_point_tps). Not a separately observed pooled run.",
+        "gain_formula": "100 * (merged_tps / historical_community_fp8_tps - 1)"
+      }
+    }
+  },
+  "quality": {
+    "2b-m32": {
+      "runs": {
+        "float32": {
+          "mae": 0.04865081907782039,
+          "max_abs": 1.539302110671997,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.04988665962255222,
+              "max_abs": 1.539302110671997
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.034297640412732255,
+              "max_abs": 0.6329233646392822
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.08245064136693514,
+              "max_abs": 0.6154322624206543
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.04512303200392883,
+              "max_abs": 1.0721395015716553
+            }
+          },
+          "head_audit": {
+            "rows": 24448,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        },
+        "bfloat16": {
+          "mae": 0.048677360521128706,
+          "max_abs": 1.2824125289916992,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.0517269607712136,
+              "max_abs": 1.2824125289916992
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.034074154968027265,
+              "max_abs": 0.7382192611694336
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.08050444171977596,
+              "max_abs": 0.8254902362823486
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.04583899854824503,
+              "max_abs": 0.8699817657470703
+            }
+          },
+          "head_audit": {
+            "rows": 24448,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        }
+      },
+      "mae_delta": 2.654144330831859e-05,
+      "mae_change_pct": 0.05455497730852965,
+      "between_state_modes": {
+        "mean_abs_logprob_difference": 0.038861463587879466,
+        "max_abs_logprob_difference": 2.513904333114624
+      },
+      "model": "2b",
+      "physical_rows": 32,
+      "queries": 256,
+      "tokens": 10479,
+      "anchor": "/data1/tcheng/mxfp8_2b_20261008/iter8/bf16_m32_records.json",
+      "anchor_sha256": "5ea1f9b6a24d6010203ad5acb6a671f3c87cb953b623da95c93f59028f597624"
+    },
+    "2b-m64": {
+      "runs": {
+        "float32": {
+          "mae": 0.049183462955421704,
+          "max_abs": 1.2026681900024414,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.05339102651908508,
+              "max_abs": 1.2026681900024414
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.032292995009227936,
+              "max_abs": 0.6416018009185791
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.08355311621588747,
+              "max_abs": 0.5403881072998047
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.046732968550511206,
+              "max_abs": 0.8566083908081055
+            }
+          },
+          "head_audit": {
+            "rows": 29440,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        },
+        "bfloat16": {
+          "mae": 0.04963620150331754,
+          "max_abs": 1.0990768074989319,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.04572720297322229,
+              "max_abs": 1.0990768074989319
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.034729243630195625,
+              "max_abs": 0.7689437866210938
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.08381181988186788,
+              "max_abs": 0.6855607032775879
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.04690591222135168,
+              "max_abs": 0.8836483955383301
+            }
+          },
+          "head_audit": {
+            "rows": 29440,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        }
+      },
+      "mae_delta": 0.000452738547895834,
+      "mae_change_pct": 0.9205097012103147,
+      "between_state_modes": {
+        "mean_abs_logprob_difference": 0.038641761101291354,
+        "max_abs_logprob_difference": 1.695772647857666
+      },
+      "model": "2b",
+      "physical_rows": 64,
+      "queries": 256,
+      "tokens": 10479,
+      "anchor": "/data1/tcheng/mxfp8_2b_20261008/iter8/bf16_m32_records.json",
+      "anchor_sha256": "5ea1f9b6a24d6010203ad5acb6a671f3c87cb953b623da95c93f59028f597624"
+    },
+    "4b-m32": {
+      "runs": {
+        "float32": {
+          "mae": 0.049038113195664354,
+          "max_abs": 2.757282257080078,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.03202846915648909,
+              "max_abs": 0.5118860006332397
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.027956513730404763,
+              "max_abs": 1.3732085227966309
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.09923765364841955,
+              "max_abs": 2.757282257080078
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.045781399671789305,
+              "max_abs": 1.3416669368743896
+            }
+          },
+          "head_audit": {
+            "rows": 24448,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        },
+        "bfloat16": {
+          "mae": 0.04938248423593822,
+          "max_abs": 2.560960292816162,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.03349812212819109,
+              "max_abs": 0.44469642639160156
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.02820821360535413,
+              "max_abs": 1.1230425834655762
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.0966324821390511,
+              "max_abs": 2.560960292816162
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.04715603832589262,
+              "max_abs": 1.6274652481079102
+            }
+          },
+          "head_audit": {
+            "rows": 24448,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        }
+      },
+      "mae_delta": 0.00034437104027386367,
+      "mae_change_pct": 0.7022518156434954,
+      "between_state_modes": {
+        "mean_abs_logprob_difference": 0.03463707908849153,
+        "max_abs_logprob_difference": 1.2858567237854004
+      },
+      "model": "4b",
+      "physical_rows": 32,
+      "queries": 256,
+      "tokens": 10479,
+      "anchor": "/data1/tcheng/mxfp8_release_20261006/quality-fixtures/bf16_32/records.json",
+      "anchor_sha256": "f7ed8090db99c6ca5c7ddbeae3fc2e656a8018abd261ab7ca92a9773134ab466"
+    },
+    "4b-m64": {
+      "runs": {
+        "float32": {
+          "mae": 0.05328604736462726,
+          "max_abs": 1.8599629402160645,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.03703109289806736,
+              "max_abs": 0.8154612630605698
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.029293723401653097,
+              "max_abs": 1.2164623737335205
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.10867916246161927,
+              "max_abs": 1.8599629402160645
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.04987526357088386,
+              "max_abs": 1.784820318222046
+            }
+          },
+          "head_audit": {
+            "rows": 29440,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        },
+        "bfloat16": {
+          "mae": 0.05300921615395352,
+          "max_abs": 2.316580653190613,
+          "repeat_max": 0.0,
+          "domains": {
+            "chinese": {
+              "tokens": 558,
+              "mae": 0.033950826475217244,
+              "max_abs": 0.5698003768920898
+            },
+            "code": {
+              "tokens": 3158,
+              "mae": 0.03004747864313834,
+              "max_abs": 0.8464992046356201
+            },
+            "english": {
+              "tokens": 1835,
+              "mae": 0.10847117393202249,
+              "max_abs": 2.316580653190613
+            },
+            "math": {
+              "tokens": 4928,
+              "mae": 0.04922980381165089,
+              "max_abs": 1.5505287647247314
+            }
+          },
+          "head_audit": {
+            "rows": 29440,
+            "different_argmax": 0,
+            "strict_score_losses": 0,
+            "max_logit_loss": 0.0
+          }
+        }
+      },
+      "mae_delta": -0.00027683121067374056,
+      "mae_change_pct": -0.5195191318647319,
+      "between_state_modes": {
+        "mean_abs_logprob_difference": 0.043119580769213184,
+        "max_abs_logprob_difference": 1.9254076480865479
+      },
+      "model": "4b",
+      "physical_rows": 64,
+      "queries": 256,
+      "tokens": 10479,
+      "anchor": "/data1/tcheng/mxfp8_release_20261006/quality-fixtures/bf16_64/records.json",
+      "anchor_sha256": "b2d0349730d023a59fd9f9e6b04289ba8287d7e4e24977bf068fbe4ef61089d4"
+    }
+  },
+  "receipt_checks": {
+    "2b-float32": {
+      "gpu": "0",
+      "ssm_dtype": "float32",
+      "gdn": {
+        "ready": true,
+        "layer_count": 18
+      },
+      "graph": {
+        "ready": true,
+        "mode": "production",
+        "full_sizes": [
+          4,
+          8,
+          16,
+          24,
+          32,
+          48,
+          64,
+          96,
+          128,
+          160
+        ],
+        "piecewise_sizes": [
+          4,
+          8,
+          16,
+          24,
+          32,
+          48,
+          64,
+          96,
+          128,
+          160,
+          2048
+        ]
+      }
+    },
+    "2b-bfloat16": {
+      "gpu": "0",
+      "ssm_dtype": "bfloat16",
+      "gdn": {
+        "backend": "vllm_stock",
+        "ready": true,
+        "state_dtype": "bfloat16",
+        "layer_count": 18,
+        "ordered_hooks_installed": false,
+        "ordered_scratch_bytes": 0
+      },
+      "graph": {
+        "ready": true,
+        "mode": "production",
+        "full_sizes": [
+          4,
+          8,
+          16,
+          24,
+          32,
+          48,
+          64,
+          96,
+          128,
+          160
+        ],
+        "piecewise_sizes": [
+          4,
+          8,
+          16,
+          24,
+          32,
+          48,
+          64,
+          96,
+          128,
+          160,
+          2048
+        ]
+      }
+    },
+    "4b-float32": {
+      "gpu": "1",
+      "ssm_dtype": "float32",
+      "gdn": {
+        "ready": true,
+        "layer_count": 24
+      },
+      "graph": {
+        "ready": true,
+        "full_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          24,
+          32,
+          40,
+          48,
+          56,
+          64,
+          72,
+          80,
+          88,
+          96,
+          104,
+          112,
+          120,
+          128
+        ]
+      }
+    },
+    "4b-bfloat16": {
+      "gpu": "1",
+      "ssm_dtype": "bfloat16",
+      "gdn": {
+        "backend": "vllm_stock",
+        "ready": true,
+        "state_dtype": "bfloat16",
+        "layer_count": 24,
+        "ordered_hooks_installed": false,
+        "ordered_scratch_bytes": 0
+      },
+      "graph": {
+        "ready": true,
+        "full_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          24,
+          32,
+          40,
+          48,
+          56,
+          64,
+          72,
+          80,
+          88,
+          96,
+          104,
+          112,
+          120,
+          128
+        ]
+      }
+    }
+  },
+  "artifacts_sha256": {
+    "2b-float32/sixpoint/sixpoint.json": "9b80abf4d878f74f180e20e50c5a585e9aa3e82d961c978b0c0dfcac0218dc3e",
+    "2b-float32/process.json": "019a6f1d9df31533dba09cc7a758ec6fb1c21d7f8b00ea48f294339bc0073e9e",
+    "2b-float32/receipt.json": "ef1a8de517824efe26e9da38d1e81ff757700d5585f9f717a938b9c2529e6300",
+    "2b-bfloat16/sixpoint/sixpoint.json": "eafccd7a4a6b3b347dedf1c5c7bc8d5fcc98f0461eaaaba149c8855c41692234",
+    "2b-bfloat16/process.json": "e6dd6b30511db2a80ad3a88f39527e1245d666e4a39088f2d52164a4abf2e34c",
+    "2b-bfloat16/receipt.json": "7b5ec1ee386fc3478b268235bf2dec7e5e1737af6e66b163e77f11cda55473e5",
+    "quality-2b-float32-m32/complete.json": "8279f7fc1077a5091d40f56b91847d4aa3fddb3b2a5eec778f7ad8c6eb1c15b1",
+    "quality-2b-float32-m32/head-audit.json": "1a3984198f163e433dad3ff88d1956febacb49f77a6878183911fb5fca6ec425",
+    "quality-2b-float32-m32/runtime.json": "16dbaa3ce32ce64cc91a7e820ed0d2b8c2fa244f20c52f7374fa56144fec2a3c",
+    "quality-2b-float32-m32/records.json": "34725f8bdaf69411c410bd3dce33116186ba2cbb80bb865c62ffff3e39532f42",
+    "quality-2b-bfloat16-m32/complete.json": "e225e302b314fedf4da92a4692a4b9ea8560191f1d1bdb322e3e5f9a88f2adbb",
+    "quality-2b-bfloat16-m32/head-audit.json": "1a3984198f163e433dad3ff88d1956febacb49f77a6878183911fb5fca6ec425",
+    "quality-2b-bfloat16-m32/runtime.json": "031b6aa3b0d85d4481918bc477c8b0560e821bfa1b82cf63dec9e97853b741bf",
+    "quality-2b-bfloat16-m32/records.json": "0bee3a5d7bd679c43945472a87d08280c402be59a5bfa5a3933b81ff6fc6b62b",
+    "quality-2b-float32-m64/complete.json": "0156db9395df67418630f2918629cb4e7542d867d6b73476ee4c41447974c40b",
+    "quality-2b-float32-m64/head-audit.json": "6ca3e1a4a71248c8912c898df927458f938dfe9ca62ab9f7c0b2a79b723d1a88",
+    "quality-2b-float32-m64/runtime.json": "19dd2b1e8f0edc6c394a50694fcd933abc1bad088772a903ae818b5ce9f1ca5c",
+    "quality-2b-float32-m64/records.json": "734c203762daa4a2da9774724441afa421df92a996976bdeb202a0f993be6d4b",
+    "quality-2b-bfloat16-m64/complete.json": "af29e2c1d25bc5b0f344c10b388b7db8acf0f5be13f9d7a1ef04fcc232bf6225",
+    "quality-2b-bfloat16-m64/head-audit.json": "6ca3e1a4a71248c8912c898df927458f938dfe9ca62ab9f7c0b2a79b723d1a88",
+    "quality-2b-bfloat16-m64/runtime.json": "13a12c5a867a2dd2fef39ece121cb32e333f6e36de1f43c3a808c27a5af39037",
+    "quality-2b-bfloat16-m64/records.json": "4b8de15fc64a467774dd6e94e943b9d732aa98f4dfc956935f13d78de003f164",
+    "4b-float32/sixpoint/sixpoint.json": "189d140919c1c13bd2e35a8898e1e5ec70652b15fe3ba5f84aa9f783c69ee12a",
+    "4b-float32/process.json": "adaaf35bdab3dc8ffbd1e281ed9148eba6fb8bd270c1c0b0e9360274a5cba352",
+    "4b-float32/receipt.json": "e887fb18a3af394aad5fb1b7aa98bf9fa533e545edbe36c74ae1e01870ed4ed2",
+    "4b-bfloat16/sixpoint/sixpoint.json": "6b02a8c3a7be2a6273847c1d9705e7764afe60a7fcd010d2f0288a2292e4433d",
+    "4b-bfloat16/process.json": "4f257c69ccd70caa6e07c0a61cae42e80d664c33c6da9dc0902e329fab778391",
+    "4b-bfloat16/receipt.json": "f909ec3e0c4fb7ed9849dd1b7066587865fbba0f02099131d20eb3758786207f",
+    "quality-4b-float32-m32/complete.json": "88b88f3a56ccc6540a3145a9f59d1eff5440e59ce3aaa0795613d53ef2069e74",
+    "quality-4b-float32-m32/head-audit.json": "0008e805ae885cae1feed0c8cc66e4a7fa34c787091f3f0214d71f872152cb0a",
+    "quality-4b-float32-m32/runtime.json": "5949c6db91a07a144837c01d4b17b0d1c1624bafbf260717283b4ac63ff2a749",
+    "quality-4b-float32-m32/records.json": "4f21566669553db9cf9faf0d0e96b96a2433706ef2492166fdf13c6c8886322c",
+    "quality-4b-bfloat16-m32/complete.json": "93ede090954a5ffe1ea1be4db16f40d2084e20e9684833090081d411e9f9d4c7",
+    "quality-4b-bfloat16-m32/head-audit.json": "0008e805ae885cae1feed0c8cc66e4a7fa34c787091f3f0214d71f872152cb0a",
+    "quality-4b-bfloat16-m32/runtime.json": "462969f3e8e7295e9f19a30cd502ca8f824dd1df62a8ce8f7b7f04bc370b7ecf",
+    "quality-4b-bfloat16-m32/records.json": "478a3ecebf5e76153be95b449d7c718b56ac91790a6562c4ab0e6cb39a34fe97",
+    "quality-4b-float32-m64/complete.json": "a9dc062073daf6f7371fecca1e6ca640858b65c683e016fe6d106ea1cc81e558",
+    "quality-4b-float32-m64/head-audit.json": "afdc7904268c8536d15d3a57552c6ab3f0e9a58d81a177a6275081e497a61d33",
+    "quality-4b-float32-m64/runtime.json": "6aac91e6b48825c2b52ef049fe02eb0a0d683b40daf3b6c311abd662abb02697",
+    "quality-4b-float32-m64/records.json": "388f5aec602e2e57bf31cf4e11244a9f72635bf8f89ac1d6d5978c4a91a15da5",
+    "quality-4b-bfloat16-m64/complete.json": "49215d0179d04d133fe20afe7a5349ec9713a5fe2e72204469e828e2746c1655",
+    "quality-4b-bfloat16-m64/head-audit.json": "afdc7904268c8536d15d3a57552c6ab3f0e9a58d81a177a6275081e497a61d33",
+    "quality-4b-bfloat16-m64/runtime.json": "264b85099eebb2d0ee4eb38c983d115d0c1c9926d5228720961be6f1316ab3ce",
+    "quality-4b-bfloat16-m64/records.json": "11bd4a787a0259b8c8c99d3bbaaa9d6c35be2ecdc396b537e7edb83ff72ff49f",
+    "/data/lxy/detailed_benchmark/vllm-mach/docs/data/mxfp8-2b-triton-hybrid-sixpoint-20261011.json": "2085f611b0078e430e0cae63b4d8ab0f202ad17473d99fe170accb8006d0ee96",
+    "/data/lxy/detailed_benchmark/vllm-mach/docs/data/mxfp8-qualification-20261006.json": "c4746833405c6c69c669fa72797a8fbd99605e5fe87033e33823762bc5f3f76f",
+    "quality.py": "62c0bc77c36ad570912556932ce8b53412f90324f274e42238421ba4b59a002c",
+    "quality64.py": "394b4d63c366616d96376f07fbb92b1a57ffc77b34de9d093c5e5874d9529f0e",
+    "throughput.py": "ef7ee1174c52241e7ff4ca9153564c31cca3fda2b8d28fa0c92832eff34bf8da",
+    "summarize.py": "416590269e22485ec0c6b471ee09225e1a5014acc72e4536f64998792ad50c82",
+    "profile.patch": "a5e045d5b2b3935ae3026500160e9b5e474969b7c8c5e428239b1db38d556a00",
+    "cpu-tests-qualified.log": "d25217e9fee07e74ead8ba68b70b50db8f4d33379e33ef3aaacde306f7b96197",
+    "cpu-tests-cleanup.log": "918a26d01655aae2e5f1844bf51572f3c089a43c15fba98f29ba1430d2f491c6"
+  },
+  "protocol": {
+    "version": 1,
+    "points": [
+      4,
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "scored_requests": {
+      "4": 40,
+      "16": 160,
+      "24": 120,
+      "32": 160,
+      "48": 240,
+      "64": 320
+    },
+    "input_tokens": 3000,
+    "output_tokens": 1000,
+    "prompt_source": "uniform token IDs",
+    "token_id_interval": [
+      1000,
+      240000
+    ],
+    "contract_seed": 20260924,
+    "request_seed_base": 2026092400,
+    "sampling": {
+      "temperature": 0.0,
+      "top_k": -1,
+      "top_p": 1.0,
+      "presence_penalty": 0.0,
+      "ignore_eos": true
+    },
+    "arrival_offset_s": 0.0,
+    "prewarm": {
+      "requests": "c",
+      "input_tokens": 3000,
+      "output_tokens": 256,
+      "contract_seed": 20261003,
+      "request_seed_base": 2026100300,
+      "internal_warmup_requests": 0
+    },
+    "screen_internal_warmup": {
+      "requests": "c",
+      "output_tokens": 128,
+      "prompt_selection": "first c scored prompts",
+      "request_seed_offset": 100000
+    },
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    },
+    "duration": "perf_counter around gather of scored requests only",
+    "ttft": "first text-bearing event minus semaphore-admitted request start",
+    "tpot": "(response end minus first token)/(completion_tokens-1)",
+    "throughput": "successful completion token usage / scored duration",
+    "percentile": "linear interpolation at (count-1)*quantile"
+  },
+  "protocol_sha256": "6e08e63c957a73508abd5d96ce181b1ed42c2b5de06a9e4bc37d776f4a798190",
+  "measured_source_sha256": {
+    "src/vllm_mach/mxfp8/ssm.py": "795678a5a8c7f2589129628129f51a1733c0c3a5f81961274f54e9bc803da5e0",
+    "src/vllm_mach/mxfp8/stock_gdn.py": "e7bd57509833b694fc5bb739fd9bede4b5ccdc02ef3ac6bbd272e4ff5dfc11e8",
+    "src/vllm_mach/mxfp8/profile.py": "6b1ad612c0f0a936abda50511977dfd63d61fbe5063bfcf83dd759cb50f59c68",
+    "src/vllm_mach/mxfp8/serve.py": "a94955555dec7deec6ff8213d1fc448f0250fa2ffaf4cc55f309dbcfe1f0d772",
+    "src/vllm_mach/mxfp8/two_b/profile.py": "dc4db7faadd8190588d7fca464ae82981295077f3d2c34180485e94a30a5c14a",
+    "src/vllm_mach/mxfp8/two_b/serve.py": "288750d9dbce0603dda99971f5d2577cb9b7c9be65b6c4d7e22de81a2f4eed1f"
+  },
+  "artifact_paths": "Relative artifact paths resolve under artifact_root; absolute paths identify retained baseline sources."
+}

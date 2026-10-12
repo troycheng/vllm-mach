@@ -53,6 +53,7 @@ exclude = ["vllm_mach.exl3*"]
 [tool.pytest.ini_options]
 testpaths = [
     "tests/test_mxfp8_swiglu_quant.py",
+    "tests/test_mxfp8_ssm.py",
     "tests/test_mxfp8_2b_model.py",
     "tests/test_mxfp8_2b_gdn_cpu.py",
     "tests/test_mxfp8_2b_mixed_cpu.py",

@@ -80,6 +80,9 @@ See the October 12 [optimization validation](mxfp8-optimization-results-20261012
 Prefix caching, speculative decode, generic compact-head hooks,
 vocab-parallel greedy and unrelated Dense/MoE/AR modes are disabled by the profile.
 
+Add `--ssm-dtype bfloat16` to select BF16 state with native GDN/FLA; FP32 remains the default.
+See [BF16 SSM measurements and configuration](mxfp8-bf16-ssm-20261012.md).
+
 `--quality-rows 32` or `64` selects a separate precision-only mode:
 
 | Mode | Maxseq / maxlen / maxbatch | KV | FULL captures | PW |
