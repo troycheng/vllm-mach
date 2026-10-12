@@ -4,7 +4,11 @@ Measured complete configurations on RTX 5090: **3,000 input / 1,000 output token
 
 Each model has its own throughput chart. The 27B Dense and 35B-A3B MoE comparisons include FP8, NVFP4 and both MXFP6 profiles, followed by a separate precision chart against BF16.
 
-MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion uses BF16 KV and K128 hybrid head at M≤32; 4B uses calibrated FP8 KV and its own refined head.
+MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The MXFP8 profiles now support K128 greedy heads through M64; 2B retains BF16 KV and 4B uses calibrated FP8 KV with its complete refined score head.
+
+The October 12 [merged MXFP8 measurements](mxfp8-optimization-results-20261012.md)
+record the newer fusion and head results with the historical open-source FP8 reference. The dated charts
+and tables below retain their original measurements and configurations.
 
 <a id="qwen35-2b"></a>
 ## Qwen3.5-2B — MXFP8 · Triton + hybrid

@@ -1,5 +1,10 @@
 # Qwen3.5-2B MXFP8 champion
 
+The October 12 [optimization follow-up](mxfp8-optimization-results-20261012.md)
+adds qualified SwiGLU/quantization fusion and extends the optional K128 greedy
+head to M64. Performance and precision tables below retain their dated
+historical measurements; the follow-up records the new matched comparisons.
+
 The selected **Triton attention + K128 hybrid head** profile runs on one RTX 5090, TP1. Across c4/c16/c24/c32/c48/c64 it measures **+17.53–25.89%** against the historical community FP8 baseline and **+1.77–13.83%** against the preceding FA2/full-head champion on the same GPU. See the [six-point data, latency and charts](performance.md#qwen35-2b).
 
 The public checkpoint builder reconstructs all 438 tensors from pinned BF16 weights. Native MXFP8, BF16 KV, FP32 GDN and the complete BF16 embedding/head weights are retained; eligible greedy requests use the hybrid head described below.
@@ -74,7 +79,7 @@ The production contract is TP1, text-only, non-speculative inference with BF16 a
 | Dependency scheduling | Full norm → quantization → GEMM → SwiGLU PDL chains for actual FULL16/FULL24 captures |
 | Graph routing | FULL decode at 4/8/16/24/32/48/64/96/128/160; exact2048 PIECEWISE; other large tails use NONE without padding |
 | Attention | `TRITON_ATTN` with BF16 KV |
-| Head | NVFP4 sidecar proposes K128 candidates; original BF16 weights refine scores; eligible greedy decode M≤32 |
+| Head | NVFP4 sidecar proposes K128 candidates; original BF16 weights refine scores; eligible greedy decode M≤64 |
 
 These mechanisms are already in the public package. The October 11 code qualification matched all 101 installed package source hashes.
 

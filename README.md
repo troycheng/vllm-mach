@@ -27,7 +27,7 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 | Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
 | Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
 
-MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤32. The 4B MXFP8 champion uses calibrated FP8 KV and its own refined head.
+MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤64. The 4B MXFP8 champion uses calibrated FP8 KV, a K128 greedy path through M64 and its complete refined head for scoring and other sampling modes.
 
 ### Qwen3.5-2B · MXFP8
 
@@ -108,4 +108,5 @@ The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.c
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for performance and correctness evidence expected with changes. [Apache-2.0](LICENSE); derived notices are in [NOTICE](NOTICE). External components retain their own licenses. This project is independent of the vLLM project.
 
-Development-profile comparison and integration: [MXFP8 branch comparison](docs/mxfp8-profile-merge.md).
+MXFP8 integration: [Implementation notes](docs/mxfp8-profile-merge.md).
+Additional fusion and bounded greedy-head results: [MXFP8 optimization validation](docs/mxfp8-optimization-results-20261012.md).

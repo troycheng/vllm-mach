@@ -17,7 +17,7 @@ The profile combines the following optimizations:
 | 7. Full-vocabulary head | NVFP4 coarse scores, `topk(sorted=False)` K2048, indexed BF16 score replacement; original sampler and tied BF16 head |
 | 8. FlashInfer FP8 KV | Eight layers, E4M3 storage, 16 fixed FP32 scales and device/CPU/float mirror installation before profiling |
 | 9. Graph policy | FULL small decode, exact2048 PIECEWISE, other large tails routed before padding |
-| 10. Parallel QKVZ/BA | Closed fork/join at M32/M64 for linear-attention ordinals 1–23; ordinal0 serial |
+| 10. Parallel QKVZ/BA | Closed fork/join at M1/2/4/8/16/24/32/64 for linear-attention ordinals 1–23; ordinal0 serial |
 | 11. Compile choices | Production 23, quality M32 23 and quality M64 22 fixed choices, selected by the declared mode and rebuilt from source; no inherited compiler cache |
 | 12. Fixed model | BF16 revision `851bf6…` source, exact L0 codes, 595 verified output tensors, tokenizer/config and KV metadata |
 | 13. Build/run/measurement | Official source wheel, bundled Mach runtime installer, unified lifecycle/receipts and fixed six-point client |
@@ -72,9 +72,13 @@ Production defaults are BF16 model activations, FP32 SSM, FP8 E4M3 KV,
 19 GiB KV capacity, maxseq128, maxlen8192 and maxbatch2048. Captures are
 `[1,2,4,8..256 step8,2048]`: FULL through128 and PIECEWISE descriptors through
 2048. Exact2048 uses PIECEWISE; other tails above256 use NONE without padding.
-Prefix caching, speculative
-decode, compact heads, vocab-parallel greedy and unrelated Dense/MoE/AR modes
-are disabled by the profile.
+The launcher enables a K128 candidate/BF16-refinement greedy path through M64;
+`--no-hybrid-head` keeps the complete K2048 head for all calls. Score requests,
+constrained/stochastic sampling and unsupported cases use the complete head.
+SwiGLU and MXFP8 quantization are fused at supported small row counts.
+See the October 12 [optimization validation](mxfp8-optimization-results-20261012.md).
+Prefix caching, speculative decode, generic compact-head hooks,
+vocab-parallel greedy and unrelated Dense/MoE/AR modes are disabled by the profile.
 
 `--quality-rows 32` or `64` selects a separate precision-only mode:
 
