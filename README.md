@@ -17,9 +17,9 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 
 ## Performance by model size
 
-**3,000 input / 1,000 output tokens · output tokens/s · text-only, non-speculative inference.** These are complete-profile comparisons with each study's recorded FP8 baseline. TP1 uses one 32 GiB RTX 5090; TP2 uses two.
+**3,000 input / 1,000 output tokens · output tokens/s · text-only, non-speculative inference.** End-to-end serving on one (TP1) or two (TP2) 32 GiB RTX 5090 GPUs.
 
-| Model / profile | GPUs | Measured gain over its FP8 baseline | Details |
+| Model / profile | GPUs | Throughput gain vs FP8 | Details |
 |---|---|---:|---|
 | Qwen3.5-2B · MXFP8 · Triton + hybrid | 1 · TP1 | +17.53% to +25.89% | [Data](docs/performance.md#qwen35-2b) |
 | Qwen3.5-4B · MXFP8 champion | 1 · TP1 | +20.83% to +36.77% | [Data](docs/performance.md#qwen35-4b) |
@@ -29,7 +29,7 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 
 ![Serving throughput by model size](docs/assets/model-throughput.svg)
 
-The [complete performance report](docs/performance.md) contains every measured point, absolute throughput, gains, latency, precision and source data. The 2B comparison with its preceding champion is paired on the same GPU; its community FP8 reference is historical. Other study scopes and dates are listed beside their tables.
+See the [performance report](docs/performance.md) for per-concurrency throughput, latency, precision and source data.
 
 MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤32. The 4B MXFP8 champion uses calibrated FP8 KV and its own refined head. Numerical results are in the [fidelity table](docs/performance.md#numerical-fidelity).
 
@@ -76,8 +76,6 @@ For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `
 | 4B block-FP8 | N64 GEMM tiles; ordered low-M GEMM; fused SiLU quantization; mixed FA2; matched RMS compilation choices | [Block-FP8 profile](docs/fp8-profile.md) |
 | 27B Dense MXFP6 | Native W6A8; compact greedy sampling; TP2 AllReduce/residual/RMSNorm and activation fusion; persistent GDN; BA overlap; lossless and owner prefill | [Configuration breakdown](docs/dense-gains-aligned-baseline-20260920.md) |
 | 35B-A3B MoE MXFP6 | Grouped experts; prefill/decode graphs; compact greedy sampling; fused TP2 communication; GDN integration; projection dispatch for selected physical rows32–160 | [MoE breakdown](docs/moe-gains-fp8-baseline-20260920.md) |
-
-These components are already included in the source profiles. Component gains are not summed to produce the model-level tables.
 
 ## Documentation
 
