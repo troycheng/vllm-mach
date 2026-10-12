@@ -51,9 +51,12 @@ def run_contract():
         raise RuntimeError("Quality mode requires QUALITY_ROWS=32 or 64")
     if mode == "production" and rows is not None:
         raise RuntimeError("QUALITY_ROWS must be unset for production")
+    compact = os.environ.get("VLLM_MACH_MXFP8_COMPACT_HEAD", "0")
+    if compact not in ("0", "1"):
+        raise RuntimeError("Compact head selection must be 0 or 1")
     geometry = quality_contract(int(rows)) if rows else {"kv_cache_memory_bytes": 19 * 2**30}
     return {"mode": mode, "quality_rows": int(rows) if rows else None, **geometry,
-            "production_throughput_profile": mode == "production"}
+            "production_throughput_profile": mode == "production", "compact_greedy_head": compact == "1"}
 
 
 def _quality_graph_receipt(worker, rows):
@@ -190,7 +193,7 @@ def _directory():
 
 def write_receipt(worker, phase):
     from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
-    from . import native_backend, projection_parallel, swiglu_quant
+    from . import native_backend, projection_parallel, swiglu_quant, greedy_head
 
     receipt = {
         "profile": NAME, "phase": phase, "pid": os.getpid(),
@@ -205,6 +208,7 @@ def write_receipt(worker, phase):
                   else graph_policy.inspect_worker(worker)),
         "projection_parallel": projection_parallel.inspect_worker(worker),
         "head": head.inspect_head(worker),
+        "compact_head": greedy_head.inspect(worker),
         "swiglu_quant": swiglu_quant.receipt(),
         "compile_choices": compile_choices.inspect(),
         "counter_scope": "Python execution and CUDA graph construction; graph replay is not counted",
@@ -302,7 +306,7 @@ def install_worker_hook():
         kv.inspect_scales(self)
         swiglu_quant.receipt(self.vllm_config.compilation_config.cudagraph_capture_sizes)
         head.install_head(self)
-        if os.environ.get("VLLM_MACH_GREEDY_HEAD_EXPERIMENT") == "1":
+        if contract["compact_greedy_head"]:
             from . import greedy_head
             compact = greedy_head.install(self)
             if os.environ.get("VLLM_MACH_HEAD_AUDIT") == "1":
@@ -329,6 +333,7 @@ def install_worker_hook():
     Worker.initialize_from_config = initialize_cache
     Worker.compile_or_warm_up_model = compile_model
     Worker.execute_model = execute
+    Worker.mach_mxfp8_receipt = lambda self: write_receipt(self, "requested")
     Worker._mach_mxfp8_champion_hook = True
     Worker._mach_mxfp8_champion_contract = dict(contract)
     return True

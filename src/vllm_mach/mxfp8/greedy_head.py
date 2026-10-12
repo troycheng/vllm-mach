@@ -1,4 +1,9 @@
-"""Experimental reuse of the compact greedy head with full-score fallbacks."""
+# SPDX-License-Identifier: Apache-2.0
+"""K128 greedy sampling, sharing the original K2048 head's packed weights.
+
+Score requests, constrained/stochastic sampling and unsupported rows retain
+that complete head. The audit helper is an untimed precision diagnostic.
+"""
 import dataclasses
 import types
 
@@ -20,7 +25,7 @@ def install(worker):
     if runner.batch_sharder is not None or runner.lora_config is not None or runner.speculative_config is not None:
         raise RuntimeError('Compact head requires ordinary TP1 sampling')
     original = getattr(worker, full._STATE)['fp4']
-    state = dataclasses.replace(original, candidates=128, max_rows=128, can_use_failure_counts={})
+    state = dataclasses.replace(original, candidates=128, max_rows=64, can_use_failure_counts={})
     model = runner.model
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, model.lm_head.weight, tp_size=1)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
@@ -36,6 +41,16 @@ def install(worker):
 
     _wrap_sample(runner, model.lm_head, model.logits_processor, state, torch.bfloat16,
                  indexed_argmax_triton, output, stats)
+    packed_weight_ptr = model.lm_head.weight.data_ptr()
+    compact_sample = runner.sample
+
+    def sample(this, hidden_states, input_batch, grammar_output):
+        if (model.lm_head.weight.data_ptr() != packed_weight_ptr
+                or model.model.embed_tokens.weight.data_ptr() != packed_weight_ptr):
+            raise RuntimeError("Tied lm_head identity changed after compact head installation")
+        return compact_sample(hidden_states, input_batch, grammar_output)
+
+    runner.sample = types.MethodType(sample, runner)
     setattr(worker, _STATE, dict(state=state, stats=stats))
     return state
 
@@ -73,7 +88,7 @@ def inspect(worker):
     result = {}
     installed = getattr(worker, _STATE, None)
     if installed is not None:
-        result.update(candidates=128, max_rows=128, shares_packed_weights=True,
+        result.update(candidates=128, max_rows=64, shares_packed_weights=True,
                       stats={k:dict(v) if isinstance(v,dict) else v for k,v in installed['stats'].items()})
     if hasattr(worker, '_mach_head_audit'):
         counts, margin = worker._mach_head_audit

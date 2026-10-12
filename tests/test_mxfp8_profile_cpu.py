@@ -49,6 +49,17 @@ class ProfileTests(unittest.TestCase):
                 ("worker", "native_backend", "dual", "ba", "gdn", "head", "kv",
                  "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant")}
 
+    def test_compact_head_selection_is_explicit_and_reset(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.serve.configure_environment(directory, hybrid_head=False)
+            self.assertFalse(self.profile.run_contract()["compact_greedy_head"])
+            settings = self.serve.configure_environment(directory)
+            self.assertEqual(settings["VLLM_MACH_MXFP8_COMPACT_HEAD"], "1")
+            self.assertTrue(self.profile.run_contract()["compact_greedy_head"])
+            with patch.dict(os.environ, {"VLLM_MACH_MXFP8_COMPACT_HEAD": "yes"}):
+                with self.assertRaisesRegex(RuntimeError, "0 or 1"):
+                    self.profile.run_contract()
+
     def test_parent_import_and_command_contract_are_cpu_only(self):
         importlib.import_module("vllm_mach.plugin")
         self.assertNotIn("torch", sys.modules)

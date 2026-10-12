@@ -46,6 +46,11 @@ def test_bf16_consumer_is_unchanged():
     assert fusion.transform(source) == (source, 0)
 
 
+def test_unswizzled_quantization_is_unchanged():
+    source = source_fixture().replace('default(act, True)', 'default(act, False)')
+    assert fusion.transform(source) == (source, 0)
+
+
 def test_extra_consumer_rejected():
     with pytest.raises(RuntimeError, match='extra consumers'):
         fusion.transform(source_fixture(extra_consumer=True))
@@ -89,3 +94,13 @@ def test_quantization_changing_graph_inputs(m, k):
         expected_values, expected_scales = mxfp8_quantize(reference, is_sf_swizzled_layout=True)
         assert torch.equal(values.view(torch.uint8), expected_values.view(torch.uint8))
         assert torch.equal(scales[offsets], expected_scales.flatten()[offsets])
+
+
+def test_receipt_rejects_missing_capture(monkeypatch):
+    from collections import Counter
+    monkeypatch.setattr(fusion, "_INSTALLED", True)
+    monkeypatch.setattr(fusion, "AUDIT", [{"pairs": 1}])
+    monkeypatch.setattr(fusion, "_COUNTS", Counter({("capture", 4): 1}))
+    assert fusion.receipt([4, 2048])["max_rows"] == 128
+    with pytest.raises(RuntimeError, match="Incomplete"):
+        fusion.receipt([4, 16])

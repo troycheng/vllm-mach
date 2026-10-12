@@ -223,6 +223,7 @@ def install_worker_hook():
     Worker.init_device, Worker.load_model = init, load
     Worker.initialize_from_config = cache
     Worker.compile_or_warm_up_model, Worker.execute_model = compile_model, execute
+    Worker.mach_mxfp8_receipt = lambda self: write_receipt(self, "requested")
     Worker._mach_2b_hook = True
     Worker._mach_2b_hook_contract = contract
     return True

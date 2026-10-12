@@ -104,7 +104,9 @@ def transform(source):
         src,dst,_=[a.id for a in call.args]
         hits=[n for n in nodes if isinstance(n,ast.Assign) and isinstance(n.value,ast.Call)
               and ast.unparse(n.value.func)=='torch.ops.vllm.mxfp8_quantize.default'
-              and n.value.args and isinstance(n.value.args[0],ast.Name) and n.value.args[0].id==dst and n.lineno>node.lineno]
+              and len(n.value.args)==2 and not n.value.keywords
+              and isinstance(n.value.args[1],ast.Constant) and n.value.args[1].value is True
+              and isinstance(n.value.args[0],ast.Name) and n.value.args[0].id==dst and n.lineno>node.lineno]
         if len(hits)!=1:continue
         if hashes.get(call.func.value.id) not in policy["function_ast_sha256"]:
             raise RuntimeError("Unqualified SwiGLU producer arithmetic")
@@ -132,7 +134,7 @@ def install():
     old=PyCodeCache.load_by_key_path.__func__
     def load(cls,key,path,linemap=None,attrs=None,*,set_sys_modules=None):
         source=Path(path).read_text()
-        if 'triton_poi_fused_mul_silu_slice_' in source and 'class Runner' in source:
+        if 'class Runner' in source and 'triton_poi_fused_mul_silu_slice_' in source:
             changed,count=transform(source)
             if count:
                 digest=hashlib.sha256(changed.encode()).hexdigest()
