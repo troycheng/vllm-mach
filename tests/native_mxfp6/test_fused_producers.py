@@ -184,6 +184,7 @@ def test_gdn_moe_head_geometry_never_calls_dense_output_producer(monkeypatch):
         out.copy_(core)
 
     layer = types.SimpleNamespace(
+        tp_size=2,
         num_k_heads=16,
         num_v_heads=32,
         in_proj_ba=types.SimpleNamespace(

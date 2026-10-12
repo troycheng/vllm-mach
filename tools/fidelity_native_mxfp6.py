@@ -121,7 +121,7 @@ def head_stats(worker):
     )
 
 
-def profile_flags(arm, model, current_profile=False):
+def profile_flags(arm, model, current_profile=False, tensor_parallel_size=2):
     """Resolve current model-aware profiles while preserving historical arm names."""
     from vllm_mach.mxfp6.serve import profile_environment
 
@@ -129,6 +129,7 @@ def profile_flags(arm, model, current_profile=False):
     flags = profile_environment(
         argparse.Namespace(
             model=model,
+            tensor_parallel_size=tensor_parallel_size,
             fp16_ssm=full,
             gdn_persistent=current_profile or arm in ("persistent", "gdn", "full_gdn"),
             gdn_ba_overlap=current_profile or arm in ("full_ba", "gdn", "full_gdn"),
@@ -158,6 +159,7 @@ def main():
         "--arm",
         choices=[
             "bf16",
+            "mxfp8",
             "default",
             "gdn",
             "persistent",
@@ -171,15 +173,20 @@ def main():
     )
     p.add_argument("--model", required=True)
     p.add_argument("--tokenizer", required=True)
+    p.add_argument("--tensor-parallel-size", type=int, default=2)
+    p.add_argument("--attention-backend", default="TRITON_ATTN",
+                   choices=["TRITON_ATTN", "FLASH_ATTN", "FLASHINFER"])
     p.add_argument("--manifest", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--head-only", action="store_true")
     p.add_argument("--physical-rows", type=int, choices=[4, 32], default=32)
     p.add_argument("--skip-head-probe", action="store_true")
+    p.add_argument("--default-compilation", action="store_true",
+                   help="Use vLLM's default compilation and CUDA graph policy")
     p.add_argument(
         "--current-profile",
         action="store_true",
-        help="Use current model-aware serving defaults for default/full",
+        help="Use current model-aware serving defaults for default/full/mxfp8",
     )
     p.add_argument("--cpu-offload-gb", type=float, default=4)
     p.add_argument(
@@ -193,13 +200,25 @@ def main():
 
     full = a.arm in ("full", "full_ba", "full_gdn")
     moe = _is_qwen35_moe(a.model)
-    if a.current_profile and a.arm not in ("default", "full", "bf16", "fp8", "nvfp4"):
+    if a.current_profile and a.arm not in ("default", "full", "bf16", "fp8", "nvfp4", "mxfp8"):
         p.error("--current-profile requires default/full or a reference arm")
     if a.head_only and not full:
         p.error("--head-only requires --arm full or full_ba")
     if a.head_only and (a.skip_head_probe or a.physical_rows != 32):
         p.error("--head-only requires M32 and cannot use --skip-head-probe")
-    flags = profile_flags(a.arm, a.model, a.current_profile)
+    flags = profile_flags(a.arm, a.model, a.current_profile, a.tensor_parallel_size)
+    flags["VLLM_MACH_FUSED_GEMMA_NORM"] = os.environ.get(
+        "VLLM_MACH_FUSED_GEMMA_NORM", "1"
+    )
+    flags["VLLM_MACH_GDN_TP1"] = os.environ.get("VLLM_MACH_GDN_TP1", "0")
+    flags["VLLM_MACH_MXFP8_BACKEND"] = os.environ.get(
+        "VLLM_MACH_MXFP8_BACKEND", "native"
+    )
+    flags["VLLM_MACH_MXFP8_FUSED_MLP"] = os.environ.get(
+        "VLLM_MACH_MXFP8_FUSED_MLP", "1"
+    )
+    for name in ("VLLM_MACH_MXFP8_PDL", "VLLM_MACH_MXFP8_NORM_QUANT"):
+        flags[name] = os.environ.get(name, "0")
     cache_dir = os.environ.get("VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR")
     if cache_dir:
         flags["VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR"] = cache_dir
@@ -222,7 +241,7 @@ def main():
         model=a.model,
         tokenizer=a.tokenizer,
         dtype="bfloat16",
-        tensor_parallel_size=2,
+        tensor_parallel_size=a.tensor_parallel_size,
         max_num_seqs=32,
         max_model_len=768,
         max_num_batched_tokens=8192,
@@ -230,7 +249,7 @@ def main():
         enable_chunked_prefill=True,
         enable_prefix_caching=False,
         enforce_eager=eager,
-        attention_backend="TRITON_ATTN",
+        attention_backend=a.attention_backend,
         language_model_only=True,
         seed=20260907,
         logprobs_mode="raw_logprobs",
@@ -244,6 +263,10 @@ def main():
     )
     if a.arm in ("default", "gdn", "persistent", "full", "full_ba", "full_gdn"):
         args["quantization"] = "quark"
+    if a.attention_backend == "FLASH_ATTN":
+        args["attention_config"] = {"flash_attn_version": 2}
+    if a.arm == "mxfp8":
+        args["quantization"] = "compressed-tensors"
     if (a.arm in ("fp8", "nvfp4") or (moe and not eager)) and not a.no_stock_compile:
         # Keep stock compilation enabled, as in the stock throughput baselines.
         args["compilation_config"] = dict(
@@ -252,6 +275,8 @@ def main():
     if eager:
         args["cpu_offload_gb"] = a.cpu_offload_gb
         os.environ["VLLM_WEIGHT_OFFLOADING_DISABLE_UVA"] = "1"
+    elif a.default_compilation:
+        args["compilation_config"] = {}
     write(
         a.output / "contract.json",
         dict(
@@ -372,7 +397,7 @@ def main():
                 len(o.outputs[0].token_ids) == 48 for o in outputs
             )
         write(a.output / "head.json", llm.collective_rpc(head_stats))
-    if a.arm in ("default", "gdn", "persistent", "full", "full_ba", "full_gdn"):
+    if a.arm in ("default", "gdn", "persistent", "full", "full_ba", "full_gdn", "mxfp8"):
         write(a.output / "gdn.json", llm.collective_rpc(gdn_stats))
     write(
         a.output / "COMPLETE.json",

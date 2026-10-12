@@ -80,6 +80,18 @@ def warmup_mxfp6_sm120(
 ) -> None:
     """Autotune W6A8 shapes and freeze the workspace before graph capture."""
 
+    from .dense_mxfp8 import warmup_mxfp8
+
+    warmup_mxfp8(model, token_sizes)
+    from .gemma_norm import prepare as prepare_gemma_norm
+
+    prepare_gemma_norm(model)
+    from .mxfp8_mlp import prepare as prepare_mxfp8_mlp
+
+    prepare_mxfp8_mlp(model)
+    from .mxfp8_norm_quant import prepare as prepare_mxfp8_norm_quant
+
+    prepare_mxfp8_norm_quant(model)
     from .fused_mlp import prepare as prepare_mlp
     from .gdn_decode import prepare
 
@@ -111,6 +123,10 @@ def warmup_mxfp6_sm120_stream(
     dtype: torch.dtype,
 ) -> None:
     """Register the active graph-capture stream with the frozen workspace."""
+
+    from .dense_mxfp8 import warmup_mxfp8
+
+    warmup_mxfp8(model, token_sizes, stream=True)
 
     problems = _collect_w6a8_problems(model)
     sizes = _normalize_sizes(token_sizes, reverse=False)

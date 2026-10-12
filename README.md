@@ -107,3 +107,5 @@ The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.c
 ## Contributing and license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for performance and correctness evidence expected with changes. [Apache-2.0](LICENSE); derived notices are in [NOTICE](NOTICE). External components retain their own licenses. This project is independent of the vLLM project.
+
+Development-profile comparison and integration: [MXFP8 branch comparison](docs/mxfp8-profile-merge.md).
