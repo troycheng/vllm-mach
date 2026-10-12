@@ -114,6 +114,8 @@ def inspect_worker(worker):
     if not projection["native_m16_available"]:
         raise RuntimeError("The 2B champion requires native BF16 BA M16")
     pdl_state = pdl.verify_capture(required)
+    from .. import swiglu_quant
+    fusion_state = swiglu_quant.receipt(required)
     heads = [m for name, m in worker.get_model().named_modules() if name.endswith("lm_head")]
     if (len(heads) != 1 or heads[0].weight.dtype != torch.bfloat16
             or tuple(heads[0].weight.shape) != (248320, 2048)):
@@ -124,7 +126,7 @@ def inspect_worker(worker):
     return {"profile": NAME, "pid": os.getpid(), **contract,
             "versions": check_environment(),
             "runtime_sources": worker._mach_2b_runtime_sources,
-            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state,
+            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state, "swiglu_quant": fusion_state,
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
             "hybrid_head": hybrid,
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
@@ -161,6 +163,8 @@ def install_worker_hook():
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
     pdl.install()
+    from .. import swiglu_quant
+    swiglu_quant.install()
     original_init, original_load = Worker.init_device, Worker.load_model
     original_cache = Worker.initialize_from_config
     original_compile, original_execute = Worker.compile_or_warm_up_model, Worker.execute_model

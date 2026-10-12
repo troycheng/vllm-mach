@@ -159,6 +159,8 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         stack.enter_context(patch.object(native, "install_worker_backend", side_effect=lambda obj: events.append("native")))
         stack.enter_context(patch.object(ba, "install", side_effect=lambda obj: events.append("ba")))
         stack.enter_context(patch.object(pdl, "install", side_effect=lambda: events.append("pdl_install")))
+        fusion = load("mxfp8.swiglu_quant")
+        stack.enter_context(patch.object(fusion, "install", return_value=True))
         stack.enter_context(patch.object(pdl, "prepare", side_effect=lambda: events.append("pdl_prepare")))
         stack.enter_context(patch.object(graph, "install_dispatch", side_effect=lambda: events.append("graph")))
         for name in ("install_runtime", "prepare_layers", "prepare_pools"):
@@ -277,6 +279,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         profile = self.profile
         graph, gdn, ba, pdl = (load("mxfp8.two_b."+name) for name in ("graph_policy", "gdn", "ba", "pdl"))
         native = load("mxfp8.worker")
+        fusion = load("mxfp8.swiglu_quant")
         for row in (None, 4, 32, 64):
             environment = {} if row is None else {
                 "VLLM_MACH_MXFP8_MODE": "quality", "VLLM_MACH_MXFP8_QUALITY_ROWS": str(row)}
@@ -302,6 +305,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                 with patch.dict(sys.modules, modules), patch.object(gdn, "inspect_worker", return_value=state), \
                         patch.object(ba, "verify_capture", return_value={"native_m16_available": True}) as ba_verify, \
                         patch.object(pdl, "verify_capture", return_value={"prepared": True}) as pdl_verify, \
+                        patch.object(fusion, "receipt", return_value={"installed": True}) as fusion_verify, \
                         patch.object(native, "verify_worker_execution", return_value={}) as native_verify, \
                         patch.object(profile, "check_environment", return_value={}), \
                         patch.object(graph, "_INSTALLED", False):
@@ -313,6 +317,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                     required = set(worker._mach_2b_contract["compilation_config"]["cudagraph_capture_sizes"])
                     ba_verify.assert_called_once_with(worker, required_rows=tuple(sorted(required & {4, 8, 16})))
                     pdl_verify.assert_called_once_with(required)
+                    fusion_verify.assert_called_once_with(required)
                     with patch.object(ba, "verify_capture", return_value={"native_m16_available": False}):
                         with self.assertRaisesRegex(RuntimeError, "requires native BF16 BA M16"):
                             profile.inspect_worker(worker)

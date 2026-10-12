@@ -190,7 +190,7 @@ def _directory():
 
 def write_receipt(worker, phase):
     from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
-    from . import native_backend, projection_parallel
+    from . import native_backend, projection_parallel, swiglu_quant
 
     receipt = {
         "profile": NAME, "phase": phase, "pid": os.getpid(),
@@ -205,6 +205,7 @@ def write_receipt(worker, phase):
                   else graph_policy.inspect_worker(worker)),
         "projection_parallel": projection_parallel.inspect_worker(worker),
         "head": head.inspect_head(worker),
+        "swiglu_quant": swiglu_quant.receipt(),
         "compile_choices": compile_choices.inspect(),
         "counter_scope": "Python execution and CUDA graph construction; graph replay is not counted",
     }
@@ -235,6 +236,8 @@ def install_worker_hook():
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
 
+    from . import swiglu_quant
+    swiglu_quant.install()
     original_init = Worker.init_device
     original_load = Worker.load_model
     original_cache = Worker.initialize_from_config
@@ -297,7 +300,13 @@ def install_worker_hook():
         else:
             _verify_quality_capture(self, contract["quality_rows"])
         kv.inspect_scales(self)
+        swiglu_quant.receipt(self.vllm_config.compilation_config.cudagraph_capture_sizes)
         head.install_head(self)
+        if os.environ.get("VLLM_MACH_GREEDY_HEAD_EXPERIMENT") == "1":
+            from . import greedy_head
+            compact = greedy_head.install(self)
+            if os.environ.get("VLLM_MACH_HEAD_AUDIT") == "1":
+                greedy_head.install_audit(self, compact)
         write_receipt(self, "compiled")
         self._mach_mxfp8_ready = True
         return result

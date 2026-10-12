@@ -117,7 +117,8 @@ def install(worker):
     if (state is None or state.candidates != 128 or state.backend != "b12x"
             or state.input_size != 2048 or state.output_size != 248320):
         raise RuntimeError("NVFP4 K128 sidecar configuration changed")
-    state.max_rows = 32
+    import os
+    state.max_rows = 128 if os.environ.get("VLLM_MACH_GREEDY_HEAD_EXPERIMENT") == "1" else 32
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, weight, tp_size=1)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
                  hybrid_success_calls=0, hybrid_success_rows=0, calls_by_rows={})
@@ -133,6 +134,9 @@ def install(worker):
     _wrap_sample(runner, head, processor, state, torch.bfloat16,
                  indexed_argmax_triton, compact_output, stats)
     setattr(worker, _STATE, dict(state=state, detached=detached, stats=stats))
+    if os.environ.get("VLLM_MACH_HEAD_AUDIT") == "1":
+        from .. import greedy_head
+        greedy_head.install_audit(worker, state)
     return inspect_worker(worker)
 
 

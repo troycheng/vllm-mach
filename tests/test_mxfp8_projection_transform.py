@@ -90,9 +90,13 @@ class ProjectionTransformContracts(unittest.TestCase):
         with patch.dict(sys.modules,{'torch':torch}):
             self.assertEqual(runtime.dispatch(x,weights[0],weights[1],1,weights[2],weights[3],True),('Q','B'))
             self.assertEqual(events,[('aux','wait','origin'),'aux_enter','ba','aux_exit','qkvz',('origin','wait','aux')])
+            for rows in (1, 2, 4, 8, 16, 24, 32, 64):
+                events.clear();x.shape=(rows,2560)
+                runtime.dispatch(x,weights[0],weights[1],1,weights[2],weights[3],True)
+                self.assertEqual(events,[('aux','wait','origin'),'aux_enter','ba','aux_exit','qkvz',('origin','wait','aux')])
             events.clear();runtime.dispatch(x,weights[0],weights[1],0,weights[2],weights[3],False)
             self.assertEqual(events,['ba','qkvz'])
-            events.clear();x.shape=(16,2560)
+            events.clear();x.shape=(40,2560)
             runtime.dispatch(x,weights[0],weights[1],1,weights[2],weights[3],True)
             self.assertEqual(events,['qkvz','ba'])
             with self.assertRaisesRegex(RuntimeError,'identity'):

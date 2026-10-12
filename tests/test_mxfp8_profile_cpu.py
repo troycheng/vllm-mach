@@ -47,7 +47,7 @@ class ProfileTests(unittest.TestCase):
         sys.modules["torch"] = types.ModuleType("torch")
         return {name: importlib.import_module(f"vllm_mach.mxfp8.{name}") for name in
                 ("worker", "native_backend", "dual", "ba", "gdn", "head", "kv",
-                 "graph_policy", "projection_parallel", "compile_choices")}
+                 "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant")}
 
     def test_parent_import_and_command_contract_are_cpu_only(self):
         importlib.import_module("vllm_mach.plugin")
@@ -232,7 +232,8 @@ class ProfileTests(unittest.TestCase):
                        "ba": ["install", "prepare_model", "verify_capture"],
                        "gdn": ["install_runtime", "prepare_layers", "initialize_cache", "prepare_pools"],
                        "kv": ["install_scales", "inspect_scales"],
-                       "projection_parallel": ["prepare_model", "verify_capture"], "head": ["install_head"]}
+                       "projection_parallel": ["prepare_model", "verify_capture"], "head": ["install_head"],
+                       "swiglu_quant": ["install", "receipt"]}
             for component, names in targets.items():
                 for name in names:
                     label = f"{component}.{name}"
@@ -244,6 +245,7 @@ class ProfileTests(unittest.TestCase):
             self.assertTrue(self.profile.install_worker_hook())
             self.assertFalse(self.profile.install_worker_hook())
             worker = Worker()
+            worker.vllm_config = types.SimpleNamespace(compilation_config=types.SimpleNamespace(cudagraph_capture_sizes=[4, 32, 64]))
             worker.init_device()
             worker.load_model(load_dummy_weights=False)
             worker.initialize_from_config(object())
@@ -279,7 +281,7 @@ class ProfileTests(unittest.TestCase):
                     "original_cache", "gdn.initialize_cache", "gdn.prepare_pools", "original_compile",
                     "original_execute", "worker.verify_worker_execution", "dual.verify_capture", "ba.verify_capture",
                     "graph_policy.verify_capture", "projection_parallel.verify_capture", "compile_choices.verify_coverage",
-                    "kv.inspect_scales", "head.install_head", "compiled"]
+                    "kv.inspect_scales", "swiglu_quant.receipt", "head.install_head", "compiled"]
         start = events.index("original_init")
         self.assertEqual(events[start:start + len(expected)], expected)
 

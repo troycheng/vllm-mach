@@ -20,7 +20,7 @@ _PAIRS = {}
 _COUNTS = collections.Counter()
 _MODULES = {}
 ACTIVE_LAYERS = frozenset(range(1,24))
-REQUIRED_ROWS = (32,64)
+REQUIRED_ROWS = (1,2,4,8,16,24,32,64)
 
 
 def sha(path):

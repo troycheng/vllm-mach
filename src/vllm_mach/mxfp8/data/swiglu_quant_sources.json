@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "function_ast_sha256": {
+    "c2fe30a91328bad4eaaacb93036076145d8613fd6f1ecbeea67f8c2bc8c37e9a": [
+      "merged-4b",
+      "quality-merged-4b-m32",
+      "quality-merged-4b-m64"
+    ],
+    "fb1bd3c264f13133e126886d9c29c83096d52139e9b31bbc32109d98b3ee7b3b": [
+      "merged-2b",
+      "quality-merged-2b-m32",
+      "quality-merged-2b-m64"
+    ]
+  }
+}
