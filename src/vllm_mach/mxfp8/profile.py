@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 from .ssm import selected_dtype, select_gdn, ordered_enabled
+from . import kv
 
 NAME = "qwen35-4b-mxfp8-champion-v1"
 DEPENDENCIES = {
@@ -35,7 +36,7 @@ def quality_contract(rows):
             "enable_chunked_prefill": True, "enable_prefix_caching": False,
             "attention_backend": "FLASHINFER", "language_model_only": True,
             "seed": 20260907, "logprobs_mode": "raw_logprobs", "disable_log_stats": True,
-            "mamba_ssm_cache_dtype": selected_dtype(), "kv_cache_dtype": "fp8_e4m3",
+            "mamba_ssm_cache_dtype": selected_dtype(), "kv_cache_dtype": kv.selected_dtype(),
             "quantization": "compressed-tensors",
             "kernel_config": {"linear_backend": "flashinfer_cutlass"},
             "compilation_config": {"cudagraph_capture_sizes": captures,
@@ -59,7 +60,7 @@ def run_contract():
     geometry = quality_contract(int(rows)) if rows else {"kv_cache_memory_bytes": 19 * 2**30}
     return {"mode": mode, "quality_rows": int(rows) if rows else None, **geometry,
             "production_throughput_profile": mode == "production", "compact_greedy_head": compact == "1",
-            "ssm_dtype": selected_dtype(), "ordered_gdn": ordered_enabled()}
+            "ssm_dtype": selected_dtype(), "ordered_gdn": ordered_enabled(), **kv.selection()}
 
 
 def _quality_graph_receipt(worker, rows):
@@ -206,7 +207,7 @@ def write_receipt(worker, phase):
         "runtime_sources": worker._mach_mxfp8_runtime_sources,
         "native": native_backend.inspect(worker),
         "dual": dual.inspect_worker(worker), "ba": ba.inspect_worker(worker),
-        "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_scales(worker),
+        "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_cache(worker),
         "graph": (_quality_graph_receipt(worker, worker._mach_mxfp8_contract["quality_rows"])
                   if worker._mach_mxfp8_contract["mode"] == "quality"
                   else graph_policy.inspect_worker(worker)),
@@ -270,9 +271,12 @@ def install_worker_hook():
 
     @wraps(original_load)
     def load(self, *args, **kwargs):
+        if self.vllm_config.cache_config.cache_dtype != contract["kv_dtype"]:
+            raise RuntimeError("Actual worker KV dtype differs from the profile selection")
         result = original_load(self, *args, **kwargs)
         from . import ba, dual, kv, projection_parallel
-        kv.install_scales(self)
+        if contract["kv_dtype"] == "fp8_e4m3":
+            kv.install_scales(self)
         dual.prepare_model(self)
         ba.prepare_model(self)
         gdn.prepare_layers(self)
@@ -309,7 +313,7 @@ def install_worker_hook():
             compile_choices.verify_coverage()
         else:
             _verify_quality_capture(self, contract["quality_rows"])
-        kv.inspect_scales(self)
+        kv.inspect_cache(self)
         swiglu_quant.receipt(self.vllm_config.compilation_config.cudagraph_capture_sizes)
         head.install_head(self)
         if contract["compact_greedy_head"]:

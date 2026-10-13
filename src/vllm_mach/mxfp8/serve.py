@@ -12,10 +12,12 @@ import tempfile
 from .ssm import DTYPES, ENV as SSM_ENV, ORDERED_BF16_ENV, validate_dtype
 
 from .profile import NAME, quality_contract
+from . import kv
 
 
-def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-mx8-study", quality_rows=None, ssm_dtype="float32"):
+def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-mx8-study", quality_rows=None, ssm_dtype="float32", kv_cache_dtype="fp8_e4m3"):
     validate_dtype(ssm_dtype)
+    kv.validate_dtype(kv_cache_dtype)
     from .graph_policy import compilation_settings
     if quality_rows not in (None, 32, 64):
         raise ValueError("Quality rows must be 32 or 64")
@@ -33,13 +35,19 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-mx8
         "--no-enable-prefix-caching", "--mamba-ssm-cache-dtype", ssm_dtype,
         "--attention-backend", "FLASHINFER", "--quantization", "compressed-tensors",
         "--linear-backend", "flashinfer_cutlass", "--kv-cache-memory", str(contract["kv_cache_memory_bytes"]),
-        "--kv-cache-dtype", "fp8_e4m3", "--seed", "20260907",
+        "--kv-cache-dtype", kv_cache_dtype, "--seed", "20260907",
         "--compilation-config", json.dumps(contract["compilation_config"], separators=(",", ":")),
     ]
 
 
-def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm_dtype="float32", ordered_bf16_ssm=False):
+def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm_dtype="float32", ordered_bf16_ssm=False, kv_cache_dtype="fp8_e4m3", kv_scales=None):
     validate_dtype(ssm_dtype)
+    kv.validate_dtype(kv_cache_dtype)
+    if kv_scales is not None:
+        if kv_cache_dtype != "fp8_e4m3":
+            raise ValueError("Explicit KV scales require fp8_e4m3")
+        kv_scales = str(Path(kv_scales).resolve())
+        kv.load_profile(kv_scales)
     if quality_rows not in (None, 32, 64):
         raise ValueError("Quality rows must be 32 or 64")
     directory = Path(directory).resolve()
@@ -74,6 +82,11 @@ def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm
         settings["VLLM_MACH_MXFP8_QUALITY_ROWS"] = str(quality_rows)
     settings[SSM_ENV] = ssm_dtype
     settings[ORDERED_BF16_ENV] = str(int(ordered_bf16_ssm))
+    settings[kv.DTYPE_ENV] = kv_cache_dtype
+    if kv_scales is None:
+        os.environ.pop(kv.SCALES_ENV, None)
+    else:
+        settings[kv.SCALES_ENV] = kv_scales
     os.environ.update(settings)
     return settings
 
@@ -94,15 +107,21 @@ def main():
                         help="SSM state storage; bfloat16 defaults to stock vLLM GDN")
     parser.add_argument("--ordered-bf16-ssm", action="store_true",
                         help="Experimental ordered W4 BF16 state; benchmark before enabling")
+    parser.add_argument("--kv-cache-dtype", choices=kv.DTYPES, default="fp8_e4m3")
+    parser.add_argument("--kv-scales", type=Path,
+                        help="Explicit FP8 KV scale profile; default uses model metadata")
     args = parser.parse_args()
     model = args.model.resolve()
     argv = build_argv(model, host=args.host, port=args.port,
-                      served_model_name=args.served_model_name, quality_rows=args.quality_rows, ssm_dtype=args.ssm_dtype)
+                      served_model_name=args.served_model_name, quality_rows=args.quality_rows, ssm_dtype=args.ssm_dtype,
+                      kv_cache_dtype=args.kv_cache_dtype)
     if args.print_command:
         print(json.dumps(argv, indent=2))
         return
     # Cache/compiler settings must precede validation's torch/safetensors imports.
-    settings = configure_environment(args.run_dir, quality_rows=args.quality_rows, hybrid_head=args.hybrid_head, ssm_dtype=args.ssm_dtype, ordered_bf16_ssm=args.ordered_bf16_ssm)
+    settings = configure_environment(args.run_dir, quality_rows=args.quality_rows, hybrid_head=args.hybrid_head,
+                                     ssm_dtype=args.ssm_dtype, ordered_bf16_ssm=args.ordered_bf16_ssm,
+                                     kv_cache_dtype=args.kv_cache_dtype, kv_scales=args.kv_scales)
     from .profile import check_environment, check_runtime_sources, run_contract
     from .prepare_model import validate_model
     check_environment()

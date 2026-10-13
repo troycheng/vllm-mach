@@ -22,6 +22,8 @@ The profile combines the following optimizations:
 | 12. Fixed model | BF16 revision `851bf6…` source, exact L0 codes, 595 verified output tensors, tokenizer/config and KV metadata |
 | 13. Build/run/measurement | Official source wheel, bundled Mach runtime installer, unified lifecycle/receipts and fixed six-point client |
 
+The [FP8 KV ablation](mxfp8-kv.md) compares BF16 KV, independent random-token calibration, all-1 scales and the historical bank, including distribution checks and a multimodal comparison with identical MXFP8 language weights.
+
 FP4 candidate scoring and FP8 KV reduce precision; measured BF16 error is listed in [Validation](#validation). The FlashInfer `b12x` head backend and the standalone BA package are separate implementations.
 
 ## Build, prepare, serve, benchmark

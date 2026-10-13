@@ -11,12 +11,39 @@ from collections.abc import Mapping
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import struct
 
 PROFILE = "qwen35-4b-mxfp8-champion-v1"
 LAYERS = tuple(range(3, 32, 4))
 _STATE = "_mach_mxfp8_kv_scale_setup"
+DTYPE_ENV = "VLLM_MACH_MXFP8_KV_DTYPE"
+SCALES_ENV = "VLLM_MACH_MXFP8_KV_SCALES"
+DTYPES = ("fp8_e4m3", "bfloat16")
+
+
+def validate_dtype(value):
+    if value not in DTYPES:
+        raise ValueError(f"KV dtype must be one of {DTYPES}")
+    return value
+
+
+def selected_dtype():
+    return validate_dtype(os.environ.get(DTYPE_ENV, "fp8_e4m3"))
+
+
+def selection():
+    """CPU-only identity of the explicit cache/scale selection."""
+    dtype = selected_dtype()
+    path = os.environ.get(SCALES_ENV)
+    if path and dtype != "fp8_e4m3":
+        raise ValueError("Explicit KV scales require fp8_e4m3")
+    metadata = load_profile(path) if path else None
+    digest = (hashlib.sha256(json.dumps(metadata, sort_keys=True,
+              separators=(",", ":")).encode()).hexdigest() if metadata else None)
+    return {"kv_dtype": dtype, "kv_scale_source": path or ("model" if dtype == "fp8_e4m3" else None),
+            "kv_scale_profile_sha256": digest}
 
 
 def _f32(value):
@@ -124,6 +151,8 @@ def install_scales(worker, profile=None):
         raise RuntimeError("Actual worker FP8 KV configuration is absent")
     if torch.device(worker.device).type != "cuda" or torch.cuda.is_current_stream_capturing():
         raise RuntimeError("Install FP8 KV scales on the CUDA worker before capture")
+    if profile is None:
+        profile = os.environ.get(SCALES_ENV)
     metadata = load_profile(profile, model_dir=worker.vllm_config.model_config.model)
     modules = _modules(worker)
     if set(modules) != {row["module_name"] for row in metadata["kv_scales"]}:
@@ -199,4 +228,29 @@ def inspect_scales(worker, *, require_storage=True):
             "require_storage": require_storage, "layers": layers, "installation": setup["rows"]}
 
 
-__all__ = ["load_profile", "install_scales", "inspect_scales"]
+def inspect_cache(worker):
+    """Verify actual storage for either the FP8 default or BF16 ablation."""
+    if worker.vllm_config.cache_config.cache_dtype == "fp8_e4m3":
+        return inspect_scales(worker)
+    import torch
+    if worker.vllm_config.cache_config.cache_dtype != "bfloat16" or hasattr(worker, _STATE):
+        raise RuntimeError("BF16 cache must not install FP8 scale metadata")
+    modules = _modules(worker)
+    if set(modules) != {f"model.layers.{i}.self_attn.attn" for i in LAYERS}:
+        raise RuntimeError("Actual eight FlashInfer BF16 KV modules differ")
+    layers = []
+    for name, module in modules.items():
+        impl, cache = module.impl, module.kv_cache
+        if ((impl.num_heads, impl.num_kv_heads, impl.head_size) != (16, 4, 256)
+                or impl.cache_dtype != "bfloat16" or module.kv_cache_dtype != "bfloat16"
+                or not isinstance(cache, torch.Tensor) or cache.numel() == 0
+                or cache.dtype != torch.bfloat16 or cache.device != torch.device(worker.device)):
+            raise RuntimeError("Actual BF16 KV storage/geometry differs")
+        layers.append({"name": name, "logical_dtype": impl.cache_dtype,
+                       "kv_dtype": str(cache.dtype), "kv_shape": list(cache.shape),
+                       "kv_stride": list(cache.stride())})
+    return {"installed": False, "logical_dtype": "bfloat16", "layers": layers}
+
+
+__all__ = ["load_profile", "install_scales", "inspect_scales", "inspect_cache",
+           "selected_dtype", "selection", "validate_dtype"]

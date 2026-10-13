@@ -60,6 +60,25 @@ class ProfileTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "0 or 1"):
                     self.profile.run_contract()
 
+    def test_kv_ablation_selection_resets_stale_scales(self):
+        from vllm_mach.mxfp8 import kv
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "scales.json"
+            path.write_text(json.dumps({"profile": kv.PROFILE, "kv_scales": [
+                {"layer_index": i, "module_name": f"model.layers.{i}.self_attn.attn",
+                 "k_scale": 1., "v_scale": 1.} for i in kv.LAYERS]}))
+            self.serve.configure_environment(directory, quality_rows=32, kv_scales=path)
+            self.assertEqual(self.profile.run_contract()["kv_scale_source"], str(path))
+            self.serve.configure_environment(directory, quality_rows=32, kv_cache_dtype="bfloat16")
+            self.assertNotIn(kv.SCALES_ENV, os.environ)
+            self.assertEqual(self.profile.quality_contract(32)["kv_cache_dtype"], "bfloat16")
+            argv = self.serve.build_argv("/model", kv_cache_dtype="bfloat16")
+            self.assertEqual(argv[argv.index("--kv-cache-dtype") + 1], "bfloat16")
+            with self.assertRaisesRegex(ValueError, "Explicit KV scales"):
+                self.serve.configure_environment(directory, kv_cache_dtype="bfloat16", kv_scales=path)
+            self.serve.configure_environment(directory)
+            self.assertEqual(self.profile.run_contract()["kv_scale_source"], "model")
+
     def test_parent_import_and_command_contract_are_cpu_only(self):
         importlib.import_module("vllm_mach.plugin")
         self.assertNotIn("torch", sys.modules)
@@ -208,7 +227,7 @@ class ProfileTests(unittest.TestCase):
                     self.profile.check_runtime_sources()
         self.assertNotIn("torch", sys.modules)
 
-    def lifecycle(self, *, quality_rows=None, failure=False):
+    def lifecycle(self, *, quality_rows=None, failure=False, kv_cache_dtype="fp8_e4m3"):
         modules = self.modules()
         events = []
         class Worker:
@@ -227,6 +246,7 @@ class ProfileTests(unittest.TestCase):
         gpu.Worker = Worker
         sys.modules[gpu.__name__] = gpu
         os.environ["VLLM_MACH_PROFILE"] = self.profile.NAME
+        os.environ["VLLM_MACH_MXFP8_KV_DTYPE"] = kv_cache_dtype
         os.environ["VLLM_MACH_MXFP8_RUN_DIR"] = tempfile.gettempdir()
         if quality_rows:
             os.environ["VLLM_MACH_MXFP8_MODE"] = "quality"
@@ -242,7 +262,7 @@ class ProfileTests(unittest.TestCase):
                        "dual": ["install", "prepare_model", "verify_capture"],
                        "ba": ["install", "prepare_model", "verify_capture"],
                        "gdn": ["install_runtime", "prepare_layers", "initialize_cache", "prepare_pools"],
-                       "kv": ["install_scales", "inspect_scales"],
+                       "kv": ["install_scales", "inspect_cache"],
                        "projection_parallel": ["prepare_model", "verify_capture"], "head": ["install_head"],
                        "swiglu_quant": ["install", "receipt"]}
             for component, names in targets.items():
@@ -256,8 +276,15 @@ class ProfileTests(unittest.TestCase):
             self.assertTrue(self.profile.install_worker_hook())
             self.assertFalse(self.profile.install_worker_hook())
             worker = Worker()
-            worker.vllm_config = types.SimpleNamespace(compilation_config=types.SimpleNamespace(cudagraph_capture_sizes=[4, 32, 64]))
+            worker.vllm_config = types.SimpleNamespace(
+                compilation_config=types.SimpleNamespace(cudagraph_capture_sizes=[4, 32, 64]),
+                cache_config=types.SimpleNamespace(cache_dtype=kv_cache_dtype))
             worker.init_device()
+            if kv_cache_dtype == "bfloat16":
+                worker.vllm_config.cache_config.cache_dtype = "fp8_e4m3"
+                with self.assertRaisesRegex(RuntimeError, "Actual worker KV dtype"):
+                    worker.load_model(load_dummy_weights=False)
+                worker.vllm_config.cache_config.cache_dtype = kv_cache_dtype
             worker.load_model(load_dummy_weights=False)
             worker.initialize_from_config(object())
             if failure:
@@ -292,12 +319,18 @@ class ProfileTests(unittest.TestCase):
                     "original_cache", "gdn.initialize_cache", "gdn.prepare_pools", "original_compile",
                     "original_execute", "worker.verify_worker_execution", "dual.verify_capture", "ba.verify_capture",
                     "graph_policy.verify_capture", "projection_parallel.verify_capture", "compile_choices.verify_coverage",
-                    "kv.inspect_scales", "swiglu_quant.receipt", "head.install_head", "compiled"]
+                    "kv.inspect_cache", "swiglu_quant.receipt", "head.install_head", "compiled"]
         start = events.index("original_init")
         self.assertEqual(events[start:start + len(expected)], expected)
 
     def test_failed_final_preparation_never_marks_worker_ready(self):
         self.lifecycle(failure=True)
+
+    def test_bf16_worker_skips_fp8_scale_installation(self):
+        events = self.lifecycle(kv_cache_dtype="bfloat16")
+        self.assertNotIn("kv.install_scales", events)
+        self.assertIn("kv.inspect_cache", events)
+        self.assertIn("serving", events)
 
     def test_quality_does_not_install_pw_or_claim_all_production_coverage(self):
         events = self.lifecycle(quality_rows=64)

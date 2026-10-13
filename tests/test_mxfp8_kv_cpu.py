@@ -5,6 +5,7 @@ from contextlib import nullcontext
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -26,6 +27,26 @@ def metadata():
 
 
 class SchemaCPU(unittest.TestCase):
+    def test_explicit_selection_hash_and_dtype_restrictions(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {}, clear=True):
+            path = Path(directory) / "scales.json"
+            source = metadata()
+            path.write_text(json.dumps(source))
+            self.assertEqual(kv.selection()["kv_scale_source"], "model")
+            os.environ[kv.SCALES_ENV] = str(path)
+            first = kv.selection()
+            source["kv_scales"][0]["k_scale"] = .5
+            path.write_text(json.dumps(source))
+            self.assertNotEqual(first["kv_scale_profile_sha256"], kv.selection()["kv_scale_profile_sha256"])
+            os.environ[kv.DTYPE_ENV] = "bfloat16"
+            with self.assertRaisesRegex(ValueError, "Explicit KV scales"):
+                kv.selection()
+            del os.environ[kv.SCALES_ENV]
+            self.assertIsNone(kv.selection()["kv_scale_source"])
+            os.environ[kv.DTYPE_ENV] = "auto"
+            with self.assertRaises(ValueError):
+                kv.selected_dtype()
+
     def test_mapping_file_directory_and_default_model_directory(self):
         source = metadata()
         self.assertEqual(kv.load_profile(source), source)
@@ -90,7 +111,7 @@ class FlashInferImpl:
 def worker_and_modules():
     torch = types.ModuleType("torch")
     torch.Tensor, torch.device = Tensor, Device
-    torch.float32, torch.uint8, torch.float8_e4m3fn = "f32", "u8", "e4m3"
+    torch.float32, torch.uint8, torch.float8_e4m3fn, torch.bfloat16 = "f32", "u8", "e4m3", "bf16"
     torch.tensor = lambda value, *, dtype, device: Tensor(value, dtype=dtype, device=device)
     torch.no_grad = nullcontext
     torch.cuda = types.SimpleNamespace(is_current_stream_capturing=lambda: False)
@@ -115,6 +136,25 @@ def worker_and_modules():
 
 
 class LifecycleCPU(unittest.TestCase):
+    def test_bf16_storage_and_no_fp8_scale_installation(self):
+        worker, modules, torch, backend = worker_and_modules()
+        worker.vllm_config.cache_config.cache_dtype = "bfloat16"
+        for module in modules.values():
+            module.impl.cache_dtype = module.kv_cache_dtype = "bfloat16"
+            module.kv_cache = Tensor(dtype="bf16", device="cuda:0", shape=(2, 16, 4, 256))
+        with self.dependencies(torch, backend):
+            receipt = kv.inspect_cache(worker)
+            self.assertEqual(len(receipt["layers"]), 8)
+            self.assertFalse(receipt["installed"])
+            first = next(iter(modules.values()))
+            first.kv_cache.dtype = "u8"
+            with self.assertRaisesRegex(RuntimeError, "BF16 KV storage"):
+                kv.inspect_cache(worker)
+            first.kv_cache.dtype = "bf16"
+            setattr(worker, kv._STATE, {})
+            with self.assertRaisesRegex(RuntimeError, "must not install"):
+                kv.inspect_cache(worker)
+
     def dependencies(self, torch, backend):
         return patch.dict(sys.modules, {"torch": torch,
                     "vllm.v1.attention.backends.flashinfer": backend})
