@@ -12,7 +12,7 @@ import json
 import os
 from pathlib import Path
 
-from .ssm import selected_dtype, select_gdn
+from .ssm import selected_dtype, select_gdn, ordered_enabled
 
 NAME = "qwen35-4b-mxfp8-champion-v1"
 DEPENDENCIES = {
@@ -59,7 +59,7 @@ def run_contract():
     geometry = quality_contract(int(rows)) if rows else {"kv_cache_memory_bytes": 19 * 2**30}
     return {"mode": mode, "quality_rows": int(rows) if rows else None, **geometry,
             "production_throughput_profile": mode == "production", "compact_greedy_head": compact == "1",
-            "ssm_dtype": selected_dtype()}
+            "ssm_dtype": selected_dtype(), "ordered_gdn": ordered_enabled()}
 
 
 def _quality_graph_receipt(worker, rows):
@@ -151,7 +151,7 @@ def _verify_quality_capture(worker, rows):
         if not pairs["ready"] or len(pairs["pairs"]) != 24 or not pairs["aot_modules"] or covered != set(range(1, 24)):
             raise RuntimeError(f"Quality M{m} projection pair capture incomplete: {covered}")
     state = select_gdn(gdn).inspect_worker(worker)
-    if selected_dtype() == "float32":
+    if ordered_enabled():
         if (state["profile_mode"] != "quality" or state["quality_rows"] != rows
                 or not state["ready"] or not state["cache_initialized"]
                 or state["layer_count"] != 24):
@@ -283,7 +283,7 @@ def install_worker_hook():
 
     @wraps(original_cache)
     def initialize_cache(self, *args, **kwargs):
-        if contract["ssm_dtype"] == "bfloat16":
+        if not contract["ordered_gdn"]:
             gdn.check_cache_initialization(self)
         result = original_cache(self, *args, **kwargs)
         gdn.initialize_cache(self)

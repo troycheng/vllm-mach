@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import tempfile
 
-from .ssm import DTYPES, ENV as SSM_ENV, validate_dtype
+from .ssm import DTYPES, ENV as SSM_ENV, ORDERED_BF16_ENV, validate_dtype
 
 from .profile import NAME, quality_contract
 
@@ -38,7 +38,7 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-mx8
     ]
 
 
-def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm_dtype="float32"):
+def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm_dtype="float32", ordered_bf16_ssm=False):
     validate_dtype(ssm_dtype)
     if quality_rows not in (None, 32, 64):
         raise ValueError("Quality rows must be 32 or 64")
@@ -73,6 +73,7 @@ def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm
     else:
         settings["VLLM_MACH_MXFP8_QUALITY_ROWS"] = str(quality_rows)
     settings[SSM_ENV] = ssm_dtype
+    settings[ORDERED_BF16_ENV] = str(int(ordered_bf16_ssm))
     os.environ.update(settings)
     return settings
 
@@ -90,7 +91,9 @@ def main():
     parser.add_argument("--quality-rows", choices=(32, 64), type=int,
                         help="Accepted precision comparison: M32/4 GiB or M64/19 GiB, FULL decode and PIECEWISE mixed graphs at accepted small sizes; no PW2048; not production throughput")
     parser.add_argument("--ssm-dtype", "--mamba-ssm-cache-dtype", choices=DTYPES, default="float32",
-                        help="SSM state storage; bfloat16 uses stock vLLM GDN")
+                        help="SSM state storage; bfloat16 defaults to stock vLLM GDN")
+    parser.add_argument("--ordered-bf16-ssm", action="store_true",
+                        help="Experimental ordered W4 BF16 state; benchmark before enabling")
     args = parser.parse_args()
     model = args.model.resolve()
     argv = build_argv(model, host=args.host, port=args.port,
@@ -99,7 +102,7 @@ def main():
         print(json.dumps(argv, indent=2))
         return
     # Cache/compiler settings must precede validation's torch/safetensors imports.
-    settings = configure_environment(args.run_dir, quality_rows=args.quality_rows, hybrid_head=args.hybrid_head, ssm_dtype=args.ssm_dtype)
+    settings = configure_environment(args.run_dir, quality_rows=args.quality_rows, hybrid_head=args.hybrid_head, ssm_dtype=args.ssm_dtype, ordered_bf16_ssm=args.ordered_bf16_ssm)
     from .profile import check_environment, check_runtime_sources, run_contract
     from .prepare_model import validate_model
     check_environment()

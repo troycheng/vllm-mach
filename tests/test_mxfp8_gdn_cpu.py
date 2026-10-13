@@ -149,10 +149,11 @@ class OrderedGDNContracts(unittest.TestCase):
         # AST fingerprints bind operations AND launch expressions; paths and
         # comments are excluded so normal packaging cannot invalidate the pin.
         fingerprints = {
-            "lowm_allshape_triton": "4a02c9381d1c7cc6fc0732d0b92622e51afe758074ab6a4563faec78727911b3",
-            "ordered_allm_triton": "8d288484698cf0aa4199d30e9ea6d400a89c57789dabb135885fbda2754c9e49",
-            "ordered_m4_deferred_triton": "a55563f6c8ebdb0c553ecb96d02053561c26d66dd9186f2fdcfb129edb3b0020",
-            "ordered_m16_deferred_triton": "73d585eb33e1fc3115f9317de4b166ffd3c35c1928ecf1ce8e4ac3869e7b5431",
+            "lowm_allshape_triton": "17220ee86194044b5792a098e4f3c753992fdf4a83ac2c97600aebb603fabb94",
+            "ordered_allm_triton": "6604a717d2cec99b4c19755cd2cddaf5319dbd9b0664634eb56ef1a90d5b3dfa",
+            "ordered_m4_deferred_triton": "85fafccf509727d73972e0ba9b077449587869b0df4931df2e22845887f34e13",
+            "ordered_m16_deferred_triton": "add8b45c3a8cb2c70bea6a98db434bf66200016ccfd3cdc89514de14c2223c63",
+            "bf16_small_gluon": "f428a464fd9ebddb1c6bfa0680139c798322ae51b5663ab92d3ce1f855e685ca",
         }
         for name, expected in fingerprints.items():
             tree = ast.parse((GDN / f"{name}.py").read_text())
@@ -161,6 +162,58 @@ class OrderedGDNContracts(unittest.TestCase):
                          (n.name.startswith("_ordered_") or n.name in ("_lowm_ordered_decode", "decode"))]
             actual = hashlib.sha256("\n".join(functions).encode()).hexdigest()
             self.assertEqual(actual, expected, name)
+
+    def test_bf16_pdl_launch_and_wait_policy_agree(self):
+        # No CUDA import: exercise the Python policy with a recording launcher.
+        class Kernel:
+            def __init__(self, fn):
+                self.fn = fn
+
+            def __getitem__(self, grid):
+                return lambda *args, **kwargs: (args, kwargs)
+
+        gluon = types.ModuleType("triton.experimental.gluon")
+        language = types.ModuleType("triton.experimental.gluon.language")
+        language.constexpr = object
+        gluon.language, gluon.jit = language, Kernel
+        experimental = types.ModuleType("triton.experimental")
+        experimental.gluon = gluon
+        modules = {"triton": types.ModuleType("triton"),
+                   "triton.experimental": experimental,
+                   "triton.experimental.gluon": gluon,
+                   "triton.experimental.gluon.language": language}
+        tensor = types.SimpleNamespace(shape=(32, 32, 128, 128), stride=lambda dim: 1)
+        scratch = types.SimpleNamespace(**{name: object() for name in
+            ("pending_k", "pending_d", "coeff", "prefix", "age")})
+        for setting, grouped in (("0", "0"), ("0", "1"), ("1", "0"), ("1", "1"),
+                                 ("invalid", "0"), ("0", "invalid")):
+            with patch.dict(sys.modules, modules), patch.dict(os.environ,
+                    {"VLLM_MACH_MXFP8_BF16_GDN_PDL": setting,
+                     "VLLM_MACH_MXFP8_BF16_GDN_GROUPED": grouped}):
+                spec = importlib.util.spec_from_file_location(
+                    "bf16_pdl_policy", GDN / "bf16_small_gluon.py")
+                module = importlib.util.module_from_spec(spec)
+                if "invalid" in (setting, grouped):
+                    with self.assertRaisesRegex(ValueError, "must be 0 or 1"):
+                        spec.loader.exec_module(module)
+                    continue
+                spec.loader.exec_module(module)
+                # Environment changes after import must not alter capture policy.
+                os.environ["VLLM_MACH_MXFP8_BF16_GDN_PDL"] = "1" if setting == "0" else "0"
+                os.environ["VLLM_MACH_MXFP8_BF16_GDN_GROUPED"] = "1" if grouped == "0" else "0"
+                self.assertEqual(module.supports_shape(128, 32), grouped == "1")
+                for override in (None, False, True):
+                    expected = setting == "1" if override is None else override
+                    args, kwargs = module.decode(*([tensor] * 8), scratch,
+                                                 use_pdl=override)
+                    self.assertEqual(args[-1], expected)  # USE_PDL includes wait.
+                    self.assertEqual(kwargs["launch_pdl"], expected)
+                    self.assertEqual(args[-2], 4 if grouped == "1" else 1)
+                    self.assertEqual(kwargs["num_warps"], 2 if grouped == "1" else 4)
+                with self.assertRaisesRegex(TypeError, "bool or None"):
+                    module.decode(*([tensor] * 8), scratch, use_pdl=1)
+                with self.assertRaisesRegex(TypeError, "bool or None"):
+                    module.decode(*([tensor] * 8), scratch, grouped_layout=1)
 
     def test_formal_source_has_no_historical_path_or_control_selector(self):
         for path in GDN.glob("*.py"):

@@ -60,6 +60,9 @@ def _lowm_ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
             # update. Pin the same FMA operand order for replay/materialize.
             scaled = b_h * old_alpha
             b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
+            # Match the state store/load rounding at every stock token boundary.
+            if base.dtype.element_ty == tl.bfloat16:
+                b_h = b_h.to(tl.bfloat16).to(tl.float32)
 
     ptr_mixed = mixed_qkv + it * stride_mixed
     b_q = tl.load(ptr_mixed + ik * K + ok).to(tl.float32)
@@ -110,6 +113,12 @@ def decode(mixed_qkv,a,b,A_log,dt_bias,base,out,indices,scratch,scale=K**-0.5):
     if tuple(out.shape)!=(m,1,HV,V) or out.dtype!=torch.bfloat16 or out.device!=base.device or not out.is_contiguous() or tuple(indices.shape)!=(m,):
         raise ValueError("out contiguous BF16 [M,1,32,128], indices[M] required")
     if not ordered.math_isfinite_positive(scale):raise ValueError("scale must be positive finite")
+    if base.dtype == torch.bfloat16 and exp is tl.exp:
+        from .bf16_small_gluon import decode as bf16_decode, supports_shape
+        if supports_shape(m, HV):
+            bf16_decode(mixed_qkv, a, b, A_log, dt_bias, base, out, indices,
+                        scratch, scale)
+            return out
     global _LAST_KERNEL
     _LAST_KERNEL=_lowm_ordered_decode[(NV,HV*m)](
         mixed_qkv,a,b,A_log,dt_bias,out,base,indices,

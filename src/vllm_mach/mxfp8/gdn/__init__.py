@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Opt-in ordered W4 FP32 GDN lifecycle; importing this package is CPU only."""
+"""Opt-in ordered W4 FP32/BF16 GDN lifecycle; importing this package is CPU only."""
 from .worker import (
     ROWS, initialize_cache, inspect_worker, install_runtime, install_worker_hook,
     materialize_state, prepare_layers, prepare_pools, reset_state,

@@ -11,6 +11,8 @@ import inspect
 import os
 from pathlib import Path
 
+from vllm_mach.mxfp8.ssm import selected_dtype
+
 ROOT = Path(__file__).resolve().parent
 GDN_SHA = "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719"
 RUNNER_SHA = "7e6de891206992f6018bb2b26a2c2fff5f3eabe3de1fc9066f5eb8f7e62fb52d"
@@ -104,7 +106,7 @@ def _layout(layer,state):
             and layer.num_k_heads == 16 and layer.num_v_heads == 32
             and layer.head_k_dim == layer.head_v_dim == 128
             and len(layer.kv_cache) == 2
-            and state.dtype == torch.float32
+            and state.dtype == getattr(torch, selected_dtype())
             and tuple(state.shape[1:]) == (32,128,128)
             and tuple(state.stride()[1:]) == (16384,128,1)
             and state.stride(0) >= 524288
@@ -407,6 +409,7 @@ def inspect_worker(worker):
         "kv_cache_memory_bytes":budget,
         "production_throughput_profile":mode == "production",
         "implementation":"ordered_full_w4",
+        "state_dtype":selected_dtype(),
         "configured_rows":list(ROWS),
         "eligible_rows":list(_ELIGIBLE_ROWS),
         "scheduler_max_num_seqs":_MAX_NUM_SEQS,
@@ -515,7 +518,7 @@ def _idle_boundary(worker):
 
 
 def materialize_state(worker):
-    """Drain-boundary RPC: flush all positive slots before exporting dense FP32 state."""
+    """Drain-boundary RPC: flush all positive slots before exporting dense state."""
     import torch
     _idle_boundary(worker)
     component = _component()

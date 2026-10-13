@@ -38,8 +38,8 @@ def required_shapes(pages: int, window: int) -> dict:
 def validate(base: torch.Tensor, scratch: DeferredScratch) -> tuple[int, int]:
     if base.ndim != 4 or tuple(base.shape[1:]) != (HV, V, K):
         raise ValueError("base must be [P,16,128,128]")
-    if base.dtype != torch.float32 or not base.is_cuda:
-        raise ValueError("base must be CUDA FP32")
+    if base.dtype not in (torch.float32, torch.bfloat16) or not base.is_cuda:
+        raise ValueError("base must be CUDA FP32 or BF16")
     if base.stride(3) != 1 or base.stride(2) != K or base.stride(1) != V*K:
         raise ValueError("base inner head,V,K dimensions must be dense")
     if base.stride(0) < HV*V*K:
@@ -99,6 +99,9 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
             # update. Pin the same FMA operand order for replay/materialize.
             scaled = b_h * old_alpha
             b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
+            # Match the state store/load rounding at every stock token boundary.
+            if base.dtype.element_ty == tl.bfloat16:
+                b_h = b_h.to(tl.bfloat16).to(tl.float32)
 
     ptr_mixed = mixed_qkv + it * stride_mixed
     b_q = tl.load(ptr_mixed + ik * K + ok).to(tl.float32)
@@ -165,6 +168,9 @@ def _ordered_materialize(base, indices, pending_k, pending_d, coeff, prefix,
             old_d = tl.load(pd_tile + j * BV + ov_local).to(tl.float32)
             scaled = b_h * old_alpha
             b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
+            # Match the state store/load rounding at every stock token boundary.
+            if base.dtype.element_ty == tl.bfloat16:
+                b_h = b_h.to(tl.bfloat16).to(tl.float32)
     tl.store(ptr_base, b_h)
     tl.store(prefix + meta, 1.0)
     tl.store(age + meta, 0)
@@ -205,8 +211,10 @@ def decode(mixed_qkv: torch.Tensor, a: torch.Tensor, b: torch.Tensor,
     p, w = validate(base, scratch)
     _check_indices(indices, base)
     m = int(mixed_qkv.shape[0])
-    if m not in (32,48,64,96,128,160) or tuple(mixed_qkv.shape) != (m, QKV):
-        raise ValueError("only packed M32/48/64/96/128/160 QKV6144")
+    rows = ((1,2,4,8,16,24,32,48,64,96,128,160)
+            if base.dtype == torch.bfloat16 else (32,48,64,96,128,160))
+    if m not in rows or tuple(mixed_qkv.shape) != (m, QKV):
+        raise ValueError(f"only packed rows {rows} QKV6144")
     if (mixed_qkv.dtype != torch.bfloat16 or not mixed_qkv.is_cuda
             or mixed_qkv.device != base.device or mixed_qkv.stride(1) != 1):
         raise ValueError("mixed_qkv must be CUDA BF16 [M,6144] stride1")
@@ -226,6 +234,12 @@ def decode(mixed_qkv: torch.Tensor, a: torch.Tensor, b: torch.Tensor,
         raise ValueError("out contiguous BF16 [M,1,16,128], indices [M]")
     if not math_isfinite_positive(scale):
         raise ValueError("scale must be finite and positive")
+    if base.dtype == torch.bfloat16 and exp is tl.exp:
+        from ...gdn.bf16_small_gluon import decode as bf16_decode, supports_shape
+        if supports_shape(m, HV):
+            bf16_decode(mixed_qkv, a, b, A_log, dt_bias, base, out, indices,
+                        scratch, scale)
+            return out
     global _LAST_KERNEL
     _LAST_KERNEL = _ordered_decode[(NV, HV, m)](
         mixed_qkv, a, b, A_log, dt_bias, out, base, indices,

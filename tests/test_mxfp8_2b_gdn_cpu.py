@@ -91,7 +91,7 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
             "metadata_reset.py", "mixed.py", "mixed_ordered_triton.py"})
 
     def test_frozen_kernels_and_installed_source_guards(self):
-        pins = {"ordered_allm_triton.py": "e6bfb1aea77d9360e934fbc023b92fe963549f9e704f790607e43a4edbfc10f1",
+        pins = {"ordered_allm_triton.py": "8cc67e0cdba3f26bc99ac6e26984f1268011530302975d69bb7e11dab4a9d0c3",
                 "metadata_reset.py": "f60276ba7b0a61e6ae889658bcfca7ba7dc28d7809778b009c3565a541372226",
                 "dispatch.py": "2edf5ce6370cc22cbe6c894df3e29abcb3604e31b7169608ee4bdab34e31220d"}
         for name, expected in pins.items():

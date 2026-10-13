@@ -9,8 +9,10 @@ import hashlib
 import importlib
 import inspect
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
+
+from vllm_mach.mxfp8.ssm import selected_dtype
 
 ROOT = Path(__file__).resolve().parent
 GDN_SHA = "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719"
@@ -19,6 +21,7 @@ FLA_SHA = "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755"
 W = 4
 PINNED_IDS = os.environ.get("VLLM_MACH_2B_PINNED_IDS", "1") == "1"
 ROWS = (32,48,64,96,128,160)
+BF16_ROWS = (1,2,4,8,16,24) + ROWS
 GDN_LAYERS = 18
 STATE_HEADS = 16
 QKV_WIDTH = 6144
@@ -121,7 +124,7 @@ def _layout(layer,state):
             and layer.num_k_heads == 16 and layer.num_v_heads == STATE_HEADS
             and layer.head_k_dim == layer.head_v_dim == 128
             and len(layer.kv_cache) == 2
-            and state.dtype == torch.float32
+            and state.dtype == getattr(torch, selected_dtype())
             and tuple(state.shape[1:]) == (STATE_HEADS,128,128)
             and tuple(state.stride()[1:]) == (16384,128,1)
             and state.stride(0) >= MIN_STATE_PAGE_STRIDE
@@ -267,9 +270,10 @@ def _prepare_layers(worker):
     if maximum <= 0 or _MAX_NUM_SEQS is not None:
         raise RuntimeError("invalid/repeated full-M row preparation")
     _MAX_NUM_SEQS = maximum
-    # Quality row4 intentionally has no candidate rows; stock remains usable.
-    # Higher fixed-row modes clip the same high-M candidate set.
-    _ELIGIBLE_ROWS = tuple(m for m in ROWS if m <= maximum)
+    # FP32 keeps the original high-M set; BF16 also enables small rows.
+    # Clip both sets to the selected scheduler profile.
+    _ELIGIBLE_ROWS = tuple(m for m in (BF16_ROWS if selected_dtype() == "bfloat16" else ROWS)
+                           if m <= maximum)
     native = native_backend.inspect(worker)
     if not native["installed"] or native["policy"] != "all":
         raise RuntimeError("MXFP8 native(all) required")
@@ -440,14 +444,17 @@ def inspect_worker(worker):
         "kv_cache_memory_bytes":budget,
         "production_throughput_profile":mode == "production",
         "implementation":"two_b_ordered_highM_w4",
-        "configured_rows":list(ROWS),
-        "low_rows_policy":"materialize_relevant_slots_then_stock",
+        "configured_rows":list(BF16_ROWS if selected_dtype() == "bfloat16" else ROWS),
+        "low_rows_policy":("gluon_on_configured_rows_else_materialize_then_stock"
+                           if selected_dtype() == "bfloat16" else
+                           "materialize_relevant_slots_then_stock"),
         "adapted_low_kernels_enabled":False,
         "pinned_ids_enabled":PINNED_IDS,
         "eligible_rows":list(_ELIGIBLE_ROWS),
         "scheduler_max_num_seqs":_MAX_NUM_SEQS,
         "warm_index_capacity":max(_ELIGIBLE_ROWS,default=1),
         "preparation_required_bytes":dict(_PREPARATION_BYTES),
+        "state_dtype":selected_dtype(),
         "component_module":component.__name__,
         "component_sha256":_sha(component.__file__),
         "coeff_semantics":"raw_alpha_ordered_replay_highM_W4",
@@ -523,7 +530,7 @@ def _idle_boundary(worker):
 
 
 def materialize_state(worker):
-    """Drain-boundary RPC: flush all positive slots before exporting dense FP32 state."""
+    """Drain-boundary RPC: flush all positive slots before exporting dense state."""
     import torch
     _idle_boundary(worker)
     component = _component()

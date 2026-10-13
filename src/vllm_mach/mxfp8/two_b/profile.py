@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from ..profile import DEPENDENCIES, check_runtime_sources
-from ..ssm import selected_dtype, select_gdn
+from ..ssm import selected_dtype, select_gdn, ordered_enabled
 
 NAME = "qwen35-2b-mxfp8-champion-v1"
 ATTENTION_BACKENDS = ("FLASH_ATTN", "TRITON_ATTN")
@@ -49,7 +49,7 @@ def run_contract():
     return {"mode": mode, "quality_rows": rows, **geometry,
             "attention_backend": backend, "hybrid_greedy_head": hybrid == "1",
             "kv_dtype": "bfloat16",
-            "head_dtype": "bfloat16", "ssm_dtype": selected_dtype(),
+            "head_dtype": "bfloat16", "ssm_dtype": selected_dtype(), "ordered_gdn": ordered_enabled(),
             "production_throughput_profile": mode == "production"}
 
 
@@ -105,7 +105,7 @@ def inspect_worker(worker):
     native = verify_worker_execution(worker, require_capture=True)
     state = select_gdn(gdn).inspect_worker(worker)
     required = set(contract["compilation_config"]["cudagraph_capture_sizes"])
-    if contract["ssm_dtype"] == "float32":
+    if contract["ordered_gdn"]:
         if not state["ready"] or state["layer_count"] != 18 or not state["pinned_ids_enabled"]:
             raise RuntimeError("2B GDN startup is incomplete")
         for name in state["layers"]:
@@ -194,7 +194,7 @@ def install_worker_hook():
 
     @wraps(original_cache)
     def cache(self, *args, **kwargs):
-        if contract["ssm_dtype"] == "float32":
+        if contract["ordered_gdn"]:
             from .gdn import worker as state
             if state._READY or state._CACHE_INITIALIZED:
                 raise RuntimeError("2B GDN does not support live cache reallocation")

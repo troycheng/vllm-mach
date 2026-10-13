@@ -61,3 +61,46 @@ def test_stock_rejects_live_cache_reallocation(ready, initialized):
     worker = NS(_mach_bf16_stock_gdn=dict(ready=ready, cache_initialized=initialized))
     with pytest.raises(RuntimeError, match='reallocation'):
         stock_gdn.check_cache_initialization(worker)
+
+
+@pytest.mark.parametrize('model', ['2b', '4b'])
+def test_ordered_bf16_is_explicit_and_recorded(monkeypatch, tmp_path, model):
+    import os
+    monkeypatch.setattr(os, 'environ', dict(os.environ))
+    if model == '2b':
+        from vllm_mach.mxfp8.two_b import serve, profile
+    else:
+        from vllm_mach.mxfp8 import serve, profile
+    ordered = object()
+    serve.configure_environment(tmp_path, ssm_dtype='bfloat16', ordered_bf16_ssm=True)
+    assert ssm.select_gdn(ordered) is ordered
+    contract = profile.run_contract()
+    assert contract['ordered_gdn'] and contract['ssm_dtype'] == 'bfloat16'
+    serve.configure_environment(tmp_path, ssm_dtype='bfloat16')
+    assert ssm.select_gdn(ordered) is stock_gdn
+    assert profile.run_contract() != contract
+    monkeypatch.setenv(ssm.ORDERED_BF16_ENV, 'invalid')
+    with pytest.raises(ValueError):
+        ssm.select_gdn(ordered)
+
+
+@pytest.mark.parametrize('model', ['2b', '4b'])
+def test_ordered_layout_checks_selected_state_dtype(monkeypatch, model):
+    if model == '2b':
+        from vllm_mach.mxfp8.two_b.gdn import worker
+        heads = 16
+    else:
+        from vllm_mach.mxfp8.gdn import worker
+        heads = 32
+    state = NS(dtype=torch.bfloat16, shape=(10, heads, 128, 128),
+               stride=lambda *args: ((heads*16384, 16384, 128, 1)[args[0]]
+                                     if args else (heads*16384, 16384, 128, 1)))
+    layer = NS(tp_size=1, gqa_interleaved_layout=False,
+               enable_packed_recurrent_decode=True, _is_sm120=True,
+               num_k_heads=16, num_v_heads=heads, head_k_dim=128, head_v_dim=128,
+               kv_cache=(NS(dtype=torch.bfloat16), state),
+               A_log=NS(dtype=torch.float32), dt_bias=NS(dtype=torch.bfloat16))
+    monkeypatch.setenv(ssm.ENV, 'bfloat16')
+    assert worker._layout(layer, state)
+    monkeypatch.setenv(ssm.ENV, 'float32')
+    assert not worker._layout(layer, state)
