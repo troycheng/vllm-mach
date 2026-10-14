@@ -1,6 +1,5 @@
 [
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -9,11 +8,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -21,11 +20,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -33,11 +33,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -45,10 +47,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -57,11 +60,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -69,11 +72,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -81,11 +85,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -93,10 +99,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -105,11 +112,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -117,11 +124,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -129,11 +137,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -141,10 +151,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -153,11 +164,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -165,11 +176,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -177,11 +189,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -189,10 +203,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -201,11 +216,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -213,11 +228,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -225,11 +241,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -237,10 +255,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -249,11 +268,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -261,11 +280,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -273,11 +293,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -285,10 +307,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -297,11 +320,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -309,11 +332,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -321,11 +345,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -333,10 +359,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "请只回答：17乘以19等于多少？",
     "answer": "323",
     "passed": true,
     "usage": {
@@ -345,11 +372,11 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "9ca69a83c2e69c2d0c3da319291720401b89bce9f6ce72ab0972f66c8674fba3",
+    "text_payload_omitted": true
   },
   {
-    "prompt": "中国的首都是哪里？只回答城市名称。",
-    "answer": "北京",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -357,11 +384,12 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "073051ad971c1c2b4014b19bec2b03519b8386c76c8c9c04e705e980d55672eb",
+    "text_payload_omitted": true,
+    "answer_sha256": "68c77e155132565e1cbbace574552fedbb9e769c147d0e9e5ed64701f0cdf82d"
   },
   {
-    "prompt": "把 apple 翻译成中文，只回答译文。",
-    "answer": "苹果",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -369,11 +397,13 @@
       "completion_tokens": 2,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "817a2f5e8a4b2f24b644ec5a27cb1daa14d34093b63dd825eb68ab0a197df585",
+    "text_payload_omitted": true,
+    "answer_sha256": "50537dab76505dfc66dc78411b238de0f51d3d3a9ccfd7a8f133d46c484acbf3"
   },
   {
-    "prompt": "水的化学式是什么？只回答化学式。",
-    "answer": "H₂O",
+    "answer": "H\u2082O",
     "passed": true,
     "usage": {
       "prompt_tokens": 22,
@@ -381,7 +411,9 @@
       "completion_tokens": 4,
       "prompt_tokens_details": null,
       "completion_tokens_details": null
-    }
+    },
+    "prompt_sha256": "f3b9df952b6fba946f095d90bef6ee537eda781071b6042e9b8549b4ea12542a",
+    "text_payload_omitted": true
   },
   {
     "options": {

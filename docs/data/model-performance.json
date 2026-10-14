@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated": "2026-10-12",
+  "updated": "2026-10-14",
   "unit": "output tokens/s",
   "workload": {
     "input_tokens": 3000,
@@ -9,13 +9,9 @@
   "gpu": "RTX 5090 32 GiB",
   "full_profile": "MXFP6 full adds FP16 recurrent state and NVFP4 candidate search with BF16 head refinement.",
   "sources": {
-    "mxfp8-2b-triton-hybrid-sixpoint-20261011.json": {
-      "url": "https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/data/mxfp8-2b-triton-hybrid-sixpoint-20261011.json",
-      "sha256": "2085f611b0078e430e0cae63b4d8ab0f202ad17473d99fe170accb8006d0ee96"
-    },
-    "mxfp8-qualification-20261006.json": {
-      "url": "https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/data/mxfp8-qualification-20261006.json",
-      "sha256": "c4746833405c6c69c669fa72797a8fbd99605e5fe87033e33823762bc5f3f76f"
+    "mxfp8-benchmark.json": {
+      "url": "https://github.com/troycheng/vllm-mach/blob/main/docs/data/mxfp8-benchmark.json",
+      "sha256": "6e2cf2c431127989d2cc19e3eef072e2c67d3d94f726190b5155dd60844283e2"
     },
     "fp8-qualification-20261006.json": {
       "url": "https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/data/fp8-qualification-20261006.json",
@@ -50,134 +46,22 @@
     {
       "id": "qwen35-2b",
       "title": "Qwen3.5-2B",
-      "profile": "MXFP8 \u00b7 Triton + hybrid",
+      "profile": "MXFP8 state/KV matrix",
       "tp": 1,
-      "date": "2026-10-11",
-      "guide": "mxfp8-2b-champion.md",
-      "scope": "Selected and previous configurations are paired on GPU0; community FP8 is the historical GPU1 reference.",
-      "source": "mxfp8-2b-triton-hybrid-sixpoint-20261011.json",
-      "points": [
-        {
-          "c": 4,
-          "baseline_tps": 1261.892459195426,
-          "selected_tps": 1588.2700442385856,
-          "gain_pct": 25.864136255418767,
-          "previous_tps": 1395.3051165127224,
-          "previous_gain_pct": 13.829586478414079,
-          "mean_ttft_ms": 98.90179886715487,
-          "mean_tpot_ms": 2.421406098805532
-        },
-        {
-          "c": 16,
-          "baseline_tps": 3814.3333161740834,
-          "selected_tps": 4801.955864194793,
-          "gain_pct": 25.892402843580854,
-          "previous_tps": 4295.09679241665,
-          "previous_gain_pct": 11.800876587299381,
-          "mean_ttft_ms": 134.0918363624951,
-          "mean_tpot_ms": 3.1978914620024055
-        },
-        {
-          "c": 24,
-          "baseline_tps": 5069.677071743112,
-          "selected_tps": 6209.524540632418,
-          "gain_pct": 22.483630668361123,
-          "previous_tps": 5594.325153970394,
-          "previous_gain_pct": 10.99684715725553,
-          "mean_ttft_ms": 192.81430379487574,
-          "mean_tpot_ms": 3.665692983481854
-        },
-        {
-          "c": 32,
-          "baseline_tps": 5870.222273980189,
-          "selected_tps": 7259.99006032221,
-          "gain_pct": 23.67487501286245,
-          "previous_tps": 6595.489524089714,
-          "previous_gain_pct": 10.075075304197512,
-          "mean_ttft_ms": 224.48807231266983,
-          "mean_tpot_ms": 4.173916445513539
-        },
-        {
-          "c": 48,
-          "baseline_tps": 6837.596724087279,
-          "selected_tps": 8036.469609693067,
-          "gain_pct": 17.53354188588565,
-          "previous_tps": 7896.459572214782,
-          "previous_gain_pct": 1.773073567943495,
-          "mean_ttft_ms": 277.4473630745585,
-          "mean_tpot_ms": 5.67791963469128
-        },
-        {
-          "c": 64,
-          "baseline_tps": 7578.863502078369,
-          "selected_tps": 9008.341662091349,
-          "gain_pct": 18.861378881160352,
-          "previous_tps": 8702.232050997764,
-          "previous_gain_pct": 3.5175988102786437,
-          "mean_ttft_ms": 333.2564046722837,
-          "mean_tpot_ms": 6.7434899885802535
-        }
-      ]
+      "date": "2026-10-14",
+      "guide": "mxfp8-benchmark.md#qwen35-2b",
+      "source": "mxfp8-benchmark.json",
+      "canonical_report": true
     },
     {
       "id": "qwen35-4b",
       "title": "Qwen3.5-4B",
-      "profile": "MXFP8 champion",
+      "profile": "MXFP8 state/KV matrix",
       "tp": 1,
-      "date": "2026-10-06",
-      "guide": "mxfp8-champion.md",
-      "scope": "One complete source-built champion screen versus the October 5 community FP8 screen; 1,040 requests per screen.",
-      "source": "mxfp8-qualification-20261006.json",
-      "points": [
-        {
-          "c": 4,
-          "baseline_tps": 683.9592274311776,
-          "selected_tps": 880.13087219406,
-          "gain_pct": 28.681774716259945,
-          "mean_ttft_ms": 173.56061685131863,
-          "mean_tpot_ms": 4.374511143156758
-        },
-        {
-          "c": 16,
-          "baseline_tps": 2053.547069808179,
-          "selected_tps": 2481.297504243179,
-          "gain_pct": 20.82983344886056,
-          "mean_ttft_ms": 237.62080769520253,
-          "mean_tpot_ms": 6.211401395282608
-        },
-        {
-          "c": 24,
-          "baseline_tps": 2559.262243795155,
-          "selected_tps": 3189.417177357051,
-          "gain_pct": 24.622522959094372,
-          "mean_ttft_ms": 347.69653003119555,
-          "mean_tpot_ms": 7.16718850591853
-        },
-        {
-          "c": 32,
-          "baseline_tps": 2887.824845075892,
-          "selected_tps": 3672.6956325990527,
-          "gain_pct": 27.17861468854197,
-          "mean_ttft_ms": 410.6970969354734,
-          "mean_tpot_ms": 8.286266025516216
-        },
-        {
-          "c": 48,
-          "baseline_tps": 3220.5493315162103,
-          "selected_tps": 4168.038142969189,
-          "gain_pct": 29.420099303583957,
-          "mean_ttft_ms": 540.3606674808543,
-          "mean_tpot_ms": 10.947146269583
-        },
-        {
-          "c": 64,
-          "baseline_tps": 3402.756586123198,
-          "selected_tps": 4653.928865958399,
-          "gain_pct": 36.76937354078203,
-          "mean_ttft_ms": 688.760968085262,
-          "mean_tpot_ms": 13.017450564057782
-        }
-      ]
+      "date": "2026-10-14",
+      "guide": "mxfp8-benchmark.md#qwen35-4b",
+      "source": "mxfp8-benchmark.json",
+      "canonical_report": true
     },
     {
       "id": "qwen35-4b-block-fp8",

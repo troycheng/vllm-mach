@@ -20,7 +20,7 @@ RUN python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_U
 # Standard official wheel build produces both mxfp6_torch and mxfp8_torch,
 # including BA M16 and both dual tile families. No old binary/cache is copied.
 # CUTLASS e6233c... is archived afresh; patches 0001/0003/0004/0005/0006 all apply.
-ARG MXFP6_REVISION=a4cdc1b23a72cdedecb29707534fa4e3a595933f
+ARG MXFP6_REVISION=ce0cd05a007504853d2bf3963a183e3c76f3c75b
 COPY deploy/install.py deploy/build-mxfp8.py /opt/mach/deploy/
 RUN test -n "${MXFP6_REVISION}" \
     && python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \
@@ -37,5 +37,5 @@ RUN python3 -m pip install --no-deps --no-build-isolation . \
     && rm -rf /opt/mach/build /opt/mach/src/*.egg-info
 
 # Models come from the profile's separately declared materialized assets.
-ENV OMP_NUM_THREADS=1
+ENV OMP_NUM_THREADS=1 VLLM_SMALL_BATCH_ATTN=0
 ENTRYPOINT ["vllm-mach-mxfp8-serve"]

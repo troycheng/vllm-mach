@@ -40,7 +40,7 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-mx8
     ]
 
 
-def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm_dtype="float32", ordered_bf16_ssm=False, kv_cache_dtype="fp8_e4m3", kv_scales=None):
+def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm_dtype="float32", ordered_bf16_ssm=True, kv_cache_dtype="fp8_e4m3", kv_scales=None):
     validate_dtype(ssm_dtype)
     kv.validate_dtype(kv_cache_dtype)
     if kv_scales is not None:
@@ -104,10 +104,11 @@ def main():
     parser.add_argument("--quality-rows", choices=(32, 64), type=int,
                         help="Accepted precision comparison: M32/4 GiB or M64/19 GiB, FULL decode and PIECEWISE mixed graphs at accepted small sizes; no PW2048; not production throughput")
     parser.add_argument("--ssm-dtype", "--mamba-ssm-cache-dtype", choices=DTYPES, default="float32",
-                        help="SSM state storage; bfloat16 defaults to stock vLLM GDN")
-    parser.add_argument("--ordered-bf16-ssm", action="store_true",
-                        help="Experimental ordered W4 BF16 state; benchmark before enabling")
-    parser.add_argument("--kv-cache-dtype", choices=kv.DTYPES, default="fp8_e4m3")
+                        help="SSM state storage; bfloat16 defaults to ordered W4 GDN")
+    parser.add_argument("--ordered-bf16-ssm", action=argparse.BooleanOptionalAction, default=True,
+                        help="Ordered W4 BF16 state (default on); --no-ordered-bf16-ssm selects stock GDN")
+    parser.add_argument("--kv-cache-dtype", choices=kv.DTYPES, default="fp8_e4m3",
+                        help="Attention KV storage (default: fp8_e4m3); use bfloat16 for the unquantized KV baseline")
     parser.add_argument("--kv-scales", type=Path,
                         help="Explicit FP8 KV scale profile; default uses model metadata")
     args = parser.parse_args()

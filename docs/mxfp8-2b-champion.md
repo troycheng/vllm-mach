@@ -1,11 +1,8 @@
 # Qwen3.5-2B MXFP8 champion
 
-The October 12 [optimization follow-up](mxfp8-optimization-results-20261012.md)
-adds qualified SwiGLU/quantization fusion and extends the optional K128 greedy
-head to M64. Performance and precision tables below retain their dated
-historical measurements; the follow-up records the new matched comparisons.
+The [single MXFP8 benchmark](mxfp8-benchmark.md) contains the current per-concurrency SSM/KV matrix.
 
-The selected **Triton attention + K128 hybrid head** profile runs on one RTX 5090, TP1. Across c4/c16/c24/c32/c48/c64 it measures **+17.53–25.89%** against the historical community FP8 baseline and **+1.77–13.83%** against the preceding FA2/full-head champion on the same GPU. See the [six-point data, latency and charts](performance.md#qwen35-2b).
+The **Triton attention + K128 hybrid head** profile runs on one RTX 5090, TP1. See the [per-concurrency comparisons with block FP8](mxfp8-benchmark.md#qwen35-2b).
 
 The public checkpoint builder reconstructs all 438 tensors from pinned BF16 weights. Native MXFP8, BF16 KV, FP32 GDN and the complete BF16 embedding/head weights are retained; eligible greedy requests use the hybrid head described below.
 
@@ -68,8 +65,8 @@ After startup, `http://localhost:8000/v1/models` lists `q35-2b-study`. The launc
 
 The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and complete BF16 vocabulary-head weights, FP32 SSM, Triton attention, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Eligible greedy head calls use the candidate/refinement path described below. Native MXFP8 projections, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16 and pinned asynchronous GDN reset-ID uploads run under the 2B profile. Exact FULL16/FULL24 captures also use the complete PDL dependency chain. The graph policy preserves FULL decode captures at 4/8/16/24/32/48/64/96/128/160 rows and routes exact 2048-token prefill or mixed batches to PIECEWISE mode. Batches above 160 tokens with a size other than 2048 use NONE without padding. Prefix caching and LoRA are outside this profile.
 
-Add `--ssm-dtype bfloat16` to select BF16 state with native GDN/FLA; FP32 remains the default.
-See [BF16 SSM measurements and configuration](mxfp8-bf16-ssm-20261012.md).
+Add `--ssm-dtype bfloat16` to select BF16 state with ordered W4 GDN, now the default backend for both state dtypes. FP32 remains the default storage dtype. Use `--no-ordered-bf16-ssm` to select stock GDN/FLA for BF16 state. Grouped BF16 GDN and GDN PDL remain disabled by default.
+See [BF16 SSM measurements and configuration](mxfp8-benchmark.md).
 
 ## Champion components
 
@@ -103,7 +100,7 @@ Each of M4/M16/M24/M32/M48/M64 covers the original 256 queries and 10,479 gold t
 | M48 | 0.04865848 | 0.04899862 | +0.70% |
 | M64 | 0.04845331 | 0.04875407 | +0.62% |
 
-The M32 increase is 0.00124284 (+2.58%), attributed to attention: restoring FA2 with hybrid enabled reproduced every previous gold logprob. M64's English subset increased about 0.00294. These are numerical fidelity measurements; the [source data](data/mxfp8-2b-triton-hybrid-sixpoint-20261011.json) retain per-domain intervals and coverage.
+The M32 increase is 0.00124284 (+2.58%), attributed to attention: restoring FA2 with hybrid enabled reproduced every previous gold logprob. M64's English subset increased about 0.00294. These are numerical fidelity measurements; the [source data](data/mxfp8-benchmark.json) retain per-domain intervals and coverage.
 
 Actual generation used 256 real-text prompts per cohort and 128 output tokens: 1,536 scored requests and 196,608 generated tokens. Across 129,878 actual hybrid decisions, no BF16 winner was omitted and no lower-scored token was selected; one M24 decision chose a different token tied at BF16 score 20.375. M48/M64 full batches use BF16, while smaller tails can use hybrid. The fixed-gold corpus is private; checkpoint reconstruction and the serving benchmark are public.
 
@@ -118,14 +115,12 @@ docker run --rm --network host --entrypoint vllm-mach-mxfp8-bench \
   --outdir /runs/sixpoint-01
 ```
 
-The [protocol](mxfp8-benchmark.md) defines generated requests, warmup and 1,040 scored requests per complete screen. The selected snapshot additionally includes the reverse c48 pair and earlier qualified c16/c24 package audits; all 2,560 scored requests succeeded. A later c32 observation of the same runtime was 7,216.58 tok/s, retained separately from the primary paired table.
+The [benchmark](mxfp8-benchmark.md) defines generated requests, warmup and 1,040 scored requests per configuration. Its JSON retains per-concurrency results and historical numerical qualification.
 
 | Identity | Revision / record |
 |---|---|
 | Mach runtime | `6e390a1a559d4464fb2b67fe09d855f1b442f763`, merged by `b8d55d86e5f10670cfdfc3d9cdcb6cda020e1ceb` |
-| Native MXFP8 runtime | `a4cdc1b23a72cdedecb29707534fa4e3a595933f` |
-| Current selected result | [Triton + hybrid six-point receipt](data/mxfp8-2b-triton-hybrid-sixpoint-20261011.json) |
-| Base changes | [BA M16 / low-D / FULL PDL qualification](data/mxfp8-2b-full-pdl-20261011.json) |
-| Earlier studies | [October 9 package](data/mxfp8-2b-champion-20261009.json), [October 10 mixed GDN](data/mxfp8-2b-mixed-gdn-20261010.json), [preceding FA2 snapshot](data/mxfp8-2b-release-snapshot-20261011.json) |
+| Native MXFP8 runtime | Latest official decode/PDL source pinned in `deploy/Dockerfile.mxfp8` |
+| Current configuration matrix | [Per-concurrency benchmark](mxfp8-benchmark.md) and [consolidated data](data/mxfp8-benchmark.json) |
 
-Historical incremental studies use their own GPU and baseline. Their results remain in these receipts; current complete-profile gains are calculated directly from the [performance table](performance.md#qwen35-2b).
+Historical numerical validation remains in the consolidated dataset; current per-concurrency gains are listed in the [benchmark report](mxfp8-benchmark.md).

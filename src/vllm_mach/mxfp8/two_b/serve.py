@@ -39,7 +39,7 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-
 
 
 def configure_environment(directory, *, quality_rows=None, attention_backend="FLASH_ATTN",
-                          hybrid_head=False, ssm_dtype="float32", ordered_bf16_ssm=False):
+                          hybrid_head=False, ssm_dtype="float32", ordered_bf16_ssm=True):
     validate_dtype(ssm_dtype)
     if attention_backend not in ATTENTION_BACKENDS:
         raise ValueError("Unsupported 2B attention backend")
@@ -89,9 +89,9 @@ def main():
                         help="Use K128 NVFP4 proposals with BF16 refinement for eligible greedy decode")
     parser.add_argument("--print-command", action="store_true")
     parser.add_argument("--ssm-dtype", "--mamba-ssm-cache-dtype", choices=DTYPES, default="float32",
-                        help="SSM state storage; bfloat16 defaults to stock vLLM GDN")
-    parser.add_argument("--ordered-bf16-ssm", action="store_true",
-                        help="Experimental ordered W4 BF16 state; benchmark before enabling")
+                        help="SSM state storage; bfloat16 defaults to ordered W4 GDN")
+    parser.add_argument("--ordered-bf16-ssm", action=argparse.BooleanOptionalAction, default=True,
+                        help="Ordered W4 BF16 state (default on); --no-ordered-bf16-ssm selects stock GDN")
     args = parser.parse_args()
     model = args.model.resolve()
     argv = build_argv(model, host=args.host, port=args.port,

@@ -1,4 +1,4 @@
-# 4B FP8 KV ablation — 2026-10-13
+# FP8 KV storage and calibration
 
 The default remains FlashInfer E4M3 KV with the packaged scales. BF16 KV
 and explicit scale overrides are supported; model identity checks remain
@@ -7,38 +7,9 @@ is verified after allocation. This report contains aggregate results only.
 The supplied multimodal data, identifiers, fingerprints, local paths,
 evaluation scripts and reproduction commands are not included.
 
-## End-to-end throughput
-
-One fresh server per policy, sequentially on the same RTX 5090, with the
-production compact head, default FP32 ordered GDN, and experimental BF16
-and PDL disabled. Each sixpoint suite completes 1,040 requests and 1,040,000
-output tokens, with 3,000 input and 1,000 output tokens per request and
-19 GiB KV cache. Input seeds and boot/prewarm/scored phases are identical.
-Aggregation divides total scored output tokens by summed scored durations.
-There is one full trial per policy; speed differences have no repeated-trial
-significance estimate.
-
-| KV policy | Aggregate output tok/s | vs BF16 KV |
-| --- | ---: | ---: |
-| BF16 KV | 3101.99 | +0.00% |
-| FP8, independent random calibration | 3425.07 | +10.41% |
-| FP8, all 1 | 3433.45 | +10.69% |
-| FP8, historical bank | 3433.24 | +10.68% |
-
-| Concurrency | BF16 KV | Random FP8 | All-1 FP8 | Historical FP8 |
-| ---: | ---: | ---: | ---: | ---: |
-| 4 | 899.4 | 919.6 | 920.8 | 919.9 |
-| 16 | 2417.6 | 2609.1 | 2616.0 | 2614.5 |
-| 24 | 3057.4 | 3357.3 | 3385.4 | 3378.4 |
-| 32 | 3411.0 | 3828.0 | 3836.5 | 3835.3 |
-| 48 | 3882.6 | 4360.2 | 4367.5 | 4366.7 |
-| 64 | 4175.4 | 4831.0 | 4833.9 | 4845.5 |
-
-All-1 and historical-bank throughput differs by less than 0.01% in this
-single suite. The measured FP8 benefit is available without the historical
-calibration corpus. Default dtype and scale selection remain unchanged.
-These throughput results use the production text workload; they do not
-measure multimodal serving throughput.
+Per-concurrency throughput is maintained in the [single MXFP8 benchmark](mxfp8-benchmark.md).
+The historical calibration and fidelity evidence below is retained in
+`historical_validation.kv` in its [data file](data/mxfp8-benchmark.json).
 
 ## Text numerical fidelity
 
@@ -155,6 +126,6 @@ original-distribution preference.** They cannot prove the absence of either
 or assign a numerical leakage probability. Use independently random-calibrated
 or all-1 scales for comparisons that must not rely on historical calibration.
 
-The [aggregate result report](data/mxfp8-kv-ablation-20261013.json) contains
+The [aggregate result report](data/mxfp8-benchmark.json) contains
 measurements and statistical intervals only; no supplied dataset or multimodal
 reproduction artifacts are stored in the repository.

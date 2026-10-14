@@ -67,13 +67,13 @@ are managed by the complete profile. The formal runner source SHA is pinned
 against the versioned MXFP8 runtime manifest; the historical frozen runner is
 not an accepted installation requirement.
 
-## Experimental BF16 ordered GDN
+## BF16 ordered GDN default
 
-Both launchers accept `--ssm-dtype bfloat16 --ordered-bf16-ssm`.
-BF16 state uses stock GDN unless the ordered flag is supplied. FP32 keeps
-its existing ordered route. Direct profile users can set
-`VLLM_MACH_MXFP8_SSM_DTYPE=bfloat16` and
-`VLLM_MACH_MXFP8_ORDERED_BF16_SSM=1`; launchers reset the latter when absent.
+Both launchers use ordered W4 GDN by default for BF16 and FP32 state.
+Select BF16 storage with `--ssm-dtype bfloat16`; FP32 storage remains the default.
+Use `--no-ordered-bf16-ssm` for the stock BF16 backend. Direct profile users
+can set `VLLM_MACH_MXFP8_SSM_DTYPE=bfloat16`; ordered defaults to `1`,
+and `VLLM_MACH_MXFP8_ORDERED_BF16_SSM=0` explicitly selects stock BF16.
 The run contract records the selected state dtype and ordered backend.
 
 Ordered replay rounds state to BF16 after every pending token and keeps
@@ -96,48 +96,21 @@ Gluon handles up to 1536 head-rows: full writeback/eight warps through 256,
 deferred/four warps through 1024, then two warps. Larger shapes retain Triton.
 Grouped deferred decode uses four warps through 768 head-rows, then two.
 
-[Consolidated measurements and validation](data/ordered-bf16-experiments-20261013.json)
-retain final single/multiple-pool kernel samples, latest serving aggregates,
-source hashes, passing checks and unresolved discrepancies. Superseded
-reports and removed prototype sources are archived outside the repository
-at the location recorded in that file.
+[Consolidated measurements and validation](data/mxfp8-benchmark.json)
+retain per-concurrency serving results, backend selections and unresolved
+qualification findings. Full kernel/debug samples and removed prototype
+sources remain in the audit archives referenced by the dataset.
 
-### Latest serving comparison (2026-10-13)
+### Serving comparisons
 
-Each model uses one RTX 5090, TP1, BF16 SSM, 19 GiB KV and the same GPU for
-all variants. 2B uses TRITON_ATTN/BF16 KV/hybrid head; 4B uses
-FLASHINFER/FP8 KV/compact greedy head. Stock means stock GDN inside the
-same MXFP8 profile. The two models run concurrently on distinct GPUs;
-variants run sequentially as candidate, previous, stock, each on a fresh service.
-The sixpoint benchmark uses 3000 input/1000 output tokens, greedy decoding
-with EOS ignored and identical prompts. Every suite completes 1040/1040
-scored requests. Warmup is excluded; each variant has only one full trial.
-
-Output throughput is in tokens/s. Previous ordered disables both new flags;
-candidate enables both. Fusion and RMSNorm PDL are absent from serving.
-
-| Model | Concurrency | Stock | Previous ordered | Grouped + PDL | Change vs previous |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 2B | 4 | 1674.26 | 1712.67 | 1679.95 | -1.91% |
-| 2B | 16 | 5150.52 | 5307.85 | 5296.31 | -0.22% |
-| 2B | 24 | 6761.96 | 6945.09 | 6930.04 | -0.22% |
-| 2B | 32 | 7687.79 | 7934.10 | 7961.93 | +0.35% |
-| 2B | 48 | 9044.97 | 9486.32 | 9513.77 | +0.29% |
-| 2B | 64 | 10121.71 | 10472.36 | 10449.81 | -0.22% |
-| 4B | 4 | 939.45 | 936.45 | 937.36 | +0.10% |
-| 4B | 16 | 2737.06 | 2741.93 | 2753.05 | +0.41% |
-| 4B | 24 | 3626.55 | 3573.93 | 3594.11 | +0.56% |
-| 4B | 32 | 4148.11 | 4085.16 | 4104.93 | +0.48% |
-| 4B | 48 | 4784.13 | 4705.02 | 4747.79 | +0.91% |
-| 4B | 64 | 5304.74 | 5275.68 | 5327.97 | +0.99% |
-
-| Model | Pooled stock | Pooled previous | Pooled grouped + PDL | vs stock | vs previous |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 2B | 6857.27 | 7084.47 | 7061.35 | +2.98% | -0.33% |
-| 4B | 3672.51 | 3643.05 | 3664.99 | -0.20% | +0.60% |
-
-Pooled throughput is total output tokens divided by summed scored durations.
-The measured incremental changes do not establish a repeatable serving gain.
+The [single MXFP8 benchmark report](mxfp8-benchmark.md) contains current
+per-concurrency throughput and the baseline recheck. Its dataset retains the
+October 13 stock/previous/grouped+PDL serving results under
+`historical_validation.ordered_bf16`. The historical 4B runs used BF16 SSM and **FP8 E4M3 KV**, confirmed
+by their archived launch arguments. They are not BF16 KV measurements.
+See the [historical configuration alignment](mxfp8-benchmark.md#4b-historical-configuration-alignment)
+for the matching ordered/FP8 KV comparison and the separate BF16 KV row. The main matrix now uses ordered BF16; stock comparisons retain their
+historical backend choice and require `--no-ordered-bf16-ssm` for reproduction.
 
 **Correctness qualification remains incomplete.** Three earlier kernel runs
 reported unexplained output differences: 4B/M128 without PDL (16 elements,
@@ -149,7 +122,7 @@ the cause is not isolated and model quality is not qualified.
 
 Conv/QK/gate fusion helped only tiny batches and regressed at larger ones.
 The unused fusion prototypes and duplicate benchmark script were removed;
-selected timings remain in the consolidated report for future tuning.
+their timing and debug records remain in the referenced audit archives.
 
 ### Reproduction
 
@@ -160,10 +133,10 @@ checks changing inputs/indices, graph replay, BF16 rounding, materialization,
 stock fallback, resets and page canaries.
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 PYTHONPATH=src \
+CUDA_VISIBLE_DEVICES=2 PYTHONPATH=src \
   .venv/bin/python tools/benchmark_ordered_bf16_layout.py --pools 0 \
   --rows 32 48 64 128 --output /tmp/bf16-layout.json
-CUDA_VISIBLE_DEVICES=0 PYTHONPATH=src \
+CUDA_VISIBLE_DEVICES=2 PYTHONPATH=src \
   VLLM_MACH_MXFP8_BF16_GDN_GROUPED=1 VLLM_MACH_MXFP8_BF16_GDN_PDL=1 \
   .venv/bin/python tools/verify_ordered_bf16_gdn.py --dtypes bfloat16 \
   --steps 1024 --failure-dir /tmp/bf16-failures --output /tmp/bf16-validation.json

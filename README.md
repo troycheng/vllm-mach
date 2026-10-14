@@ -21,8 +21,8 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 
 | Model / profile | GPUs | Throughput gain vs FP8 | Details |
 |---|---|---:|---|
-| Qwen3.5-2B · MXFP8 · Triton + hybrid | 1 · TP1 | +17.53% to +25.89% | [Data](docs/performance.md#qwen35-2b) |
-| Qwen3.5-4B · MXFP8 champion | 1 · TP1 | +20.83% to +36.77% | [Data](docs/performance.md#qwen35-4b) |
+| Qwen3.5-2B · MXFP8 state/KV matrix | 1 · TP1 | Per-concurrency matrix | [Data](docs/mxfp8-benchmark.md#qwen35-2b) |
+| Qwen3.5-4B · MXFP8 state/KV matrix | 1 · TP1 | Per-concurrency matrix | [Data](docs/mxfp8-benchmark.md#qwen35-4b) |
 | Qwen3.5-4B block-FP8 · Block-FP8 · all four features | 1 · TP1 | +5.97% to +9.03% | [Data](docs/performance.md#qwen35-4b-block-fp8) |
 | Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
 | Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
@@ -31,11 +31,11 @@ MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 st
 
 ### Qwen3.5-2B · MXFP8
 
-![2B FP8 and MXFP8 champion throughput](docs/assets/qwen35-2b-throughput.svg)
+![2B block FP8 and MXFP8 SSM configurations](docs/assets/qwen35-2b-throughput.svg)
 
 ### Qwen3.5-4B · MXFP8
 
-![4B FP8 and MXFP8 champion throughput](docs/assets/qwen35-4b-throughput.svg)
+![4B block FP8 and MXFP8 SSM/KV configurations](docs/assets/qwen35-4b-throughput.svg)
 
 ### Qwen3.8-27B Dense · FP8, NVFP4 and MXFP6
 
@@ -99,7 +99,7 @@ For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `
 
 - [Performance](docs/performance.md): per-model FP8/NVFP4 comparisons, all point values, latency and numerical fidelity.
 - [Guide index](docs/README.md): installation, model preparation, operator details and development.
-- [Benchmark protocol](docs/mxfp8-benchmark.md): fixed requests, warmup, counts and metrics.
+- [MXFP8 benchmark](docs/mxfp8-benchmark.md): per-concurrency results, SSM/KV configurations and block-FP8 comparisons.
 - [Releases](https://github.com/troycheng/vllm-mach/releases): packages and release notes.
 
 The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.com/vllm-project/vllm/pull/60385). Mixed FA2 builds on [LiRunGuo's PR #58013](https://github.com/vllm-project/vllm/pull/58013); SiLU quantization work relates to [PR #45055](https://github.com/vllm-project/vllm/pull/45055). Mach includes its integrations directly.
@@ -109,4 +109,4 @@ The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.c
 See [CONTRIBUTING.md](CONTRIBUTING.md) for performance and correctness evidence expected with changes. [Apache-2.0](LICENSE); derived notices are in [NOTICE](NOTICE). External components retain their own licenses. This project is independent of the vLLM project.
 
 MXFP8 integration: [Implementation notes](docs/mxfp8-profile-merge.md).
-Additional fusion and bounded greedy-head results: [MXFP8 optimization validation](docs/mxfp8-optimization-results-20261012.md).
+MXFP8 serving results: [Per-concurrency SSM/KV benchmark](docs/mxfp8-benchmark.md).

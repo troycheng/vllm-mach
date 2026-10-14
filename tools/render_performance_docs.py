@@ -39,7 +39,7 @@ def themed_svg(svg):
 
 def load(name):
     path = DATA / name
-    SOURCES[name] = dict(url=SOURCE_BASE + 'data/' + name,
+    SOURCES[name] = dict(url=(GUIDE_BASE if name == 'mxfp8-benchmark.json' else SOURCE_BASE) + 'data/' + name,
                          sha256=hashlib.sha256(path.read_bytes()).hexdigest())
     return json.loads(path.read_text())
 
@@ -51,8 +51,10 @@ def point(c, baseline, selected, **extra):
 
 
 def dataset():
-    two = load('mxfp8-2b-triton-hybrid-sixpoint-20261011.json')
-    four = load('mxfp8-qualification-20261006.json')
+    mx = load('mxfp8-benchmark.json')
+    assert mx['complete'], 'Complete the MXFP8 configuration matrix first'
+    two = mx['historical_validation']['two_b']
+    four = mx['historical_validation']['four_b']
     block = load('fp8-qualification-20261006.json')
     dense = load('dense-gains-aligned-baseline-20260920.json')
     core = load('dense-core-ablation-20260920.json')
@@ -60,24 +62,13 @@ def dataset():
     dense_nvfp4 = load('native-serving.json')
     moe_nvfp4 = load('qwen35-default-full-20260917.json')
     fidelity = load('profile-fidelity-20260917.json')
-    models = [
-        dict(id='qwen35-2b', title='Qwen3.5-2B', profile='MXFP8 · Triton + hybrid', tp=1,
-             date='2026-10-11', guide='mxfp8-2b-champion.md',
-             scope='Selected and previous configurations are paired on GPU0; community FP8 is the historical GPU1 reference.',
-             source='mxfp8-2b-triton-hybrid-sixpoint-20261011.json',
-             points=[point(x['c'], x['community_fp8_tps'], x['new']['output_tps'],
-                           previous_tps=x['previous']['output_tps'],
-                           previous_gain_pct=100*(x['new']['output_tps']/x['previous']['output_tps']-1),
-                           mean_ttft_ms=x['new']['mean_ttft_ms'], mean_tpot_ms=x['new']['mean_tpot_ms'])
-                     for x in two['throughput']['points']]),
-        dict(id='qwen35-4b', title='Qwen3.5-4B', profile='MXFP8 champion', tp=1,
-             date='2026-10-06', guide='mxfp8-champion.md',
-             scope='One complete source-built champion screen versus the October 5 community FP8 screen; 1,040 requests per screen.',
-             source='mxfp8-qualification-20261006.json',
-             points=[point(x['concurrency'], x['historical_community_fp8']['output_throughput_tokens_per_s'],
-                           x['packaged']['output_throughput_tokens_per_s'],
-                           mean_ttft_ms=x['packaged']['mean_ttft_ms'], mean_tpot_ms=x['packaged']['mean_tpot_ms'])
-                     for x in four['sixpoint']['points']]),
+    def mx_model(model):
+        return dict(id='qwen35-'+model, title='Qwen3.5-'+model.upper(),
+                    profile='MXFP8 state/KV matrix', tp=1, date=mx['date'],
+                    guide='mxfp8-benchmark.md#qwen35-'+model,
+                    source='mxfp8-benchmark.json', canonical_report=True,
+                    scope='Per-concurrency comparisons for the current configuration matrix; historical block FP8 reference.')
+    models = [mx_model('2b'), mx_model('4b'),
         dict(id='qwen35-4b-block-fp8', title='Qwen3.5-4B block-FP8', profile='Block-FP8 · all four features', tp=1,
              date='2026-10-06', guide='fp8-profile.md',
              scope='One same-stack stock/all-features pair at each point; 680 requests per arm. Its FP8 baseline is separate from the MXFP8 study.',
@@ -121,8 +112,10 @@ def dataset():
                                      default_gain_pct=100*(moe['arms']['default']['points'][c]['throughput']/moe['baseline'][c]['aggregate']['output_throughput_tokens_per_s']-1))
                                for c in ('4','16','24','32')]))
     for model in models:
+        if model.get('canonical_report'):
+            continue
         assert [p['c'] for p in model['points']] == sorted({p['c'] for p in model['points']})
-    return dict(schema_version=2, updated='2026-10-12', unit='output tokens/s',
+    return dict(schema_version=2, updated=mx['date'], unit='output tokens/s',
                 workload=dict(input_tokens=3000, output_tokens=1000), gpu='RTX 5090 32 GiB',
                 full_profile='MXFP6 full adds FP16 recurrent state and NVFP4 candidate search with BF16 head refinement.',
                 sources=SOURCES, models=models,
@@ -140,11 +133,14 @@ def overview(data):
     lines = ['| Model / profile | GPUs | Throughput gain vs FP8 | Details |',
              '|---|---|---:|---|']
     for m in data['models']:
-        gains = [p['gain_pct'] for p in m['points']]
-        label = f"{min(gains):+.2f}% to {max(gains):+.2f}%"
-        if 'default_tps' in m['points'][0]:
-            dg = [p['default_gain_pct'] for p in m['points']]
-            label = f"default {min(dg):+.2f}% to {max(dg):+.2f}%; full {label}"
+        if m.get('canonical_report'):
+            label = 'Per-concurrency matrix'
+        else:
+            gains = [p['gain_pct'] for p in m['points']]
+            label = f"{min(gains):+.2f}% to {max(gains):+.2f}%"
+            if 'default_tps' in m['points'][0]:
+                dg = [p['default_gain_pct'] for p in m['points']]
+                label = f"default {min(dg):+.2f}% to {max(dg):+.2f}%; full {label}"
         lines.append(f"| {m['title']} · {m['profile']} | {m['tp']} · TP{m['tp']} | {label} | [Data](docs/performance.md#{m['id']}) |")
     return '\n'.join(lines)
 
@@ -158,8 +154,12 @@ def markdown(data, native=False):
     lines = ['# Model serving performance', '',
              'Measured complete configurations on RTX 5090: **3,000 input / 1,000 output tokens**, text-only, non-speculative inference. Throughput is **output tokens/s**; `c` is concurrent requests, and physical kernel rows are denoted `M`.', '',
              'Each model has its own throughput chart. The 27B Dense and 35B-A3B MoE comparisons include FP8, NVFP4 and both MXFP6 profiles, followed by a separate precision chart against BF16.', '',
-             'MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion uses BF16 KV and K128 hybrid head at M≤32; 4B uses calibrated FP8 KV and its own refined head.', '']
+             'MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The MXFP8 state/KV matrix is maintained in its single benchmark report.', '']
     for m in sorted(data['models'], key=lambda m: m['id']=='qwen35-4b-block-fp8'):
+        if m.get('canonical_report'):
+            lines += [f"<a id=\"{m['id']}\"></a>", f"## {m['title']} — {m['profile']}", '',
+                      f"See the [single MXFP8 benchmark report]({guide(m['guide'])}) for the FP32 SSM/BF16 KV baseline, reduced-state configurations and per-concurrency block-FP8 comparisons.", '']
+            continue
         lines += [f"<a id=\"{m['id']}\"></a>", f"## {m['title']} — {m['profile']}", '',
                   f"Mach profile: {m['date']} · {m['tp']} × RTX 5090 · TP{m['tp']}", '',
                   f"![{m['title']} output throughput by concurrency](assets/{m['id']}-throughput.svg)", '']
@@ -215,7 +215,7 @@ def markdown(data, native=False):
 
 
 def chart_names(data):
-    names = [f"{m['id']}-throughput.svg" for m in data['models']]
+    names = [f"{m['id']}-throughput.svg" for m in data['models'] if not m.get('canonical_report')]
     names += [f"{m['id']}-precision.svg" for m in data['models'] if 'fidelity_key' in m]
     return names
 
@@ -245,6 +245,8 @@ def plots(data, dest, preview_dir=None):
         path.write_text('\n'.join(line.rstrip() for line in themed_svg(path.read_text()).splitlines())+'\n')
 
     for m in data['models']:
+        if m.get('canonical_report'):
+            continue
         large='nvfp4_tps' in m['points'][0]
         block=m['id']=='qwen35-4b-block-fp8'
         series=[('FP8 baseline', 'baseline_tps', 'fp8', '')]
@@ -317,7 +319,10 @@ def main():
         rendered=Path(tmp)
         plots(data,rendered,args.preview_dir)
         for root,native in [(ROOT,False)]+([(args.mirror,True)] if args.mirror else []):
-            targets={root/'docs/data/model-performance.json':json.dumps(data,indent=2)+'\n',
+            exported = dict(data)
+            exported['models'] = [({key:m[key] for key in ('id','title','profile','tp','date','guide','source','canonical_report')}
+                                   if m.get('canonical_report') else m) for m in data['models']]
+            targets={root/'docs/data/model-performance.json':json.dumps(exported,indent=2)+'\n',
                      root/'docs/performance.md':markdown(data,native)}
             targets.update({root/'docs/assets'/name:(rendered/name).read_text() for name in chart_names(data)})
             if args.check:

@@ -4,65 +4,17 @@ Measured complete configurations on RTX 5090: **3,000 input / 1,000 output token
 
 Each model has its own throughput chart. The 27B Dense and 35B-A3B MoE comparisons include FP8, NVFP4 and both MXFP6 profiles, followed by a separate precision chart against BF16.
 
-MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The MXFP8 profiles now support K128 greedy heads through M64; 2B retains BF16 KV and 4B uses calibrated FP8 KV with its complete refined score head.
-
-The October 12 [merged MXFP8 measurements](mxfp8-optimization-results-20261012.md)
-record the newer fusion and head results with the historical open-source FP8 reference. The dated charts
-and tables below retain their original measurements and configurations.
+MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The MXFP8 state/KV matrix is maintained in its single benchmark report.
 
 <a id="qwen35-2b"></a>
-## Qwen3.5-2B — MXFP8 · Triton + hybrid
+## Qwen3.5-2B — MXFP8 state/KV matrix
 
-Mach profile: 2026-10-11 · 1 × RTX 5090 · TP1
-
-![Qwen3.5-2B output throughput by concurrency](assets/qwen35-2b-throughput.svg)
-
-| Concurrency | Community FP8 | Previous FA2/full-head | Current Triton + hybrid | vs FP8 | vs previous |
-|---|---:|---:|---:|---:|---:|
-| c4 | 1261.89 | 1395.31 | 1588.27 | +25.86% | +13.83% |
-| c16 | 3814.33 | 4295.10 | 4801.96 | +25.89% | +11.80% |
-| c24 | 5069.68 | 5594.33 | 6209.52 | +22.48% | +11.00% |
-| c32 | 5870.22 | 6595.49 | 7259.99 | +23.67% | +10.08% |
-| c48 | 6837.60 | 7896.46 | 8036.47 | +17.53% | +1.77% |
-| c64 | 7578.86 | 8702.23 | 9008.34 | +18.86% | +3.52% |
-
-| Concurrency | Selected mean TTFT (ms) | Selected mean TPOT (ms) |
-|---|---:|---:|
-| c4 | 98.90 | 2.421 |
-| c16 | 134.09 | 3.198 |
-| c24 | 192.81 | 3.666 |
-| c32 | 224.49 | 4.174 |
-| c48 | 277.45 | 5.678 |
-| c64 | 333.26 | 6.743 |
-
-[Profile / study](mxfp8-2b-champion.md) · [Source measurements](data/mxfp8-2b-triton-hybrid-sixpoint-20261011.json)
+See the [single MXFP8 benchmark report](mxfp8-benchmark.md#qwen35-2b) for the FP32 SSM/BF16 KV baseline, reduced-state configurations and per-concurrency block-FP8 comparisons.
 
 <a id="qwen35-4b"></a>
-## Qwen3.5-4B — MXFP8 champion
+## Qwen3.5-4B — MXFP8 state/KV matrix
 
-Mach profile: 2026-10-06 · 1 × RTX 5090 · TP1
-
-![Qwen3.5-4B output throughput by concurrency](assets/qwen35-4b-throughput.svg)
-
-| Concurrency | FP8 baseline | Selected profile | Gain |
-|---|---:|---:|---:|
-| c4 | 683.96 | 880.13 | +28.68% |
-| c16 | 2053.55 | 2481.30 | +20.83% |
-| c24 | 2559.26 | 3189.42 | +24.62% |
-| c32 | 2887.82 | 3672.70 | +27.18% |
-| c48 | 3220.55 | 4168.04 | +29.42% |
-| c64 | 3402.76 | 4653.93 | +36.77% |
-
-| Concurrency | Selected mean TTFT (ms) | Selected mean TPOT (ms) |
-|---|---:|---:|
-| c4 | 173.56 | 4.375 |
-| c16 | 237.62 | 6.211 |
-| c24 | 347.70 | 7.167 |
-| c32 | 410.70 | 8.286 |
-| c48 | 540.36 | 10.947 |
-| c64 | 688.76 | 13.017 |
-
-[Profile / study](mxfp8-champion.md) · [Source measurements](data/mxfp8-qualification-20261006.json)
+See the [single MXFP8 benchmark report](mxfp8-benchmark.md#qwen35-4b) for the FP32 SSM/BF16 KV baseline, reduced-state configurations and per-concurrency block-FP8 comparisons.
 
 <a id="qwen38-27b"></a>
 ## Qwen3.8-27B Dense — MXFP6 default / full

@@ -12,7 +12,7 @@ import urllib.request
 
 from install import patch_file
 
-REVISION = "a4cdc1b23a72cdedecb29707534fa4e3a595933f"  # official native PDL ABI; package version 0.2.1
+REVISION = "ce0cd05a007504853d2bf3963a183e3c76f3c75b"  # unified MXFP8 decode kernels; official PDL ABI; package version 0.2.1
 CUTLASS = "e6233cbac5d7c7a865c19c91cd684ceece19513c"
 PATCHES = (
     "0001-sm120-mxfp6-small-tile-runtime.patch",

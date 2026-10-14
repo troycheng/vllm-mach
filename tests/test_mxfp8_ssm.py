@@ -20,7 +20,11 @@ def test_launcher_dtype_resets_inherited_selection(monkeypatch, tmp_path, model)
     assert profile.run_contract()['ssm_dtype'] == 'bfloat16'
     argv = serve.build_argv('/model', ssm_dtype='bfloat16')
     assert argv[argv.index('--mamba-ssm-cache-dtype') + 1] == 'bfloat16'
-    assert ssm.select_gdn(object()) is stock_gdn
+    ordered = object()
+    assert ssm.select_gdn(ordered) is ordered
+    assert profile.run_contract()['ordered_gdn']
+    serve.configure_environment(tmp_path, ssm_dtype='bfloat16', ordered_bf16_ssm=False)
+    assert ssm.select_gdn(ordered) is stock_gdn
     serve.configure_environment(tmp_path)
     assert profile.run_contract()['ssm_dtype'] == 'float32'
     ordered = object()
@@ -64,7 +68,7 @@ def test_stock_rejects_live_cache_reallocation(ready, initialized):
 
 
 @pytest.mark.parametrize('model', ['2b', '4b'])
-def test_ordered_bf16_is_explicit_and_recorded(monkeypatch, tmp_path, model):
+def test_ordered_bf16_default_and_explicit_stock_are_recorded(monkeypatch, tmp_path, model):
     import os
     monkeypatch.setattr(os, 'environ', dict(os.environ))
     if model == '2b':
@@ -72,11 +76,14 @@ def test_ordered_bf16_is_explicit_and_recorded(monkeypatch, tmp_path, model):
     else:
         from vllm_mach.mxfp8 import serve, profile
     ordered = object()
+    monkeypatch.setenv(ssm.ENV, 'bfloat16')
+    monkeypatch.delenv(ssm.ORDERED_BF16_ENV, raising=False)
+    assert ssm.select_gdn(ordered) is ordered
     serve.configure_environment(tmp_path, ssm_dtype='bfloat16', ordered_bf16_ssm=True)
     assert ssm.select_gdn(ordered) is ordered
     contract = profile.run_contract()
     assert contract['ordered_gdn'] and contract['ssm_dtype'] == 'bfloat16'
-    serve.configure_environment(tmp_path, ssm_dtype='bfloat16')
+    serve.configure_environment(tmp_path, ssm_dtype='bfloat16', ordered_bf16_ssm=False)
     assert ssm.select_gdn(ordered) is stock_gdn
     assert profile.run_contract() != contract
     monkeypatch.setenv(ssm.ORDERED_BF16_ENV, 'invalid')

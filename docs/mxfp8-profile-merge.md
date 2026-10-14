@@ -13,6 +13,6 @@ The standalone b12x package was already a dependency for the small-row BF16 BA
 implementation. Its compiler/intrinsics utilities and FlashInfer's backend of
 the same name are separate integration points.
 
-Only the [merged-profile validation results](mxfp8-optimization-results-20261012.md)
-are retained for this integration. The result report includes the historical
-open-source FP8 reference and identifies its measurement scope.
+The [single MXFP8 benchmark](mxfp8-benchmark.md) contains the current
+per-concurrency SSM/KV matrix and comparisons with historical open-source
+block FP8. Its JSON records the measurement scope and runtime identities.

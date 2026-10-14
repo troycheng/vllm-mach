@@ -70,6 +70,8 @@ independent installer; ordinary Mach MXFP6 patches are not a substitute.
 
 ## Configuration and receipts
 
+The launcher defaults to `--kv-cache-dtype fp8_e4m3`; omitting the flag does not select BF16 KV. Use `--kv-cache-dtype bfloat16` explicitly for the unquantized KV baseline. Stock vLLM defaults to `auto`, which follows the model dtype.
+
 Production defaults are BF16 model activations, FP32 SSM, FP8 E4M3 KV,
 19 GiB KV capacity, maxseq128, maxlen8192 and maxbatch2048. Captures are
 `[1,2,4,8..256 step8,2048]`: FULL through128 and PIECEWISE descriptors through
@@ -78,12 +80,12 @@ The launcher enables a K128 candidate/BF16-refinement greedy path through M64;
 `--no-hybrid-head` keeps the complete K2048 head for all calls. Score requests,
 constrained/stochastic sampling and unsupported cases use the complete head.
 SwiGLU and MXFP8 quantization are fused at supported small row counts.
-See the October 12 [optimization validation](mxfp8-optimization-results-20261012.md).
+See the October 12 [optimization validation](mxfp8-benchmark.md).
 Prefix caching, speculative decode, generic compact-head hooks,
 vocab-parallel greedy and unrelated Dense/MoE/AR modes are disabled by the profile.
 
-Add `--ssm-dtype bfloat16` to select BF16 state with native GDN/FLA; FP32 remains the default.
-See [BF16 SSM measurements and configuration](mxfp8-bf16-ssm-20261012.md).
+Add `--ssm-dtype bfloat16` to select BF16 state with ordered W4 GDN, now the default backend for both state dtypes. FP32 remains the default storage dtype. Use `--no-ordered-bf16-ssm` to select stock GDN/FLA for BF16 state. Grouped BF16 GDN and GDN PDL remain disabled by default.
+See [BF16 SSM measurements and configuration](mxfp8-benchmark.md).
 
 `--quality-rows 32` or `64` selects a separate precision-only mode:
 
@@ -122,11 +124,11 @@ that use a run directory, its old startup-cache subdirectories may be removed.
 
 ## Performance
 
-The champion improves throughput by **20.83–36.77%** over community FP8 across c4/c16/c24/c32/c48/c64. See the [point table and charts](performance.md#qwen35-4b) and [benchmark protocol](mxfp8-benchmark.md).
+See the [single MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the FP32 SSM/BF16 KV baseline, BF16 SSM and combined BF16 SSM/FP8 KV configurations, each compared with open-source block FP8.
 
 ## Validation
 
-The October 6 source build used Mach `ace36a3db9e5ca1db422346c9c307f2aa840bcdd` and native kernels `15a56aa2774552d0584d8fc6b621b41dc173f30b`. The [measurement record](data/mxfp8-qualification-20261006.json) contains build identities, runtime hashes and all serving results.
+Earlier numerical qualification is retained in `historical_validation.four_b` in the [consolidated data](data/mxfp8-benchmark.json). The current throughput matrix uses the native revision pinned in `deploy/Dockerfile.mxfp8`.
 
 | Physical rows | Queries | Gold tokens | Changed logprobs vs accepted champion | MAE vs BF16 |
 |---:|---:|---:|---:|---:|
