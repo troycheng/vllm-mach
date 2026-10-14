@@ -150,7 +150,7 @@ class OrderedGDNContracts(unittest.TestCase):
         # comments are excluded so normal packaging cannot invalidate the pin.
         fingerprints = {
             "lowm_allshape_triton": "17220ee86194044b5792a098e4f3c753992fdf4a83ac2c97600aebb603fabb94",
-            "ordered_allm_triton": "6604a717d2cec99b4c19755cd2cddaf5319dbd9b0664634eb56ef1a90d5b3dfa",
+            "ordered_allm_triton": "9c2bd05dcf56f7e0bdcc8262b11f3b7b0d98691668046dbe622be950ce180d90",
             "ordered_m4_deferred_triton": "85fafccf509727d73972e0ba9b077449587869b0df4931df2e22845887f34e13",
             "ordered_m16_deferred_triton": "add8b45c3a8cb2c70bea6a98db434bf66200016ccfd3cdc89514de14c2223c63",
             "bf16_small_gluon": "f428a464fd9ebddb1c6bfa0680139c798322ae51b5663ab92d3ce1f855e685ca",

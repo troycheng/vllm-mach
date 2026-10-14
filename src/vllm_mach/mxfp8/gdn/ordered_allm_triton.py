@@ -64,7 +64,12 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
                     stride_index: tl.constexpr, P: tl.constexpr, W: tl.constexpr,
                     SCALE: tl.constexpr, H: tl.constexpr, HV: tl.constexpr,
                     V: tl.constexpr, K: tl.constexpr, BV: tl.constexpr,
-                    NV: tl.constexpr):
+                    NV: tl.constexpr, USE_PDL: tl.constexpr = False):
+    if USE_PDL:
+        tl.inline_asm_elementwise("griddepcontrol.wait; // $0", "=r", [],
+                                  dtype=tl.int32, is_pure=False, pack=1)
+        tl.inline_asm_elementwise("griddepcontrol.launch_dependents; // $0",
+                                  "=r", [], dtype=tl.int32, is_pure=False, pack=1)
     iv = tl.program_id(0)
     ihv = tl.program_id(1)
     it = tl.program_id(2)
@@ -90,18 +95,15 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     pc_tile = coeff + meta * W
     # Replay the *stored raw* factors in token order. In particular, multiply
     # dense H before the rank update; no prefix/product or projection shortcut.
-    for j in range(W):
-        if j < old_age:
-            old_alpha = tl.load(pc_tile + j).to(tl.float32)
-            old_k = tl.load(pk_head + j * K + ok).to(tl.float32)
-            old_d = tl.load(pd_tile + j * BV + ov_local).to(tl.float32)
-            # Stock consumes rounded H*alpha in its dot product before the
-            # update. Pin the same FMA operand order for replay/materialize.
-            scaled = b_h * old_alpha
-            b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
-            # Match the state store/load rounding at every stock token boundary.
-            if base.dtype.element_ty == tl.bfloat16:
-                b_h = b_h.to(tl.bfloat16).to(tl.float32)
+    for j in range(old_age):
+        old_alpha = tl.load(pc_tile + j).to(tl.float32)
+        old_k = tl.load(pk_head + j * K + ok).to(tl.float32)
+        old_d = tl.load(pd_tile + j * BV + ov_local).to(tl.float32)
+        # Match the stock update and BF16 state round at each token boundary.
+        scaled = b_h * old_alpha
+        b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
+        if base.dtype.element_ty == tl.bfloat16:
+            b_h = b_h.to(tl.bfloat16).to(tl.float32)
 
     ptr_mixed = mixed_qkv + it * stride_mixed
     b_q = tl.load(ptr_mixed + ik * K + ok).to(tl.float32)
@@ -161,16 +163,14 @@ def _ordered_materialize(base, indices, pending_k, pending_d, coeff, prefix,
     pk_head = pending_k + (state_idx * HV + ihv) * W * K
     pd_tile = pending_d + meta * W * BV
     pc_tile = coeff + meta * W
-    for j in range(W):
-        if j < old_age:
-            old_alpha = tl.load(pc_tile + j).to(tl.float32)
-            old_k = tl.load(pk_head + j * K + ok).to(tl.float32)
-            old_d = tl.load(pd_tile + j * BV + ov_local).to(tl.float32)
-            scaled = b_h * old_alpha
-            b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
-            # Match the state store/load rounding at every stock token boundary.
-            if base.dtype.element_ty == tl.bfloat16:
-                b_h = b_h.to(tl.bfloat16).to(tl.float32)
+    for j in range(old_age):
+        old_alpha = tl.load(pc_tile + j).to(tl.float32)
+        old_k = tl.load(pk_head + j * K + ok).to(tl.float32)
+        old_d = tl.load(pd_tile + j * BV + ov_local).to(tl.float32)
+        scaled = b_h * old_alpha
+        b_h = tl.fma(old_d[:, None], old_k[None, :], scaled)
+        if base.dtype.element_ty == tl.bfloat16:
+            b_h = b_h.to(tl.bfloat16).to(tl.float32)
     tl.store(ptr_base, b_h)
     tl.store(prefix + meta, 1.0)
     tl.store(age + meta, 0)
@@ -238,14 +238,18 @@ def decode(mixed_qkv: torch.Tensor, a: torch.Tensor, b: torch.Tensor,
             bf16_decode(mixed_qkv, a, b, A_log, dt_bias, base, out, indices,
                         scratch, scale)
             return out
+    use_pdl = False
+    if base.dtype == torch.bfloat16:
+        from .bf16_small_gluon import _USE_PDL
+        use_pdl = _USE_PDL
     global _LAST_KERNEL
     _LAST_KERNEL = _ordered_decode[(NV, HV, m)](
         mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
         scratch.pending_k, scratch.pending_d, scratch.coeff,
         scratch.prefix, scratch.age,
         mixed_qkv.stride(0), a.stride(0), b.stride(0), base.stride(0),
-        indices.stride(0), p, w, scale, H, HV, V, K, BV, NV,
-        num_warps=1, num_stages=3)
+        indices.stride(0), p, w, scale, H, HV, V, K, BV, NV, use_pdl,
+        num_warps=1, num_stages=3, launch_pdl=use_pdl)
     return out
 
 

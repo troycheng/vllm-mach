@@ -20,12 +20,12 @@ Block FP8 values are retained historical open-source measurements, not fresh pai
 
 | Concurrency | Open-source block FP8 | MXFP8 | Gain vs block FP8 |
 |---:|---:|---:|---:|
-| c4 | 683.96 | 935.12 | +36.72% |
-| c16 | 2053.55 | 2501.60 | +21.82% |
-| c24 | 2559.26 | 3099.74 | +21.12% |
-| c32 | 2887.82 | 3459.35 | +19.79% |
-| c48 | 3220.55 | 3907.33 | +21.33% |
-| c64 | 3402.76 | 4194.31 | +23.26% |
+| c4 | 683.96 | 936.10 | +36.86% |
+| c16 | 2053.55 | 2502.17 | +21.85% |
+| c24 | 2559.26 | 3102.36 | +21.22% |
+| c32 | 2887.82 | 3464.07 | +19.95% |
+| c48 | 3220.55 | 3909.08 | +21.38% |
+| c64 | 3402.76 | 4199.28 | +23.41% |
 
 Launch flags: `--ssm-dtype float32 --kv-cache-dtype bfloat16`.
 
@@ -33,12 +33,12 @@ Launch flags: `--ssm-dtype float32 --kv-cache-dtype bfloat16`.
 
 | Concurrency | Open-source block FP8 | MXFP8 | Gain vs block FP8 |
 |---:|---:|---:|---:|
-| c4 | 683.96 | 953.88 | +39.46% |
-| c16 | 2053.55 | 2619.71 | +27.57% |
-| c24 | 2559.26 | 3260.84 | +27.41% |
-| c32 | 2887.82 | 3665.11 | +26.92% |
-| c48 | 3220.55 | 4175.26 | +29.64% |
-| c64 | 3402.76 | 4546.23 | +33.60% |
+| c4 | 683.96 | 954.55 | +39.56% |
+| c16 | 2053.55 | 2618.42 | +27.51% |
+| c24 | 2559.26 | 3265.26 | +27.59% |
+| c32 | 2887.82 | 3673.46 | +27.21% |
+| c48 | 3220.55 | 4184.79 | +29.94% |
+| c64 | 3402.76 | 4546.59 | +33.62% |
 
 Launch flags: `--ssm-dtype bfloat16 --ordered-bf16-ssm --kv-cache-dtype bfloat16`.
 
@@ -46,12 +46,12 @@ Launch flags: `--ssm-dtype bfloat16 --ordered-bf16-ssm --kv-cache-dtype bfloat16
 
 | Concurrency | Open-source block FP8 | MXFP8 | Gain vs block FP8 |
 |---:|---:|---:|---:|
-| c4 | 683.96 | 978.79 | +43.11% |
-| c16 | 2053.55 | 2862.04 | +39.37% |
-| c24 | 2559.26 | 3630.11 | +41.84% |
-| c32 | 2887.82 | 4153.06 | +43.81% |
-| c48 | 3220.55 | 4770.53 | +48.13% |
-| c64 | 3402.76 | 5367.96 | +57.75% |
+| c4 | 683.96 | 980.42 | +43.34% |
+| c16 | 2053.55 | 2861.86 | +39.36% |
+| c24 | 2559.26 | 3668.42 | +43.34% |
+| c32 | 2887.82 | 4179.18 | +44.72% |
+| c48 | 3220.55 | 4777.60 | +48.35% |
+| c64 | 3402.76 | 5373.24 | +57.91% |
 
 Launch flags: `--ssm-dtype bfloat16 --ordered-bf16-ssm --kv-cache-dtype fp8_e4m3`.
 
@@ -87,7 +87,7 @@ Launch flags: `--ssm-dtype bfloat16 --ordered-bf16-ssm`.
 
 ## Baseline and BF16 GDN recheck
 
-2B variants run sequentially on GPU 2 and 4B variants sequentially on GPU 3. Each uses a fresh service and the same updated native binary, prompts, graph policy and KV budget. Grouped BF16 GDN and GDN PDL are disabled; production projection PDL remains unchanged. Ordered BF16 is now the default BF16 backend; `--no-ordered-bf16-ssm` selects stock GDN. Measurements predate the default change.
+2B variants run sequentially on GPU 2 and 4B variants sequentially on GPU 3. Each uses a fresh service and the same updated native binary, prompts, graph policy and KV budget. Grouped BF16 GDN and GDN PDL are disabled in these tables; production projection PDL remains unchanged. The 4B BF16 stock and ordered rates below have been refreshed by the complete recheck described in the next section. The 4B FP32 baseline is also refreshed by the paired dtype recheck. The 2B rates retain the preceding measurements.
 
 Worker receipts confirm FP32 state and ready ordered GDN for the baseline, BF16 state and ready ordered GDN for the main BF16 matrix. Stock measurements are retained below as an explicit backend comparison. The main five configuration tables above use this recheck. The earlier raw matrix remains archived.
 
@@ -95,12 +95,12 @@ Change from the preceding matrix baseline (same configuration, different GPU):
 
 | Concurrency | 2B FP32 / BF16 KV | 4B FP32 / BF16 KV |
 |---:|---:|---:|
-| c4 | -1.01% | +0.08% |
-| c16 | +2.52% | +0.08% |
-| c24 | +2.38% | -0.04% |
-| c32 | +2.08% | -0.03% |
-| c48 | +2.30% | +0.23% |
-| c64 | +2.21% | +0.40% |
+| c4 | -1.01% | +0.18% |
+| c16 | +2.52% | +0.10% |
+| c24 | +2.38% | +0.04% |
+| c32 | +2.08% | +0.11% |
+| c48 | +2.30% | +0.28% |
+| c64 | +2.21% | +0.52% |
 
 The dtype, cache and GDN route checks pass in both runs. Cross-card differences above describe observed variability; the state comparisons below use the fresh baseline on the same GPU.
 
@@ -119,16 +119,16 @@ The dtype, cache and GDN route checks pass in both runs. Cross-card differences 
 
 | Concurrency | FP32 / BF16 KV | BF16 stock / BF16 KV | BF16 ordered / BF16 KV | BF16 stock / FP8 KV | BF16 ordered / FP8 KV |
 |---:|---:|---:|---:|---:|---:|
-| c4 | 935.12 | 956.44 | 953.88 | 981.41 | 978.79 |
-| c16 | 2501.60 | 2632.95 | 2619.71 | 2876.85 | 2862.04 |
-| c24 | 3099.74 | 3302.98 | 3260.84 | 3701.35 | 3630.11 |
-| c32 | 3459.35 | 3732.87 | 3665.11 | 4249.73 | 4153.06 |
-| c48 | 3907.33 | 4238.09 | 4175.26 | 4854.81 | 4770.53 |
-| c64 | 4194.31 | 4584.45 | 4546.23 | 5381.74 | 5367.96 |
+| c4 | 936.10 | 957.47 | 954.55 | 981.24 | 980.42 |
+| c16 | 2502.17 | 2634.46 | 2618.42 | 2874.11 | 2861.86 |
+| c24 | 3102.36 | 3308.59 | 3265.26 | 3694.97 | 3668.42 |
+| c32 | 3464.07 | 3736.70 | 3673.46 | 4243.07 | 4179.18 |
+| c48 | 3909.08 | 4240.64 | 4184.79 | 4853.96 | 4777.60 |
+| c64 | 4199.28 | 4585.55 | 4546.59 | 5385.05 | 5373.24 |
 
 ### 4B SSM precision with FP8 KV held fixed (GPU 4)
 
-Both fresh services run sequentially on GPU 4. This pair isolates the complete FP32 ordered versus BF16 stock configuration at the same KV dtype, matching the October 12 SSM study. It uses a different GPU from the main matrix.
+Both services ran sequentially on GPU 4 in the preceding recheck. This pair compares the complete FP32 ordered versus BF16 stock configurations at the same KV dtype, matching the October 12 SSM study. It uses a different GPU from the main matrix.
 
 | Concurrency | FP32 SSM / FP8 KV | BF16 stock SSM / FP8 KV | BF16 vs FP32 | October 12 gain |
 |---:|---:|---:|---:|---:|
@@ -145,18 +145,87 @@ The October 13 previous-ordered run used **BF16 SSM / FP8 E4M3 KV**, confirmed b
 
 | Concurrency | Historical ordered / FP8 KV | Current ordered / FP8 KV | Change at matching dtype | Current ordered / BF16 KV |
 |---:|---:|---:|---:|---:|
-| c4 | 936.45 | 978.79 | +4.52% | 953.88 |
-| c16 | 2741.93 | 2862.04 | +4.38% | 2619.71 |
-| c24 | 3573.93 | 3630.11 | +1.57% | 3260.84 |
-| c32 | 4085.16 | 4153.06 | +1.66% | 3665.11 |
-| c48 | 4705.02 | 4770.53 | +1.39% | 4175.26 |
-| c64 | 5275.68 | 5367.96 | +1.75% | 4546.23 |
+| c4 | 936.45 | 980.42 | +4.70% | 954.55 |
+| c16 | 2741.93 | 2861.86 | +4.37% | 2618.42 |
+| c24 | 3573.93 | 3668.42 | +2.64% | 3265.26 |
+| c32 | 4085.16 | 4179.18 | +2.30% | 3673.46 |
+| c48 | 4705.02 | 4777.60 | +1.54% | 4184.79 |
+| c64 | 5275.68 | 5373.24 | +1.85% | 4546.59 |
 
 To select BF16 SSM and BF16 KV explicitly, use `--ssm-dtype bfloat16 --kv-cache-dtype bfloat16`. To reproduce the historical dtype/backend selection, use `--ssm-dtype bfloat16 --kv-cache-dtype fp8_e4m3 --ordered-bf16-ssm`. Grouped BF16 GDN and GDN PDL remain disabled in this previous-ordered comparison.
 
 At c64, 2B ordered BF16 reaches **10463.62 tokens/s**, versus **10182.11** for current stock BF16 and **10472.36** for the October 13 ordered run (-0.08% versus that historical run). The default backend now selects this ordered configuration; use `--no-ordered-bf16-ssm` to reproduce stock GDN.
 
 The October 13 GDN study used stock/ordered/grouped BF16 routes, BF16 KV for 2B and FP8 KV for 4B, with an earlier native binary (`c4522aff…`). Its runtime source hashes match the current runtime; native binary, GPU and route differences prevent attributing changes to SSM precision alone. Ordered BF16 retains the unresolved correctness limitations described in the [GDN guide](mxfp8-gdn.md).
+
+## October 14 complete 4B BF16 SSM throughput recheck
+
+All six concurrency points use fresh services sequentially on GPU 3 (RTX 5090), the same native binary, 3000 input / 1000 output tokens, fixed prompts, graph policy and KV memory budget. Each route completes 1,040 scored requests per KV dtype. Production projection PDL stays enabled. The ordered default route disables grouped GDN and GDN PDL; the grouped+PDL route enables both experimental switches.
+
+### BF16 KV (output tokens/s)
+
+| Concurrency | Stock BF16 | Ordered default | Ordered vs stock | Grouped + PDL | Grouped + PDL vs stock | Grouped + PDL vs ordered |
+|---:|---:|---:|---:|---:|---:|---:|
+| c4 | 957.47 | 954.55 | -0.30% | 955.76 | -0.18% | +0.13% |
+| c16 | 2634.46 | 2618.42 | -0.61% | 2625.83 | -0.33% | +0.28% |
+| c24 | 3308.59 | 3265.26 | -1.31% | 3271.52 | -1.12% | +0.19% |
+| c32 | 3736.70 | 3673.46 | -1.69% | 3678.45 | -1.56% | +0.14% |
+| c48 | 4240.64 | 4184.79 | -1.32% | 4203.39 | -0.88% | +0.44% |
+| c64 | 4585.55 | 4546.59 | -0.85% | 4567.55 | -0.39% | +0.46% |
+
+### FP8 E4M3 KV (output tokens/s)
+
+| Concurrency | Stock BF16 | Ordered default | Ordered vs stock | Grouped + PDL | Grouped + PDL vs stock | Grouped + PDL vs ordered |
+|---:|---:|---:|---:|---:|---:|---:|
+| c4 | 981.24 | 980.42 | -0.08% | 980.56 | -0.07% | +0.01% |
+| c16 | 2874.11 | 2861.86 | -0.43% | 2877.04 | +0.10% | +0.53% |
+| c24 | 3694.97 | 3668.42 | -0.72% | 3675.02 | -0.54% | +0.18% |
+| c32 | 4243.07 | 4179.18 | -1.51% | 4202.44 | -0.96% | +0.56% |
+| c48 | 4853.96 | 4777.60 | -1.57% | 4801.66 | -1.08% | +0.50% |
+| c64 | 5385.05 | 5373.24 | -0.22% | 5391.64 | +0.12% | +0.34% |
+
+### Ordered default change from the preceding matrix
+
+The preceding ordered measurements used the same GPU and request protocol. These are separate service runs; changes include run variability and do not isolate the kernel change. The main 4B BF16 tables and chart above now use the latest ordered-default results.
+
+| Concurrency | Previous BF16 KV | Latest BF16 KV | Change | Previous FP8 KV | Latest FP8 KV | Change |
+|---:|---:|---:|---:|---:|---:|---:|
+| c4 | 953.88 | 954.55 | +0.07% | 978.79 | 980.42 | +0.17% |
+| c16 | 2619.71 | 2618.42 | -0.05% | 2862.04 | 2861.86 | -0.01% |
+| c24 | 3260.84 | 3265.26 | +0.14% | 3630.11 | 3668.42 | +1.06% |
+| c32 | 3665.11 | 3673.46 | +0.23% | 4153.06 | 4179.18 | +0.63% |
+| c48 | 4175.26 | 4184.79 | +0.23% | 4770.53 | 4777.60 | +0.15% |
+| c64 | 4546.23 | 4546.59 | +0.01% | 5367.96 | 5373.24 | +0.10% |
+
+These are single full-curve runs per route, with no repeated-trial confidence interval. Grouped GDN and GDN PDL remain experimental and disabled by default. See the [GDN guide](mxfp8-gdn.md) for correctness qualification. Raw request records and worker receipts are referenced in the machine-readable dataset.
+
+## October 14 paired 4B dtype and attention throughput
+
+Fresh sequential services on GPU 3 use the same binary, runtime, prompts, 19 GiB KV budget, graph policy and 3000-input/1000-output protocol. Each configuration completes all six points and 1,040 scored requests. Ordered GDN is used throughout; grouped GDN and GDN PDL are disabled. Both KV dtypes use BF16 queries, native FlashInfer prefill and XQA decode in the default runs.
+
+| Concurrency | FP32 SSM / BF16 KV | BF16 SSM / BF16 KV | SSM gain with BF16 KV | FP32 SSM / FP8 KV | BF16 SSM / FP8 KV | SSM gain with FP8 KV | KV gain with FP32 SSM | KV gain with BF16 SSM | Combined gain |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| c4 | 936.10 | 954.55 | +1.97% | 957.38 | 980.42 | +2.41% | +2.27% | +2.71% | +4.73% |
+| c16 | 2502.17 | 2618.42 | +4.65% | 2713.33 | 2861.86 | +5.47% | +8.44% | +9.30% | +14.38% |
+| c24 | 3102.36 | 3265.26 | +5.25% | 3432.69 | 3668.42 | +6.87% | +10.65% | +12.35% | +18.25% |
+| c32 | 3464.07 | 3673.46 | +6.04% | 3889.65 | 4179.18 | +7.44% | +12.29% | +13.77% | +20.64% |
+| c48 | 3909.08 | 4184.79 | +7.05% | 4396.73 | 4777.60 | +8.66% | +12.47% | +14.17% | +22.22% |
+| c64 | 4199.28 | 4546.59 | +8.27% | 4867.51 | 5373.24 | +10.39% | +15.91% | +18.18% | +27.96% |
+
+### Attention implementation control (BF16 SSM, output tokens/s)
+
+The control adds `--attention-config '{"use_trtllm_attention":false}'` to select native FlashInfer decode for both KV dtypes. Other deployment settings are retained. All four curves use native FlashInfer prefill and BF16 queries. The default XQA curves are the ordered-default measurements above. KV gain compares FP8 against BF16 within each decode implementation.
+
+| Concurrency | XQA / BF16 KV | XQA / FP8 KV | XQA KV gain | Native / BF16 KV | Native / FP8 KV | Native KV gain | Native vs XQA BF16 KV | Native vs XQA FP8 KV |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| c4 | 954.55 | 980.42 | +2.71% | 888.99 | 909.40 | +2.30% | -6.87% | -7.24% |
+| c16 | 2618.42 | 2861.86 | +9.30% | 2484.55 | 2703.59 | +8.82% | -5.11% | -5.53% |
+| c24 | 3265.26 | 3668.42 | +12.35% | 3113.86 | 3481.92 | +11.82% | -4.64% | -5.08% |
+| c32 | 3673.46 | 4179.18 | +13.77% | 3546.88 | 4006.04 | +12.95% | -3.45% | -4.14% |
+| c48 | 4184.79 | 4777.60 | +14.17% | 4058.95 | 4598.98 | +13.30% | -3.01% | -3.74% |
+| c64 | 4546.59 | 5373.24 | +18.18% | 4452.85 | 5202.50 | +16.84% | -2.06% | -3.18% |
+
+Each curve is one complete trial; no repeated-trial confidence interval is available. Runtime receipts, exact throughput and raw request artifact hashes are retained in the machine-readable dataset.
 
 ## Workload and verification
 

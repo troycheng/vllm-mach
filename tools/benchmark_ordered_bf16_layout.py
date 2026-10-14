@@ -22,7 +22,7 @@ from vllm.third_party.flash_linear_attention.ops import (
 
 
 @torch.inference_mode()
-def measure(model, rows, pools, repeats, rep_ms):
+def measure(model, rows, pools, repeats, rep_ms, state_rows=None, warps=None):
     from vllm_mach.mxfp8.gdn import bf16_small_gluon as gluon
     heads = 16 if model == '2b' else 32
     high = importlib.import_module(
@@ -83,10 +83,24 @@ def measure(model, rows, pools, repeats, rep_ms):
             ids.stride(0), base.shape[0], 4, 128**-.5, 16, heads,
             128, 128, 32, 4, num_warps=1, num_stages=3)
 
+    def tuned(state):
+        base, out, scratch = state
+        return gluon._ordered_decode[(4, heads, rows)](
+            qkv, a, b, al, dt, out, base, ids,
+            scratch.pending_k, scratch.pending_d, scratch.coeff,
+            scratch.prefix, scratch.age,
+            qkv.stride(0), a.stride(0), b.stride(0), base.stride(0),
+            ids.stride(0), base.shape[0], 4, 128**-.5, 16, heads,
+            128, 128, 32, 4, rows * heads <= 256, state_rows,
+            gluon._USE_PDL, num_warps=warps, num_stages=3,
+            launch_pdl=gluon._USE_PDL)
+
     # Record resources for the actual new Gluon signature, outside capture.
     base, out, scratch = states[0]
     compiled = gluon.decode(qkv, a, b, al, dt, base, out, ids, scratch)
     functions = dict(stock=reference, previous=previous, optimized=current)
+    if state_rows is not None:
+        functions['tuned'] = tuned
     times = {key: [] for key in functions}
     order = list(functions)
     rng = random.Random(731)
@@ -106,6 +120,12 @@ def measure(model, rows, pools, repeats, rep_ms):
                 * 1000 / (4 * pools))
     medians = {key: statistics.median(values) for key, values in times.items()}
     return dict(model=model, rows=rows, pools=pools, median_us=medians,
+                active_state_bytes=rows * heads * 128 * 128 * 2 * pools,
+                allocated_state_bytes=sum(base.untyped_storage().nbytes()
+                                          for base, _, _ in states),
+                state_page_stride_bytes=states[0][0].stride(0) * 2,
+                cache_protocol='rotate independent state pools between decode calls; '
+                               'no explicit cache flush; complete W4 cycles',
                 samples_us=times, n_regs=compiled.n_regs, n_spills=compiled.n_spills,
                 speedup_vs_stock=medians['stock'] / medians['optimized'],
                 speedup_vs_previous=medians['previous'] / medians['optimized'])
@@ -120,9 +140,13 @@ def main():
                         help='state pools to rotate; 0 uses six for 2B/eight for 4B')
     parser.add_argument('--repeats', type=int, default=5)
     parser.add_argument('--rep-ms', type=int, default=100)
+    parser.add_argument('--state-rows', type=int, choices=[1, 2, 4, 8])
+    parser.add_argument('--warps', type=int, choices=[2, 4, 8])
     args = parser.parse_args()
     if args.repeats < 1 or args.rep_ms < 1 or args.pools < 0:
         parser.error('repeats and rep-ms must be positive; pools must be nonnegative')
+    if (args.state_rows is None) != (args.warps is None):
+        parser.error('--state-rows and --warps must be specified together')
     valid_rows = {
         '2b': [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 160],
         '4b': [1, 2, 4, 8, 16] + list(range(24, 129, 8)),
@@ -141,6 +165,7 @@ def main():
         stock_source_sha256=hashlib.sha256(Path(inspect.getfile(stock)).read_bytes()).hexdigest(),
         optimized_source_sha256=hashlib.sha256(Path(bf16_small_gluon.__file__).read_bytes()).hexdigest(),
         use_pdl=bf16_small_gluon._USE_PDL,
+        tuned_launch=dict(state_rows=args.state_rows, warps=args.warps),
         grouped_layout=bf16_small_gluon._USE_GROUPED,
         previous='pre-layout BF16: STATE_ROWS=1; full/8 warps through 256 head-rows; '
                  'deferred/4 warps through 1024, 2 warps through 1536; '
@@ -150,7 +175,8 @@ def main():
                'microseconds per pool per token step', results=[])
     for model in args.models:
         for rows in args.rows or valid_rows[model]:
-            row = measure(model, rows, args.pools, args.repeats, args.rep_ms)
+            row = measure(model, rows, args.pools, args.repeats, args.rep_ms,
+                          args.state_rows, args.warps)
             report['results'].append(row)
             print(json.dumps(row), flush=True)
             args.output.parent.mkdir(parents=True, exist_ok=True)

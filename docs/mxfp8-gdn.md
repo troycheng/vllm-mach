@@ -93,7 +93,8 @@ Mixed decode, stock fallback, materialization and slot reset share that history.
 Flags are frozen at module import before warmup/capture and accept only
 `0` or `1`. They require the ordered BF16 serving option. With flags unset,
 Gluon handles up to 1536 head-rows: full writeback/eight warps through 256,
-deferred/four warps through 1024, then two warps. Larger shapes retain Triton.
+deferred/four warps through 1024, then two warps. Larger shapes retain Triton,
+which now also honors the PDL switch for BF16 state.
 Grouped deferred decode uses four warps through 768 head-rows, then two.
 
 [Consolidated measurements and validation](data/mxfp8-benchmark.json)
@@ -101,7 +102,108 @@ retain per-concurrency serving results, backend selections and unresolved
 qualification findings. Full kernel/debug samples and removed prototype
 sources remain in the audit archives referenced by the dataset.
 
+### Throughput attribution and cache-capacity checks
+
+The October 14 GPU 3 four-way precision comparison holds the native binary,
+runtime hashes, request contracts, graph policy and 19 GiB cache budget fixed.
+At c64, ordered BF16 SSM gains 8.27% with BF16 KV and 10.39% with FP8 KV.
+FP8 KV gains 15.91% with FP32 SSM and 18.18% with BF16 SSM. These are
+precision/configuration changes, whereas ordered versus stock BF16 changes
+implementation at the same state precision. Their gain percentages should
+not be conflated. Single full-curve trials do not establish confidence bounds.
+For equal output counts, normalized c64 elapsed time is 1.00000 for
+FP32/BF16, 0.92361 for BF16/BF16, 0.86272 for FP32/FP8, and 0.78152
+for BF16/FP8. The combined time saving is close to the sum of the two
+separate savings (a 0.48-percentage-point residual). This is consistent
+with different contributions to total serving time; it is not a per-kernel
+time attribution. The fixed-FP8 comparison exposes a larger relative SSM
+gain after reducing attention/cache cost, and vice versa.
+
+A KV-capacity admission limit is not supported by the c64 service evidence.
+FP32 SSM/BF16 KV exposes 491,520 cached tokens, BF16 SSM/BF16 KV exposes
+549,428, and the workload requires at most 256,000 live prompt-plus-output
+tokens before page rounding. The startup estimate of 60 concurrent requests
+for the former assumes 8,192 tokens per request; it is not a scheduler cap.
+Both configurations reach 64 running requests. Within their scored c64
+intervals, sampled cache occupancy peaks at 59.3% and 52.7%, respectively,
+and neither log reports preemption/recomputation. After initial admission,
+these periodic samples show 63–64 running requests and no waiting queue.
+They measure scheduler occupancy, not each executed decode batch. Chunked
+prefill, completion/admission transitions and the final drain still change
+the actual per-step batch; graph padding must not be counted as active rows.
+
+Both KV dtypes resolve BF16 prefill/decode queries and dedicated XQA decode
+on SM120. The pinned runtime rejects TRTLLM prefill on SM120, selecting native
+FlashInfer prefill. Thus the default precision comparison does not switch
+between XQA and another decode backend, nor quantize Q. Different KV dtypes
+still select different XQA specializations and change bandwidth/cache behavior.
+A native-FlashInfer decode control is measured separately with
+`--attention-config '{"use_trtllm_attention":false}'`; it also preserves BF16
+queries and native prefill. At c64, the native control measures 4452.85
+output tokens/s with BF16 KV and 5202.50 with FP8 KV, a 16.84% KV gain,
+versus 18.18% under XQA. XQA raises absolute throughput by 2.11% for BF16
+KV and 3.28% for FP8 KV relative to native decode; the KV-gain difference
+is 1.35 percentage points. This supports a modest implementation effect,
+not an automatic BF16-to-FP8 backend switch or an explanation of the entire
+SSM-versus-KV gain difference. Both native controls reach 64 running requests
+without logged preemption; sampled c64 cache peaks are 51.3% and 29.8%.
+Exact output equality between attention implementations was not checked;
+this control verifies successful fixed-length serving and throughput, not
+cross-backend numerical equivalence. End-to-end throughput includes the cost of
+3000-token chunked prefills, not solely the state-update or decode kernel.
+
 ### Serving comparisons
+
+The high-row ordered kernel now replays only the pending W4 terms instead of
+testing all four slots. On 4B/M64 BF16, the single-pool four-step CUDA graph
+measurement fell from 28.45 to 26.93 microseconds per step on GPU 3. Exact
+output and materialized-state comparison against stock passed for M24/32/48/64/128
+with BF16 and FP32 state over 128 changing-input steps. The complete October 14 serving recheck
+includes this kernel change;
+its six-point curves are recorded in the serving benchmark report.
+
+With PDL enabled and grouped layout disabled, the Triton high-row route passed
+1024-step exact output and materialized-state checks at 4B/M48/64/96/128.
+Its M64 four-step single-pool timing was 26.68 microseconds versus 26.93
+without PDL. Grouped+PDL Gluon also passed 1024 steps at M24/32/48/64/128,
+but the eight-pool graph timing differed little from the prior route. Neither
+kernel result establishes an end-to-end serving improvement.
+
+A preliminary October 14 4B pair on GPU 3 used the older native binary
+`c4522aff` and the same FP8 KV model and
+3000-input/1000-output request protocol at c32/c64. Grouped+PDL measured
+4154.63/5408.91 output tokens/s; stock BF16 measured 4222.16/5408.00.
+Grouped+PDL was 1.6% slower at c32 and effectively tied at c64. The local
+layout sweep found no meaningful gain from state-row/warp settings 2/4,
+8/2 or 1/2 versus the existing grouped 4/2 policy at M32/48/64. The later full six-point
+recheck uses the main matrix native binary
+`de8a02f4` (revision `ce0cd05`), and supersedes this preliminary pair.
+Neither recheck justifies enabling grouped or PDL by default for 4B.
+
+Nsight Compute on 4B/M64 BF16 measured about 68.2 MB of DRAM reads for one
+ordered decode, approximately the dense state size for 64 rows. The grouped
+Gluon kernel used 127 registers/thread; the high-M Triton kernel used 255.
+The kernel is dominated by state traffic when that working set is cold.
+Eight rotating state pools in the CUDA-graph benchmark exceed L2 capacity,
+while the paired c32/c64 service runs include the actual 24-layer state,
+attention KV, projections and cache contention. Two experimental kernels,
+one processing BV64 together and another processing sequential BV16 halves,
+passed exact output/state checks but lost 1-3% against the existing grouped
+BV32 kernel with eight pools. A W2 flush increased M64 eight-pool time from
+57.8 to 66.1 microseconds per step, and restricting Triton to 128 registers
+caused heavy spilling. None was promoted to production dispatch.
+
+An additional async global-to-shared state-loading prototype overlapped
+`cp.async` with Q/K normalization and gate computation. It passed exact
+128-step BF16 output/materialized-state checks at M32/M64 with PDL, but
+retained 127 registers and regressed at one, eight and 24 pools. M64 times
+were 25.99/59.75/60.04 microseconds versus 24.45/57.90/58.10 for existing
+grouped decode. Delaying state conversion or loading did not improve cold
+timing either. All three prototypes were removed. State loads already use
+128-bit vector instructions; simply introducing shared memory did not reduce
+the dominant DRAM traffic. The kernel cache matrix is recorded here;
+the serving benchmark report
+contains throughput only.
 
 The [single MXFP8 benchmark report](mxfp8-benchmark.md) contains current
 per-concurrency throughput and the baseline recheck. Its dataset retains the

@@ -62,8 +62,8 @@ def recheck_markdown(data):
     pair=check.get('four_b_fp8_kv_ssm_pair')
     if pair:
         lines += ['### 4B SSM precision with FP8 KV held fixed (GPU 4)', '',
-                  'Both fresh services run sequentially on GPU 4. This pair isolates the '
-                  'complete FP32 ordered versus BF16 stock configuration at the same KV dtype, '
+                  'Both services ran sequentially on GPU 4 in the preceding recheck. This pair compares the '
+                  'complete FP32 ordered versus BF16 stock configurations at the same KV dtype, '
                   'matching the October 12 SSM study. It uses a different GPU from the main matrix.', '',
                   '| Concurrency | FP32 SSM / FP8 KV | BF16 stock SSM / FP8 KV | BF16 vs FP32 | October 12 gain |',
                   '|---:|---:|---:|---:|---:|']
@@ -108,6 +108,104 @@ def recheck_markdown(data):
               'native binary, GPU and route differences prevent attributing changes '
               'to SSM precision alone. Ordered BF16 retains the unresolved correctness '
               'limitations described in the [GDN guide](mxfp8-gdn.md).', '']
+    if data.get('bf16_full_recheck'):
+        lines[2] = ('2B variants run sequentially on GPU 2 and 4B variants sequentially '
+                    'on GPU 3. Each uses a fresh service and the same updated native binary, '
+                    'prompts, graph policy and KV budget. Grouped BF16 GDN and GDN PDL '
+                    'are disabled in these tables; production projection PDL remains '
+                    'unchanged. The 4B BF16 stock and ordered rates below have been '
+                    'refreshed by the complete recheck described in the next section. '
+                    'The FP32 and 2B rates retain the preceding measurements.')
+    if data.get('dtype_attention_recheck'):
+        lines[2] = lines[2].replace('The FP32 and 2B rates retain the preceding measurements.', 'The 4B FP32 baseline is also refreshed by the paired dtype recheck. The 2B rates retain the preceding measurements.')
+    return lines
+
+
+def bf16_full_recheck_markdown(data):
+    check = data.get('bf16_full_recheck')
+    if not check:
+        return []
+    assert check['complete']
+    lines = ['## October 14 complete 4B BF16 SSM throughput recheck', '',
+             'All six concurrency points use fresh services sequentially on GPU 3 '
+             '(RTX 5090), the same native binary, 3000 input / 1000 output tokens, '
+             'fixed prompts, graph policy and KV memory budget. Each route completes '
+             '1,040 scored requests per KV dtype. Production projection PDL stays '
+             'enabled. The ordered default route disables grouped GDN and GDN PDL; '
+             'the grouped+PDL route enables both experimental switches.', '']
+    for kv, label in [('bfloat16', 'BF16 KV'), ('fp8_e4m3', 'FP8 E4M3 KV')]:
+        routes = check['variants'][kv]
+        lines += [f'### {label} (output tokens/s)', '',
+                  '| Concurrency | Stock BF16 | Ordered default | Ordered vs stock | Grouped + PDL | Grouped + PDL vs stock | Grouped + PDL vs ordered |',
+                  '|---:|---:|---:|---:|---:|---:|---:|']
+        for i, c in enumerate(POINTS):
+            stock, ordered, pdl = [routes[r]['points'][i]['metrics']['output_throughput_tokens_per_s']
+                                   for r in ('stock', 'ordered', 'grouped-pdl')]
+            lines.append(f'| c{c} | {stock:.2f} | {ordered:.2f} | '
+                         f'{100*(ordered/stock-1):+.2f}% | {pdl:.2f} | '
+                         f'{100*(pdl/stock-1):+.2f}% | {100*(pdl/ordered-1):+.2f}% |')
+        lines += ['']
+    lines += ['### Ordered default change from the preceding matrix', '',
+              'The preceding ordered measurements used the same GPU and request protocol. '
+              'These are separate service runs; changes include run variability and '
+              'do not isolate the kernel change. The main 4B BF16 tables and chart '
+              'above now use the latest ordered-default results.', '',
+              '| Concurrency | Previous BF16 KV | Latest BF16 KV | Change | Previous FP8 KV | Latest FP8 KV | Change |',
+              '|---:|---:|---:|---:|---:|---:|---:|']
+    for i, c in enumerate(POINTS):
+        cells = []
+        for kv in ('bfloat16', 'fp8_e4m3'):
+            old = check['previous_ordered'][kv]['points'][i]['metrics']['output_throughput_tokens_per_s']
+            new = check['variants'][kv]['ordered']['points'][i]['metrics']['output_throughput_tokens_per_s']
+            cells += [f'{old:.2f}', f'{new:.2f}', f'{100*(new/old-1):+.2f}%']
+        lines.append('| c'+str(c)+' | '+' | '.join(cells)+' |')
+    lines += ['', 'These are single full-curve runs per route, with no repeated-trial '
+              'confidence interval. Grouped GDN and GDN PDL remain experimental '
+              'and disabled by default. See the [GDN guide](mxfp8-gdn.md) for '
+              'correctness qualification. Raw request records and worker receipts '
+              'are referenced in the machine-readable dataset.', '']
+    return lines
+
+
+def dtype_attention_recheck_markdown(data):
+    check = data.get('dtype_attention_recheck')
+    if not check:
+        return []
+    assert check['complete']
+    bf = data['bf16_full_recheck']['variants']
+    fp = check['variants']['fp32-dtype']
+    native = check['variants']['native-attention']
+    lines = ['## October 14 paired 4B dtype and attention throughput', '',
+             'Fresh sequential services on GPU 3 use the same binary, runtime, '
+             'prompts, 19 GiB KV budget, graph policy and 3000-input/1000-output '
+             'protocol. Each configuration completes all six points and 1,040 '
+             'scored requests. Ordered GDN is used throughout; grouped GDN and '
+             'GDN PDL are disabled. Both KV dtypes use BF16 queries, native '
+             'FlashInfer prefill and XQA decode in the default runs.', '',
+             '| Concurrency | FP32 SSM / BF16 KV | BF16 SSM / BF16 KV | SSM gain with BF16 KV | FP32 SSM / FP8 KV | BF16 SSM / FP8 KV | SSM gain with FP8 KV | KV gain with FP32 SSM | KV gain with BF16 SSM | Combined gain |',
+             '|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+    for i, c in enumerate(POINTS):
+        a = fp['bfloat16']['points'][i]['metrics']['output_throughput_tokens_per_s']
+        b = bf['bfloat16']['ordered']['points'][i]['metrics']['output_throughput_tokens_per_s']
+        d = fp['fp8_e4m3']['points'][i]['metrics']['output_throughput_tokens_per_s']
+        e = bf['fp8_e4m3']['ordered']['points'][i]['metrics']['output_throughput_tokens_per_s']
+        lines.append(f'| c{c} | {a:.2f} | {b:.2f} | {100*(b/a-1):+.2f}% | {d:.2f} | {e:.2f} | {100*(e/d-1):+.2f}% | {100*(d/a-1):+.2f}% | {100*(e/b-1):+.2f}% | {100*(e/a-1):+.2f}% |')
+    lines += ['', '### Attention implementation control (BF16 SSM, output tokens/s)', '',
+              'The control adds `--attention-config \'{"use_trtllm_attention":false}\'` '
+              'to select native FlashInfer decode for both KV dtypes. Other deployment '
+              'settings are retained. All four curves use native FlashInfer prefill '
+              'and BF16 queries. The default XQA curves are the ordered-default '
+              'measurements above. KV gain compares FP8 against BF16 within each '
+              'decode implementation.', '',
+              '| Concurrency | XQA / BF16 KV | XQA / FP8 KV | XQA KV gain | Native / BF16 KV | Native / FP8 KV | Native KV gain | Native vs XQA BF16 KV | Native vs XQA FP8 KV |',
+              '|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+    for i, c in enumerate(POINTS):
+        a, b = [bf[k]['ordered']['points'][i]['metrics']['output_throughput_tokens_per_s'] for k in ('bfloat16', 'fp8_e4m3')]
+        d, e = [native[k]['points'][i]['metrics']['output_throughput_tokens_per_s'] for k in ('bfloat16', 'fp8_e4m3')]
+        lines.append(f'| c{c} | {a:.2f} | {b:.2f} | {100*(b/a-1):+.2f}% | {d:.2f} | {e:.2f} | {100*(e/d-1):+.2f}% | {100*(d/a-1):+.2f}% | {100*(e/b-1):+.2f}% |')
+    lines += ['', 'Each curve is one complete trial; no repeated-trial confidence '
+              'interval is available. Runtime receipts, exact throughput and raw '
+              'request artifact hashes are retained in the machine-readable dataset.', '']
     return lines
 
 
@@ -156,6 +254,8 @@ def markdown(data):
                 lines.append(f'| c{c} | {refs[c]:.2f} | {rate:.2f} | {gain:+.2f}% |')
             lines += ['', f"Launch flags: `{' '.join(variant['launch_flags'])}`.", '']
     lines += recheck_markdown(data)
+    lines += bf16_full_recheck_markdown(data)
+    lines += dtype_attention_recheck_markdown(data)
     lines += [
         '## Workload and verification', '',
         '| Concurrency | Scored requests | Input tokens/request | Output tokens/request |',
