@@ -1,4 +1,6 @@
 """Mach's graph-changing settings must participate in vLLM's AOT lookup."""
+import logging
+
 import pytest
 
 
@@ -58,6 +60,25 @@ def test_unavailable_runtime_keeps_plugin_import_light(monkeypatch):
         pytest.fail('optional runtime opt-out must not import compile/CUDA code')
     monkeypatch.setattr(plugin, 'register_compile_factors', unexpected)
     plugin.register()
+
+
+def test_incompatible_vllm_skips_external_plugin(monkeypatch, caplog):
+    from vllm_mach import plugin
+
+    monkeypatch.delenv("VLLM_MACH_PROFILE", raising=False)
+    monkeypatch.delenv("VLLM_MACH_NATIVE_MXFP8", raising=False)
+    monkeypatch.setattr(plugin, "version", lambda name: "0.29.1.dev24")
+    monkeypatch.setattr(
+        plugin,
+        "register_dense_kernel",
+        lambda: pytest.fail("incompatible vLLM must not register Mach hooks"),
+    )
+
+    with caplog.at_level(logging.WARNING, logger=plugin.__name__):
+        assert plugin.register() is None
+
+    assert "Skipping vLLM Mach plugin" in caplog.text
+    assert "0.29.1.dev24" in caplog.text
 
 
 @pytest.mark.parametrize('official,version', [(True, None), (False, 3)])

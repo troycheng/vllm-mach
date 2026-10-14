@@ -3,12 +3,15 @@
 """vLLM Mach general-plugin entry point."""
 
 import hashlib
+import logging
 import os
 from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
 
 from .mxfp6 import register_dense_kernel
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -49,7 +52,12 @@ def register() -> None:
 
     installed = version("vllm").split("+", 1)[0]
     if installed != "0.29.0":
-        raise RuntimeError(f"vLLM Mach requires vLLM 0.29.0; found {installed}.")
+        logger.warning(
+            "Skipping vLLM Mach plugin: requires vLLM 0.29.0; found %s. "
+            "The installed vLLM runtime will continue without external Mach hooks.",
+            installed,
+        )
+        return
     profile = os.environ.get("VLLM_MACH_PROFILE")
     if profile == "qwen35-2b-mxfp8-champion-v1":
         from .mxfp8.two_b.profile import install_worker_hook
