@@ -47,7 +47,7 @@ class ProfileTests(unittest.TestCase):
         sys.modules["torch"] = types.ModuleType("torch")
         return {name: importlib.import_module(f"vllm_mach.mxfp8.{name}") for name in
                 ("worker", "native_backend", "dual", "ba", "gdn", "head", "kv",
-                 "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant")}
+                 "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant", "greedy_head")}
 
     def test_compact_head_selection_is_explicit_and_reset(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -59,6 +59,17 @@ class ProfileTests(unittest.TestCase):
             with patch.dict(os.environ, {"VLLM_MACH_MXFP8_COMPACT_HEAD": "yes"}):
                 with self.assertRaisesRegex(RuntimeError, "0 or 1"):
                     self.profile.run_contract()
+
+    def test_hybrid_switch_controls_greedy_and_sampling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            settings = self.serve.configure_environment(directory)
+            self.assertEqual(settings["VLLM_MACH_LM_HEAD_SAMPLING"], "1")
+            self.assertEqual(settings["VLLM_MACH_MXFP8_COMPACT_HEAD"], "1")
+            settings = self.serve.configure_environment(directory, hybrid_head=False)
+            self.assertEqual(settings["VLLM_MACH_LM_HEAD_SAMPLING"], "0")
+            self.assertEqual(settings["VLLM_MACH_MXFP8_COMPACT_HEAD"], "0")
+            settings = self.serve.configure_environment(directory)
+            self.assertEqual(settings["VLLM_MACH_LM_HEAD_SAMPLING"], "1")
 
     def test_kv_ablation_selection_resets_stale_scales(self):
         from vllm_mach.mxfp8 import kv
@@ -227,7 +238,7 @@ class ProfileTests(unittest.TestCase):
                     self.profile.check_runtime_sources()
         self.assertNotIn("torch", sys.modules)
 
-    def lifecycle(self, *, quality_rows=None, failure=False, kv_cache_dtype="fp8_e4m3"):
+    def lifecycle(self, *, quality_rows=None, failure=False, kv_cache_dtype="fp8_e4m3", hybrid_head=True):
         modules = self.modules()
         events = []
         class Worker:
@@ -248,6 +259,7 @@ class ProfileTests(unittest.TestCase):
         os.environ["VLLM_MACH_PROFILE"] = self.profile.NAME
         os.environ["VLLM_MACH_MXFP8_KV_DTYPE"] = kv_cache_dtype
         os.environ["VLLM_MACH_MXFP8_RUN_DIR"] = tempfile.gettempdir()
+        os.environ["VLLM_MACH_MXFP8_COMPACT_HEAD"] = str(int(hybrid_head))
         if quality_rows:
             os.environ["VLLM_MACH_MXFP8_MODE"] = "quality"
             os.environ["VLLM_MACH_MXFP8_QUALITY_ROWS"] = str(quality_rows)
@@ -264,7 +276,7 @@ class ProfileTests(unittest.TestCase):
                        "gdn": ["install_runtime", "prepare_layers", "initialize_cache", "prepare_pools"],
                        "kv": ["install_scales", "inspect_cache"],
                        "projection_parallel": ["prepare_model", "verify_capture"], "head": ["install_head"],
-                       "swiglu_quant": ["install", "receipt"]}
+                       "swiglu_quant": ["install", "receipt"], "greedy_head": ["install"]}
             for component, names in targets.items():
                 for name in names:
                     label = f"{component}.{name}"
@@ -319,9 +331,17 @@ class ProfileTests(unittest.TestCase):
                     "original_cache", "gdn.initialize_cache", "gdn.prepare_pools", "original_compile",
                     "original_execute", "worker.verify_worker_execution", "dual.verify_capture", "ba.verify_capture",
                     "graph_policy.verify_capture", "projection_parallel.verify_capture", "compile_choices.verify_coverage",
-                    "kv.inspect_cache", "swiglu_quant.receipt", "head.install_head", "compiled"]
+                    "kv.inspect_cache", "swiglu_quant.receipt", "head.install_head", "greedy_head.install", "compiled"]
         start = events.index("original_init")
         self.assertEqual(events[start:start + len(expected)], expected)
+
+    def test_disabled_compact_hybrid_keeps_full_k2048_head(self):
+        events = self.lifecycle(hybrid_head=False)
+        self.assertEqual(events.count("head.install_head"), 1)
+        self.assertLess(events.index("head.install_head"), events.index("compiled"))
+        self.assertNotIn("greedy_head.install", events)
+        self.assertIn("compiled", events)
+        self.assertIn("serving", events)
 
     def test_failed_final_preparation_never_marks_worker_ready(self):
         self.lifecycle(failure=True)

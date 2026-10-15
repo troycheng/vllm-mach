@@ -128,6 +128,7 @@ def install_head(worker):
 
     processor._apply_head = types.MethodType(apply, processor)
     setattr(worker, _STATE, state)
+    worker.model_runner._mach_sampling_sidecar = fp4
     return inspect_head(worker)
 
 

@@ -12,7 +12,9 @@ from vllm_mach.fp8 import profile, serve
 
 def test_launch_keeps_full_capacity_precision_and_independent_features():
     with tempfile.TemporaryDirectory() as temporary, patch.dict(os.environ, {}, clear=True):
+        os.environ["VLLM_MACH_LM_HEAD_SAMPLING"] = "1"
         first = serve.configure_environment(temporary, features=("ordered", "fa2"))
+        assert first["VLLM_MACH_LM_HEAD_SAMPLING"] == "0"
         assert profile.selected_features() == ("ordered", "fa2")
         assert first["VLLM_MACH_FP8_N64"] == first["VLLM_MACH_FP8_SILU"] == "0"
         assert first["VLLM_MACH_FP8_COMPILE_MODE"] == "production"

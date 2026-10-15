@@ -27,7 +27,7 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 | Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
 | Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
 
-MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤64. The 4B MXFP8 champion uses calibrated FP8 KV, a K128 greedy path through M64 and its complete refined head for scoring and other sampling modes.
+The measured MXFP6 **default** preset uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The current launcher enables hybrid LM-head by default; use `--no-hybrid-head` to reproduce the historical default head setting. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤64. The 4B MXFP8 champion uses calibrated FP8 KV, a K128 greedy path through M64 and its complete refined head for scoring and other sampling modes.
 
 ### Qwen3.5-2B · MXFP8
 
@@ -50,6 +50,10 @@ MXFP6 **default** uses FP32 recurrent state and BF16 head; **full** adds FP16 st
 ![35B-A3B precision against BF16](docs/assets/qwen35-35b-a3b-precision.svg)
 
 See the [performance report](docs/performance.md) for all point values, gains against FP8 and NVFP4, latency, precision and source data. The [4B block-FP8 comparison](docs/performance.md#qwen35-4b-block-fp8) has its own chart.
+
+The [2026-10-15 best-path and sampling recheck](docs/best-path-recheck-20261015.md)
+records fresh pre-sampling/current comparisons and top-k/top-p measurements.
+Its progress table distinguishes complete paired trials from pending profiles.
 
 ## Choose and run a profile
 
@@ -83,7 +87,14 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
 
 The two switches select the current 2B champion explicitly. The default shared-image entrypoint serves 4B, so keep the 2B `--entrypoint` override. The server exposes vLLM's OpenAI-compatible API; `/v1/models` lists the served model name.
 
-For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `--fp16-ssm --nvfp4-lm-head` to select full. For block-FP8, use `--features n64 ordered silu fa2`. Each guide includes its checkpoint preparation, exact dependencies, numerical behavior and benchmark command.
+For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `--fp16-ssm` to select full. For block-FP8, use `--features n64 ordered silu fa2`. Each guide includes its checkpoint preparation, exact dependencies, numerical behavior and benchmark command.
+
+Native MXFP6 and both MXFP8 launchers share one `--hybrid-head` switch (default
+on) for greedy and eligible unseeded top-k sampling, including optional top-p
+and presence-only penalties. `--no-hybrid-head` disables these compact candidate
+paths; the 4B K2048 complete head remains installed. The old `--nvfp4-lm-head` and `--lm-head-sampling`
+flags are aliases of this same switch. Unfiltered random and top-p-only sampling
+always retain the original sampler. See [admission, numerical behavior and validation](docs/lm-head-sampling.md).
 
 ## What the selected profiles include
 

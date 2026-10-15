@@ -63,11 +63,12 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_SM120_OWNER_VERIFY_ONLY_RAGGED": "0",
         "VLLM_SM120_OWNER_MLP_LAYERS": json.dumps(list(range(0, 64, 2))),
         "VLLM_VOCAB_PARALLEL_GREEDY": "1",
-        "VLLM_HYBRID_NVFP4_LM_HEAD": str(int(args.nvfp4_lm_head)),
+        "VLLM_HYBRID_NVFP4_LM_HEAD": str(int(getattr(args, "nvfp4_lm_head", True))),
         "VLLM_HYBRID_NVFP4_LM_HEAD_BACKEND": "b12x",
         "VLLM_HYBRID_NVFP4_LM_HEAD_CANDIDATES": "128",
         "VLLM_HYBRID_NVFP4_LM_HEAD_MAX_ROWS": "32",
         "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
+        "VLLM_MACH_LM_HEAD_SAMPLING": str(int(getattr(args, "nvfp4_lm_head", True))),
     }
     if not dense and (lossless or owner):
         raise ValueError("Qwen3.5 MoE does not support the dense-only prefill options")
@@ -160,7 +161,9 @@ def main() -> None:
         default=None,
         help="Owner prefill (default on for Dense)",
     )
-    parser.add_argument("--nvfp4-lm-head", action="store_true")
+    parser.add_argument("--hybrid-head", "--nvfp4-lm-head", "--lm-head-sampling",
+                        dest="nvfp4_lm_head", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable hybrid LM-head for greedy and eligible top-k/presence decode (default on)")
     parser.add_argument("--verify-prefill", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args, extra = parser.parse_known_args()

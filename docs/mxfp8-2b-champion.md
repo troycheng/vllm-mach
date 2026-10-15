@@ -85,7 +85,7 @@ These mechanisms are already in the public package. The October 11 code qualific
 
 ## Hybrid head and Triton attention
 
-`--attention-backend TRITON_ATTN --hybrid-head` independently selects the two components. Omitting both reproduces the preceding FA2/full-head profile. The NVFP4 sidecar is built after graph capture and remains separate from the tied BF16 embedding/head parameter. Prefill, batches above 32, stochastic sampling, logprobs, penalties, grammar and other logits processing use the complete head. Worker receipts and `vllm_mach.mxfp8.two_b.hybrid_head.inspect_worker` record setup and successful dispatches.
+`--attention-backend TRITON_ATTN` selects attention independently. Hybrid LM-head is now enabled by default; use `--no-hybrid-head` with the default attention backend to reproduce the preceding FA2/full-head profile. This one switch controls both greedy and admitted unseeded top-k decode, including optional top-p and presence-only penalties. The NVFP4 sidecar is built after graph capture and remains separate from the tied BF16 embedding/head parameter. Prefill, unsupported rows, unfiltered/top-p-only sampling, logprobs, frequency/repetition penalties, grammar and other unsupported processing use the complete head. Worker receipts and `vllm_mach.mxfp8.two_b.hybrid_head.inspect_worker` record setup and successful dispatches.
 
 ## Precision
 

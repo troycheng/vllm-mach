@@ -66,12 +66,14 @@ def make_contract(args: argparse.Namespace) -> tuple[dict[str, Any], list[list[i
         "contract_seed": args.contract_seed,
         "max_concurrency": args.max_concurrency,
         "sampling": {
-            "temperature": 0.0,
+            "temperature": getattr(args, "temperature", 0.0),
             "top_k": args.top_k,
             "top_p": args.top_p,
-            "presence_penalty": 0.0,
+            "presence_penalty": getattr(args, "presence_penalty", 0.0),
             "ignore_eos": True,
-            "per_request_seed_base": args.request_seed_base,
+            "per_request_seed_base": None
+            if getattr(args, "unseeded", False)
+            else args.request_seed_base,
         },
         "arrival_offsets_s": offsets,
         "prompt_source": "frozen ShareGPT repeated tokens"
@@ -93,6 +95,9 @@ async def request_one(
     *,
     top_k: int = -1,
     top_p: float = 1.0,
+    temperature: float = 0.0,
+    presence_penalty: float = 0.0,
+    unseeded: bool = False,
     arrival_offset: float = 0.0,
 ) -> dict[str, Any]:
     if arrival_offset:
@@ -101,15 +106,17 @@ async def request_one(
         "model": model,
         "prompt": prompt,
         "max_tokens": output_tokens,
-        "temperature": 0.0,
+        "temperature": temperature,
         "top_k": top_k,
         "top_p": top_p,
-        "presence_penalty": 0.0,
+        "presence_penalty": presence_penalty,
         "seed": seed,
         "ignore_eos": True,
         "stream": True,
         "stream_options": {"include_usage": True},
     }
+    if unseeded:
+        payload.pop("seed")
     queued_epoch = time.time()
     queued_at = time.perf_counter()
     async with semaphore:
@@ -215,6 +222,9 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                 index,
                 top_k=args.top_k,
                 top_p=args.top_p,
+                temperature=getattr(args, "temperature", 0.0),
+                presence_penalty=getattr(args, "presence_penalty", 0.0),
+                unseeded=getattr(args, "unseeded", False),
             )
             for index, prompt in enumerate(prompts[: args.warmup_requests])
         ]
@@ -237,6 +247,9 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                     index,
                     top_k=args.top_k,
                     top_p=args.top_p,
+                    temperature=getattr(args, "temperature", 0.0),
+                    presence_penalty=getattr(args, "presence_penalty", 0.0),
+                    unseeded=getattr(args, "unseeded", False),
                     arrival_offset=contract["arrival_offsets_s"][index],
                 )
                 for index, prompt in enumerate(prompts)
@@ -295,6 +308,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--top-k", type=int, default=-1)
     parser.add_argument("--top-p", type=float, default=1.0)
+    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--presence-penalty", type=float, default=0.0)
+    parser.add_argument(
+        "--unseeded",
+        action="store_true",
+        help="Omit request seeds to exercise stochastic head fast paths",
+    )
     parser.add_argument("--input-tokens", default=1024, type=int)
     parser.add_argument("--output-tokens", default=256, type=int)
     parser.add_argument("--token-id-low", default=1000, type=int)

@@ -60,6 +60,7 @@ def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm
     settings = {
         "VLLM_MACH_PROFILE": NAME, "VLLM_MACH_NATIVE_MXFP8": "0",
         "VLLM_MACH_MXFP8_COMPACT_HEAD": str(int(hybrid_head)),
+        "VLLM_MACH_LM_HEAD_SAMPLING": str(int(hybrid_head)),
         "VLLM_MACH_MXFP8_RUN_DIR": str(directory), "VLLM_PLUGINS": "mach",
         "VLLM_USE_V2_MODEL_RUNNER": "1", "MX8_NATIVE_POLICY": "all",
         # A fresh namespace rebuilds recipe/parallel hooks on every boot.
@@ -99,8 +100,9 @@ def main():
     parser.add_argument("--port", default=8000, type=int)
     parser.add_argument("--served-model-name", default="q35-mx8-study")
     parser.add_argument("--print-command", action="store_true")
-    parser.add_argument("--hybrid-head", action=argparse.BooleanOptionalAction, default=True,
-                        help="Use K128 BF16-refined proposals for eligible greedy decode (default on)")
+    parser.add_argument("--hybrid-head", "--nvfp4-lm-head", "--lm-head-sampling",
+                        dest="hybrid_head", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable hybrid LM-head for greedy and eligible top-k/presence decode (default on)")
     parser.add_argument("--quality-rows", choices=(32, 64), type=int,
                         help="Accepted precision comparison: M32/4 GiB or M64/19 GiB, FULL decode and PIECEWISE mixed graphs at accepted small sizes; no PW2048; not production throughput")
     parser.add_argument("--ssm-dtype", "--mamba-ssm-cache-dtype", choices=DTYPES, default="float32",

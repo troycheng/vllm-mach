@@ -119,6 +119,7 @@ def install(worker):
         raise RuntimeError("NVFP4 K128 sidecar configuration changed")
     import os
     state.max_rows = 64
+    runner._mach_sampling_sidecar = state
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, weight, tp_size=1)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
                  hybrid_success_calls=0, hybrid_success_rows=0, calls_by_rows={})

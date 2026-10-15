@@ -45,6 +45,17 @@ class TwoBProfileContracts(unittest.TestCase):
         self.profile = load("mxfp8.two_b.profile")
         self.serve = load("mxfp8.two_b.serve")
 
+    def test_hybrid_switch_controls_greedy_and_sampling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            settings = self.serve.configure_environment(directory)
+            self.assertEqual(settings["VLLM_MACH_LM_HEAD_SAMPLING"], "1")
+            self.assertEqual(settings["VLLM_MACH_2B_HYBRID_HEAD"], "1")
+            settings = self.serve.configure_environment(directory, hybrid_head=False)
+            self.assertEqual(settings["VLLM_MACH_LM_HEAD_SAMPLING"], "0")
+            self.assertEqual(settings["VLLM_MACH_2B_HYBRID_HEAD"], "0")
+            settings = self.serve.configure_environment(directory)
+            self.assertEqual(settings["VLLM_MACH_LM_HEAD_SAMPLING"], "1")
+
     def test_production_and_quality_geometry_match_explicit_cli(self):
         contract = self.profile.run_contract()
         self.assertEqual((contract["max_model_len"], contract["max_num_seqs"],
@@ -112,7 +123,7 @@ class TwoBProfileContracts(unittest.TestCase):
             self.assertEqual(argv[argv.index("--attention-backend")+1], contract["attention_backend"])
             self.serve.configure_environment(directory)
             self.assertEqual(self.profile.run_contract()["attention_backend"], "FLASH_ATTN")
-            self.assertFalse(self.profile.run_contract()["hybrid_greedy_head"])
+            self.assertTrue(self.profile.run_contract()["hybrid_greedy_head"])
             for key, value in (("VLLM_MACH_2B_ATTENTION_BACKEND", "typo"),
                                ("VLLM_MACH_2B_HYBRID_HEAD", "yes")):
                 with patch.dict(os.environ, {key: value}):

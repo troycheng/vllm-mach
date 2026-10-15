@@ -56,13 +56,21 @@ the source series' geometry checks and numerical verification mode; it chooses
 communication and MLP paths by row count. Lossless codec graph capture is
 implemented but disabled in the default serving profile.
 
-The optional NVFP4 head retains the checkpoint BF16 head, creates an NVFP4 copy,
+The default-enabled NVFP4 hybrid head retains the checkpoint BF16 head, creates an NVFP4 copy,
 selects 128 candidates, refines with BF16 weights/FP32 accumulation and exchanges
 TP argmax pairs. This approximate search can miss the BF16 winner and rounding
-can change near ties. It accelerates eligible greedy decode only. Full logits,
-logprobs, stochastic sampling, processors, structured outputs and mixed/prefill
-batches retain the normal path. The default compact BF16 argmax uses the original
-head projection without NVFP4 search.
+can change near ties. It accelerates eligible greedy and bounded top-k decode.
+Full logits, logprobs, unsupported processors, structured outputs and
+mixed/prefill batches retain the normal path. With `--no-hybrid-head`, greedy
+uses the original BF16 projection without NVFP4 search and stochastic requests
+use the original sampler.
+
+Stochastic dispatch is enabled by default for eligible unseeded top-k decode,
+including optional top-p and presence-only penalties. The shared
+`--hybrid-head` / `--no-hybrid-head` switch controls both greedy and stochastic
+hybrid paths. `--nvfp4-lm-head` and `--lm-head-sampling` are aliases of that
+same switch. Unfiltered and top-p-only sampling retain the original sampler.
+See the [stochastic sampling contract and validation](lm-head-sampling.md).
 
 ## Dense producer fusion
 

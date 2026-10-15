@@ -58,6 +58,10 @@ def register() -> None:
             installed,
         )
         return
+    if os.environ.get("VLLM_MACH_LM_HEAD_SAMPLING", "0") == "1":
+        from .mxfp6.sampling import install_sampling_hook
+
+        install_sampling_hook()
     profile = os.environ.get("VLLM_MACH_PROFILE")
     if profile == "qwen35-2b-mxfp8-champion-v1":
         from .mxfp8.two_b.profile import install_worker_hook

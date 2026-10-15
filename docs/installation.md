@@ -85,7 +85,7 @@ CUDA_VISIBLE_DEVICES=0,1 vllm-mach-serve \
 ```
 
 Dense enables both prefill paths and retains FP32 recurrent state and the BF16
-head by default. With the pinned MXFP6 build, eligible decode also uses fused
+head parameter by default, with hybrid candidate search enabled. With the pinned MXFP6 build, eligible decode also uses fused
 SwiGLU/MXFP8, GDN norm/MXFP8 and [AR/GemmaRMSNorm/MXFP8](ar-norm-mxfp8.md) producers. Add `--fp16-ssm --nvfp4-lm-head`
 for Dense full. If the prefill
 extensions are not installed, add `--no-lossless-prefill --no-owner-prefill`;
@@ -128,7 +128,7 @@ The [MoE benchmark](qwen35-moe.md) uses explicit graph capture sizes and
 | Switch | Default | Effect |
 |---|---|---|
 | `--fp16-ssm` | off | Use FP16 recurrent state |
-| `--nvfp4-lm-head` | off | Use NVFP4 candidate search with BF16 refinement for eligible greedy decode |
+| `--hybrid-head` / `--no-hybrid-head` | on | One switch for compact greedy hybrid and eligible top-k/presence sampling. The 4B K2048 complete head remains installed when off. `--nvfp4-lm-head` and `--lm-head-sampling` (and their `--no-` forms) are aliases. Unfiltered and top-p-only sampling retain the original sampler. See [admission and validation](lm-head-sampling.md) |
 | `--no-lossless-prefill` / `--no-owner-prefill` | on for Dense; off for MoE | Disable the corresponding Dense prefill path |
 | `--no-gdn-persistent` / `--no-gdn-ba-overlap` | on | Disable the corresponding GDN decode optimization |
 | `--no-fused-ar-norm` | on | Disable TP2 AllReduce/residual/RMSNorm and its MXFP8 producer |

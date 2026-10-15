@@ -69,6 +69,7 @@ testpaths = [
     "tests/native_mxfp6",
     "tests/test_mxfp6_warmup.py",
     "tests/test_deployment.py",
+    "tests/test_lm_head_switch_cpu.py",
     "tests/test_mach_compile_cache.py",
     "tests/test_mxfp8_benchmark.py",
     "tests/test_mxfp8_compile_choices.py",

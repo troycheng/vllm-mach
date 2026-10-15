@@ -27,6 +27,7 @@ def configure_environment(directory, *, features=FEATURES, compile_mode="product
         "VLLM_MACH_FP8_COMPILE_MODE": compile_mode,
         "TORCHINDUCTOR_COMPILE_THREADS": "1",
         "OMP_NUM_THREADS": "1", "VLLM_MACH_NATIVE_MXFP8": "0",
+        "VLLM_MACH_LM_HEAD_SAMPLING": "0",
         "VLLM_QWEN3_5_FUSED_AR_NORM": "0", "VLLM_VOCAB_PARALLEL_GREEDY": "0",
         "VLLM_HYBRID_NVFP4_LM_HEAD": "0", "VLLM_HYBRID_MXFP8_LM_HEAD": "0",
         "VLLM_CACHE_ROOT": str(startup / "vllm"),

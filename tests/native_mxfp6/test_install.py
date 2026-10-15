@@ -81,6 +81,7 @@ def test_preflight_failure_never_changes_other_files(pristine, kind):
 
 def test_launcher_resets_stale_optimization_flags(monkeypatch):
     monkeypatch.setenv("VLLM_HYBRID_NVFP4_LM_HEAD", "1")
+    monkeypatch.setenv("VLLM_MACH_LM_HEAD_SAMPLING", "1")
     args = argparse.Namespace(
         model="model",
         fp16_ssm=False,
@@ -91,10 +92,24 @@ def test_launcher_resets_stale_optimization_flags(monkeypatch):
     )
     command, env = build_command(args, ["--port", "8123"])
     assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == "0"
+    assert env["VLLM_MACH_LM_HEAD_SAMPLING"] == "0"
     assert env["VLLM_QWEN3_5_FP16_SSM"] == "0"
     assert env["VLLM_PLUGINS"] == "mach"
     assert command[-2:] == ["--port", "8123"]
     assert "--mamba-ssm-cache-dtype" not in command
+
+
+@pytest.mark.parametrize("enabled", [None, True, False])
+def test_launcher_hybrid_switch_controls_greedy_and_sampling(enabled):
+    args = argparse.Namespace(
+        model="model", fp16_ssm=False, lossless_prefill=None,
+        owner_prefill=None, verify_prefill=False,
+    )
+    if enabled is not None:
+        args.nvfp4_lm_head = enabled
+    _, env = build_command(args, [])
+    assert env["VLLM_MACH_LM_HEAD_SAMPLING"] == ("0" if enabled is False else "1")
+    assert env["VLLM_HYBRID_NVFP4_LM_HEAD"] == env["VLLM_MACH_LM_HEAD_SAMPLING"]
 
 
 def test_plugin_registers_native_without_exl3():

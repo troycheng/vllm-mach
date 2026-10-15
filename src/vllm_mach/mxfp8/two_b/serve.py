@@ -39,7 +39,7 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-
 
 
 def configure_environment(directory, *, quality_rows=None, attention_backend="FLASH_ATTN",
-                          hybrid_head=False, ssm_dtype="float32", ordered_bf16_ssm=True):
+                          hybrid_head=True, ssm_dtype="float32", ordered_bf16_ssm=True):
     validate_dtype(ssm_dtype)
     if attention_backend not in ATTENTION_BACKENDS:
         raise ValueError("Unsupported 2B attention backend")
@@ -58,6 +58,7 @@ def configure_environment(directory, *, quality_rows=None, attention_backend="FL
                 "VLLM_MACH_2B_PINNED_IDS": "1", "TORCHINDUCTOR_COMPILE_THREADS": "1",
                 "VLLM_MACH_2B_ATTENTION_BACKEND": attention_backend,
                 "VLLM_MACH_2B_HYBRID_HEAD": "1" if hybrid_head else "0",
+                "VLLM_MACH_LM_HEAD_SAMPLING": str(int(hybrid_head)),
                 "VLLM_USE_AOT_COMPILE": "1", "VLLM_DISABLE_COMPILE_CACHE": "0",
                 "TORCH_COMPILE_FORCE_DISABLE_CACHES": "0", "TORCHINDUCTOR_FORCE_DISABLE_CACHES": "0",
                 "VLLM_MACH_MXFP8_MODE": "production" if quality_rows is None else "quality",
@@ -85,8 +86,9 @@ def main():
     parser.add_argument("--served-model-name", default="q35-2b-study")
     parser.add_argument("--quality-rows", type=int, choices=(4, 32, 64))
     parser.add_argument("--attention-backend", choices=ATTENTION_BACKENDS, default="FLASH_ATTN")
-    parser.add_argument("--hybrid-head", action="store_true",
-                        help="Use K128 NVFP4 proposals with BF16 refinement for eligible greedy decode")
+    parser.add_argument("--hybrid-head", "--nvfp4-lm-head", "--lm-head-sampling",
+                        dest="hybrid_head", action=argparse.BooleanOptionalAction, default=True,
+                        help="Enable hybrid LM-head for greedy and eligible top-k/presence decode (default on)")
     parser.add_argument("--print-command", action="store_true")
     parser.add_argument("--ssm-dtype", "--mamba-ssm-cache-dtype", choices=DTYPES, default="float32",
                         help="SSM state storage; bfloat16 defaults to ordered W4 GDN")
