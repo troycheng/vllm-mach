@@ -4,7 +4,7 @@ Qwen3.5-2B and Qwen3.5-4B on one RTX 5090 per model, TP1. Each table reports **o
 
 Launcher defaults: 4B uses **FP32 SSM / FP8 E4M3 KV** when both dtype flags are omitted. Changing the default GDN backend to ordered does not change either storage dtype. 2B fixes KV to BF16. Stock vLLM defaults to `auto` (model dtype). The 4B baseline explicitly passes `--kv-cache-dtype bfloat16`.
 
-The baseline is **FP32 SSM state and BF16 KV**, with MXFP8 model weights. SSM precision reduction means FP32 to BF16; KV quantization means BF16 to E4M3 FP8. The 4B progression retains BF16 SSM when enabling FP8 KV. The 2B matrix retains BF16 KV.
+The baseline is **FP32 SSM state and BF16 KV**, with MXFP8 model weights. SSM precision reduction means FP32 to BF16; KV quantization means BF16 to E4M3 FP8. The main 4B configuration keeps FP32 SSM with FP8 KV; BF16 SSM is optional. The 2B matrix retains BF16 KV.
 
 Current MXFP8 measurements use native revision `ce0cd05` and the same fused SwiGLU/MXFP8 quantization and hybrid greedy-head optimizations. The production graph and PDL selectors remain active. Both SSM dtypes use ordered GDN in the main matrix; BF16 rounds dense state after each pending token. Stock BF16 comparisons remain in the recheck section.
 
@@ -28,6 +28,19 @@ Block FP8 values are retained historical open-source measurements, not fresh pai
 | c64 | 3402.76 | 4199.28 | +23.41% |
 
 Launch flags: `--ssm-dtype float32 --kv-cache-dtype bfloat16`.
+
+### FP32 SSM / FP8 KV (launcher default)
+
+| Concurrency | Open-source block FP8 | MXFP8 | Gain vs block FP8 |
+|---:|---:|---:|---:|
+| c4 | 683.96 | 957.38 | +39.98% |
+| c16 | 2053.55 | 2713.33 | +32.13% |
+| c24 | 2559.26 | 3432.69 | +34.13% |
+| c32 | 2887.82 | 3889.65 | +34.69% |
+| c48 | 3220.55 | 4396.73 | +36.52% |
+| c64 | 3402.76 | 4867.51 | +43.05% |
+
+Launch flags: `--ssm-dtype float32 --kv-cache-dtype fp8_e4m3`.
 
 ### BF16 ordered SSM / BF16 KV
 

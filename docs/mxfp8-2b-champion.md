@@ -89,20 +89,13 @@ These mechanisms are already in the public package. The October 11 code qualific
 
 ## Precision
 
-Each of M4/M16/M24/M32/M48/M64 covers the original 256 queries and 10,479 gold tokens, with zero first-cohort repeat difference. M4/M32/M48/M64 use the packaged production path; M16/M24 reuse the qualified diagnostic replay and packaged-generation parity checks. All use the same frozen BF16 M32 anchor. Logprob requests use the complete BF16 head.
+The [current precision table](performance.md#qwen35-2b-precision) reports October 20 M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens against the frozen BF16 M32 anchor. Logprob requests use the complete BF16 head. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and a compressed bundle of raw logprobs and runtime receipts.
 
-| Physical rows | Previous FA2/full-head MAE | Selected MAE | Change |
-|---|---:|---:|---:|
-| M4 | 0.04904216 | 0.04897897 | -0.13% |
-| M16 | 0.04915289 | 0.04928728 | +0.27% |
-| M24 | 0.04941809 | 0.04782973 | -3.21% |
-| M32 | 0.04822663 | 0.04946948 | +2.58% |
-| M48 | 0.04865848 | 0.04899862 | +0.70% |
-| M64 | 0.04845331 | 0.04875407 | +0.62% |
+The October 11 six-shape results used production-geometry replay; this update uses the packaged fixed-M quality mode. Their original configurations and measurements remain in `historical_validation.two_b` in the [benchmark data](data/mxfp8-benchmark.json).
 
-The M32 increase is 0.00124284 (+2.58%), attributed to attention: restoring FA2 with hybrid enabled reproduced every previous gold logprob. M64's English subset increased about 0.00294. These are numerical fidelity measurements; the [source data](data/mxfp8-benchmark.json) retain per-domain intervals and coverage.
+The October 11 generation check covered 1,536 requests and 196,608 generated tokens. Across 129,878 hybrid decisions, no BF16 winner was omitted and no lower-scored token was selected; one M24 decision selected a different token tied at BF16 score 20.375. M48/M64 full batches then used the complete BF16 head. The current greedy head supports eligible rows through M64; its newer generation and sampling checks are in the [head validation](lm-head-sampling.md).
 
-Actual generation used 256 real-text prompts per cohort and 128 output tokens: 1,536 scored requests and 196,608 generated tokens. Across 129,878 actual hybrid decisions, no BF16 winner was omitted and no lower-scored token was selected; one M24 decision chose a different token tied at BF16 score 20.375. M48/M64 full batches use BF16, while smaller tails can use hybrid. The fixed-gold corpus is private; checkpoint reconstruction and the serving benchmark are public.
+The [fixed token manifest](data/fidelity-samples.json), checkpoint reconstruction and validation tool are public. See [reproducing the precision measurements](performance.md#reproduce-mxfp8-fidelity).
 
 ## Benchmark and revisions
 
@@ -119,8 +112,8 @@ The [benchmark](mxfp8-benchmark.md) defines generated requests, warmup and 1,040
 
 | Identity | Revision / record |
 |---|---|
-| Mach runtime | `6e390a1a559d4464fb2b67fe09d855f1b442f763`, merged by `b8d55d86e5f10670cfdfc3d9cdcb6cda020e1ceb` |
-| Native MXFP8 runtime | Latest official decode/PDL source pinned in `deploy/Dockerfile.mxfp8` |
+| Precision runtime | Mach `afcb4cf6bbab0dfa615fe6a2096e958623219ef6`; native `ce0cd05a007504853d2bf3963a183e3c76f3c75b` |
+| Native MXFP8 runtime | Official decode/PDL source pinned in `deploy/Dockerfile.mxfp8`; binary SHA recorded in the precision data |
 | Current configuration matrix | [Per-concurrency benchmark](mxfp8-benchmark.md) and [consolidated data](data/mxfp8-benchmark.json) |
 
-Historical numerical validation remains in the consolidated dataset; current per-concurrency gains are listed in the [benchmark report](mxfp8-benchmark.md).
+Current throughput and precision appear together in the [model performance report](performance.md#qwen35-2b).

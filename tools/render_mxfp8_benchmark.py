@@ -210,7 +210,7 @@ def dtype_attention_recheck_markdown(data):
 
 
 def markdown(data):
-    assert data['complete'], 'Complete the five configuration screens first'
+    assert data['complete'], 'Complete the configuration screens first'
     lines = [
         '# MXFP8 serving benchmark', '',
         'Qwen3.5-2B and Qwen3.5-4B on one RTX 5090 per model, TP1. '
@@ -222,7 +222,7 @@ def markdown(data):
         'The 4B baseline explicitly passes `--kv-cache-dtype bfloat16`.', '',
         'The baseline is **FP32 SSM state and BF16 KV**, with MXFP8 model weights. '
         'SSM precision reduction means FP32 to BF16; KV quantization means BF16 to E4M3 FP8. '
-        'The 4B progression retains BF16 SSM when enabling FP8 KV. The 2B matrix retains BF16 KV.', '',
+        'The main 4B configuration keeps FP32 SSM with FP8 KV; BF16 SSM is optional. The 2B matrix retains BF16 KV.', '',
         'Current MXFP8 measurements use native revision `' + data['native_source_commit'][:7] +
         '` and the same fused SwiGLU/MXFP8 quantization and hybrid greedy-head optimizations. '
         'The production graph and PDL selectors remain active. Both SSM dtypes use ordered '
@@ -241,7 +241,12 @@ def markdown(data):
                   f"![Qwen3.5-{model.upper()} per-concurrency throughput](assets/qwen35-{model}-throughput.svg)", '']
         expected = ['baseline','ssm_bf16','ssm_bf16_kv_fp8'] if model == '4b' else ['baseline','ssm_bf16']
         assert [v['id'] for v in entry['variants']] == expected
-        for variant in entry['variants']:
+        variants = list(entry['variants'])
+        if model == '4b':
+            measured = data['dtype_attention_recheck']['variants']['fp32-dtype']['fp8_e4m3']
+            variants.insert(1, dict(measured, label='FP32 SSM / FP8 KV (launcher default)',
+                                    launch_flags=['--ssm-dtype', 'float32', '--kv-cache-dtype', 'fp8_e4m3']))
+        for variant in variants:
             assert [p['concurrency'] for p in variant['points']] == POINTS
             lines += [f"### {variant['label']}", '',
                       '| Concurrency | Open-source block FP8 | MXFP8 | Gain vs block FP8 |',
@@ -250,7 +255,8 @@ def markdown(data):
                 c = point['concurrency']
                 rate = point['metrics']['output_throughput_tokens_per_s']
                 gain = 100 * (rate / refs[c] - 1)
-                assert abs(gain - point['gain_vs_block_fp8_percent']) < 1e-8
+                if 'gain_vs_block_fp8_percent' in point:
+                    assert abs(gain - point['gain_vs_block_fp8_percent']) < 1e-8
                 lines.append(f'| c{c} | {refs[c]:.2f} | {rate:.2f} | {gain:+.2f}% |')
             lines += ['', f"Launch flags: `{' '.join(variant['launch_flags'])}`.", '']
     lines += recheck_markdown(data)
@@ -311,34 +317,11 @@ def markdown(data):
 
 
 def plots(data, dest):
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    plt.rcParams.update({'font.family':'DejaVu Sans','svg.fonttype':'none',
-                         'svg.hashsalt':'mach-mxfp8-matrix','axes.spines.top':False,
-                         'axes.spines.right':False})
-    colors = ['#9ba6b7','#9bc4f7','#007bff','#0052ad']
-    for model in ('4b','2b'):
-        entry = data['models'][model]
-        series = [('Historical block FP8',[p['output_tokens_s'] for p in data['block_fp8_references'][model]['points']])]
-        labels = {'baseline':'FP32 SSM / BF16 KV','ssm_bf16':'BF16 ordered SSM / BF16 KV','ssm_bf16_kv_fp8':'BF16 ordered SSM / FP8 KV'}
-        series += [(labels[v['id']],[p['metrics']['output_throughput_tokens_per_s'] for p in v['points']]) for v in entry['variants']]
-        fig,ax = plt.subplots(figsize=(12,4.8))
-        width = .8/len(series)
-        for j,(label,values) in enumerate(series):
-            positions = [i+(j-(len(series)-1)/2)*width for i in range(6)]
-            bars = ax.bar(positions,values,width*.9,color=colors[j],label=label)
-            ax.bar_label(bars,labels=[f'{v:,.0f}' for v in values],padding=3,fontsize=7)
-        ax.set(xticks=range(6),xticklabels=[f'c{c}' for c in POINTS],
-               xlabel='Concurrent requests',ylabel='Output tokens/s')
-        ax.set_ylim(0,max(v for _,values in series for v in values)*1.15)
-        ax.set_axisbelow(True);ax.grid(axis='y',alpha=.25)
-        ax.legend(frameon=False,fontsize=9,ncols=2,loc='upper left',bbox_to_anchor=(0,1.24))
-        fig.suptitle(f'Qwen3.5-{model.upper()} — MXFP8 state/KV configurations',fontsize=17,x=.09,ha='left')
-        fig.subplots_adjust(left=.09,right=.98,bottom=.14,top=.73)
-        path = dest/f'qwen35-{model}-throughput.svg'
-        fig.savefig(path,metadata={'Date':None});plt.close(fig)
-        path.write_text('\n'.join(line.rstrip() for line in themed_svg(path.read_text()).splitlines()) + '\n')
+    # The overview and detailed benchmark publish the same curves and theme.
+    from render_performance_docs import dataset, plots as render_plots
+    normalized = dataset()
+    normalized['models'] = [m for m in normalized['models'] if m.get('mxfp8')]
+    render_plots(normalized, dest)
 
 
 def main():
