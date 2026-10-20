@@ -1,11 +1,10 @@
 """CPU-only staging, hash, exact-patch and rollback contracts."""
 import difflib
-import hashlib
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 FILE = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/install.py"
@@ -66,6 +65,15 @@ class InstallContracts(unittest.TestCase):
         self.assertEqual(result["state"], "installed")
         self.assertEqual(result["changes"], [])
         self.assertFalse(result["applied"])
+
+    def test_reject_older_profile_without_modifying_sources(self):
+        previous = {**self.before, "vllm/one.py": b"value = 5\n"}
+        for name, value in previous.items():
+            (self.site / name).write_bytes(value)
+        with self.assertRaisesRegex(RuntimeError, "source SHA256 mismatch"):
+            self.run_install(apply=True)
+        for name, value in previous.items():
+            self.assertEqual((self.site / name).read_bytes(), value)
 
     def test_reject_drift_mixed_states_and_guard_drift(self):
         for name, value in [("vllm/one.py", b"drift = True\n"),
@@ -133,7 +141,12 @@ class InstallContracts(unittest.TestCase):
             self.assertTrue(name.startswith("vllm/"))
             self.assertEqual(len(entry["installed_sha256"]), 64)
         gdn = manifest["files"]["vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py"]
-        self.assertEqual(gdn["installed_sha256"], gdn["frozen_champion_sha256"])
+        self.assertNotEqual(gdn["installed_sha256"], gdn["frozen_champion_sha256"])
+        self.assertNotIn("upgrade_patch_sha256", manifest)
+        self.assertTrue(all("previous_installed_sha256" not in entry
+                            for entry in manifest["files"].values()))
+        self.assertEqual(sorted(p.name for p in self.installer.DATA.glob("*.patch")),
+                         ["runtime.patch"])
         fla = manifest["files"]["vllm/third_party/flash_linear_attention/ops/fused_recurrent.py"]
         self.assertEqual(fla["upstream_sha256"], fla["installed_sha256"])
         patch_text = (self.installer.DATA / "runtime.patch").read_text()

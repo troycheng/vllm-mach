@@ -27,10 +27,10 @@
     },
     "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
       "upstream_sha256": "cb819264c1e791177d866f484ca0579a7d57141926705a1f75dd4a79de4d0125",
-      "installed_sha256": "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719",
+      "installed_sha256": "d0e0bda56342d12a0891fa348efd00ffc475c8153f4f80becb501d96bbfd1e60",
       "frozen_champion_sha256": "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719",
       "changed": true,
-      "purpose": "Frozen GDN prefill/decode and opaque custom-op boundaries, unchanged bytes."
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
     },
     "vllm/v1/worker/gpu/cudagraph_utils.py": {
       "upstream_sha256": "024d0570b1808c2baa47ac0ebeb5407eeaf8dcaa847f55e844769038cc48caad",
@@ -122,9 +122,33 @@
       "frozen_champion_sha256": "a3cee4b5474c883f9f0bdfb6fe3966b32d792ff2892fbeb6436f7d772b5cc1ca",
       "changed": false,
       "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/attention/backends/gdn_attn.py": {
+      "upstream_sha256": "c65552d9aad86472544033d44ad8a872221a83e6b60ba9918cc049ab0c580c7c",
+      "installed_sha256": "41bafba946f7bb59eb036424c67f4fcccf5b54a27ae324fea8b153914eb6635a",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/v1/attention/backends/utils.py": {
+      "upstream_sha256": "8fa9cbdec4b0327d34a243b7beb3783983d0fcb70a90a05a2f5217b4fed325eb",
+      "installed_sha256": "05317bf28f7066b6ae051f0a9f88520371179577400f8300ec827978767e7534",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py": {
+      "upstream_sha256": "000ab8996af9788fdb8843a6a3b91833e7a14c8acc0e1ea073a536330f64cb6f",
+      "installed_sha256": "f3e47fcba7cb32ca38104aa5c5b64855c071e8b46652ee17e27a49db119c3e0e",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/model_executor/layers/mamba/ops/gather_initial_states.py": {
+      "upstream_sha256": "5198bb6de6d91c583a5f65d926412a76ee04a06fa72aaba76eaf156b27cd0523",
+      "installed_sha256": "4442b9e876e31eaee4b938ff28859bd37b6c1a7bea39a0858e442c7f1f54f0c6",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
     }
   },
-  "patch_sha256": "f0a9d319de9a89e1866f72d50ad5afe98d643c5ab5ab47edd901ffce071873c1",
+  "patch_sha256": "ff310c229e7f66d6dc5d1ba08d72a1a341b009ebf15e948c1d559125e6482b61",
   "excluded_files": {
     "compilation/passes/fusion/allreduce_rms_fusion.py": "TP1 has no allreduce fusion.",
     "model_executor/layers/fused_allreduce_gemma_rms_norm.py": "TP1 dense4B and fused AR-Norm disabled.",
@@ -134,23 +158,24 @@
   },
   "formalization": {
     "unchanged_frozen_arithmetic": [
-      "GDN complete source",
       "FlashInfer complete attention source",
       "FlashInfer utility source",
       "CUDA graph candidate generation/capture stream",
       "prompt-logprob profiling helper launch"
     ],
     "operative_changes": [
+      "GDN normalization/output reuse, indexed BF16 prefill with dependency capability checks, strided mixed decode, shared prefill metadata and fused aligned-state indexing; qualification is documented in docs/gdn-runtime.md.",
       "Remove disabled legacy dense-auto/adapter calls from Worker.",
       "Use the public base full-vocabulary logits/model/sampler/runner path; remove compact sampling and sparse-presence extensions.",
       "Non-speculative profile_run calls base dummy sampler and frozen prompt-logprob warmup.",
       "Retain public gpu/warmup.py: omit three frozen unseeded compact-sampling warmup requests (greedy, full-distribution, top-k). This changes startup execution; it is not a no-op or complete warmup equivalence claim."
     ],
     "import_changes": [
+      "Aligned Mamba state selection imports the packaged vllm_mach.mxfp8.gdn_state_indices kernel.",
       "CUDA graph warmup uses vllm_mach.mxfp6.warmup rather than private vllm quantization utility."
     ],
     "requirements": [
-      "Fresh v2 worker; TP1 dense Qwen3.5-4B MXFP8; no speculative decoding/LoRA/prefix/replay/offload/connector.",
+      "Complete 4B MXFP8 launcher contract: fresh v2 worker; TP1 dense Qwen3.5-4B MXFP8; no speculative decoding/LoRA/prefix/replay/offload/connector. Quantization-independent GDN/Mamba runtime admission and the separate NVFP4 qualification are documented in docs/gdn-runtime.md.",
       "Compact hybrid flags and vocab-parallel greedy disabled; full-vocabulary head installed after compile.",
       "Legacy Mach dense-auto/producer/prefill/MoE adapters disabled."
     ],
@@ -214,5 +239,6 @@
     "VLLM_HYBRID_NVFP4_LM_HEAD": "0",
     "VLLM_HYBRID_MXFP4_LM_HEAD": "0",
     "VLLM_HYBRID_MXFP8_LM_HEAD": "0"
-  }
+  },
+  "gdn_optimization_source": "a569aecd644ea594fbb64c1a4e97275b0096f25f"
 }

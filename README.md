@@ -113,6 +113,7 @@ always retain the original sampler. See [admission, numerical behavior and valid
 - [Performance](docs/performance.md): per-model FP8/NVFP4 comparisons, all point values, latency and numerical fidelity.
 - [Guide index](docs/README.md): installation, model preparation, operator details and development.
 - [MXFP8 benchmark](docs/mxfp8-benchmark.md): per-concurrency results, SSM/KV configurations and block-FP8 comparisons.
+- [Shared GDN/Mamba runtime](docs/gdn-runtime.md): quantization-independent optimizations, model/path admission and NVFP4 validation.
 - [Releases](https://github.com/troycheng/vllm-mach/releases): packages and release notes.
 
 The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.com/vllm-project/vllm/pull/60385). Mixed FA2 builds on [LiRunGuo's PR #58013](https://github.com/vllm-project/vllm/pull/58013); SiLU quantization work relates to [PR #45055](https://github.com/vllm-project/vllm/pull/45055). Mach includes its integrations directly.

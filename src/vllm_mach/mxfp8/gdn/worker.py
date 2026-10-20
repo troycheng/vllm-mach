@@ -14,7 +14,7 @@ from pathlib import Path
 from vllm_mach.mxfp8.ssm import selected_dtype
 
 ROOT = Path(__file__).resolve().parent
-GDN_SHA = "8ea18f04ee77359e8dea3e089bb991219468f7985648dc4e24eacb9cd20cf719"
+GDN_SHA = "d0e0bda56342d12a0891fa348efd00ffc475c8153f4f80becb501d96bbfd1e60"
 RUNNER_SHA = "7e6de891206992f6018bb2b26a2c2fff5f3eabe3de1fc9066f5eb8f7e62fb52d"
 FLA_SHA = "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755"
 W = 4

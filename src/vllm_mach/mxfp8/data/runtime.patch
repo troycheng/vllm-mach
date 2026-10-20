@@ -548,15 +548,16 @@
      "is_flashinfer_fp8_blockscale_gemm_supported",
 --- a/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
 +++ b/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
-@@ -2,6 +2,7 @@
+@@ -2,6 +2,8 @@
  # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
  """Inference-only Qwen3-Next/Qwen3.5 model."""
  
 +import functools
++import inspect
  import os
  from typing import Literal
  
-@@ -12,6 +13,7 @@
+@@ -12,6 +14,7 @@
  from vllm import _custom_ops as ops
  from vllm import envs
  from vllm._aiter_ops import rocm_aiter_ops
@@ -564,7 +565,17 @@
  from vllm.config import (
      VllmConfig,
      get_current_vllm_config,
-@@ -88,6 +90,99 @@
+@@ -37,6 +40,9 @@
+ from vllm.model_executor.layers.mamba.ops.causal_conv1d import (
+     causal_conv1d_fn,
+     causal_conv1d_update,
++)
++from vllm.model_executor.layers.mamba.ops.gather_initial_states import (
++    zero_uninitialized_states,
+ )
+ from vllm.model_executor.layers.quantization import QuantizationConfig
+ from vllm.model_executor.layers.quantization.auto_awq import AutoAWQConfig
+@@ -88,6 +94,99 @@
  
  MAX_FUSED_GDN_MTP_TOKENS = 8
  FUSED_GDN_STATE_DTYPES = (torch.float32, torch.bfloat16)
@@ -664,7 +675,7 @@
  
  
  def _resolve_gdn_prefill_backend(
-@@ -100,7 +195,9 @@
+@@ -100,7 +199,9 @@
      * ``platform == cuda``;
      * one of the following:
        - Hopper (SM90) — no further constraints;
@@ -675,7 +686,7 @@
  
      In-tree CuteDSL GDN prefill kernel is chosen when:
      * "cutedsl" is requested; (opt-in only)
-@@ -127,12 +224,26 @@
+@@ -127,12 +228,26 @@
      if current_platform.is_device_capability(90):
          supports_flashinfer = True
      elif (
@@ -705,19 +716,67 @@
  
      if backend in ["flashinfer", "auto"] and supports_flashinfer:
          return backend, "flashinfer"
-@@ -187,6 +298,7 @@
+@@ -177,6 +292,28 @@
+         )
+ 
+ 
++@functools.cache
++def _flashinfer_supports_indexed_prefill_state() -> bool:
++    from flashinfer.gdn_prefill import chunk_gated_delta_rule
++
++    from flashinfer.gdn_kernels import chunk_gated_delta_rule_sm120
++
++    # The public API also exposes SM100-only indexed state support. Check
++    # the SM120 kernel itself before admitting BF16 state-pool IO.
++    if chunk_gated_delta_rule_sm120 is None:
++        return False
++    try:
++        parameters = inspect.signature(chunk_gated_delta_rule).parameters
++        sm120_parameters = inspect.signature(chunk_gated_delta_rule_sm120).parameters
++    except (TypeError, ValueError):
++        return False
++    return (
++        "state_indices" in parameters
++        and "output_state" in parameters
++        and "state_indices" in sm120_parameters
++    )
++
++
+ def fi_chunk_gated_delta_rule(
+     q: torch.Tensor,
+     k: torch.Tensor,
+@@ -187,6 +324,8 @@
      output_final_state: bool,
      cu_seqlens: torch.Tensor | None = None,
      use_qk_l2norm_in_kernel: bool = True,
 +    output: torch.Tensor | None = None,
++    state_indices: torch.Tensor | None = None,
  ):
      from flashinfer.gdn_prefill import (
          chunk_gated_delta_rule as chunk_gated_delta_rule_fi,
-@@ -217,13 +329,14 @@
+@@ -203,7 +342,15 @@
+ 
+     g = g.squeeze(0).contiguous()
+     beta = beta.squeeze(0).contiguous()
+-    fi_state = initial_state.to(torch.float32)
++    # Indexed SM120 prefill reads and writes the BF16 cache directly.
++    fi_state = (
++        initial_state if state_indices is not None else initial_state.to(torch.float32)
++    )
++    state_kwargs = (
++        {"state_indices": state_indices, "output_state": initial_state}
++        if state_indices is not None
++        else {}
++    )
+     fi_g = g.to(torch.float32)
+     fi_beta = beta.to(torch.float32)
+     if cu_seqlens is not None:
+@@ -217,13 +364,15 @@
          initial_state=fi_state,
          output_final_state=output_final_state,
          cu_seqlens=cu_seqlens,
 +        output=output,
++        **state_kwargs,
      )
      # FlashInfer returns (output, state) when output_final_state=True,
      # or just output when output_final_state=False.
@@ -730,7 +789,7 @@
      else:
          return result.unsqueeze(0), None
  
-@@ -266,6 +379,10 @@
+@@ -266,6 +415,10 @@
          use_qk_l2norm_in_kernel: bool = True,
          core_attn_out: torch.Tensor | None = None,
      ):
@@ -741,7 +800,7 @@
          o, final_state = fi_chunk_gated_delta_rule(
              q=q,
              k=k,
-@@ -276,11 +393,8 @@
+@@ -276,11 +429,8 @@
              output_final_state=output_final_state,
              cu_seqlens=cu_seqlens,
              use_qk_l2norm_in_kernel=use_qk_l2norm_in_kernel,
@@ -755,7 +814,7 @@
          return o, final_state
  
      def forward_native(
-@@ -359,6 +473,28 @@
+@@ -359,6 +509,28 @@
  
  @PluggableLayer.register("qwen_gated_delta_net_attention")
  class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
@@ -784,7 +843,7 @@
      def get_state_shape(
          self,
      ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
-@@ -390,6 +526,13 @@
+@@ -390,6 +562,13 @@
          self.key_dim = self.head_k_dim * self.num_k_heads
          self.value_dim = self.head_v_dim * self.num_v_heads
          self.gqa_interleaved_layout = gqa_interleaved_layout
@@ -798,7 +857,16 @@
          if current_platform.is_xpu():
              self._forward_method = self.forward_xpu
          elif current_platform.is_cpu():
-@@ -500,6 +643,13 @@
+@@ -496,10 +675,22 @@
+ 
+         self.chunk_gated_delta_rule = ChunkGatedDeltaRule()
+         self.gdn_prefill_backend = self.chunk_gated_delta_rule.gdn_prefill_backend
++        self._use_indexed_prefill_state = (
++            self._is_sm120
++            and self.gdn_prefill_backend == "flashinfer"
++            and _flashinfer_supports_indexed_prefill_state()
++        )
+         self._prefill_kernels_warmed_up = False
          self.enable_packed_recurrent_decode = (
              envs.VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE
          )
@@ -812,7 +880,7 @@
          self.gdn_decode_kernel = envs.VLLM_GDN_DECODE_KERNEL.strip().lower()
          if self.gdn_decode_kernel == "cuda" and current_platform.is_cuda_alike():
              reason = self._fused_gdn_decode_unsupported_reason(vllm_config)
-@@ -516,6 +666,11 @@
+@@ -516,6 +707,11 @@
              self.gdn_decode_kernel = "CPU"
  
          self.enable_fused_gdn_decode = self.gdn_decode_kernel == "cuda"
@@ -824,7 +892,7 @@
          logger.info_once("GDN decode kernel: %s", self.gdn_decode_kernel)
  
          compilation_config = get_current_vllm_config().compilation_config
-@@ -527,6 +682,18 @@
+@@ -527,6 +723,18 @@
          self, vllm_config: VllmConfig
      ) -> str | None:
          conv_state_dtype, recurrent_state_dtype = self.get_state_dtype()
@@ -843,7 +911,7 @@
          if (
              self.gqa_interleaved_layout
              or self.head_k_dim != 128
-@@ -534,7 +701,10 @@
+@@ -534,7 +742,10 @@
              or self.norm.activation not in ("silu", "sigmoid")
              or vllm_config.model_config.dtype != torch.bfloat16
              or conv_state_dtype != torch.bfloat16
@@ -855,7 +923,7 @@
              or not current_platform.has_device_capability(80)
          ):
              return (
-@@ -825,6 +995,34 @@
+@@ -825,6 +1036,34 @@
  
          return query, key, value
  
@@ -890,7 +958,32 @@
      def forward(
          self,
          hidden_states: torch.Tensor,
-@@ -878,6 +1076,7 @@
+@@ -841,12 +1080,18 @@
+         The RMSNormGated + quant sequence is eligible for fusion
+         by the compilation pass when fuse_norm_quant is enabled.
+         """
+-        z_shape_og = z.shape
+-        core_attn_out = core_attn_out.reshape(-1, core_attn_out.shape[-1])
+-        z = z.reshape(-1, z.shape[-1])
+-        core_attn_out = self.norm(core_attn_out, z)
+-        core_attn_out = core_attn_out.reshape(z_shape_og)
+-        core_attn_out = core_attn_out.flatten(-2)  # ... h d -> ... (h d)
++        if current_platform.is_cuda() and core_attn_out.ndim == z.ndim == 3:
++            # Keep the head axis through normalization: flattening it first
++            # can make Inductor materialize an identity copy before out_proj.
++            core_attn_out = self.norm(core_attn_out, z)
++            core_attn_out = core_attn_out.reshape(-1, self.value_dim // self.tp_size)
++        else:
++            z_shape_og = z.shape
++            core_attn_out = core_attn_out.reshape(-1, core_attn_out.shape[-1])
++            z = z.reshape(-1, z.shape[-1])
++            core_attn_out = self.norm(core_attn_out, z)
++            core_attn_out = core_attn_out.reshape(z_shape_og)
++            core_attn_out = core_attn_out.flatten(-2)  # ... h d -> ... (h d)
+         output, _ = self.out_proj(core_attn_out)
+         return output
+ 
+@@ -878,6 +1123,7 @@
                  projected_states_ba,
                  z,
                  core_attn_out,
@@ -898,7 +991,7 @@
                  layer_name=_encode_layer_name(self.prefix),
                  use_aiter=True,
              )
-@@ -903,8 +1102,13 @@
+@@ -903,8 +1149,13 @@
          mixed_qkvz, _ = self.in_proj_qkvz(hidden_states)
          ba, _ = self.in_proj_ba(hidden_states)
  
@@ -912,7 +1005,7 @@
              and hidden_states.dtype == torch.bfloat16
              and self.norm.weight.dtype in (torch.bfloat16, torch.float32)
          )
-@@ -918,6 +1122,7 @@
+@@ -918,6 +1169,7 @@
                  mixed_qkvz,
                  ba,
                  core_attn_out,
@@ -920,7 +1013,7 @@
                  layer_name=_encode_layer_name(self.prefix),
              )
              output, _ = self.out_proj(core_attn_out.flatten(-2))
-@@ -956,6 +1161,7 @@
+@@ -956,6 +1208,7 @@
              b.contiguous(),
              a.contiguous(),
              core_attn_out,
@@ -928,7 +1021,7 @@
              layer_name=_encode_layer_name(self.prefix),
          )
  
-@@ -1262,6 +1468,7 @@
+@@ -1262,6 +1515,7 @@
          b: torch.Tensor,
          a: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -936,7 +1029,7 @@
      ):
          """Core conv1d + recurrent attention (standard path).
  
-@@ -1289,6 +1496,13 @@
+@@ -1289,6 +1543,13 @@
              and attn_metadata.num_prefills == 0
              and attn_metadata.num_decodes > 0
          ):
@@ -950,7 +1043,7 @@
              return self._forward_core_decode_non_spec(
                  mixed_qkv=mixed_qkv,
                  b=b,
-@@ -1296,6 +1510,21 @@
+@@ -1296,6 +1557,21 @@
                  core_attn_out=core_attn_out,
                  attn_metadata=attn_metadata,
              )
@@ -972,10 +1065,88 @@
  
          has_initial_state = attn_metadata.has_initial_state
          spec_query_start_loc = attn_metadata.spec_query_start_loc
-@@ -1516,6 +1745,19 @@
+@@ -1481,10 +1757,24 @@
+             core_attn_out_spec, last_recurrent_state = None, None
+ 
+         # 2.2: Process non-spec-decode part
++        strided_decode = (
++            split_non_spec
++            and self._is_sm120
++            and self.tp_size == 1
++            and self.num_k_heads == self.num_v_heads == 16
++            and self.head_k_dim == self.head_v_dim == 128
++            and mixed_qkv_non_spec is not None
++            and ssm_state.dtype == mixed_qkv_non_spec.dtype == torch.bfloat16
++            and mixed_qkv_non_spec.stride(-1) == 1
++            and a.stride(-1) == b.stride(-1) == 1
++            and core_attn_out.is_contiguous()
++        )
+         if split_non_spec:
+-            query_decode, key_decode, value_decode = self.rearrange_mixed_qkv(
+-                mixed_qkv_non_spec[:num_decode_tokens]  # type: ignore[index]
+-            )
++            query_decode, key_decode, value_decode = (
++                self.rearrange_mixed_qkv_flashinfer
++                if strided_decode
++                else self.rearrange_mixed_qkv
++            )(mixed_qkv_non_spec[:num_decode_tokens])  # type: ignore[index]
+             core_attn_out_decode, _ = fused_sigmoid_gating_delta_rule_update(
+                 A_log=self.A_log,
+                 a=a[:num_decode_tokens],
+@@ -1500,6 +1790,11 @@
+                 ],
+                 ssm_state_indices=non_spec_state_indices_tensor,
+                 use_qk_l2norm_in_kernel=True,
++                output=(
++                    core_attn_out[:num_decode_tokens].unsqueeze(0)
++                    if strided_decode
++                    else None
++                ),
+             )
+         else:
+             core_attn_out_decode = None
+@@ -1514,33 +1809,86 @@
+             prefill_has_initial_state = attn_metadata.prefill_has_initial_state
+             assert prefill_state_indices is not None
              assert prefill_has_initial_state is not None
-             initial_state = ssm_state[prefill_state_indices]
-             initial_state[~prefill_has_initial_state, ...] = 0
+-            initial_state = ssm_state[prefill_state_indices]
+-            initial_state[~prefill_has_initial_state, ...] = 0
+-            (
+-                core_attn_out_non_spec,
+-                last_recurrent_state,
+-            ) = self.chunk_gated_delta_rule(
+-                q=query_non_spec,
+-                k=key_non_spec,
+-                v=value_non_spec,
+-                g=g_non_spec,
+-                beta=beta_non_spec,
+-                initial_state=initial_state,
+-                output_final_state=True,
+-                cu_seqlens=attn_metadata.prefill_query_start_loc,
+-                chunk_indices=attn_metadata.chunk_indices,
+-                chunk_offsets=attn_metadata.chunk_offsets,
+-                use_qk_l2norm_in_kernel=False,
+-            )
+-            # Init cache
+-            ssm_state[prefill_state_indices] = last_recurrent_state.to(ssm_state.dtype)
++            indexed_prefill_state = (
++                self._use_indexed_prefill_state
++                and spec_sequence_masks is None
++                and query_non_spec.dtype == torch.bfloat16
++                and tuple(query_non_spec.shape[-2:]) == (16, 128)
++                and ssm_state.dtype == torch.bfloat16
++                and tuple(ssm_state.shape[1:]) == (16, 128, 128)
++                and tuple(ssm_state.stride()[1:]) == (16384, 128, 1)
++                and prefill_state_indices.is_contiguous()
++            )
++            if indexed_prefill_state:
++                zero_uninitialized_states(
++                    ssm_state, prefill_state_indices, prefill_has_initial_state
++                )
++                initial_state = ssm_state
++            else:
++                initial_state = ssm_state[prefill_state_indices]
++                initial_state[~prefill_has_initial_state, ...] = 0
 +
 +            # For a non-speculative batch the prefill rows are contiguous in
 +            # the caller-owned output.  Let the chunk kernel write there
@@ -989,17 +1160,44 @@
 +                prefill_output = core_attn_out[prefill_start:num_actual_tokens]
 +            else:
 +                prefill_output = None
-             (
-                 core_attn_out_non_spec,
-                 last_recurrent_state,
-@@ -1531,16 +1773,21 @@
-                 chunk_indices=attn_metadata.chunk_indices,
-                 chunk_offsets=attn_metadata.chunk_offsets,
-                 use_qk_l2norm_in_kernel=False,
-+                core_attn_out=prefill_output,
-             )
-             # Init cache
-             ssm_state[prefill_state_indices] = last_recurrent_state.to(ssm_state.dtype)
++            if indexed_prefill_state:
++                core_attn_out_non_spec, last_recurrent_state = (
++                    fi_chunk_gated_delta_rule(
++                        q=query_non_spec,
++                        k=key_non_spec,
++                        v=value_non_spec,
++                        g=g_non_spec,
++                        beta=beta_non_spec,
++                        initial_state=initial_state,
++                        output_final_state=True,
++                        cu_seqlens=attn_metadata.prefill_query_start_loc,
++                        use_qk_l2norm_in_kernel=False,
++                        output=prefill_output,
++                        state_indices=prefill_state_indices,
++                    )
++                )
++            else:
++                (
++                    core_attn_out_non_spec,
++                    last_recurrent_state,
++                ) = self.chunk_gated_delta_rule(
++                    q=query_non_spec,
++                    k=key_non_spec,
++                    v=value_non_spec,
++                    g=g_non_spec,
++                    beta=beta_non_spec,
++                    initial_state=initial_state,
++                    output_final_state=True,
++                    cu_seqlens=attn_metadata.prefill_query_start_loc,
++                    chunk_indices=attn_metadata.chunk_indices,
++                    chunk_offsets=attn_metadata.chunk_offsets,
++                    use_qk_l2norm_in_kernel=False,
++                    core_attn_out=prefill_output,
++                )
++                # Init cache
++                ssm_state[prefill_state_indices] = last_recurrent_state.to(
++                    ssm_state.dtype
++                )
  
              if split_non_spec:
 -                # Stitch the peeled decode outputs in front of the prefill
@@ -1019,7 +1217,7 @@
          elif attn_metadata.num_decodes > 0:
              core_attn_out_non_spec, last_recurrent_state = (
                  fused_sigmoid_gating_delta_rule_update(
-@@ -1566,18 +1813,407 @@
+@@ -1566,18 +1914,407 @@
  
          # 3. Merge core attention output
          if spec_sequence_masks is not None and core_attn_out_non_spec is not None:
@@ -1436,7 +1634,7 @@
  
      def _forward_core_decode_aiter(
          self,
-@@ -1786,6 +2422,7 @@
+@@ -1786,6 +2523,7 @@
          mixed_qkvz: torch.Tensor,
          ba: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -1444,7 +1642,7 @@
      ) -> None:
          forward_context = get_forward_context()
          attn_metadata_raw = forward_context.attn_metadata
-@@ -1811,6 +2448,7 @@
+@@ -1811,6 +2549,7 @@
              a=a,
              output_gate=output_gate,
              core_attn_out=core_attn_out,
@@ -1452,7 +1650,7 @@
          )
  
      def _can_use_fused_gdn_mtp_decode(
-@@ -1871,6 +2509,7 @@
+@@ -1871,6 +2610,7 @@
          a: torch.Tensor,
          output_gate: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -1460,7 +1658,7 @@
      ) -> None:
          forward_context = get_forward_context()
          attn_metadata_raw = forward_context.attn_metadata
-@@ -1882,10 +2521,11 @@
+@@ -1882,10 +2622,11 @@
              return
  
          assert isinstance(attn_metadata, GDNAttentionMetadata)
@@ -1475,7 +1673,7 @@
              self._forward_core_decode_spec_fused_norm(
                  mixed_qkv=mixed_qkv,
                  b=b,
-@@ -1895,11 +2535,17 @@
+@@ -1895,11 +2636,17 @@
                  attn_metadata=attn_metadata,
              )
              return
@@ -1493,7 +1691,7 @@
          )
          num_actual_tokens = attn_metadata.num_actual_tokens
          self._rms_norm_gated_cuda(
-@@ -1909,11 +2555,13 @@
+@@ -1909,11 +2656,13 @@
          )
  
  
@@ -1507,7 +1705,7 @@
      layer_name: LayerNameType,
      use_aiter: bool = False,
  ) -> None:
-@@ -1946,6 +2594,7 @@
+@@ -1946,6 +2695,7 @@
              b=b_or_ba,
              a=a_or_z_out,
              core_attn_out=core_attn_out,
@@ -1515,7 +1713,7 @@
          )
  
  
-@@ -1954,6 +2603,7 @@
+@@ -1954,6 +2704,7 @@
      b_or_ba: torch.Tensor,
      a_or_z_out: torch.Tensor,
      core_attn_out: torch.Tensor,
@@ -1523,7 +1721,7 @@
      layer_name: LayerNameType,
      use_aiter: bool = False,
  ) -> None:
-@@ -1969,10 +2619,12 @@
+@@ -1969,10 +2720,12 @@
  )
  
  
@@ -1536,7 +1734,7 @@
      layer_name: LayerNameType,
  ) -> None:
      layer_name = _resolve_layer_name(layer_name)
-@@ -1982,6 +2634,7 @@
+@@ -1982,6 +2735,7 @@
          mixed_qkvz=mixed_qkvz,
          ba=ba,
          core_attn_out=core_attn_out,
@@ -1544,7 +1742,7 @@
      )
  
  
-@@ -1989,6 +2642,7 @@
+@@ -1989,6 +2743,7 @@
      mixed_qkvz: torch.Tensor,
      ba: torch.Tensor,
      core_attn_out: torch.Tensor,
@@ -2683,3 +2881,222 @@
 +            block_ids,
 +            mask=i + offset < num_blocks,
 +        )
+--- a/vllm/v1/attention/backends/gdn_attn.py
++++ b/vllm/v1/attention/backends/gdn_attn.py
+@@ -391,11 +391,17 @@
+                 prefill_query_start_loc_cpu = non_spec_query_start_loc_cpu
+                 prefill_state_indices = non_spec_state_indices_tensor
+ 
+-            chunk_indices, chunk_offsets = self._build_chunk_metadata(
+-                prefill_query_start_loc,
+-                prefill_query_start_loc_cpu,
+-                query_start_loc.device,
+-            )
++            if self.gdn_prefill_backend == "flashinfer":
++                # FlashInfer uses cu_seqlens but not FLA chunk metadata. Convert
++                # once per batch instead of allocating/copying in every layer.
++                assert prefill_query_start_loc is not None
++                prefill_query_start_loc = prefill_query_start_loc.to(torch.int64)
++            else:
++                chunk_indices, chunk_offsets = self._build_chunk_metadata(
++                    prefill_query_start_loc,
++                    prefill_query_start_loc_cpu,
++                    query_start_loc.device,
++                )
+ 
+         if num_prefills > 0:
+             context_lens_tensor = m.compute_num_computed_tokens()
+--- a/vllm/v1/attention/backends/utils.py
++++ b/vllm/v1/attention/backends/utils.py
+@@ -1154,6 +1154,12 @@
+         return block_table
+     else:
+         assert isinstance(kv_cache_spec, MambaSpec)
++        if block_table.is_cuda and seq_lens.is_cuda:
++            from vllm_mach.mxfp8.gdn_state_indices import (
++                get_aligned_mamba_block_table,
++            )
++
++            return get_aligned_mamba_block_table(block_table, seq_lens, kv_cache_spec)
+         # NOTE: For 0-length requests in CUDA graph, use a start_index of 0
+         # to handle the invalid block table.
+         start_indices = (seq_lens - 1) // kv_cache_spec.block_size
+--- a/vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py
++++ b/vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py
+@@ -47,6 +47,11 @@
+     V: tl.constexpr,
+     BK: tl.constexpr,
+     BV: tl.constexpr,
++    stride_q: tl.constexpr,
++    stride_k: tl.constexpr,
++    stride_v: tl.constexpr,
++    stride_a: tl.constexpr,
++    stride_b: tl.constexpr,
+     stride_init_state_token: tl.constexpr,
+     stride_final_state_token: tl.constexpr,
+     stride_indices_seq: tl.constexpr,
+@@ -80,19 +85,19 @@
+     o_k = i_k * BK + tl.arange(0, BK)
+     o_v = i_v * BV + tl.arange(0, BV)
+ 
+-    p_q = q + (bos * H + i_h) * K + o_k
+-    p_k = k + (bos * H + i_h) * K + o_k
+-    p_v = v + (bos * HV + i_hv) * V + o_v
++    p_q = q + bos * stride_q + i_h * K + o_k
++    p_k = k + bos * stride_k + i_h * K + o_k
++    p_v = v + bos * stride_v + i_hv * V + o_v
+ 
+     p_A_log = A_log + i_hv
+     if not IS_KDA:
+-        p_a = a + bos * HV + i_hv
++        p_a = a + bos * stride_a + i_hv
+         p_dt_bias = dt_bias + i_hv
+     else:
+         p_a = a + (bos * HV + i_hv) * K + o_k
+         p_dt_bias = dt_bias + i_hv * K + o_k
+ 
+-    p_b = b + bos * HV + i_hv
++    p_b = b + bos * stride_b + i_hv
+     p_o = o + ((i_k * all + bos) * HV + i_hv) * V + o_v
+ 
+     mask_k = o_k < K
+@@ -170,12 +175,12 @@
+             tl.store(p_ht, b_h.to(p_ht.dtype.element_ty), mask=mask_h)
+ 
+         # Update pointers for next timestep
+-        p_q += H * K
+-        p_k += H * K
++        p_q += stride_q
++        p_k += stride_k
+         p_o += HV * V
+-        p_v += HV * V
+-        p_b += HV
+-        p_a += HV
++        p_v += stride_v
++        p_b += stride_b
++        p_a += stride_a
+ 
+ 
+ def fused_sigmoid_gating_delta_rule_update(
+@@ -196,6 +201,7 @@
+     num_accepted_tokens: torch.Tensor | None = None,
+     use_qk_l2norm_in_kernel: bool = False,
+     is_kda: bool = False,
++    output: torch.Tensor | None = None,
+ ):
+     """
+     Fused triton implementation of sigmoid gating delta rule update.
+@@ -222,7 +228,22 @@
+     else:
+         assert scale > 0, "scale must be positive"
+ 
+-    o = q.new_empty(NK, *v.shape)
++    if output is None:
++        q, k, v = q.contiguous(), k.contiguous(), v.contiguous()
++        a, b = a.contiguous(), b.contiguous()
++        o = q.new_empty(NK, *v.shape)
++        stride_q, stride_k, stride_v = H * K, H * K, HV * V
++        stride_a, stride_b = HV, HV
++    else:
++        # Mixed decode uses row-packed inputs and a caller-owned output slice.
++        assert cu_seqlens is not None and not is_kda
++        assert output.shape == v.shape and output.is_contiguous()
++        assert output.dtype == v.dtype and output.device == v.device
++        assert all(x.stride(-1) == 1 for x in (q, k, v, a, b))
++        assert q.stride(-2) == k.stride(-2) == K and v.stride(-2) == V
++        o = output.unsqueeze(0)
++        stride_q, stride_k, stride_v = q.stride(1), k.stride(1), v.stride(1)
++        stride_a, stride_b = a.stride(0), b.stride(0)
+     if inplace_final_state:
+         final_state = initial_state
+     else:
+@@ -241,14 +262,14 @@
+     grid = (NK, NV, N * HV)
+     fused_sigmoid_gating_delta_rule_update_kernel[grid](
+         A_log=A_log,
+-        a=a.contiguous(),
+-        b=b.contiguous(),
++        a=a,
++        b=b,
+         dt_bias=dt_bias,
+         beta=beta,
+         threshold=threshold,
+-        q=q.contiguous(),
+-        k=k.contiguous(),
+-        v=v.contiguous(),
++        q=q,
++        k=k,
++        v=v,
+         o=o,
+         h0=initial_state,
+         ht=final_state,
+@@ -265,6 +286,11 @@
+         V=V,
+         BK=BK,
+         BV=BV,
++        stride_q=stride_q,
++        stride_k=stride_k,
++        stride_v=stride_v,
++        stride_a=stride_a,
++        stride_b=stride_b,
+         stride_init_state_token=stride_init_state_token,
+         stride_final_state_token=stride_final_state_token,
+         stride_indices_seq=stride_indices_seq,
+--- a/vllm/model_executor/layers/mamba/ops/gather_initial_states.py
++++ b/vllm/model_executor/layers/mamba/ops/gather_initial_states.py
+@@ -81,3 +81,55 @@
+         launch_pdl=current_platform.is_arch_support_pdl(),
+     )
+     return output
++
++
++@triton.jit
++def _zero_uninitialized_states_kernel(
++    state_ptr,
++    indices_ptr,
++    has_initial_state_ptr,
++    stride_state_batch: tl.constexpr,
++    stride_indices: tl.constexpr,
++    stride_has_initial_state: tl.constexpr,
++    row_size: tl.constexpr,
++    BLOCK_SIZE: tl.constexpr,
++):
++    row = tl.program_id(0)
++    offsets = tl.program_id(1) * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
++    if not tl.load(has_initial_state_ptr + row * stride_has_initial_state):
++        slot = tl.load(indices_ptr + row * stride_indices).to(tl.int64)
++        tl.store(
++            state_ptr + slot * stride_state_batch + offsets,
++            0,
++            mask=offsets < row_size,
++        )
++
++
++def zero_uninitialized_states(
++    state: torch.Tensor,
++    indices: torch.Tensor,
++    has_initial_state: torch.Tensor,
++) -> None:
++    """Zero new sequence slots in place; indices must be unique and valid.
++
++    Inner state rows must be dense. Page padding and cached slots are preserved.
++    """
++    assert state.is_cuda and state.ndim >= 2
++    assert indices.ndim == 1 and has_initial_state.shape == indices.shape
++    assert indices.device == state.device == has_initial_state.device
++    assert indices.dtype in (torch.int32, torch.int64)
++    assert has_initial_state.dtype == torch.bool
++    row_size = 1
++    for size, stride in zip(reversed(state.shape[1:]), reversed(state.stride()[1:])):
++        assert stride == row_size
++        row_size *= size
++    _zero_uninitialized_states_kernel[(indices.numel(), triton.cdiv(row_size, 1024))](
++        state,
++        indices,
++        has_initial_state,
++        state.stride(0),
++        indices.stride(0),
++        has_initial_state.stride(0),
++        row_size,
++        1024,
++    )

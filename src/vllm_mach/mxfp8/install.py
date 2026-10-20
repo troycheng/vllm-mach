@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import hashlib
-from importlib import metadata
 import json
 import os
-from pathlib import Path, PurePosixPath
 import re
 import stat
 import tempfile
+from contextlib import contextmanager
+from importlib import metadata
+from pathlib import Path, PurePosixPath
 
 PROFILE = "qwen35-4b-mxfp8-champion-v1"
 DATA = Path(__file__).with_name("data")
@@ -134,22 +134,22 @@ def inspect_sources(site: Path, manifest: dict | None = None) -> dict:
     manifest = load_manifest() if manifest is None else manifest
     site = Path(site).resolve()
     sources = _read_sources(site, manifest)
-    states = []
+    states = {"upstream", "installed"}
     for name, source in sources.items():
         digest = sha256(source)
         entry = manifest["files"][name]
-        if entry["upstream_sha256"] == entry["installed_sha256"]:
-            if digest != entry["installed_sha256"]:
-                raise RuntimeError(f"Runtime source SHA256 mismatch: {name}")
-        elif digest == entry["upstream_sha256"]:
-            states.append("upstream")
-        elif digest == entry["installed_sha256"]:
-            states.append("installed")
-        else:
+        matches = {
+            state for state, field in (
+                ("upstream", "upstream_sha256"),
+                ("installed", "installed_sha256"),
+            ) if entry.get(field) == digest
+        }
+        if not matches:
             raise RuntimeError(f"Runtime source SHA256 mismatch: {name}")
-    if len(set(states)) != 1:
+        states.intersection_update(matches)
+    if len(states) != 1:
         raise RuntimeError("Mixed or empty runtime source profile")
-    return {"state": states[0], "sha256": {name: sha256(value) for name, value in sources.items()}}
+    return {"state": states.pop(), "sha256": {name: sha256(value) for name, value in sources.items()}}
 
 
 @contextmanager
@@ -211,7 +211,7 @@ def _commit(site: Path, before: dict[str, bytes], after: dict[str, bytes], chang
 
 def install_profile(site: Path, *, apply: bool = False, verify_packages: bool = True,
                     data_directory: Path | None = None) -> dict:
-    """Dry-run by default. Accept only the pinned upstream or this exact profile.
+    """Accept only pinned upstream or this exact installed profile.
 
     ``site`` is the directory containing ``vllm/``. Package verification can be
     disabled only by a direct Python caller doing an offline source audit.

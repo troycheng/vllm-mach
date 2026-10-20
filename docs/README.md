@@ -7,6 +7,7 @@ Start with [performance by model size](performance.md), then use the guide for t
 | Model / path | Start here | Model inputs |
 |---|---|---|
 | Qwen3.5-2B MXFP8 | [Champion](mxfp8-2b-champion.md) | [Public BF16 reconstruction](mxfp8-2b-model.md) |
+| Qwen3.5-based 2B NVFP4 | [Shared GDN runtime](gdn-runtime.md) | Existing compatible compressed-tensors NVFP4 checkpoint |
 | Qwen3.5-4B MXFP8 | [Champion](mxfp8-champion.md) | [BF16 + released L0 asset](mxfp8-model.md) |
 | Qwen3.5-4B block-FP8 | [Profile](fp8-profile.md) | Existing compatible compressed-tensors checkpoint |
 | Qwen3.8-27B MXFP6 | [Installation](installation.md) | [Public MXFP6 checkpoint](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6) |
@@ -27,7 +28,7 @@ Start with [performance by model size](performance.md), then use the guide for t
 | Area | Guides |
 |---|---|
 | Native integration and compatibility | [MXFP6](native-mxfp6.md), [MXFP8 installation](mxfp8-installation.md) |
-| GDN and scheduling | [MXFP6 GDN](gdn-decode.md), [MXFP8 GDN](mxfp8-gdn.md), [FP16 SSM](fp16-ssm.md) |
+| GDN and scheduling | [Shared GDN/Mamba runtime](gdn-runtime.md), [MXFP6 GDN](gdn-decode.md), [MXFP8 GDN](mxfp8-gdn.md), [FP16 SSM](fp16-ssm.md) |
 | Fusion and prefill | [Producers](dense-producer-fusion.md), [AR/Norm/MXFP8](ar-norm-mxfp8.md), [lossless prefill](lossless-prefill.md), [observed-shape prefill](long-prefill.md) |
 | MoE | [Projection dispatch](moe-projection-20260923.md), [model integration](qwen35-moe.md) |
 | Block-FP8 | [Linear](fp8-linear.md), [activation](fp8-activation.md), [attention](fp8-attention.md) |

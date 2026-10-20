@@ -189,6 +189,12 @@ def main():
         help="Use current model-aware serving defaults for default/full/mxfp8",
     )
     p.add_argument("--cpu-offload-gb", type=float, default=4)
+    p.add_argument("--ssm-dtype", choices=["float32", "bfloat16", "float16"],
+                   help="Explicit recurrent cache dtype for matched runtime comparisons")
+    p.add_argument("--kv-cache-dtype", choices=["auto", "bfloat16", "fp8", "fp8_e4m3"],
+                   help="Explicit KV cache dtype for matched runtime comparisons")
+    p.add_argument("--enable-prefix-caching", action="store_true",
+                   help="Exercise aligned state indexing with the same fixed-token protocol")
     p.add_argument(
         "--no-stock-compile",
         action="store_true",
@@ -277,6 +283,11 @@ def main():
         os.environ["VLLM_WEIGHT_OFFLOADING_DISABLE_UVA"] = "1"
     elif a.default_compilation:
         args["compilation_config"] = {}
+    if a.ssm_dtype is not None:
+        args["mamba_ssm_cache_dtype"] = a.ssm_dtype
+    if a.kv_cache_dtype is not None:
+        args["kv_cache_dtype"] = a.kv_cache_dtype
+    args["enable_prefix_caching"] = a.enable_prefix_caching
     write(
         a.output / "contract.json",
         dict(

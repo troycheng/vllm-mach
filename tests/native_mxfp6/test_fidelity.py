@@ -274,6 +274,7 @@ def test_fidelity_uses_current_model_aware_profiles(tmp_path, family):
     assert {key for key in default if default[key] != full[key]} == {
         "VLLM_QWEN3_5_FP16_SSM",
         "VLLM_HYBRID_NVFP4_LM_HEAD",
+        "VLLM_MACH_LM_HEAD_SAMPLING",
     }
     for flags in (default, full):
         assert flags["VLLM_MACH_GDN_PERSISTENT"] == "1"
