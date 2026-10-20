@@ -21,13 +21,15 @@ vLLM Mach packages model-specific serving optimizations for **vLLM 0.29.0 on RTX
 
 | Model / profile | GPUs | Throughput gain vs FP8 | Details |
 |---|---|---:|---|
-| Qwen3.5-2B · MXFP8 state/KV matrix | 1 · TP1 | Per-concurrency matrix | [Data](docs/mxfp8-benchmark.md#qwen35-2b) |
-| Qwen3.5-4B · MXFP8 state/KV matrix | 1 · TP1 | Per-concurrency matrix | [Data](docs/mxfp8-benchmark.md#qwen35-4b) |
+| Qwen3.5-2B · MXFP8 · FP32 SSM / BF16 KV | 1 · TP1 | FP32 +29.46% to +34.60%; BF16 optional +36.34% to +41.74% | [Data](docs/performance.md#qwen35-2b) |
+| Qwen3.5-4B · MXFP8 · FP32 SSM / FP8 KV | 1 · TP1 | FP32 +32.13% to +43.05%; BF16 optional +39.36% to +57.91% | [Data](docs/performance.md#qwen35-4b) |
 | Qwen3.5-4B block-FP8 · Block-FP8 · all four features | 1 · TP1 | +5.97% to +9.03% | [Data](docs/performance.md#qwen35-4b-block-fp8) |
 | Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
 | Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
 
-The measured MXFP6 **default** preset uses FP32 recurrent state and BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The current launcher enables hybrid LM-head by default; use `--no-hybrid-head` to reproduce the historical default head setting. The 2B MXFP8 champion keeps BF16 KV and uses Triton attention plus a K128 hybrid head at M≤64. The 4B MXFP8 champion uses calibrated FP8 KV, a K128 greedy path through M64 and its complete refined head for scoring and other sampling modes.
+MXFP8 defaults to **FP32 SSM**, with **BF16 KV on 2B** and **FP8 KV on 4B**. The optional BF16 SSM curves use `--ssm-dtype bfloat16` with ordered GDN. The six greedy points are c4/16/24/32/48/64, measured on October 14 against historical block-FP8 references.
+
+MXFP6 **default** uses FP32 recurrent state and the BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The launcher enables hybrid head by default; pass `--no-hybrid-head` to reproduce the measured historical default.
 
 ### Qwen3.5-2B · MXFP8
 
@@ -53,7 +55,7 @@ See the [performance report](docs/performance.md) for all point values, gains ag
 
 The [2026-10-15 best-path and sampling recheck](docs/best-path-recheck-20261015.md)
 records fresh pre-sampling/current comparisons and top-k/top-p measurements.
-Its progress table distinguishes complete paired trials from pending profiles.
+Random-sampling gains are reported separately from the greedy curves above.
 
 ## Choose and run a profile
 
@@ -85,7 +87,7 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   --attention-backend TRITON_ATTN --hybrid-head
 ```
 
-The two switches select the current 2B champion explicitly. The default shared-image entrypoint serves 4B, so keep the 2B `--entrypoint` override. The server exposes vLLM's OpenAI-compatible API; `/v1/models` lists the served model name.
+`--attention-backend TRITON_ATTN` selects the measured 2B attention path; the launcher defaults to `FLASH_ATTN`. `--hybrid-head` is already enabled by default and is explicit here for clarity. The shared-image entrypoint serves 4B, so keep the 2B `--entrypoint` override. The server exposes vLLM's OpenAI-compatible API; `/v1/models` lists the served model name.
 
 For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `--fp16-ssm` to select full. For block-FP8, use `--features n64 ordered silu fa2`. Each guide includes its checkpoint preparation, exact dependencies, numerical behavior and benchmark command.
 

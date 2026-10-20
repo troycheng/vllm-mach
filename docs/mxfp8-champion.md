@@ -78,7 +78,7 @@ Production defaults are BF16 model activations, FP32 SSM, FP8 E4M3 KV,
 2048. Exact2048 uses PIECEWISE; other tails above256 use NONE without padding.
 The launcher enables a K128 candidate/BF16-refinement greedy path through M64;
 `--no-hybrid-head` keeps the complete K2048 head for all calls. Score requests,
-constrained/stochastic sampling and unsupported cases use the complete head.
+constrained requests and unsupported cases use the complete head. The same `--hybrid-head` switch also admits unseeded top-k decode, including optional top-p and presence-only penalties; other sampling and penalty combinations use the complete head.
 SwiGLU and MXFP8 quantization are fused at supported small row counts.
 See the October 12 [optimization validation](mxfp8-benchmark.md).
 Prefix caching, speculative decode, generic compact-head hooks,
@@ -124,15 +124,12 @@ that use a run directory, its old startup-cache subdirectories may be removed.
 
 ## Performance
 
-See the [single MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the FP32 SSM/BF16 KV baseline, BF16 SSM and combined BF16 SSM/FP8 KV configurations, each compared with open-source block FP8.
+See the [single MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the default FP32 SSM/FP8 KV configuration, the FP32 SSM/BF16 KV baseline and optional BF16 SSM configurations, each compared with historical open-source block FP8.
 
 ## Validation
 
-Earlier numerical qualification is retained in `historical_validation.four_b` in the [consolidated data](data/mxfp8-benchmark.json). The current throughput matrix uses the native revision pinned in `deploy/Dockerfile.mxfp8`.
+The [current precision table](performance.md#qwen35-4b-precision) reports October 20 M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and raw logprobs with runtime receipts.
 
-| Physical rows | Queries | Gold tokens | Changed logprobs vs accepted champion | MAE vs BF16 |
-|---:|---:|---:|---:|---:|
-| 32 | 256 | 10479 | 0 | 0.049038113196 |
-| 64 | 256 | 10479 | 0 | 0.053286047365 |
+The BF16 reference uses FLASH_ATTN and BF16 KV at each matching physical shape; this profile uses FLASHINFER and FP8 KV. Fixed-gold requests use the existing full-vocabulary NVFP4 head with K2048 BF16 score refinement. Hybrid candidate selection has separate [generation and sampling validation](lm-head-sampling.md).
 
-The BF16 reference uses FLASH_ATTN and BF16 KV; this profile uses FLASHINFER and FP8 KV. Two starts in the same run directory rebuilt all 23 compiler bindings and eligible QKVZ/BA pairs. All 1,040 production requests completed and matched the accepted champion's output hashes. Native GPU tests covered packed activations, scales, output and changing-input graph replay.
+The [fixed token manifest](data/fidelity-samples.json) and validation tool are public; see [reproducing the precision measurements](performance.md#reproduce-mxfp8-fidelity). Earlier release qualification remains in `historical_validation.four_b` in the [benchmark data](data/mxfp8-benchmark.json).
