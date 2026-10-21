@@ -53,15 +53,20 @@ def _wrap_sample(runner, head, processor, state, bf16, argmax, compact_output, s
         if not _head_eligible(processor, head, hidden, state, bf16):
             stats["head_fallback_calls"] += 1
             return original(hidden_states, input_batch, grammar_output)
-        # Preserve the exact qualified team operation order, dtype and selector.
-        coarse = state.coarse_logits(hidden, None)
         active_vocab = (head.shard_indices.org_vocab_end_index
                         - head.shard_indices.org_vocab_start_index)
-        coarse[:, active_vocab:] = -float("inf")
-        candidates = state.select_candidates(coarse)
-        refined = state.refine_logits(hidden, head.weight, candidates, None)
-        _, token_ids = argmax(refined, candidates,
-                             index_offset=head.shard_indices.org_vocab_start_index)
+        replay = getattr(state, "replay_greedy", None)
+        token_ids = None
+        if (replay is not None and active_vocab == state.output_size
+                and head.shard_indices.org_vocab_start_index == 0):
+            token_ids = replay(hidden, head.weight)
+        if token_ids is None:
+            coarse = state.coarse_logits(hidden, None)
+            coarse[:, active_vocab:] = -float("inf")
+            candidates = state.select_candidates(coarse)
+            refined = state.refine_logits(hidden, head.weight, candidates, None)
+            _, token_ids = argmax(refined, candidates,
+                                 index_offset=head.shard_indices.org_vocab_start_index)
         output = compact_output(self.sampler, token_ids, input_batch)
         rows = int(hidden.shape[0])
         stats["hybrid_success_calls"] += 1
@@ -121,6 +126,7 @@ def install(worker):
     state.max_rows = 64
     runner._mach_sampling_sidecar = state
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, weight, tp_size=1)
+    nv.capture_hybrid_nvfp4_lm_head(state, weight, tp_size=1)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
                  hybrid_success_calls=0, hybrid_success_rows=0, calls_by_rows={})
 
@@ -150,7 +156,9 @@ def inspect_worker(worker):
     stats = installed["stats"]
     return dict(installed=True, candidates=state.candidates, max_rows=state.max_rows,
                 backend=state.backend, full_bf16_parameter=True,
-                tie_guard=False, private_head_graph=False,
+                tie_guard=False, private_head_graph=state._head_graphs is not None,
+                head_graph_replays=(dict(state._head_graphs.replay_counts)
+                                    if state._head_graphs is not None else {}),
                 **{k: dict(v) if isinstance(v, dict) else int(v) for k, v in stats.items()})
 
 

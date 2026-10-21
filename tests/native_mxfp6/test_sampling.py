@@ -181,6 +181,7 @@ def test_hybrid_presence_changes_candidates_before_bf16_refinement(penalty):
         return coarse.topk(2).indices
 
     state = NS(
+        replay_candidates=lambda *a: pytest.fail("Presence must precede candidate selection"),
         can_use=lambda *a, **kw: True,
         candidate_count_for_topk=lambda k: 2,
         coarse_logits=lambda *a: full.clone(),
@@ -205,6 +206,29 @@ def test_hybrid_presence_changes_candidates_before_bf16_refinement(penalty):
     assert seen == [2]
     assert torch.equal(ids, expected.indices)
     torch.testing.assert_close(values, expected.values)
+
+
+def test_candidate_graph_preserves_temperature_scale_and_softcap():
+    head = make_head()
+    hidden = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+    full = hidden @ head.weight.T
+    candidate_ids = full.topk(4).indices
+    candidate_scores = full.gather(1, candidate_ids)
+    seen = []
+    def replay(h, w, k):
+        seen.append(k)
+        return candidate_scores, candidate_ids
+    def no_eager(*a, **kw):
+        raise AssertionError("eligible replay must skip eager head stages")
+    state = NS(output_size=16, can_use=lambda *a, **kw: True,
+               replay_candidates=replay, coarse_logits=no_eager)
+    proxy = sampling.SamplingHead(NS(scale=1.5, soft_cap=2.0), state)
+    values, ids = proxy.get_topk_candidates(head, hidden, 2, 1.0, 0.5)
+    expected = (torch.tanh(full / 2.0) * 2.0 * 1.5 / 0.5).topk(2)
+    assert seen == [2]
+    # Saturated soft-cap can tie; compare values and their original token scores.
+    torch.testing.assert_close(values, expected.values)
+    torch.testing.assert_close(values, (torch.tanh(full / 2.0) * 6.0).gather(1, ids))
 
 
 def test_mixed_batch_delegates_original_sampler_once(monkeypatch):

@@ -118,7 +118,7 @@ def try_sample(runner, hidden_states, batch, grammar_output):
     proxy = getattr(runner, "_mach_sampling_proxy", None)
     if proxy is None:
         state = getattr(runner, "_mach_sampling_sidecar", None)
-        if state is not None:
+        if state is not None and (state.candidates != 128 or state.max_rows != 64):
             state = dataclasses.replace(
                 state, candidates=128, max_rows=64, can_use_failure_counts={}
             )
@@ -661,77 +661,87 @@ class SamplingHead:
                 top_k=local_top_k,
             )
         ):
-            coarse_logits = hybrid_state.coarse_logits(
-                hidden_states,
-                embedding_bias,
-            )
-
-            # With no additive processor, soft-cap, positive scale, and
-            # temperature are monotonic and cannot change the candidate set.
-            # Keep BF16 here so the selector needs neither an [M, N] FP32 copy
-            # nor twice as many radix rounds.
-            process_coarse_logits = self.scale <= 0.0 or (
-                presence_penalties is not None
-                and (self.soft_cap is not None or self.scale != 1.0)
-            )
-            if process_coarse_logits:
-                coarse_logits = coarse_logits.to(torch.float32)
-                if self.soft_cap is not None:
-                    coarse_logits = (
-                        torch.tanh(coarse_logits / self.soft_cap) * self.soft_cap
-                    )
-                if self.scale != 1.0:
-                    coarse_logits = coarse_logits * self.scale
-
+            replay = getattr(hybrid_state, "replay_candidates", None)
+            replayed = None
+            if (replay is not None and embedding_bias is None
+                    and presence_penalties is None and self.scale > 0.0
+                    and active_vocab_size == hybrid_state.output_size):
+                replayed = replay(hidden_states, lm_head.weight, local_top_k)
             penalty_mask = None
-            if presence_penalties is not None:
-                if output_token_counts is not None:
-                    assert presence_request_indices is not None
-                    sparse_applied = (
-                        output_unique_token_ids is not None
-                        and num_output_unique_tokens is not None
-                        and self._apply_sharded_sparse_presence_penalty(
-                            coarse_logits,
-                            presence_penalties,
-                            output_unique_token_ids,
-                            num_output_unique_tokens,
-                            presence_request_indices,
-                            shard_indices=shard_indices,
-                        )
-                    )
-                    if not sparse_applied:
-                        self._apply_sharded_presence_penalty_from_counts(
-                            coarse_logits,
-                            presence_penalties,
-                            output_token_counts,
-                            presence_request_indices,
-                            shard_indices=shard_indices,
-                        )
-                else:
-                    assert output_token_ids is not None
-                    penalty_mask = self._get_sharded_presence_penalty_mask(
-                        coarse_logits,
-                        presence_penalties,
-                        output_token_ids,
-                        shard_indices=shard_indices,
-                    )
-                    if penalty_mask is not None:
-                        coarse_logits.sub_(penalty_mask)
-            self._mask_invalid_shard_logits(
-                coarse_logits,
-                None,
-                active_vocab_size,
-            )
-            candidate_indices = self._select_hybrid_candidates(
-                hybrid_state, coarse_logits, top_k=local_top_k
-            )
+            if replayed is not None:
+                exact_logits, candidate_indices = replayed
+                exact_logits = exact_logits.to(torch.float32)
+            else:
+                coarse_logits = hybrid_state.coarse_logits(
+                    hidden_states,
+                    embedding_bias,
+                )
 
-            exact_logits = hybrid_state.refine_logits(
-                hidden_states,
-                lm_head.weight,
-                candidate_indices,
-                embedding_bias,
-            ).to(torch.float32)
+                # With no additive processor, soft-cap, positive scale, and
+                # temperature are monotonic and cannot change the candidate set.
+                # Keep BF16 here so the selector needs neither an [M, N] FP32 copy
+                # nor twice as many radix rounds.
+                process_coarse_logits = self.scale <= 0.0 or (
+                    presence_penalties is not None
+                    and (self.soft_cap is not None or self.scale != 1.0)
+                )
+                if process_coarse_logits:
+                    coarse_logits = coarse_logits.to(torch.float32)
+                    if self.soft_cap is not None:
+                        coarse_logits = (
+                            torch.tanh(coarse_logits / self.soft_cap) * self.soft_cap
+                        )
+                    if self.scale != 1.0:
+                        coarse_logits = coarse_logits * self.scale
+
+                if presence_penalties is not None:
+                    if output_token_counts is not None:
+                        assert presence_request_indices is not None
+                        sparse_applied = (
+                            output_unique_token_ids is not None
+                            and num_output_unique_tokens is not None
+                            and self._apply_sharded_sparse_presence_penalty(
+                                coarse_logits,
+                                presence_penalties,
+                                output_unique_token_ids,
+                                num_output_unique_tokens,
+                                presence_request_indices,
+                                shard_indices=shard_indices,
+                            )
+                        )
+                        if not sparse_applied:
+                            self._apply_sharded_presence_penalty_from_counts(
+                                coarse_logits,
+                                presence_penalties,
+                                output_token_counts,
+                                presence_request_indices,
+                                shard_indices=shard_indices,
+                            )
+                    else:
+                        assert output_token_ids is not None
+                        penalty_mask = self._get_sharded_presence_penalty_mask(
+                            coarse_logits,
+                            presence_penalties,
+                            output_token_ids,
+                            shard_indices=shard_indices,
+                        )
+                        if penalty_mask is not None:
+                            coarse_logits.sub_(penalty_mask)
+                self._mask_invalid_shard_logits(
+                    coarse_logits,
+                    None,
+                    active_vocab_size,
+                )
+                candidate_indices = self._select_hybrid_candidates(
+                    hybrid_state, coarse_logits, top_k=local_top_k
+                )
+
+                exact_logits = hybrid_state.refine_logits(
+                    hidden_states,
+                    lm_head.weight,
+                    candidate_indices,
+                    embedding_bias,
+                ).to(torch.float32)
             if self.soft_cap is not None:
                 exact_logits = torch.tanh(exact_logits / self.soft_cap) * self.soft_cap
             if self.scale != 1.0:

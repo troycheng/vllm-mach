@@ -26,8 +26,10 @@ def install(worker):
         raise RuntimeError('Compact head requires ordinary TP1 sampling')
     original = getattr(worker, full._STATE)['fp4']
     state = dataclasses.replace(original, candidates=128, max_rows=64, can_use_failure_counts={})
+    runner._mach_sampling_sidecar = state
     model = runner.model
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, model.lm_head.weight, tp_size=1)
+    nv.capture_hybrid_nvfp4_lm_head(state, model.lm_head.weight, tp_size=1)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
                  hybrid_success_calls=0, hybrid_success_rows=0, calls_by_rows={})
 

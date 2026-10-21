@@ -1,0 +1,305 @@
+{
+  "synthetic": [
+    {
+      "concurrency": 4,
+      "off": 1546.5442432090017,
+      "off_runs": [
+        1552.0056464142856,
+        1541.0828400037176
+      ],
+      "on": 1732.6209846378824,
+      "on_runs": [
+        1731.9424336224613,
+        1733.2995356533033
+      ],
+      "gain_pct": 12.031776151633444
+    },
+    {
+      "concurrency": 16,
+      "off": 4957.9815105811385,
+      "off_runs": [
+        4924.920102577276,
+        4991.042918585001
+      ],
+      "on": 5479.759984851038,
+      "on_runs": [
+        5480.6650686285075,
+        5478.854901073569
+      ],
+      "gain_pct": 10.524010086692325
+    },
+    {
+      "concurrency": 24,
+      "off": 6615.386933273968,
+      "off_runs": [
+        6644.44374272992,
+        6586.330123818016
+      ],
+      "on": 7729.363605328155,
+      "on_runs": [
+        7725.713287707104,
+        7733.013922949207
+      ],
+      "gain_pct": 16.83917635189449
+    },
+    {
+      "concurrency": 32,
+      "off": 7940.112574862658,
+      "off_runs": [
+        7930.195144510256,
+        7950.03000521506
+      ],
+      "on": 9008.108347980338,
+      "on_runs": [
+        9007.712049642902,
+        9008.504646317777
+      ],
+      "gain_pct": 13.450637671042752
+    },
+    {
+      "concurrency": 48,
+      "off": 9707.449272760121,
+      "off_runs": [
+        9836.991918032121,
+        9577.90662748812
+      ],
+      "on": 11002.067179179145,
+      "on_runs": [
+        11008.4160824399,
+        10995.718275918389
+      ],
+      "gain_pct": 13.336334499854917
+    },
+    {
+      "concurrency": 64,
+      "off": 10972.97329075497,
+      "off_runs": [
+        11190.14456217574,
+        10755.802019334198
+      ],
+      "on": 12192.865198102547,
+      "on_runs": [
+        12204.655937829553,
+        12181.074458375539
+      ],
+      "gain_pct": 11.117241198202588
+    }
+  ],
+  "business": [
+    {
+      "concurrency": 4,
+      "off": 24.618207020862876,
+      "off_runs": [
+        24.756933458846007,
+        24.47948058287975
+      ],
+      "on": 26.390249599315887,
+      "on_runs": [
+        26.423580032673197,
+        26.356919165958576
+      ],
+      "gain_pct": 7.198097639488044
+    },
+    {
+      "concurrency": 16,
+      "off": 51.669246352443366,
+      "off_runs": [
+        52.25556860660429,
+        51.08292409828244
+      ],
+      "on": 54.98948158852631,
+      "on_runs": [
+        54.728864278676134,
+        55.250098898376486
+      ],
+      "gain_pct": 6.425940903869853
+    }
+  ],
+  "business_groups": [
+    {
+      "course": "ch",
+      "mode": "text",
+      "concurrency": 4,
+      "off": 21.55759094304069,
+      "off_mean_ms": 167.13275,
+      "on": 23.323993830848963,
+      "on_mean_ms": 155.3199875,
+      "gain_pct": 8.193878863716497
+    },
+    {
+      "course": "ch",
+      "mode": "image",
+      "concurrency": 4,
+      "off": 16.56151587132058,
+      "off_mean_ms": 222.81165625,
+      "on": 17.856307090975502,
+      "on_mean_ms": 207.43865625,
+      "gain_pct": 7.818071906673096
+    },
+    {
+      "course": "math",
+      "mode": "text",
+      "concurrency": 4,
+      "off": 32.832031162060844,
+      "off_mean_ms": 120.01548125,
+      "on": 35.55529684346189,
+      "on_mean_ms": 111.1859125,
+      "gain_pct": 8.294539158905057
+    },
+    {
+      "course": "math",
+      "mode": "image",
+      "concurrency": 4,
+      "off": 23.609269187182946,
+      "off_mean_ms": 166.24258125,
+      "on": 25.306255237671394,
+      "on_mean_ms": 155.23123125,
+      "gain_pct": 7.187795763749061
+    },
+    {
+      "course": "en",
+      "mode": "text",
+      "concurrency": 4,
+      "off": 37.90912386921679,
+      "off_mean_ms": 103.54653125,
+      "on": 39.84969088897169,
+      "on_mean_ms": 98.579075,
+      "gain_pct": 5.118997280047122
+    },
+    {
+      "course": "en",
+      "mode": "image",
+      "concurrency": 4,
+      "off": 26.490954418119077,
+      "off_mean_ms": 147.83100000000002,
+      "on": 27.995447123702327,
+      "on_mean_ms": 139.8709,
+      "gain_pct": 5.67926954173541
+    },
+    {
+      "course": "ch",
+      "mode": "text",
+      "concurrency": 16,
+      "off": 37.50943058988765,
+      "off_mean_ms": 323.94114375000004,
+      "on": 39.95563580548834,
+      "on_mean_ms": 307.19326875,
+      "gain_pct": 6.521573847245166
+    },
+    {
+      "course": "ch",
+      "mode": "image",
+      "concurrency": 16,
+      "off": 35.720424981368694,
+      "off_mean_ms": 343.74753125,
+      "on": 38.13783828208375,
+      "on_mean_ms": 324.56866249999996,
+      "gain_pct": 6.767593896141899
+    },
+    {
+      "course": "math",
+      "mode": "text",
+      "concurrency": 16,
+      "off": 61.29177787557983,
+      "off_mean_ms": 246.5875125,
+      "on": 67.04740317465036,
+      "on_mean_ms": 225.41231249999998,
+      "gain_pct": 9.390534095379376
+    },
+    {
+      "course": "math",
+      "mode": "image",
+      "concurrency": 16,
+      "off": 60.167901186722275,
+      "off_mean_ms": 246.59930624999998,
+      "on": 62.57561971188174,
+      "on_mean_ms": 238.52265,
+      "gain_pct": 4.001666133720483
+    },
+    {
+      "course": "en",
+      "mode": "text",
+      "concurrency": 16,
+      "off": 73.74916195745857,
+      "off_mean_ms": 205.51946875,
+      "on": 78.56435011263326,
+      "on_mean_ms": 193.6208125,
+      "gain_pct": 6.52914287751809
+    },
+    {
+      "course": "en",
+      "mode": "image",
+      "concurrency": 16,
+      "off": 66.90021232689648,
+      "off_mean_ms": 226.92108125,
+      "on": 70.29568709916975,
+      "on_mean_ms": 214.636075,
+      "gain_pct": 5.075431981713097
+    }
+  ],
+  "scope": "Both arms enable the existing Mach K128 greedy hybrid head; only the independent CUDA Graph switch differs. Test-only multimodal adapter; no model-admission changes.",
+  "configuration": {
+    "model": "Qwen3.5-based 2B NVFP4",
+    "gpu": "RTX 5090",
+    "tp": 1,
+    "ssm_dtype": "bfloat16",
+    "kv_dtype": "fp8",
+    "prefix_caching": false,
+    "max_model_len": 16384,
+    "max_num_seqs": 160,
+    "max_num_batched_tokens": 2048,
+    "kv_gib": 19,
+    "cudagraph_sizes": [
+      4,
+      8,
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128,
+      160,
+      2048
+    ],
+    "order": [
+      "graph_off",
+      "graph_on",
+      "graph_on",
+      "graph_off"
+    ],
+    "synthetic_input_tokens": 3000,
+    "synthetic_output_tokens": 1000,
+    "business_records_per_group": 80,
+    "business_warmup_per_group_concurrency": 5,
+    "business_groups": [
+      "ch_text",
+      "ch_image",
+      "math_text",
+      "math_image",
+      "en_text",
+      "en_image"
+    ],
+    "business_stream": false,
+    "business_max_tokens": 2048,
+    "business_temperature": 0,
+    "business_thinking": false
+  },
+  "validation": {
+    "business_success": 3840,
+    "business_requests": 3840,
+    "synthetic_success": 4160,
+    "synthetic_requests": 4160,
+    "model_head_greedy_equal_rows": [
+      1,
+      4,
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "graph_gpu_tests": "Candidate scores compared by token ID, greedy token equality, output ownership and fallback guards passed.",
+    "scope": "Head-level equivalence checks, not full-model accuracy qualification. Stochastic paths have regression coverage but no serving throughput measurement in this study."
+  }
+}

@@ -49,7 +49,7 @@ def fixture():
     processor = NS(head_dtype=None, soft_cap=None, scale=1.)
     class Coarse:
         def __setitem__(self, key, value): events.append(("mask", key, value))
-    state = NS(candidates=128, can_use=lambda *a, **k: True,
+    state = NS(_head_graphs=None, output_size=248320, candidates=128, can_use=lambda *a, **k: True,
                coarse_logits=lambda *a: (events.append(("coarse", a)) or Coarse()),
                select_candidates=lambda *a: (events.append(("select", a)) or "indices"),
                refine_logits=lambda *a: (events.append(("refine", a)) or "refined"))
@@ -71,6 +71,19 @@ class HybridHeadCPU(unittest.TestCase):
     def bind(self, f):
         load()._wrap_sample(f.runner, f.head, f.processor, f.state, "bf16",
                             f.argmax, f.compact, f.stats)
+
+    def test_graph_replay_skips_eager_stages_and_preserves_fallback(self):
+        f = fixture()
+        f.state.replay_greedy = lambda *a: "graph_tokens"
+        self.bind(f)
+        f.runner.sample(f.hidden, f.batch, None)
+        self.assertEqual([e[0] for e in f.events], ["compact"])
+        self.assertEqual(f.events[0][1][1], "graph_tokens")
+        f.events.clear()
+        f.state.replay_greedy = lambda *a: None
+        f.runner.sample(f.hidden, f.batch, None)
+        self.assertEqual([e[0] for e in f.events],
+                         ["coarse", "mask", "select", "refine", "argmax", "compact"])
 
     def test_import_without_gpu_packages(self):
         code = """import builtins, runpy, sys

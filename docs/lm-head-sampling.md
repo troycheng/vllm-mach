@@ -67,6 +67,28 @@ the previous path. Unfiltered sampling and top-p without a supported bounded
 top-k always retain the previous path, even with the switch enabled.
 The ordinary head/sampler remain callable with their original signatures.
 
+## Optional NVFP4 head CUDA Graphs
+
+Set `VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=1` before starting a supported
+2B or 4B compact-head profile to capture independent head stages during
+startup. The default is `0`; setting it to `0` keeps eager head execution.
+This switch does not enable the hybrid head itself or broaden model admission.
+The native MXFP6 startup path and the 4B K2048 full-vocabulary head are not
+changed by this capture integration.
+
+The TP1 compact sidecar captures row counts 1 through 64, bounded by its
+configured limit. Captured stages cover greedy token selection, bounded
+candidate refinement for stochastic top-k, and coarse logits used before
+presence penalties. Penalties and final stochastic sampling retain their
+existing order and admission rules. Both compact greedy and stochastic
+paths share the prepared sidecar.
+
+Replay requires matching weights, candidate configuration, shape, device and
+execution stream. Unsupported calls retain eager execution. Returned outputs
+own their storage, so subsequent replays cannot overwrite them. Graphs use a
+shared memory pool; startup time and persistent GPU memory increase. Capture
+occurs after existing warmup and does not change the selected GEMM tactic.
+
 ## Numerical contract
 
 Candidate search is approximate: BF16 refinement cannot recover tokens omitted
@@ -289,3 +311,56 @@ execution cost was different. Serving now always excludes unfiltered requests
 from the extension, even when bounded top-k optimization is enabled. These data do not validate MoE,
 other GPU architectures, different quantized checkpoints or business answer
 accuracy. Precision limits remain those reported above.
+
+
+## NVFP4 head CUDA Graph comparison (2026-10-21)
+
+Both arms enable the same Mach K128 greedy hybrid head; only
+`VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH` changes. A test-only adapter attaches
+that existing head to the multimodal NVFP4 model. This does not add an NVFP4
+production launcher or widen the model-specific launchers' admission.
+
+The same Qwen3.5-based 2B NVFP4 checkpoint runs on one RTX 5090 with TP1,
+BF16 SSM, FP8 KV, prefix caching disabled, 19 GiB KV allocation, maximum
+sequence length 16384, 160 sequence slots and a 2048-token scheduling budget.
+Both arms retain the same GEMM backend/tactic policy and decoder CUDA Graph
+configuration. Startup compilation and head capture are excluded from timing.
+Four fresh engines run graph off → on → on → off. Values below are arithmetic
+means of two runs, not confidence intervals. All 3840 business requests and
+4160 fixed-length requests succeed.
+
+Fixed-length requests use 3000 input and 1000 output tokens with EOS ignored:
+
+| Concurrency | Graph off tokens/s | Graph on tokens/s | Gain |
+|---:|---:|---:|---:|
+| 4 | 1546.54 | 1732.62 | +12.03% |
+| 16 | 4957.98 | 5479.76 | +10.52% |
+| 24 | 6615.39 | 7729.36 | +16.84% |
+| 32 | 7940.11 | 9008.11 | +13.45% |
+| 48 | 9707.45 | 11002.07 | +13.34% |
+| 64 | 10972.97 | 12192.87 | +11.12% |
+
+Business testing uses 80 records from each Chinese/math/English text/image
+group, five warmup requests per group/concurrency, temperature 0, thinking
+disabled and a 2048-token output cap. Requests are non-streaming; latency is
+full HTTP response time, not TTFT. Aggregate QPS is total successful requests
+divided by total group wall time within each run, then averaged across runs.
+
+| Concurrency | Graph off QPS | Graph on QPS | Gain |
+|---:|---:|---:|---:|
+| 4 | 24.62 | 26.39 | +7.20% |
+| 16 | 51.67 | 54.99 | +6.43% |
+
+Both graph-enabled runs record more than 47000 greedy replays. Head-level
+checks using the actual checkpoint weights produce identical eager/graph
+greedy tokens at rows 1, 4, 16, 24, 32, 48 and 64. Separate GPU regression
+checks verify candidate scores by token ID, returned-output ownership and
+fallback guards. Unsorted candidate order is not required to match.
+These checks do not establish full-model or labeled task accuracy. Stochastic
+top-k and presence-penalty paths have regression coverage; their serving
+performance and other model sizes are not measured by this comparison.
+
+[Machine-readable results](data/nvfp4-head-cudagraph-20261021.json) include
+individual runs, business groups and the test configuration. The graph switch
+remains opt-in; these measurements do not guarantee a benefit for every model
+or workload.

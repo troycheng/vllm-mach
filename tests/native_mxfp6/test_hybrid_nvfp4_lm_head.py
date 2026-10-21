@@ -224,3 +224,61 @@ def test_compact_head_masks_padding_and_preserves_full_logits(
     # Compare against the same FP32 reduction used by candidate refinement.
     exact = torch.einsum("mk,nk->mn", hidden.float(), layer.weight[:192].float())
     torch.testing.assert_close(tokens, exact.bfloat16().argmax(-1))
+
+
+@torch.inference_mode()
+def test_private_head_graph_replay_ownership_and_guards():
+    import pytest
+    from vllm.platforms import current_platform
+    if not torch.cuda.is_available() or not current_platform.has_device_capability(120):
+        pytest.skip("NVFP4 b12x requires SM120")
+    torch.manual_seed(42)
+    layer = torch.nn.Linear(512, 2048, bias=False, device="cuda", dtype=torch.bfloat16)
+    assert prepare_hybrid_nvfp4_lm_head(layer, candidates=128)
+    state = hybrid_nvfp4.get_hybrid_nvfp4_lm_head(layer)
+    state.max_rows = 4
+    hidden = torch.randn((4, 512), device="cuda", dtype=torch.bfloat16)
+    expected = {}
+    for rows in (1, 4):
+        h = hidden[:rows]
+        coarse = state.coarse_logits(h, None)
+        for k in (1, 32, 40, 64, 128):
+            ids = state.select_candidates(coarse, top_k=k)
+            scores = state.refine_logits(h, layer.weight, ids, None)
+            expected[rows, k] = (scores.clone(), ids.clone())
+    state.capture_head_graphs(layer.weight, 4)
+    saved = []
+    for rows in (4, 1, 4):
+        for k in (1, 32, 40, 64, 128):
+            actual = state.replay_candidates(hidden[:rows], layer.weight, k)
+            assert actual is not None
+            # The selector is explicitly unsorted: compare scores by token ID.
+            scores, ids = actual
+            ref_scores, ref_ids = expected[rows, k]
+            order, ref_order = ids.argsort(dim=-1), ref_ids.argsort(dim=-1)
+            torch.testing.assert_close(ids.gather(1, order), ref_ids.gather(1, ref_order),
+                                       atol=0, rtol=0)
+            torch.testing.assert_close(scores.gather(1, order), ref_scores.gather(1, ref_order),
+                                       atol=0, rtol=0)
+            saved.append((actual, tuple(x.clone() for x in actual)))
+        scores, ids = expected[rows, 1]
+        tokens = hybrid_nvfp4.indexed_argmax_triton(scores, ids)[1]
+        torch.testing.assert_close(state.replay_greedy(hidden[:rows], layer.weight), tokens,
+                                   atol=0, rtol=0)
+    # Later graph replays cannot overwrite previously returned outputs.
+    for actual, snapshot in saved:
+        for x, y in zip(actual, snapshot):
+            torch.testing.assert_close(x, y, atol=0, rtol=0)
+    assert state.replay_greedy(hidden, layer.weight.clone()) is None
+    assert state.replay_greedy(hidden.flatten(), layer.weight) is None
+    stream = torch.cuda.Stream()
+    with torch.cuda.stream(stream):
+        assert state.replay_greedy(hidden, layer.weight) is None
+    graphs = state._head_graphs
+    graphs.lock.acquire()
+    try:
+        assert state.replay_greedy(hidden, layer.weight) is None
+    finally:
+        graphs.lock.release()
+    state.candidates = 64
+    assert state.replay_greedy(hidden, layer.weight) is None
