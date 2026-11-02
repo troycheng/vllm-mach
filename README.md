@@ -8,7 +8,7 @@
 <p align="center">MXFP6, MXFP8 and block-FP8 inference for vLLM on NVIDIA RTX 5090</p>
 
 <p align="center">
-  <a href="https://github.com/troycheng/vllm-mach/releases"><img alt="Release" src="https://img.shields.io/github/v/release/troycheng/vllm-mach?include_prereleases&sort=semver"></a>
+  <a href="https://github.com/troycheng/vllm-mach/releases"><img alt="Release" src="https://img.shields.io/github/v/release/troycheng/vllm-mach?sort=semver"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.29.0-6C5CE7">
 </p>
@@ -59,10 +59,10 @@ Random-sampling gains are reported separately from the greedy curves above.
 
 ## Choose and run a profile
 
-Use Linux x86-64, Python 3.12, Docker Buildx and the NVIDIA container runtime. Clone `main`; the 2B/4B profiles were added after the v0.1.1 release.
+Use Linux x86-64, Python 3.12, Docker Buildx and the NVIDIA container runtime. Start from the [v0.2.0 release](https://github.com/troycheng/vllm-mach/releases/tag/v0.2.0):
 
 ```bash
-git clone https://github.com/troycheng/vllm-mach.git
+git clone --branch v0.2.0 https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
 ```
 

@@ -157,7 +157,7 @@ def test_published_serving_counts_and_throughput():
         ("core_ar_quant", "core_gdn_quant", "VLLM_MACH_FUSED_AR_QUANT"),
     ],
 )
-def test_gdn_serving_ablation_changes_only_one_flag(arm, base, changed):
+def test_gdn_serving_ablation_changes_only_expected_flags(arm, base, changed):
     spec = importlib.util.spec_from_file_location(
         "serving_comparison", ROOT / "tools/compare_native_serving.py"
     )
@@ -169,8 +169,12 @@ def test_gdn_serving_ablation_changes_only_one_flag(arm, base, changed):
     command, env = tool.launch_configuration(args, arm)
     base_command, base_env = tool.launch_configuration(args, base)
     assert command == base_command
-    assert {k for k in env if env[k] != base_env[k]} == {changed}
-    assert env[changed] == "1" and base_env[changed] == "0"
+    expected = {changed}
+    if changed == "VLLM_HYBRID_NVFP4_LM_HEAD":
+        expected.add("VLLM_MACH_LM_HEAD_SAMPLING")
+    assert {k for k in env if env[k] != base_env[k]} == expected
+    for key in expected:
+        assert env[key] == "1" and base_env[key] == "0"
 
 
 @pytest.mark.parametrize("arm,base", [("dense_ssm", "dense_default"), ("dense_full", "dense_head")])
