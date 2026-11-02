@@ -50,7 +50,7 @@ reject an older extension that lacks them, even if its package version is
 ## 3. Build and install Mach
 
 ```bash
-git clone https://github.com/troycheng/vllm-mach.git
+git clone --branch v0.2.0 https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
 
 export CUDA_HOME=/usr/local/cuda-13.0
