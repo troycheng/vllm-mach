@@ -198,7 +198,7 @@ def _directory():
 
 def write_receipt(worker, phase):
     from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
-    from . import native_backend, projection_parallel, swiglu_quant, greedy_head
+    from . import native_backend, projection_parallel, swiglu_quant, greedy_head, norm_frontend
 
     receipt = {
         "profile": NAME, "phase": phase, "pid": os.getpid(),
@@ -208,6 +208,7 @@ def write_receipt(worker, phase):
         "native": native_backend.inspect(worker),
         "dual": dual.inspect_worker(worker), "ba": ba.inspect_worker(worker),
         "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_cache(worker),
+        "norm_frontend": norm_frontend.inspect_frontend(),
         "graph": (_quality_graph_receipt(worker, worker._mach_mxfp8_contract["quality_rows"])
                   if worker._mach_mxfp8_contract["mode"] == "quality"
                   else graph_policy.inspect_worker(worker)),
@@ -266,6 +267,8 @@ def install_worker_hook():
         install_worker_backend(self)
         dual.install(self)
         ba.install(self)
+        from . import norm_frontend
+        norm_frontend.install()
         gdn.install_runtime(self)
         return result
 
