@@ -2201,3 +2201,35 @@
  
      def run_fullgraph(
          self, desc: BatchExecutionDescriptor
+--- a/vllm/v1/attention/backends/triton_attn.py
++++ b/vllm/v1/attention/backends/triton_attn.py
+@@ -6,6 +6,8 @@
+ from typing import ClassVar
+ 
+ import torch
++
++from vllm_mach.runtime.attention import preserve_old_softmax_segments
+ 
+ import vllm.envs as envs
+ from vllm._aiter_ops import rocm_aiter_ops
+@@ -208,6 +210,20 @@
+             dtype=torch.float32,
+             device=device,
+         )
++        if self.max_seqs_64_segments > 0 and preserve_old_softmax_segments(vllm_config):
++            # Keep the allocated scratch bytes and request capacity unchanged.
++            # Only its partition view follows the original Mach 16-segment path.
++            self.num_par_softmax_segments = NUM_PAR_SOFTMAX_SEGMENTS
++            self.max_seqs_64_segments = 0
++            self.softmax_segm_output = self.softmax_segm_output.view(
++                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS, headdim_padded
++            )
++            self.softmax_segm_max = self.softmax_segm_max.view(
++                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS
++            )
++            self.softmax_segm_expsum = self.softmax_segm_expsum.view(
++                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS
++            )
+         self.rswa_window = model_config.rswa_window
+         # R-SWA restages prefix lengths in build(), which the no-op
+         # update_draft_decode_metadata() does not refresh.

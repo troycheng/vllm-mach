@@ -39,7 +39,8 @@
     "tests/test_cpu_profile_entry.py",
     "tests/test_mxfp8_ordered_reduction_cpu.py",
     "tests/test_mxfp8_2b_ordering_cpu.py",
-    "tests/test_mxfp8_4b_bf16_ordering_cpu.py"
+    "tests/test_mxfp8_4b_bf16_ordering_cpu.py",
+    "tests/test_attention_segments_cpu.py"
   ],
   "isolated_global_module_mocks": [
     "tests/test_mxfp8_native_cpu.py",
@@ -106,7 +107,8 @@
       "test_selected_mxfp8_actual_compiler_lifecycle",
       "test_selected_mxfp8_4b_keeps_actual_stock_prep_callable",
       "test_selected_mxfp8_4b_actual_prep_binding",
-      "test_low_rows_warm_bound_pool_with_only_zero_slots_before_capture"
+      "test_low_rows_warm_bound_pool_with_only_zero_slots_before_capture",
+      "test_native_requires_registered_selector_and_exact_supported_format"
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",
@@ -114,7 +116,8 @@
     ],
     "native": [
       "test_selected_runtime_profile_sources_are_installed",
-      "test_installed_native_constructor_matches_audited_fixture"
+      "test_installed_native_constructor_matches_audited_fixture",
+      "test_native_requires_registered_selector_and_exact_supported_format"
     ]
   }
 }

@@ -80,11 +80,15 @@
         "vllm/v1/worker/gpu_worker.py": {
           "upstream_sha256": "e46a2659842b5b0238ca5d13ecb4a2dcff91f028493a7117d666edb0785a742c",
           "installed_sha256": "4b1c1c93d584ad293ab91a7cbce2d942d19811bf9f52410aa1c7ea44abb22717"
+        },
+        "vllm/v1/attention/backends/triton_attn.py": {
+          "upstream_sha256": "53b221f99c54b6bc21580d7e3e96a12c5eb1de7397bb4bfafb9d0cb6129cb223",
+          "installed_sha256": "ddcc408c13319e593efef6b4128ddd9170dbbc5725b3aa140b736c1a4ca51aa2"
         }
       },
       "shared_patch": {
         "name": "common-vllm033.patch",
-        "sha256": "f4561e3eb8b7988d34f4895aff71ebefad37aea14fba95c92e6452678bc6747d",
+        "sha256": "2733f75fd18e4b36d6d74819d5045be133e9e453f4eb509abbcb9389a4f27c4a",
         "files": [
           "vllm/envs.py",
           "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
@@ -92,6 +96,7 @@
           "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py",
           "vllm/utils/flashinfer.py",
           "vllm/v1/attention/backends/gdn_attn.py",
+          "vllm/v1/attention/backends/triton_attn.py",
           "vllm/v1/attention/backends/utils.py",
           "vllm/v1/worker/gpu/cudagraph_utils.py"
         ]

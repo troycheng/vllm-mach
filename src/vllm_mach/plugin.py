@@ -96,6 +96,10 @@ def register() -> None:
         install_worker_hook()
         return
     registered = register_dense_kernel()
+    if registered:
+        from .runtime.attention import enable_native
+
+        enable_native()
     if registered and os.environ.get("VLLM_MACH_NATIVE_MXFP8") != "1":
         register_compile_factors()
     if os.environ.get("VLLM_MACH_NATIVE_MXFP8") == "1":
