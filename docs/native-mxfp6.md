@@ -23,7 +23,7 @@ for Dense default (unless both prefill options are explicitly disabled).
 The persistent GDN source is packaged under `vllm_mach.mxfp6.gdn` and JIT-built
 through FlashInfer during warmup.
 
-The wheel includes dense and Quark MoE source patches, a version/file manifest and a FlashInfer local IPC patch. `vllm-mach-install` checks the official dependency versions, stages both patches and checks patch applicability before writing. Incompatible or partially patched installations are rejected. Repeat installation is a no-op. The source patch and plugin must both be installed; the launcher checks the profile before starting workers.
+The wheel packages the shared vLLM 0.33 runtime patch, native Dense/MoE changes and a FlashInfer local IPC patch with their source manifest. `vllm-mach-install` validates dependencies and source fingerprints, composes the non-overlapping vLLM changes in memory, and stages both namespaces before publishing complete files under an installer lock. Failed publication restores the replaced files. Incompatible or partially patched installations are rejected; repeat installation is a no-op. The source profile and plugin must both be installed; the launcher checks the profile before starting workers.
 
 The EXL3 implementation, old runtime overlays and offline asset tools are removed
 and remain available in Git history. The default pytest suite targets
@@ -40,7 +40,7 @@ The default launcher also enables persistent GDN at physical M1/2/4/8 and
 BA overlap at M16/24/32. Persistent changes arithmetic and supports FP32 or FP16 SSM storage
 with FP32 accumulation. Both routes have independent opt-outs and
 retain native execution for unsupported calls. See [GDN validation](gdn-decode.md)
-and the [current measurements](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md).
+and the [historical measurements](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md).
 
 FP16 SSM is opt-in because it changes state precision. Owner prefill retains
 the source series' geometry checks and numerical verification mode; it chooses
@@ -174,12 +174,7 @@ Start the optimized service with the full command in the installation guide.
 For the historical default profile, use the opt-outs above and keep
 the same KV allocation.
 
-The native extension wheels used for acceptance matched the existing compiler
-and ABI contracts; this turn did not rebuild them. Docker was unavailable in
-the validation environment, so the revised Dockerfile was not built here.
-
-Qwen3.5-35B-A3B uses the separate [MoE TP2 integration](qwen35-moe.md),
-with adapters imported from `mxfp6_sm120` revision `cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`.
+Qwen3.5-35B-A3B uses the separate [MoE TP2 integration](qwen35-moe.md). The original adapters came from `mxfp6_sm120` revision `cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`; current builds use the source pin in [runtime versions](installation.md#runtime-versions).
 
 ## MXFP8 serving profiles
 
