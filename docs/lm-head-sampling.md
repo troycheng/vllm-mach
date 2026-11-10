@@ -76,6 +76,8 @@ This switch does not enable the hybrid head itself or broaden model admission.
 The native MXFP6 startup path and the 4B K2048 full-vocabulary head are not
 changed by this capture integration.
 
+The [2B MXFP8 FP32 SSM comparison](mxfp8-2b-champion.md#head-cuda-graph) measured +4.07% HTTP throughput at c16 and +0.10% at c64 with this switch enabled.
+
 The TP1 compact sidecar captures row counts 1 through 64, bounded by its
 configured limit. Captured stages cover greedy token selection, bounded
 candidate refinement for stochastic top-k, and coarse logits used before
