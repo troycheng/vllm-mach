@@ -19,7 +19,26 @@ def helper_sha256():
     return hashlib.sha256(_KERNEL.read_bytes()).hexdigest()
 
 
+def active(spec):
+    if spec.get('version') == 2:
+        from vllm_mach.gdn_prep import four_b_enabled
+        return four_b_enabled()
+    return True
+
+
 def validate(spec, boundary, selected):
+    if spec.get('version') == 2:
+        if (set(spec) != {'version', 'kind', 'function_sha256', 'helper_sha256'}
+                or spec['kind'] != 'gdn128_bf16'
+                or spec['function_sha256'] != 'dde78dd0e0fbf58b105ba9f8d64d749c0901050bdd71ba86bd29305adf1b5ff8'
+                or spec['helper_sha256'] != hashlib.sha256(Path(__file__).with_name('_ordered_reduction_gdn_kernel.py').read_bytes()).hexdigest()
+                or boundary['function_sha256'] != '85920b6fffb03e34d3c4b654155b8810330577e6609294e1044cb7e974992ce9'
+                or boundary['size_hints'] not in ({'x': 65536, 'r0_': 128}, {'x': 262144, 'r0_': 128}, {'x': 524288, 'r0_': 128})
+                or selected != {'XBLOCK': 32, 'num_warps': 2, 'num_stages': 1, 'found_by_coordesc': False}
+                or boundary['architecture'] != {'type': 'cuda', 'cc': 120}
+                or boundary['compiler_flags'] != {'enable_fp_fusion': True, 'disable_ftz': False, 'launch_pdl': False, 'native_matmul': False}):
+            raise ValueError('Unsupported BF16 GDN output norm boundary')
+        return
     if set(spec) != _FIELDS or type(spec['version']) is not int or spec['version'] != 1:
         raise ValueError('Unknown ordered norm source contract')
     group = spec['group']
@@ -40,6 +59,8 @@ def validate(spec, boundary, selected):
 
 def transform(source, kernel_name, spec):
     """Replace only approved accumulator/local sum, preserving the output loop."""
+    if spec.get('version') == 2:
+        return _transform_gdn(source, kernel_name)
     tree = ast.parse(source)
     fn = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == kernel_name)
     original = copy.deepcopy(fn)
@@ -88,10 +109,12 @@ def transform(source, kernel_name, spec):
     return ast.unparse(ast.fix_missing_locations(tree)) + '\n'
 
 
-def validate_globals(fn, canonical_hash):
+def validate_globals(fn, canonical_hash, spec=None):
     """The transformed target hash also binds the two referenced JIT helpers."""
     globals_ = fn.fn.__globals__
-    for node in ast.parse(helper_source()).body:
+    helpers = (Path(__file__).with_name('_ordered_reduction_gdn_kernel.py').read_text()
+               if spec and spec.get('version') == 2 else helper_source())
+    for node in ast.parse(helpers).body:
         if isinstance(node, ast.FunctionDef):
             actual = globals_.get(node.name)
             if actual is None or canonical_hash(actual.src) != canonical_hash(ast.unparse(node)):
@@ -136,3 +159,24 @@ def transform_2b(source, name, spec):
     result = ast.unparse(ast.fix_missing_locations(tree)) + '\n'
     assert canonical_function_sha256(result, name) == c['targets'][before_hash]['after_sha256']
     return result
+
+
+def _transform_gdn(source, kernel_name):
+    tree = ast.parse(source)
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == kernel_name)
+    assignment = next(n for n in fn.body if isinstance(n, ast.Assign)
+                      and any(isinstance(t, ast.Name) and t.id == 'tmp6' for t in n.targets))
+    if ast.unparse(assignment.value) != 'tl.sum(tmp5, 1)[:, None].to(tl.float32)':
+        raise ValueError('GDN norm row sum differs')
+    old = copy.deepcopy(assignment)
+    changed = copy.deepcopy(assignment)
+    changed.value = ast.parse('old_norm128_sum(tmp1, XBLOCK, R0_BLOCK)', mode='eval').body
+    fn.body[fn.body.index(assignment)] = ast.If(
+        test=ast.parse('XBLOCK == 32', mode='eval').body, body=[changed], orelse=[old])
+    helpers = [n for n in ast.parse(Path(__file__).with_name('_ordered_reduction_gdn_kernel.py').read_text()).body
+               if isinstance(n, ast.FunctionDef)]
+    if {n.name for n in helpers} & {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}:
+        raise ValueError('GDN norm helper name collision')
+    index = tree.body.index(fn)
+    tree.body[index:index] = helpers
+    return ast.unparse(ast.fix_missing_locations(tree)) + '\n'

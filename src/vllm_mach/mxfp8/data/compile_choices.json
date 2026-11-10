@@ -1382,7 +1382,13 @@
         "num_stages": 1,
         "num_warps": 2
       },
-      "semantic_key": "62f2fdf17bbc0f38ec0752a423a9490c9f47e53a050cfad7da869fdfc1c1b185"
+      "semantic_key": "62f2fdf17bbc0f38ec0752a423a9490c9f47e53a050cfad7da869fdfc1c1b185",
+      "ordered_reduction": {
+        "function_sha256": "dde78dd0e0fbf58b105ba9f8d64d749c0901050bdd71ba86bd29305adf1b5ff8",
+        "helper_sha256": "4c4c03b704d04c8196fba7d1f14c07f9b538302527f9d2fbdc08a595bd56396a",
+        "kind": "gdn128_bf16",
+        "version": 2
+      }
     },
     {
       "boundary": {

@@ -36,7 +36,8 @@
     "tests/test_runtime_profile_sources_cpu.py",
     "tests/test_cpu_profile_entry.py",
     "tests/test_mxfp8_ordered_reduction_cpu.py",
-    "tests/test_mxfp8_2b_ordering_cpu.py"
+    "tests/test_mxfp8_2b_ordering_cpu.py",
+    "tests/test_mxfp8_4b_bf16_ordering_cpu.py"
   ],
   "isolated_global_module_mocks": [
     "tests/test_mxfp8_native_cpu.py",
@@ -91,6 +92,9 @@
     ],
     "tests/test_mxfp8_2b_ordering_cpu.py::test_selected_mxfp8_4b_keeps_actual_stock_prep_callable": [
       "mxfp8"
+    ],
+    "tests/test_mxfp8_4b_bf16_ordering_cpu.py::test_selected_mxfp8_4b_actual_prep_binding": [
+      "mxfp8"
     ]
   },
   "required_tests": {
@@ -98,7 +102,8 @@
       "test_selected_runtime_profile_sources_are_installed",
       "test_ordered_registration_accepts_current_source_and_rejects_drift",
       "test_selected_mxfp8_actual_compiler_lifecycle",
-      "test_selected_mxfp8_4b_keeps_actual_stock_prep_callable"
+      "test_selected_mxfp8_4b_keeps_actual_stock_prep_callable",
+      "test_selected_mxfp8_4b_actual_prep_binding"
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",

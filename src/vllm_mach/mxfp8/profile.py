@@ -196,6 +196,7 @@ def _directory():
 def write_receipt(worker, phase):
     from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
     from . import native_backend, projection_parallel, swiglu_quant, greedy_head, norm_frontend
+    from vllm_mach import gdn_prep
 
     receipt = {
         "profile": NAME, "phase": phase, "pid": os.getpid(),
@@ -206,6 +207,7 @@ def write_receipt(worker, phase):
         "dual": dual.inspect_worker(worker), "ba": ba.inspect_worker(worker),
         "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_cache(worker),
         "norm_frontend": norm_frontend.inspect_frontend(),
+        "ordered_prep_sources": gdn_prep.identity() if gdn_prep.profile_enabled() else {},
         "graph": (_quality_graph_receipt(worker, worker._mach_mxfp8_contract["quality_rows"])
                   if worker._mach_mxfp8_contract["mode"] == "quality"
                   else graph_policy.inspect_worker(worker)),
@@ -267,6 +269,8 @@ def install_worker_hook():
         from . import norm_frontend
         norm_frontend.install()
         gdn.install_runtime(self)
+        from vllm_mach.gdn_prep import verify_binding
+        verify_binding()
         return result
 
     @wraps(original_load)

@@ -35,7 +35,7 @@ def test_all_policies_keep_exact_original_and_transformed_contract(monkeypatch,m
     else:monkeypatch.setenv('VLLM_MACH_MXFP8_QUALITY_ROWS',mode[-2:])
     m=compiler();policy=m.load_policy();sources=templates(m);seen=[]
     for row in policy['bindings']:
-        if 'ordered_reduction' not in row:continue
+        if m._ordered_spec(row) is None:continue
         spec=row['ordered_reduction'];source,fn=sources[row['boundary']['function_sha256']]
         changed=ordered.transform(source,fn.name,spec);target=next(n for n in ast.parse(changed).body if isinstance(n,ast.FunctionDef) and n.name==fn.name)
         assert ast.dump(target.body[-1],include_attributes=False)==ast.dump(fn.body[-1],include_attributes=False)
@@ -79,7 +79,7 @@ def test_gpu_proven_quality32_function_variants_keep_their_source_identity():
     proofs=json.loads((ROOT/'tests/data/inductor033-ordered-norm-proofs.json').read_text())
     for row in policy['bindings']:
         spec=row.get('ordered_reduction')
-        if spec is None:continue
+        if spec is None or spec.get('version') != 1:continue
         proof=next(p for p in proofs if p['original_function_sha256']==row['boundary']['function_sha256'] and p['group']==spec['group'])
         assert spec['chunk_accumulation']==proof['chunk_accumulation']
         assert spec['function_sha256']==proof['transformed_function_sha256']

@@ -310,10 +310,19 @@ def _source_with_context(source: str, kernel_name: str, anchor: str) -> str:
     return tagged
 
 
+def _ordered_spec(row):
+    spec = row.get("ordered_reduction")
+    if spec is not None:
+        from vllm_mach.mxfp8 import ordered_reduction
+        if ordered_reduction.active(spec):
+            return spec
+    return None
+
+
 def _runtime_bindings(policy, *, include_original=False):
     rows = []
     for row in policy["bindings"]:
-        spec = row.get("ordered_reduction")
+        spec = _ordered_spec(row)
         if spec is None or include_original:
             rows.append(row)
         if spec is not None:
@@ -342,7 +351,7 @@ def _contextual_triton(original):
             anchor = next(iter(context))
             group = [row for row in group if row.get("context_semantic_key") == anchor]
             source_code = _source_with_context(source_code, kernel_name, anchor)
-        ordered = [row for row in group if "ordered_reduction" in row]
+        ordered = [row for row in group if _ordered_spec(row) is not None]
         if ordered:
             if len(ordered) != 1:
                 raise CompileChoiceMismatch("Ambiguous ordered norm source binding")
@@ -373,7 +382,8 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
     arch = ({field: device.get(field) for field in ("type", "cc")} if isinstance(device, dict)
             else {field: getattr(device, field, None) for field in ("type", "cc")})
     bindings = _runtime_bindings(policy, include_original=not require_ordered)
-    if require_ordered and any("ordered_reduction" in row and row["boundary"]["function_sha256"] == function_sha
+    if require_ordered and any(_ordered_spec(row) is not None and row["boundary"]["function_sha256"] == function_sha
+                               and (policy["format_version"] != 2 or row["construction_kind"] == _construction_kind(kernel_alias, kernel_site))
                                and row["boundary"]["size_hints"] == shape and row["boundary"]["architecture"] == arch
                                for row in policy["bindings"]):
         raise CompileChoiceMismatch("Ordered norm source bypassed the finite compiler transform")
@@ -509,7 +519,7 @@ def install() -> bool:
                 return original(*bound.args, **bound.kwargs)
             if "ordered_original_semantic_key" in row:
                 from vllm_mach.mxfp8 import ordered_reduction
-                ordered_reduction.validate_globals(fn, canonical_function_sha256)
+                ordered_reduction.validate_globals(fn, canonical_function_sha256, row["ordered_reduction"])
             selected = _make_config(row, Config)
             bound.arguments["configs"] = [selected]
             # A cold build must not mutate the reviewed launch after choosing
@@ -553,7 +563,7 @@ def inspect(worker=None) -> dict[str, Any]:
                                      if not _BINDING_HITS[row["id"]]],
                 "semantic_hits": dict(_SEMANTIC_HITS),
                 "ordered_reduction_hits": dict(_ORDERED_HITS),
-                "ordered_reduction_bindings": [row["id"] for row in policy["bindings"] if "ordered_reduction" in row],
+                "ordered_reduction_bindings": [row["id"] for row in policy["bindings"] if _ordered_spec(row) is not None],
                 "unknown_semantic_key_count": len(_UNKNOWN_HITS),
                 "unknown_constructions": sum(_UNKNOWN_HITS.values()),
                 "source_mismatches": list(_MISMATCHES),

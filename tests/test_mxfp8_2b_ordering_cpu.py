@@ -33,6 +33,7 @@ def test_selected_mxfp8_actual_compiler_lifecycle(tmp_path):
 def test_selected_mxfp8_4b_keeps_actual_stock_prep_callable():
     env = {**os.environ, 'CUDA_VISIBLE_DEVICES': '', 'VLLM_PLUGINS': '',
            'VLLM_MACH_PROFILE': 'qwen35-4b-mxfp8-champion-v1',
+           'VLLM_MACH_MXFP8_SSM_DTYPE': 'float32',
            'PYTHONPATH': str(ROOT / 'src')}
     subprocess.run([sys.executable, '-c', '''
 import torch
@@ -116,7 +117,7 @@ class Ordered2BCPU(unittest.TestCase):
         four_b = json.loads((package / 'mxfp8/data/compile_choices_quality32.json').read_text())
         self.assertTrue(any('ordered_reduction' in r for r in four_b['bindings']))
         for row in four_b['bindings']:
-            if 'ordered_reduction' in row:
+            if row.get('ordered_reduction', {}).get('version') == 1:
                 self.assertEqual(row['ordered_reduction']['helper_sha256'], hashlib.sha256(old.read_bytes()).hexdigest())
         tree = ast.parse((package / 'mxfp8/two_b/_attention_reduction_kernel.py').read_text())
         fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'reduce_segments_explicit_old_lane')
