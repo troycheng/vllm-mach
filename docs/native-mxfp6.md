@@ -1,9 +1,6 @@
 # Native MXFP6 integration
 
-This profile ports the optimization series based on vLLM `v0.29.0`
-(`98dff2a81d747d1dba01a47f939f48c3526d4206`), ending at
-`8983c0369eb5dfae42194261d06d8fbbdaab15e6`.
-The optimization checkout is not a runtime dependency.
+Mach 0.3 integrates native MXFP6 with vLLM 0.33.0; dependencies are listed in [runtime versions](installation.md#runtime-versions). The original optimization series was based on vLLM `v0.29.0` (`98dff2a81d747d1dba01a47f939f48c3526d4206`), ending at `8983c0369eb5dfae42194261d06d8fbbdaab15e6`. The optimization checkout is not a runtime dependency.
 
 ## Imported boundaries
 
@@ -26,13 +23,7 @@ for Dense default (unless both prefill options are explicitly disabled).
 The persistent GDN source is packaged under `vllm_mach.mxfp6.gdn` and JIT-built
 through FlashInfer during warmup.
 
-The wheel includes a 13-file dense source patch, a separate Quark MoE patch,
-a version/file manifest and
-FlashInfer local IPC patch. `vllm-mach-install` checks the official dependency
-versions, stages both patches and checks patch applicability before writing.
-Incompatible or partially patched installations are rejected. Repeat installation
-is a no-op. The source patch and plugin must both
-be installed; the launcher checks the profile before starting workers.
+The wheel includes dense and Quark MoE source patches, a version/file manifest and a FlashInfer local IPC patch. `vllm-mach-install` checks the official dependency versions, stages both patches and checks patch applicability before writing. Incompatible or partially patched installations are rejected. Repeat installation is a no-op. The source patch and plugin must both be installed; the launcher checks the profile before starting workers.
 
 The EXL3 implementation, old runtime overlays and offline asset tools are removed
 and remain available in Git history. The default pytest suite targets

@@ -4,7 +4,7 @@ The Dense profile can produce MXFP8 activations inside its existing tensor-paral
 
 ## Installation and dispatch
 
-Build `native/ar_norm` with the serving environment's CUDA 13.0, PyTorch and FlashInfer 0.6.18, then install Mach. The default `deploy/install.py` and Docker build include it. To add only this extension to an existing installation:
+Build `native/ar_norm` against Mach 0.3's [runtime versions](installation.md#runtime-versions), then install Mach. The default `deploy/install.py` and Docker build include it. To add only this extension to an existing installation:
 
 ```bash
 python deploy/install.py --native-only --native-part ar_norm --cuda-home /usr/local/cuda
@@ -12,7 +12,7 @@ pip install --no-build-isolation --no-deps .
 vllm-mach-install --apply
 ```
 
-The installed package is `vllm-mach-ar-norm==0.1.0a1`, with native ABI `ar-norm-mxfp8-v1`. Missing or stale binaries fail explicitly for eligible models. There is no JIT build or experiment-directory lookup at startup.
+The installed package is `vllm-mach-ar-norm`, with native ABI `ar-norm-mxfp8-v1`. Missing or stale binaries fail explicitly for eligible models. There is no JIT build or experiment-directory lookup at startup.
 
 `vllm-mach-serve` enables this producer for Dense by default. `--no-fused-ar-quant` disables only this producer; `--no-fused-ar-norm` also disables it. Direct Python users can set `VLLM_MACH_FUSED_AR_QUANT=auto|0|1` (default `auto`). Eligible calls require the prepared native MXFP6 MLP/GDN producers, the existing BF16/SM120/TP2/PP1 Dense manual AR path, hidden size 5120, `CompilationMode.NONE`, and a TRTLLM AllReduce workspace.
 

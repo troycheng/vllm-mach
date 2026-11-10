@@ -2,7 +2,7 @@
 
 `vllm_mach.mxfp8.gdn` packages the ordered-state part of the Qwen3.5-4B MXFP8 champion. It runs inside vLLM's existing GDN opaque operation. Installation, native MXFP8, FP8 KV calibration, graph policy, the projection kernels and the full-vocabulary head must be composed by the complete model profile. This module alone is not a champion deployment or a performance qualification.
 
-The serving boundary is vLLM 0.29.0, one SM120 GPU, TP1, BF16 model and convolution state, FP32 recurrent state by default, `max_num_seqs=128`, `max_model_len=8192`, and 19 GiB KV memory. BF16 and `fp8_e4m3` attention KV configurations are accepted; the latter still requires the complete profile to install its calibrated scales before profiling/capture. Prefix caching, speculative decoding/MTP, ReplaySSM, connectors, cache offload and CPU weight offload are rejected. Source hashes pin vLLM's GDN implementation, packed FLA implementation and GPU runner, independent of their install location.
+The serving boundary is Mach 0.3 on vLLM 0.33.0 ([runtime versions](installation.md#runtime-versions)), one SM120 GPU, TP1, BF16 model and convolution state, FP32 recurrent state by default, `max_num_seqs=128`, `max_model_len=8192`, and 19 GiB KV memory. BF16 and `fp8_e4m3` attention KV configurations are accepted; the latter still requires the complete profile to install its calibrated scales before profiling/capture. Prefix caching, speculative decoding/MTP, ReplaySSM, connectors, cache offload and CPU weight offload are rejected. Source hashes pin vLLM's GDN implementation, packed FLA implementation and GPU runner, independent of their install location.
 
 | Actual decode rows | Route |
 | --- | --- |
