@@ -47,7 +47,7 @@ def test_bf16_admission_excludes_fp32_and_unqualified_layouts():
                     and isinstance(n.target, ast.Name) and n.target.id == 'legacy_bf16')
         code = compile(ast.Expression(gate), file, 'eval')
         def enabled(dtype='bf16', **changes):
-            values = dict(H=16, HV=32, K=128, V=128, BV=32, NV=4, W=4,
+            values = dict(H=16, HV=16 if file.startswith('../two_b/') else 32, K=128, V=128, BV=32, NV=4, W=4,
                           FULL=False, STATE_ROWS=1, USE_PDL=False, warps=4)
             values.update(changes)
             lang = NS(bfloat16='bf16', num_warps=lambda: values['warps'])
@@ -56,14 +56,17 @@ def test_bf16_admission_excludes_fp32_and_unqualified_layouts():
         assert enabled()
         assert not enabled('fp32') and not enabled('fp16')
         for field, value in [('H',8), ('K',64), ('V',64), ('BV',64), ('NV',2),
-                             ('W',8), ('USE_PDL',True)]:
+                             ('W',8)]:
             assert not enabled(**{field:value})
         if file == 'bf16_small_gluon.py':
             assert enabled(HV=16)
-            for change in [dict(HV=24), dict(FULL=True), dict(STATE_ROWS=4), dict(warps=2), dict(warps=8)]:
+            assert enabled(FULL=True,warps=8)
+            assert enabled(FULL=False,warps=2)
+            for change in [dict(HV=24),dict(FULL=True,warps=4),dict(FULL=True,warps=2),dict(STATE_ROWS=4),dict(FULL=False,warps=8),dict(USE_PDL=True)]:
                 assert not enabled(**change)
         else:
-            assert not enabled(HV=16)
+            assert not enabled(HV=32 if file.startswith('../two_b/') else 16)
+            if not file.startswith('../two_b/'):assert not enabled(USE_PDL=True)
             launch = function(GDN / file, 'decode')
             call = next(n for n in ast.walk(launch) if isinstance(n,ast.Call)
                         and isinstance(n.func,ast.Subscript)

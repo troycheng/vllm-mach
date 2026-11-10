@@ -50,7 +50,9 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     legacy_bf16: gl.constexpr = (
         base.dtype.element_ty == gl.bfloat16 and H == 16 and (HV == 16 or HV == 32)
         and K == 128 and V == 128 and BV == 32 and NV == 4 and W == 4
-        and not FULL and STATE_ROWS == 1 and gl.num_warps() == 4 and not USE_PDL)
+        and STATE_ROWS == 1 and not USE_PDL
+        and ((FULL and gl.num_warps() == 8)
+             or (not FULL and (gl.num_warps() == 2 or gl.num_warps() == 4))))
     if USE_PDL:
         # State, indices and pending history may also be produced upstream.
         # Wait before *any* load so repeated decode and slot resets stay safe.

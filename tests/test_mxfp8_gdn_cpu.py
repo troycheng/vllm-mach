@@ -155,7 +155,7 @@ class OrderedGDNContracts(unittest.TestCase):
             "ordered_allm_triton": "dab59137c278acc641191ab5bd3570dc5011e523fbece166a5b9b38f0bd15315",
             "ordered_m4_deferred_triton": "85fafccf509727d73972e0ba9b077449587869b0df4931df2e22845887f34e13",
             "ordered_m16_deferred_triton": "add8b45c3a8cb2c70bea6a98db434bf66200016ccfd3cdc89514de14c2223c63",
-            "bf16_small_gluon": "5a3e55174101aa68e19a4da4e847e50f692bcf67f5a361132139b5b74c1b3d12",
+            "bf16_small_gluon": "9eff8aec4f1bfd1d0aa9c3d2b5eb505442aec27dcfcf383905f6135f5490dfd7",
         }
         for name, expected in fingerprints.items():
             tree = ast.parse((GDN / f"{name}.py").read_text())

@@ -88,10 +88,10 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         subprocess.run([sys.executable, "-c", program], check=True)
         self.assertEqual({p.name for p in GDN.glob("*.py")}, {
             "__init__.py", "dispatch.py", "worker.py", "ordered_allm_triton.py",
-            "metadata_reset.py", "mixed.py", "mixed_ordered_triton.py"})
+            "metadata_reset.py", "mixed.py", "mixed_ordered_triton.py", "packed_fp32.py"})
 
     def test_frozen_kernels_and_installed_source_guards(self):
-        pins = {"ordered_allm_triton.py": "44b817a3cb97ef03c303c63d5c08e80c9206e3ab72cedc7425dc8f8d76f3a69d",
+        pins = {"ordered_allm_triton.py": "0fb411fb98cfe6494a01dd3ec02ce8fdb4f4ee6694f374bffe7e6b04ac91500c",
                 "metadata_reset.py": "f60276ba7b0a61e6ae889658bcfca7ba7dc28d7809778b009c3565a541372226",
                 "dispatch.py": "2edf5ce6370cc22cbe6c894df3e29abcb3604e31b7169608ee4bdab34e31220d"}
         for name, expected in pins.items():
@@ -106,7 +106,7 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         self.assertEqual((worker.STATE_HEADS, worker.QKV_WIDTH, worker.QKV_STRIDE, worker.W),
                          (16, 6144, 8192, 4))
 
-    def test_recurrent_math_matches_qualified_fp32_and_original_bf16(self):
+    def test_recurrent_math_matches_qualified_fp32_and_original_unselected_fallback(self):
         import copy
         fixture = json.loads((Path(__file__).parent / "fixtures/mxfp8_2b_recurrent_order.json").read_text())
         tree = ast.parse((GDN / "ordered_allm_triton.py").read_text())
@@ -116,13 +116,21 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         class Select(ast.NodeTransformer):
             def __init__(self, enabled): self.enabled = enabled
             def visit_AnnAssign(self, node):
-                if isinstance(node.target, ast.Name) and node.target.id == "legacy_fp32":
+                if isinstance(node.target, ast.Name) and node.target.id in ("legacy_fp32", "legacy_bf16"):
                     return None
                 return self.generic_visit(node)
             def visit_If(self, node):
                 if isinstance(node.test, ast.Name) and node.test.id == "legacy_fp32":
-                    return [self.visit(n) for n in (node.body if self.enabled else node.orelse)]
-                return self.generic_visit(node)
+                    body = node.body if self.enabled else node.orelse
+                elif isinstance(node.test, ast.Name) and node.test.id == "legacy_bf16":
+                    body = node.orelse
+                else:
+                    return self.generic_visit(node)
+                result = []
+                for statement in body:
+                    selected = self.visit(statement)
+                    result.extend(selected if isinstance(selected, list) else [selected])
+                return result
 
         replacements = fixture["qualified_replacements"]
         class Qualified(ast.NodeTransformer):

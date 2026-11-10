@@ -24,6 +24,7 @@ FLA_SHA = _SOURCE_FILES["vllm/third_party/flash_linear_attention/ops/fused_recur
 W = 4
 PINNED_IDS = os.environ.get("VLLM_MACH_2B_PINNED_IDS", "1") == "1"
 ROWS = (32,48,64,96,128,160)
+FP32_LOW_ROWS = (1,2,4,8,16,24)
 BF16_ROWS = (1,2,4,8,16,24) + ROWS
 GDN_LAYERS = 18
 STATE_HEADS = 16
@@ -37,6 +38,7 @@ _QUALITY_ROW = None
 _PREPARATION_BYTES = {}
 _COMPONENT = None
 _ACTIVE_TARGET = contextvars.ContextVar("two_b_gdn_ordered_target",default=None)
+_ACTIVE_PACKED = contextvars.ContextVar("two_b_gdn_fp32_stock_target",default=None)
 _ORIG_CORE = None
 _ORIG_DECODE = None
 _READY = False
@@ -48,6 +50,8 @@ _CAPTURE = {}
 _EAGER = {}
 _FALLBACK = {}
 _PROFILE = {}
+_PACKED_CAPTURE = {}
+_PACKED_EAGER = {}
 _ALLOCATION_RESETS = {"new":0,"cached":0,"ids":0}
 
 
@@ -175,6 +179,41 @@ def _relevant(md):
         return None
     return ids[:active_reqs]
 
+
+def _packed_target(layer, md, qkv, b, a, state):
+    import torch
+    m = int(qkv.shape[0])
+    ids = md.non_spec_state_indices_tensor
+    return (_READY and layer.prefix in _LAYERS and state.dtype == torch.float32
+            and os.environ.get("FLA_USE_FAST_OPS", "0") == "0"
+            and m in FP32_LOW_ROWS and qkv.shape == (m, QKV_WIDTH)
+            and qkv.stride() == (QKV_STRIDE, 1)
+            and a.shape == b.shape == (m, STATE_HEADS)
+            and a.stride() == b.stride() == (STATE_HEADS, 1)
+            and qkv.dtype == a.dtype == b.dtype == torch.bfloat16
+            and md.spec_sequence_masks is None and md.num_spec_decodes == 0
+            and md.num_prefills == 0 and md.num_decodes == md.num_actual_tokens == m
+            and ids is not None and ids.numel() >= m and ids.dtype == torch.int32
+            and ids.device == state.device)
+
+
+def _warm_stock_packed(layer, state, maximum):
+    """Compile/load each low-M grid before capture without touching live slots."""
+    import torch
+    if state.dtype != torch.float32:
+        return
+    from .packed_fp32 import decode
+    for m in FP32_LOW_ROWS:
+        if m > maximum:
+            continue
+        ids = torch.zeros((m,),dtype=torch.int32,device=state.device)
+        qkv = torch.empty_strided((m,QKV_WIDTH),(QKV_STRIDE,1),
+                                  dtype=torch.bfloat16,device=state.device)
+        ba = torch.empty((m,STATE_HEADS),dtype=torch.bfloat16,device=state.device)
+        out = torch.empty((m,1,STATE_HEADS,128),dtype=torch.bfloat16,device=state.device)
+        # The unchanged stock state_idx <= 0 branch stores only output zeros.
+        decode(qkv,ba,ba,layer.A_log,layer.dt_bias,state,out,ids)
+
 def _register_gdn():
     global _ORIG_CORE,_ORIG_DECODE
     import torch
@@ -230,11 +269,18 @@ def _register_gdn():
             component.materialize_slots(state,ids,scratch)
         # materialize_slots already resets age=0/prefix=1 before stock reads
         # base. Stock updates only base, so a second metadata launch is redundant.
+        if _packed_target(self,md,mixed_qkv,b,a,state):
+            token = _ACTIVE_PACKED.set(self)
+            try:
+                return _ORIG_CORE(self,mixed_qkv,b,a,core_attn_out,hidden_states)
+            finally:
+                _ACTIVE_PACKED.reset(token)
         return _ORIG_CORE(self,mixed_qkv,b,a,core_attn_out,hidden_states)
 
     @functools.wraps(_ORIG_DECODE)
     def decode(self,mixed_qkv,b,a,core_attn_out,attn_metadata):
-        if _ACTIVE_TARGET.get() is not self:
+        packed = _ACTIVE_PACKED.get() is self
+        if _ACTIVE_TARGET.get() is not self and not packed:
             return _ORIG_DECODE(self,mixed_qkv,b,a,core_attn_out,attn_metadata)
         m = int(attn_metadata.num_actual_tokens)
         ids = attn_metadata.non_spec_state_indices_tensor[:m]
@@ -250,6 +296,13 @@ def _register_gdn():
             mixed_qkv[:m],conv,weights,self.conv1d.bias,self.activation,
             conv_state_indices=ids,validate_data=False)
         parent_out = core_attn_out[:m].unsqueeze(1)
+        if packed:
+            from .packed_fp32 import decode as packed_decode
+            packed_decode(post,a[:m],b[:m],self.A_log,self.dt_bias,state,parent_out,ids)
+            counter = _PACKED_CAPTURE if torch.cuda.is_current_stream_capturing() else _PACKED_EAGER
+            key = (self.prefix,m)
+            counter[key] = counter.get(key,0)+1
+            return
         live = _VIEW_SCRATCH[_view_key(state)]
         component.decode(post,a[:m],b[:m],self.A_log,self.dt_bias,
                          state,parent_out,ids,live,scale=128**-0.5)
@@ -361,6 +414,7 @@ def _prepare_pools(worker):
             component.decode(qkv,ba,ba,layer.A_log,layer.dt_bias,
                              state,out,idx,scratch,scale=128**-0.5)
             component.materialize_slots(state,idx,scratch)
+        _warm_stock_packed(layer,state,_MAX_NUM_SEQS)
     torch.cuda.synchronize(device)
     _READY = True
 
@@ -438,6 +492,7 @@ def inspect_worker(worker):
     if _READY:
         _bound_views(worker)
     component = _component()
+    packed_fp32 = sys.modules.get(__package__ + ".packed_fp32")
     from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import QwenGatedDeltaNetAttention as GDN
     layers = [x for _,x in worker.get_model().named_modules() if isinstance(x,GDN)]
     sources = {path.name:_sha(path) for path in ROOT.glob("*.py")}
@@ -456,7 +511,8 @@ def inspect_worker(worker):
         "configured_rows":list(BF16_ROWS if selected_dtype() == "bfloat16" else ROWS),
         "low_rows_policy":("gluon_on_configured_rows_else_materialize_then_stock"
                            if selected_dtype() == "bfloat16" else
-                           "materialize_relevant_slots_then_stock"),
+                           "materialize_relevant_slots_then_legacy_local4_stock"),
+        "legacy_stock_rows":list(FP32_LOW_ROWS) if selected_dtype() == "float32" else [],
         "adapted_low_kernels_enabled":False,
         "pinned_ids_enabled":PINNED_IDS,
         "eligible_rows":list(_ELIGIBLE_ROWS),
@@ -476,6 +532,9 @@ def inspect_worker(worker):
         "eager_dispatch":{f"{p}|m{m}":n for (p,m),n in _EAGER.items()},
         "fallback_dispatch":{f"{p}|m{m}":n for (p,m),n in _FALLBACK.items()},
         "profile_dispatch":{f"{p}|m{m}":n for (p,m),n in _PROFILE.items()},
+        "legacy_stock_capture":{f"{p}|m{m}":n for (p,m),n in _PACKED_CAPTURE.items()},
+        "legacy_stock_eager":{f"{p}|m{m}":n for (p,m),n in _PACKED_EAGER.items()},
+        "legacy_stock_kernel":packed_fp32.receipt() if packed_fp32 is not None else None,
         "new_block_metadata_resets":dict(_ALLOCATION_RESETS),
         "scratch_bytes":sum(sum(getattr(s,n).numel()*getattr(s,n).element_size()
                   for n in ("pending_k","pending_d","coeff","prefix","age"))

@@ -1,5 +1,5 @@
 {
-  "scope": "GPU three-case8step/twoflush/tworepeat exact against oldkernel; borrowed prefill fixture, not model accuracy qualification.",
+  "scope": "Both originally qualified3cases and remaining6productionbranch8step/tworepeat components all OLD byteexact; borrowed realprefill inputs, not E2E model precision.",
   "component_result_SHA256": "70359f8d7d61dfd17521003b57228e609aff98332784bf1196335ab36973fcfc",
   "kernels": {
     "bf16_small_gluon.py": {
@@ -9,6 +9,10 @@
     "ordered_allm_triton.py": {
       "original_AST": "b3fd3c114b9e7d0c4c6dcfb8553d758e706e5a99e1fbfb133d975fff60ba475e",
       "qualified_candidate_AST": "68485212c5b55934b1b9620a84a066965fe8a464e9c105977d39eb8ce67aa821"
+    },
+    "../two_b/gdn/ordered_allm_triton.py": {
+      "original_AST": "2422be6a685f802b112eb35595926ed2eb97bd499bb034df81666dddd2240dda",
+      "qualified_candidate_AST": "e762be9c9439b8c947c917eca53c3f0735d4b90d7850b0133053ef6ce36adea7"
     }
   },
   "helpers": {
@@ -24,5 +28,6 @@
       "_old_square_128": "cae2c2501654360b638bd43029572da105da0c251524dc5ac6eef97c12881004",
       "_old_dot_128_8local": "9ec7e9d1e2826b984840174f4c320016452ef5a72fc66eb1f5c695d6c0b4a1be"
     }
-  }
+  },
+  "remaining_branches_component_SHA256": "b4c41e308c19fe72786d3894c6688d48c5ec5bae5d8cd1758a71d78635f8b4cb"
 }
