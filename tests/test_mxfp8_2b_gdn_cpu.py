@@ -91,7 +91,7 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
             "metadata_reset.py", "mixed.py", "mixed_ordered_triton.py"})
 
     def test_frozen_kernels_and_installed_source_guards(self):
-        pins = {"ordered_allm_triton.py": "8cc67e0cdba3f26bc99ac6e26984f1268011530302975d69bb7e11dab4a9d0c3",
+        pins = {"ordered_allm_triton.py": "44b817a3cb97ef03c303c63d5c08e80c9206e3ab72cedc7425dc8f8d76f3a69d",
                 "metadata_reset.py": "f60276ba7b0a61e6ae889658bcfca7ba7dc28d7809778b009c3565a541372226",
                 "dispatch.py": "2edf5ce6370cc22cbe6c894df3e29abcb3604e31b7169608ee4bdab34e31220d"}
         for name, expected in pins.items():
@@ -105,6 +105,73 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         self.assertEqual(worker.ROWS, (32, 48, 64, 96, 128, 160))
         self.assertEqual((worker.STATE_HEADS, worker.QKV_WIDTH, worker.QKV_STRIDE, worker.W),
                          (16, 6144, 8192, 4))
+
+    def test_recurrent_math_matches_qualified_fp32_and_original_bf16(self):
+        import copy
+        fixture = json.loads((Path(__file__).parent / "fixtures/mxfp8_2b_recurrent_order.json").read_text())
+        tree = ast.parse((GDN / "ordered_allm_triton.py").read_text())
+        kernel = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_ordered_decode")
+        original = ast.parse(fixture["original_kernel"]).body[0]
+
+        class Select(ast.NodeTransformer):
+            def __init__(self, enabled): self.enabled = enabled
+            def visit_AnnAssign(self, node):
+                if isinstance(node.target, ast.Name) and node.target.id == "legacy_fp32":
+                    return None
+                return self.generic_visit(node)
+            def visit_If(self, node):
+                if isinstance(node.test, ast.Name) and node.test.id == "legacy_fp32":
+                    return [self.visit(n) for n in (node.body if self.enabled else node.orelse)]
+                return self.generic_visit(node)
+
+        replacements = fixture["qualified_replacements"]
+        class Qualified(ast.NodeTransformer):
+            def visit_Call(self, node):
+                key = ast.unparse(node)
+                if key in replacements:
+                    return ast.parse(replacements[key], mode="eval").body
+                return self.generic_visit(node)
+
+        self.assertEqual(ast.dump(Select(False).visit(copy.deepcopy(kernel))), ast.dump(original))
+        self.assertEqual(ast.dump(Select(True).visit(copy.deepcopy(kernel))),
+                         ast.dump(Qualified().visit(copy.deepcopy(original))))
+        decode = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "decode")
+        # The actual dtype/row dispatch, Gluon delegation, launch ABI/config,
+        # state lifecycle and all unsupported-input checks are unchanged.
+        self.assertEqual(ast.dump(decode), ast.dump(ast.parse(fixture["original_decode"]).body[0]))
+
+    def test_recurrent_local4_gate_excludes_bf16_and_other_geometry(self):
+        tree = ast.parse((GDN / "ordered_allm_triton.py").read_text())
+        kernel = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_ordered_decode")
+        gate = next(n.value for n in kernel.body if isinstance(n, ast.AnnAssign)
+                    and isinstance(n.target, ast.Name) and n.target.id == "legacy_fp32")
+        code = compile(ast.Expression(gate), "local4_geometry", "eval")
+        def enabled(dtype="fp32", **changes):
+            values = dict(H=16, HV=16, K=128, V=128, BV=32, NV=4, W=4)
+            values.update(changes)
+            return eval(code, {"__builtins__": {}}, dict(values,
+                base=NS(dtype=NS(element_ty=dtype)), tl=NS(float32="fp32")))
+        self.assertTrue(enabled())
+        self.assertFalse(enabled("bf16"))
+        self.assertFalse(enabled("fp16"))
+        for name, value in (("H", 8), ("HV", 32), ("K", 64), ("V", 64),
+                            ("BV", 64), ("NV", 2), ("W", 8)):
+            with self.subTest(field=name): self.assertFalse(enabled(**{name: value}))
+        dispatch = ast.parse((GDN / "dispatch.py").read_text())
+        fn = next(n for n in dispatch.body if isinstance(n, ast.FunctionDef) and n.name == "decode")
+        self.assertEqual(ast.unparse(fn.body[0]), "return high.decode(*args, **kwargs)")
+
+    def test_shared_recurrent_helper_is_qualified_and_in_source_receipt(self):
+        fixture = json.loads((Path(__file__).parent / "fixtures/mxfp8_2b_recurrent_order.json").read_text())
+        helper = GDN.parents[1] / "gdn/legacy_reduction.py"
+        functions = {n.name: hashlib.sha256(ast.dump(n, include_attributes=False).encode()).hexdigest()
+                     for n in ast.parse(helper.read_text()).body if isinstance(n, ast.FunctionDef)}
+        self.assertEqual(functions, fixture["qualified_helper_functions"])
+        worker = load_worker()
+        self.assertEqual(worker._sha(helper), hashlib.sha256(helper.read_bytes()).hexdigest())
+        source = (GDN / "worker.py").read_text()
+        self.assertIn('sources["../../gdn/legacy_reduction.py"] = _sha(helper)', source)
+        self.assertIn('"legacy_local4_fp32" if selected_dtype() == "float32"', source)
 
     def test_only_frozen_2b_bf16_kv_and_profile_configuration(self):
         worker = load_worker()

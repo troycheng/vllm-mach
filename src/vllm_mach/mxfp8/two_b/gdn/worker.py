@@ -441,12 +441,16 @@ def inspect_worker(worker):
     from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import QwenGatedDeltaNetAttention as GDN
     layers = [x for _,x in worker.get_model().named_modules() if isinstance(x,GDN)]
     sources = {path.name:_sha(path) for path in ROOT.glob("*.py")}
+    helper = ROOT.parents[1] / "gdn" / "legacy_reduction.py"
+    sources["../../gdn/legacy_reduction.py"] = _sha(helper)
     mode, quality_row, budget = _mode_contract()
     record = {"mode":"quality" if mode == "quality" else "normal",
         "profile_mode":mode,"quality_rows":quality_row,
         "kv_cache_memory_bytes":budget,
         "production_throughput_profile":mode == "production",
         "implementation":"two_b_ordered_highM_w4",
+        "recurrent_reduction_order":("legacy_local4_fp32" if selected_dtype() == "float32"
+                                     else "original_bf16_dispatch"),
         "configured_rows":list(BF16_ROWS if selected_dtype() == "bfloat16" else ROWS),
         "low_rows_policy":("gluon_on_configured_rows_else_materialize_then_stock"
                            if selected_dtype() == "bfloat16" else
