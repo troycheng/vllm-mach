@@ -18,6 +18,8 @@ import re
 from pathlib import Path
 import threading
 
+from . import ordered_reduction
+
 from ..mxfp8.compile_choices import (
     _config_fields, _json_hash, _make_config, _require_no_compile_pool, _require_compiler_versions,
     canonical_function_sha256, descriptor, recipe_from_source,
@@ -90,13 +92,18 @@ def select_recipe(source, size_hints, triton_meta, *, kernel_alias, kernel_site=
     # Exact descriptors include the complete arithmetic AST, shape, dtypes,
     # architecture, constants and floating/compiler flags.
     exact = [(row, variant) for row in policy["bindings"] for variant in row["variants"]
-             if variant["semantic_key"] == key]
+             if variant["semantic_key"] == _json_hash({**boundary, "function_sha256":
+                 ordered_reduction.original_body(function_sha, row["selected_fields"])})]
     rms_family = any(isinstance(name, str) and re.fullmatch(
         r"triton_red_fused__to_copy_add_fused_add_rms_norm(?:_per_token_group_fp8_quant_permute)?_\d+", name)
         for name in (kernel_alias, kernel_site))
     related = [row for row in policy["bindings"] if rms_family
                or kernel_alias in row["kernel_aliases"] or kernel_site in row["kernel_sites"]
                or any(v["boundary"]["function_sha256"] == function_sha
+                      or {k: value for k, value in v["boundary"].items()
+                          if k not in ("function_sha256", "compiler_flags")} ==
+                         {k: value for k, value in boundary.items()
+                          if k not in ("function_sha256", "compiler_flags")}
                       for v in row["variants"])]
     if not related and not exact:
         with _LOCK:
@@ -115,7 +122,8 @@ def select_recipe(source, size_hints, triton_meta, *, kernel_alias, kernel_site=
     with _LOCK:
         _HITS[row["id"]] += 1
     return {**row, "matched_variant": variant["name"], "matched_semantic_key": key,
-            "observed_alias": kernel_alias, "observed_site": kernel_site}
+            "observed_alias": kernel_alias, "observed_site": kernel_site,
+            "observed_function_sha256": function_sha}
 
 
 def install(mode=None):
@@ -159,6 +167,8 @@ def install(mode=None):
                                 kernel_site=imeta.get("kernel_name"))
             if row is None:
                 return original(*bound.args, **bound.kwargs)
+            boundary = descriptor(fn.src, bound.arguments["size_hints"], bound.arguments["triton_meta"])
+            bound.arguments["fn"] = ordered_reduction.prepare(fn, row, boundary)
             selected = _make_config(row, Config)
             bound.arguments["configs"] = [selected]
             bound.arguments["inductor_meta"] = {
@@ -168,6 +178,9 @@ def install(mode=None):
             result = original(*bound.args, **bound.kwargs)
             # Torch's cache lookup may replace the incoming configs in init.
             self.configs = [selected]
+            self._mach_fp8_ordered_reduction = (canonical_function_sha256(self.fn.src) !=
+                ordered_reduction.original_body(canonical_function_sha256(self.fn.src), row["selected_fields"]))
+            self._mach_fp8_python_runs = 0
             with _LOCK:
                 _AUTOTUNERS.append((self, row))
             return result
@@ -185,7 +198,14 @@ def _actual_choices():
         if configs is None:
             configs = [r.config for r in getattr(tuner, "compile_results", [])]
             state = "compiled"
-        choices.append({"binding": row["id"], "variant": row["matched_variant"],
+        actual_body = canonical_function_sha256(tuner.fn.src)
+        original_body = ordered_reduction.original_body(actual_body, row["selected_fields"])
+        if actual_body != original_body:
+            ordered_reduction.verify_helpers(tuner.fn)
+        choices.append({"binding": row["id"],
+                        "actual_function_sha256": actual_body,
+                        "ordered_reduction": actual_body != original_body,
+                        "python_run_calls": getattr(tuner, "_mach_fp8_python_runs", 0), "variant": row["matched_variant"],
                         "semantic_key": row["matched_semantic_key"], "state": state,
                         "observed_alias": row["observed_alias"],
                         "observed_site": row["observed_site"],

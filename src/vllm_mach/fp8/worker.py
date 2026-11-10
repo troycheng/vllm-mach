@@ -30,6 +30,9 @@ def validate_worker_config(worker):
     if (cfg.cache_config.cache_dtype not in ("auto", "bfloat16")
             or cfg.cache_config.mamba_ssm_cache_dtype != "float32"):
         raise RuntimeError("Block-FP8 profile requires BF16 KV and FP32 SSM caches")
+    additional = getattr(cfg, "additional_config", None)
+    if not isinstance(additional, dict) or additional.get("gdn_prefill_backend") != "triton":
+        raise RuntimeError("Block-FP8 requires additional_config.gdn_prefill_backend=triton")
     offload = getattr(cfg, "offload_config", None)
     if (getattr(getattr(offload, "uva", None), "cpu_offload_gb", 0)
             or getattr(getattr(offload, "prefetch", None), "offload_group_size", 0)):
@@ -40,6 +43,9 @@ def inspect(worker=None):
     from . import compile_choices
     features = selected_features()
     result = {"features": list(features), "compile_choices": compile_choices.inspect()}
+    from . import quantize, prefill, guard_norm
+    result["legacy_math"] = {"quantize": quantize.receipt(require=False),
+                             "prefill": prefill.inspect(worker), "guard_norm": guard_norm.inspect()}
     if "n64" in features or "ordered" in features:
         from . import linear
         result["linear"] = linear.inspect(worker)
@@ -70,6 +76,8 @@ def install_worker_hook():
     features = selected_features()
     from . import compile_choices
     compile_choices.install()
+    from . import quantize
+    quantize.install()
     if "n64" in features or "ordered" in features:
         from . import linear
         linear.register()
@@ -94,6 +102,9 @@ def install_worker_hook():
             raise RuntimeError("Block-FP8 profile requires CUDA SM120")
         self._mach_fp8_sources = sources
         self._mach_fp8_compiled = False
+        from . import prefill, guard_norm
+        prefill.install()
+        guard_norm.install()
         if "n64" in features or "ordered" in features:
             from . import linear
             linear.install(n64="n64" in features, ordered="ordered" in features)

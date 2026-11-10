@@ -240,6 +240,7 @@ class CompileChoicesTests(unittest.TestCase):
                 self.kwargs, self.num_warps, self.num_stages = kwargs, num_warps, num_stages
         class Autotuner:
             def __init__(self, fn, triton_meta, configs, size_hints=None, inductor_meta=None):
+                self.fn = fn
                 self.received = configs
                 self.inductor_meta = inductor_meta
                 self.configs = [Config({"XBLOCK": 128}, num_warps=4, num_stages=1)]
@@ -323,3 +324,54 @@ class CompileChoicesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OrderedReductionTests(unittest.TestCase):
+    def test_four_actual_tiles_preserve_store_and_restored_hash(self):
+        from vllm_mach.fp8 import ordered_reduction as ordered
+        from vllm_mach.mxfp8.compile_choices import canonical_function_sha256
+        files = ROOT / 'tests/fixtures/fp8_ordered'
+        for mode in ('quality4', 'quality32', 'quality64', 'production'):
+            module = load_module()
+            policy = module.load_policy(mode)
+            seen = set()
+            for row in policy['bindings']:
+                for variant in row['variants']:
+                    body = variant['boundary']['function_sha256']
+                    if body not in (ordered._E875, ordered._558):
+                        self.assertIsNone(ordered.specification(body, row['selected_fields']))
+                        continue
+                    filename = 'premlp_norm.py' if body == ordered._E875 else 'layer1_norm.py'
+                    source = (files / filename).read_text()
+                    name = next(n.name for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
+                    changed = ordered.rewrite(source, name, variant['boundary'], row['selected_fields'])
+                    after = canonical_function_sha256(changed, name)
+                    self.assertEqual(ordered.original_body(after, row['selected_fields']), body)
+                    original_fn = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
+                    changed_fn = next(n for n in ast.parse(changed).body if isinstance(n, ast.FunctionDef) and n.name == name)
+                    self.assertEqual(ast.dump(original_fn.body[-1]), ast.dump(changed_fn.body[-1]))
+                    bad = {**variant['boundary'], 'compiler_flags': {**variant['boundary']['compiler_flags'], 'enable_fp_fusion': False}}
+                    with self.assertRaises(ValueError):
+                        ordered.rewrite(source, name, bad, row['selected_fields'])
+                    with self.assertRaises(RuntimeError):
+                        ordered.rewrite(source.replace('1e-06', '2e-06'), name, variant['boundary'], row['selected_fields'])
+                    seen.add(body)
+            self.assertEqual(seen, {ordered._E875, ordered._558})
+
+    def test_work_qualified_math_files_do_not_require_runtime_imports(self):
+        from vllm_mach.fp8 import ordered_reduction as ordered
+        for body in (ordered._E875, ordered._558):
+            with self.assertRaises(RuntimeError):
+                ordered.specification(body, {'R0_BLOCK': 512})
+        self.assertEqual(ordered.original_body('unrelated', {}), 'unrelated')
+
+    def test_qualified_quant_guard_and_common_prep_mathematical_identity(self):
+        import hashlib
+        expected = json.loads((ROOT / 'tests/fixtures/fp8_legacy_math.json').read_text())
+        from vllm_mach.mxfp8.compile_choices import canonical_function_sha256
+        source = ROOT / 'src/vllm_mach'
+        for filename, functions in expected['functions'].items():
+            text = (source / 'fp8' / filename).read_text()
+            for name, want in functions.items():
+                self.assertEqual(canonical_function_sha256(text, name), want)
+        self.assertEqual(hashlib.sha256((source / '_gdn_prep_kernel.py').read_bytes()).hexdigest(), expected['shared_prep_file_sha256'])
