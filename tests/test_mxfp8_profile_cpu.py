@@ -47,7 +47,7 @@ class ProfileTests(unittest.TestCase):
         sys.modules["torch"] = types.ModuleType("torch")
         return {name: importlib.import_module(f"vllm_mach.mxfp8.{name}") for name in
                 ("worker", "native_backend", "dual", "ba", "gdn", "head", "kv",
-                 "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant", "greedy_head")}
+                 "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant", "greedy_head", "norm_frontend")}
 
     def test_compact_head_selection_is_explicit_and_reset(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -268,7 +268,8 @@ class ProfileTests(unittest.TestCase):
             stack.enter_context(patch.object(self.profile, "check_runtime_sources", return_value={"state": "installed"}))
             stack.enter_context(patch.object(self.profile, "write_receipt", side_effect=lambda worker, phase: events.append(phase)))
             stack.enter_context(patch.object(self.profile, "_verify_quality_capture", side_effect=lambda *args: events.append("quality_capture")))
-            targets = {"compile_choices": ["install", "verify_coverage"],
+            targets = {"norm_frontend": ["install"],
+                       "compile_choices": ["install", "verify_coverage"],
                        "graph_policy": ["install_dispatch", "verify_capture"],
                        "worker": ["install_worker_backend", "verify_worker_execution"],
                        "dual": ["install", "prepare_model", "verify_capture"],
@@ -326,7 +327,7 @@ class ProfileTests(unittest.TestCase):
     def test_compile_warmup_is_not_serving_and_lifecycle_order_is_preserved(self):
         events = self.lifecycle()
         expected = ["original_init", "worker.install_worker_backend", "dual.install", "ba.install",
-                    "gdn.install_runtime", "original_load", "kv.install_scales", "dual.prepare_model",
+                    "norm_frontend.install", "gdn.install_runtime", "original_load", "kv.install_scales", "dual.prepare_model",
                     "ba.prepare_model", "gdn.prepare_layers", "projection_parallel.prepare_model",
                     "original_cache", "gdn.initialize_cache", "gdn.prepare_pools", "original_compile",
                     "original_execute", "worker.verify_worker_execution", "dual.verify_capture", "ba.verify_capture",

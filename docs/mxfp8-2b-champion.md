@@ -68,6 +68,21 @@ The production contract is TP1, text-only, non-speculative inference with BF16 a
 Add `--ssm-dtype bfloat16` to select BF16 state with ordered W4 GDN, now the default backend for both state dtypes. FP32 remains the default storage dtype. Use `--no-ordered-bf16-ssm` to select stock GDN/FLA for BF16 state. Grouped BF16 GDN and GDN PDL remain disabled by default.
 See [BF16 SSM measurements and configuration](mxfp8-benchmark.md).
 
+### Head CUDA Graph
+
+Add `-e VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=1` before the image name in the Docker command above to replay the existing K128 head through a CUDA Graph. This reduces repeated CPU submission while preserving the head's quantization and BF16 refinement.
+
+The November 9 HTTP comparison used FP32 SSM, BF16 KV and 3,000 input / 1,000 output tokens. Two AB/BA pairs were followed by two independent confirmation pairs. The confirmation results are:
+
+| Concurrency | Graph off tokens/s | Graph on tokens/s | Gain |
+|---:|---:|---:|---:|
+| c16 | 4922.95 | 5123.51 | +4.07% |
+| c64 | 9842.68 | 9852.63 | +0.10% |
+
+The combined c16/c64 workload improved by 2.05%. Each point above uses total output tokens divided by total measured time. On actual M16/M64 hidden states, coarse logits and same-index BF16 refinement matched bitwise, and greedy tokens matched. A separate engine ABBA produced identical output tokens for all 1,920 requests.
+
+[Pair-level measurements and configuration](data/mxfp8-2b-head-cudagraph-20261109.json) · [Head graph implementation and controls](lm-head-sampling.md#optional-nvfp4-head-cuda-graphs)
+
 ## Champion components
 
 | Component | Selected behavior |
