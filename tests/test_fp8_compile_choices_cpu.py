@@ -1,4 +1,5 @@
 """CPU contracts for independent stock RMS launch recipes; no Torch install."""
+import ast
 from functools import lru_cache
 import importlib.util
 import inspect
@@ -96,6 +97,48 @@ class CompileChoicesTests(unittest.TestCase):
         terminal = next(r for r in q4 if len(r["variants"]) == 2)
         self.assertEqual(terminal["selected_fields"]["R0_BLOCK"], 1024)
         self.assertEqual(terminal["selected_fields"]["num_warps"], 8)
+
+    def test_quality32_actual_final_norm_matches_stock_without_phantom_coverage(self):
+        fixtures = json.loads((ROOT / "tests/data/inductor033-block-quality32-norms.json").read_text())
+        with patch.dict(os.environ, {"VLLM_MACH_FP8_COMPILE_MODE": "quality32"}):
+            for role, source in fixtures.items():
+                fn = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
+                deco = next(n for n in fn.decorator_list if isinstance(n, ast.Call))
+                keywords = {k.arg: k.value for k in deco.keywords}
+                meta = {}
+                for k, v in zip(keywords["triton_meta"].keys, keywords["triton_meta"].values):
+                    key = ast.literal_eval(k)
+                    meta[key] = ({x.arg: ast.literal_eval(x.value) for x in v.keywords}
+                                 if key == "device" else ast.literal_eval(v))
+                selected = self.m.select_recipe(ast.get_source_segment(source, fn),
+                    ast.literal_eval(keywords["size_hints"]), meta,
+                    kernel_alias=fn.name, kernel_site=fn.name)
+                self.assertEqual((selected["selected_fields"]["R0_BLOCK"],
+                                  selected["selected_fields"]["num_warps"]),
+                                 (4096, 16) if role == "intermediate" else (1024, 8))
+                if role == "final_inplace":
+                    self.assertEqual(selected["id"], "rms_group_01")
+            receipt = self.m.inspect()
+            self.assertEqual(receipt["required_bindings"], 3)
+            self.assertEqual(receipt["missing_bindings"], [])
+            # The separately generated old out-of-place variant is accepted,
+            # but its absence must not add a required runtime group.
+            policy = self.m.load_policy()
+            retained = next(v for row in policy["bindings"] for v in row["variants"]
+                            if v["boundary"]["function_sha256"] ==
+                            "0434deadf367733171da7793906321a53149af1472ecc1d7f686aeb9f195f5dc")
+            row = next(row for row in policy["bindings"] if retained in row["variants"])
+            self.assertEqual((row["selected_fields"]["R0_BLOCK"], row["selected_fields"]["num_warps"]), (4096, 16))
+
+    def test_other_modes_retain_their_launch_choices(self):
+        expected = {"production": [(1024, 8), (1024, 8), (4096, 16)],
+                    "quality4": [(1024, 8), (1024, 8), (4096, 16)],
+                    "quality64": [(4096, 16), (1024, 8), (1024, 8)]}
+        for mode, choices in expected.items():
+            module = load_module()
+            rows = module.load_policy(mode)["bindings"]
+            self.assertEqual([(r["selected_fields"]["R0_BLOCK"], r["selected_fields"]["num_warps"])
+                              for r in rows], choices)
 
     def test_off_does_not_import_torch_or_change_env(self):
         with patch.dict(os.environ, {"VLLM_MACH_FP8_COMPILE_MODE": ""}):

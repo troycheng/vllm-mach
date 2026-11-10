@@ -157,30 +157,7 @@
           },
           "semantic_key": "7b72739bd93f54c8d0b905f457f13508807e9eb319c0a59634603221f07969fc",
           "source_sha256": "fec16e1d423b9575a5ba1b1726bd7267ab4d0f83886b430b4cd5dfca30b5f12b"
-        }
-      ],
-      "provenance_bindings": [
-        "rms_00",
-        "rms_01",
-        "rms_05"
-      ]
-    },
-    {
-      "id": "rms_group_01",
-      "kernel_aliases": [
-        "triton_red_fused__to_copy_add_fused_add_rms_norm_2"
-      ],
-      "kernel_sites": [
-        "triton_red_fused__to_copy_add_fused_add_rms_norm_2"
-      ],
-      "selected_fields": {
-        "XBLOCK": 1,
-        "R0_BLOCK": 4096,
-        "num_warps": 16,
-        "num_stages": 1,
-        "found_by_coordesc": false
-      },
-      "variants": [
+        },
         {
           "name": "stock",
           "boundary": {
@@ -298,7 +275,30 @@
           },
           "semantic_key": "9cbfb58d5d6646dfd6664adc2ee318a2850ab6b9521ea51ee2a10895bffc6769",
           "source_sha256": "bc345149e74a159f7c6b6db774d067f59272680c17aa30ff65b2c8eb63a9c1f0"
-        },
+        }
+      ],
+      "provenance_bindings": [
+        "rms_00",
+        "rms_01",
+        "rms_05"
+      ]
+    },
+    {
+      "id": "rms_group_01",
+      "kernel_aliases": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_2"
+      ],
+      "kernel_sites": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_2"
+      ],
+      "selected_fields": {
+        "XBLOCK": 1,
+        "R0_BLOCK": 1024,
+        "num_warps": 8,
+        "num_stages": 1,
+        "found_by_coordesc": false
+      },
+      "variants": [
         {
           "name": "audited_m32_inplace",
           "boundary": {
