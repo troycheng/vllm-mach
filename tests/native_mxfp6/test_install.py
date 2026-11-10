@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import json
 import os
@@ -206,6 +207,46 @@ def test_actual_frozen_runtime_install_without_cuda_imports(tmp_path):
             assert result["result_sha256"][name]==entry["installed_sha256"]
     assert not installer.install_profile(sites["vllm"],sites["flashinfer"],apply=True,
                                         verify_packages=False)["changed_files"]
+
+
+def test_actual_overlay_registers_env_reads_and_preserves_greedy_flag(tmp_path, monkeypatch):
+    source = os.getenv("VLLM_MACH_TEST_UPSTREAM_SOURCE")
+    if not source:
+        pytest.skip("Set frozen vLLM source root for actual overlay env contracts")
+    from vllm_mach.mxfp8.install import apply_profile_patch
+
+    group = installer.load_manifest()["namespaces"]["vllm"]
+    before = {name: (Path(source) / name).read_bytes() for name in group["files"]}
+    after = apply_profile_patch(before, (installer.PROFILE / group["patch"]).read_bytes(),
+                                group["shared_patch"])
+    tree = ast.parse(after["vllm/envs.py"])
+    registry = next(node.value for node in tree.body
+                    if isinstance(node, ast.AnnAssign)
+                    and isinstance(node.target, ast.Name)
+                    and node.target.id == "environment_variables")
+    getters = {key.value: value for key, value in zip(registry.keys, registry.values)
+               if isinstance(key, ast.Constant)}
+    missing = {}
+    for name, data in after.items():
+        refs = {node.attr for node in ast.walk(ast.parse(data))
+                if isinstance(node, ast.Attribute) and node.attr.startswith("VLLM_")
+                and isinstance(node.value, ast.Name) and node.value.id == "envs"}
+        if refs - getters.keys():
+            missing[name] = sorted(refs - getters.keys())
+    assert missing == {}
+
+    # Execute the installed getter without importing any CUDA package. Preserve
+    # the 0.29 bool(int(...)) contract, including its nonbinary/error behavior.
+    getter = eval(compile(ast.Expression(getters["VLLM_VOCAB_PARALLEL_GREEDY"]),
+                          "installed-env-getter", "eval"), {"os": os})
+    monkeypatch.delenv("VLLM_VOCAB_PARALLEL_GREEDY", raising=False)
+    assert getter() is False
+    for value, expected in [("0", False), ("1", True), ("2", True), ("-1", True)]:
+        monkeypatch.setenv("VLLM_VOCAB_PARALLEL_GREEDY", value)
+        assert getter() is expected
+    monkeypatch.setenv("VLLM_VOCAB_PARALLEL_GREEDY", "invalid")
+    with pytest.raises(ValueError):
+        getter()
 
 
 def test_launcher_resets_stale_optimization_flags(monkeypatch):

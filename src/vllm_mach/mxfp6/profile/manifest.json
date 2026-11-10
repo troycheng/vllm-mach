@@ -15,7 +15,7 @@
         },
         "vllm/envs.py": {
           "upstream_sha256": "a9f665c49da1d8852c19a192f5d5848f0e38f4f56c76b5fafe0c17398945b357",
-          "installed_sha256": "94853026324e045dfcb67e522db5c47f5811061353d6b9485142421267bfe665"
+          "installed_sha256": "45682262aeb83dfb947c9fbeb721c179b90ed7600cc55c091e49dd61eab04f5a"
         },
         "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py": {
           "upstream_sha256": "aec049372738a38fd644305c51e3a0068b008f3ca16da9dfca57191c434ab03f",
@@ -84,7 +84,7 @@
       },
       "shared_patch": {
         "name": "common-vllm033.patch",
-        "sha256": "74ca320d7ee5b1e73026b70a8424c82c117ed8c6d0aac1ef70d313ada9acc63d",
+        "sha256": "c1135d31be1c759d7385f4f1a55fa8944992b25b3bd8a7ab655b948221d92502",
         "files": [
           "vllm/envs.py",
           "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
