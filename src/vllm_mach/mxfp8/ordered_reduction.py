@@ -151,7 +151,8 @@ def transform_2b(source, name, spec):
         square = assigns[broadcast.args[0].id].value
         assert isinstance(square, ast.BinOp) and isinstance(square.op, ast.Mult) and (ast.dump(square.left) == ast.dump(square.right))
         update.value = ast.Call(func=ast.Attribute(value=ast.Name(id='tl', ctx=ast.Load()), attr='fma', ctx=ast.Load()), args=[copy.deepcopy(square.left), copy.deepcopy(square.right), copy.deepcopy(acc)], keywords=[])
-        reduction.value = ast.parse('_old_local_sum(' + acc.id + ', XBLOCK, R0_BLOCK, 8)', mode='eval').body
+        group = 4 if before_hash == '3e6a42e2b0987dce312dc19c4fa55b2bb483df9802bc33e04b21a6c47b0c6d97' else 8
+        reduction.value = ast.parse('_old_local_sum(' + acc.id + ', XBLOCK, R0_BLOCK, ' + str(group) + ')', mode='eval').body
     assert ast.dump(before.body[-1]) == ast.dump(fn.body[-1])
     helpers = [n for n in ast.parse(Path(__file__).with_name('_ordered_reduction_2b_kernel.py').read_text()).body if isinstance(n, ast.FunctionDef)]
     assert not set((n.name for n in helpers)) & set((n.name for n in tree.body if isinstance(n, ast.FunctionDef)))

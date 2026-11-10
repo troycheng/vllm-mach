@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Finite 2B compiler ordering rules; independent of teacher/quality tooling."""
+"""Finite profile-bound compiler ordering rules; independent of teacher/quality tooling."""
 import ast
 import functools
 import hashlib
@@ -22,8 +22,14 @@ _LOCAL = threading.local()
 _REWRITES = 0
 
 
+def policy_path():
+    from vllm_mach.gdn_prep import four_b_enabled
+    return (Path(__file__).parents[1] / 'data' / 'initial_norm_bf16.json'
+            if four_b_enabled() else _PATH)
+
+
 def policy():
-    data = json.loads(_PATH.read_text())
+    data = json.loads(policy_path().read_text())
     if data['format_version'] != 1 or hashlib.sha256(_HELPERS.read_bytes()).hexdigest() != data['helpers_sha256']:
         raise RuntimeError('2B ordered reduction policy/helper differs')
     return data
@@ -57,9 +63,10 @@ def rewrite(source, name):
             return source
         if (body not in data['allowed_unmodified'] and
                 (_geometry(boundary) in [_geometry(b) for v in data['targets'].values() for b in _boundaries(v)]
-                 or name.startswith(('triton_red_fused__to_copy_add_fused_add_rms_norm_',
-                                     'triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_silu_',
-                                     'triton_red_fused__to_copy_add_embedding_rms_norm_')))):
+                 or name.startswith(tuple(data.get('guard_prefixes', (
+                    'triton_red_fused__to_copy_add_fused_add_rms_norm_',
+                    'triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_silu_',
+                    'triton_red_fused__to_copy_add_embedding_rms_norm_')))))):
             raise RuntimeError('Unqualified 2B norm source/geometry')
         return source
     if boundary not in _boundaries(original):
@@ -112,7 +119,8 @@ def _save_diagnostic(reason):
 
 def install():
     global _INSTALLED, _REWRITES
-    if os.environ.get('VLLM_MACH_PROFILE') != 'qwen35-2b-mxfp8-champion-v1':
+    from vllm_mach.gdn_prep import four_b_enabled
+    if os.environ.get('VLLM_MACH_PROFILE') != 'qwen35-2b-mxfp8-champion-v1' and not four_b_enabled():
         raise RuntimeError('Explicit 2B profile required for ordered reductions')
     if _INSTALLED:
         return False
@@ -255,7 +263,7 @@ def receipt(require_complete=False):
             v['after_sha256'] for v in data['targets'].values()}:
         _save_diagnostic('Missing actual 2B ordered norm coverage')
         raise RuntimeError('Missing actual 2B ordered norm coverage')
-    return dict(installed=_INSTALLED, policy_sha256=hashlib.sha256(_PATH.read_bytes()).hexdigest(),
+    return dict(installed=_INSTALLED, policy_sha256=hashlib.sha256(policy_path().read_bytes()).hexdigest(),
                 helper_sha256=data['helpers_sha256'], rewrites=_REWRITES,
                 hook_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 actual=rows, temporary_benchmark_constructors=len(_TEMPORARY),

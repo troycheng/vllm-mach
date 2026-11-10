@@ -218,6 +218,9 @@ def write_receipt(worker, phase):
         "compile_choices": compile_choices.inspect(),
         "counter_scope": "Python execution and CUDA graph construction; graph replay is not counted",
     }
+    if gdn_prep.four_b_enabled():
+        from .two_b import ordered_reduction
+        receipt["initial_norm_ordering"] = ordered_reduction.receipt()
     target = _directory() / f"worker-{os.getpid()}.json"
     temporary = target.with_suffix(".tmp")
     temporary.write_text(json.dumps(receipt, indent=2, allow_nan=False) + "\n")
@@ -243,6 +246,10 @@ def install_worker_hook():
     from . import compile_choices, gdn, graph_policy
     gdn = select_gdn(gdn)
     compile_choices.install()
+    from vllm_mach.gdn_prep import four_b_enabled
+    if four_b_enabled():
+        from .two_b import ordered_reduction
+        ordered_reduction.install()
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
 
@@ -325,6 +332,8 @@ def install_worker_hook():
             compact = greedy_head.install(self)
             if os.environ.get("VLLM_MACH_HEAD_AUDIT") == "1":
                 greedy_head.install_audit(self, compact)
+        if four_b_enabled():
+            ordered_reduction.receipt(require_complete=True)
         write_receipt(self, "compiled")
         self._mach_mxfp8_ready = True
         return result
