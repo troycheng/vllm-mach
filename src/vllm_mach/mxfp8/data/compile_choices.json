@@ -196,7 +196,14 @@
         "num_stages": 1,
         "num_warps": 16
       },
-      "semantic_key": "ed8e9964566804c110ea7d3cad9c135408b1e21eb98a0d6832011056608c4df1"
+      "semantic_key": "ed8e9964566804c110ea7d3cad9c135408b1e21eb98a0d6832011056608c4df1",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 8,
+        "chunk_accumulation": "original",
+        "function_sha256": "c2baba096ec03f7f60bd6fd07d0914f0df2fca939ae1625c2d05b59280246bf7",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
       "boundary": {
@@ -421,7 +428,14 @@
         "num_stages": 1,
         "num_warps": 8
       },
-      "semantic_key": "5fdf8bc511e8cf746c6f6e52c67554758586a9e983d534f4649da45bedf427f7"
+      "semantic_key": "5fdf8bc511e8cf746c6f6e52c67554758586a9e983d534f4649da45bedf427f7",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 4,
+        "chunk_accumulation": "fma",
+        "function_sha256": "727bce2d92acfe174f4775c330c5126c56a9109891bd35d85b34d64d96516169",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
       "boundary": {
@@ -770,7 +784,14 @@
         "num_stages": 1,
         "num_warps": 8
       },
-      "semantic_key": "923de6c9cac2609ae597b06c6e282e415ea58745cf673730dfb36f04a419c13f"
+      "semantic_key": "923de6c9cac2609ae597b06c6e282e415ea58745cf673730dfb36f04a419c13f",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 4,
+        "chunk_accumulation": "separate",
+        "function_sha256": "a19edf67cd0d52b765fcf01ca25e3e53bb1c552ea9d40dcd71a851e8066e00fe",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
       "boundary": {
@@ -1476,7 +1497,14 @@
         "num_stages": 1,
         "num_warps": 16
       },
-      "semantic_key": "5fdf8bc511e8cf746c6f6e52c67554758586a9e983d534f4649da45bedf427f7"
+      "semantic_key": "5fdf8bc511e8cf746c6f6e52c67554758586a9e983d534f4649da45bedf427f7",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 8,
+        "chunk_accumulation": "original",
+        "function_sha256": "48aa89937e6fd1490bfb9d7689062dfaebc017ad9148cb9e1dffe4e5b5d0a8c2",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
       "boundary": {

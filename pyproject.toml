@@ -78,6 +78,7 @@ testpaths = [
     "tests/test_mach_compile_cache.py",
     "tests/test_mxfp8_benchmark.py",
     "tests/test_mxfp8_compile_choices.py",
+    "tests/test_mxfp8_ordered_reduction_cpu.py",
     "tests/test_mxfp8_deploy.py",
     "tests/test_mxfp8_gdn_cpu.py",
     "tests/test_mxfp8_graph_policy.py",

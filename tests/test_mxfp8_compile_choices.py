@@ -47,7 +47,8 @@ def {name}(in_ptr0, out_ptr0, xnumel, XBLOCK: tl.constexpr):
 
 
 def function_source(source):
-    fn = next(node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef))
+    functions = [node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef)]
+    fn = next((node for node in functions if node.name.startswith("triton_")), functions[0])
     return ast.get_source_segment(source, fn)
 
 
@@ -190,7 +191,7 @@ class CompileChoiceTests(unittest.TestCase):
             def triton(self, name, source, *, device_str):
                 if source in self.cache:return self.cache[source]
                 tree = ast.parse(source)
-                function = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
+                function = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
                 deco = next(n for n in function.decorator_list if isinstance(n, ast.Call)
                             and isinstance(n.func, ast.Attribute) and n.func.attr == "reduction")
                 keywords = {n.arg:n.value for n in deco.keywords}
@@ -220,8 +221,9 @@ class CompileChoiceTests(unittest.TestCase):
         self.assertEqual(len(compiler.cache),2)
         before = module.recipe_from_source(norm,fn.name,{},"fixture")["boundary"]
         for source,row,device in compiler.constructions:
-            self.assertEqual(module.recipe_from_source(source,fn.name,{},"fixture")["boundary"],before)
-            self.assertEqual(module.canonical_function_sha256(source,fn.name),before["function_sha256"])
+            expected = {**before, "function_sha256": row["ordered_reduction"]["function_sha256"]} if "ordered_reduction" in row else before
+            self.assertEqual(module.recipe_from_source(source,fn.name,{},"fixture")["boundary"],expected)
+            self.assertEqual(module.canonical_function_sha256(source,fn.name),expected["function_sha256"])
             self.assertEqual(device,"cuda")
             self.assertIn("'mach_compile_context':",source)
 
@@ -238,7 +240,7 @@ class CompileChoiceTests(unittest.TestCase):
             def __init__(self,module):self.module=module;self.cache={}
             def triton(self,name,source,**kwargs):
                 if source in self.cache:return self.cache[source]
-                fn=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef))
+                fn=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name == name)
                 deco=next(n for n in fn.decorator_list if isinstance(n,ast.Call)
                           and isinstance(n.func,ast.Attribute) and any(k.arg=="inductor_meta" for k in n.keywords))
                 keywords={k.arg:k.value for k in deco.keywords};imeta=ast.literal_eval(keywords["inductor_meta"]);meta={}

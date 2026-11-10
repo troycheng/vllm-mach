@@ -34,7 +34,8 @@
     "tests/native_mxfp6/test_fidelity.py",
     "tests/test_stack_cpu.py",
     "tests/test_runtime_profile_sources_cpu.py",
-    "tests/test_cpu_profile_entry.py"
+    "tests/test_cpu_profile_entry.py",
+    "tests/test_mxfp8_ordered_reduction_cpu.py"
   ],
   "isolated_global_module_mocks": [
     "tests/test_mxfp8_native_cpu.py",
