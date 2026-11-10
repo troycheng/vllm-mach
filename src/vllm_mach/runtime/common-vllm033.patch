@@ -376,7 +376,18 @@
  from vllm.model_executor.layers.quantization import QuantizationConfig
  from vllm.model_executor.layers.quantization.auto_awq import AutoAWQConfig
  from vllm.model_executor.layers.quantization.auto_gptq import AutoGPTQConfig
-@@ -108,6 +112,99 @@
+@@ -68,6 +72,10 @@
+     fused_recurrent_gated_delta_rule_packed_decode,
+     fused_sigmoid_gating_delta_rule_update,
+ )
++# Profile choice happens once at module import; other profiles keep the stock callable.
++if os.environ.get("VLLM_MACH_PROFILE") == "qwen35-2b-mxfp8-champion-v1":
++    from vllm_mach.gdn_prep import fused_post_conv_prep
++
+ from vllm.third_party.flash_linear_attention.ops.chunk import l2norm_fwd
+ from vllm.third_party.flash_linear_attention.ops.fused_gdn_decode_post_conv_mtp import (
+     fused_gdn_decode_post_conv_mtp_triton,
+@@ -108,6 +116,99 @@
  
  MAX_FUSED_GDN_MTP_TOKENS = 8
  FUSED_GDN_STATE_DTYPES = (torch.float32, torch.bfloat16)
@@ -476,7 +487,7 @@
  
  
  def supports_fused_mtp_decode() -> bool:
-@@ -160,8 +257,9 @@
+@@ -160,8 +261,9 @@
      * ``platform == cuda``;
      * one of the following:
        - Hopper (SM90) - no further constraints;
@@ -488,7 +499,7 @@
  
      In-tree CuteDSL GDN prefill kernel is chosen when:
      * "cutedsl" is requested; (opt-in only)
-@@ -249,19 +347,26 @@
+@@ -249,19 +351,26 @@
      if current_platform.is_device_capability(90):
          supports_flashinfer = True
      elif (
@@ -525,7 +536,7 @@
  
      if backend in ["flashinfer", "auto"] and supports_flashinfer:
          return backend, "flashinfer"
-@@ -310,6 +415,30 @@
+@@ -310,6 +419,30 @@
          )
  
  
@@ -556,7 +567,7 @@
  def fi_chunk_gated_delta_rule(
      q: torch.Tensor,
      k: torch.Tensor,
-@@ -324,6 +453,8 @@
+@@ -324,6 +457,8 @@
      checkpoint_cu_starts: torch.Tensor | None = None,
      checkpoint_every_n_tokens: int = 0,
      use_cp: Literal["auto"] | bool = "auto",
@@ -565,7 +576,7 @@
  ):
      from flashinfer.gdn_prefill import (
          chunk_gated_delta_rule as chunk_gated_delta_rule_fi,
-@@ -340,7 +471,15 @@
+@@ -340,7 +475,15 @@
  
      g = g.squeeze(0).contiguous()
      beta = beta.squeeze(0).contiguous()
@@ -582,7 +593,7 @@
      fi_g = g.to(torch.float32)
      fi_beta = beta.to(torch.float32)
      if cu_seqlens is not None:
-@@ -359,13 +498,15 @@
+@@ -359,13 +502,15 @@
          checkpoint_every_n_tokens=checkpoint_every_n_tokens,
          use_cp=use_cp,
          backend="flashinfer",
@@ -600,7 +611,7 @@
      else:
          return result.unsqueeze(0), None
  
-@@ -414,6 +555,10 @@
+@@ -414,6 +559,10 @@
          core_attn_out: torch.Tensor | None = None,
          aiter_prefill_metadata: object | None = None,
      ):
@@ -611,7 +622,7 @@
          o, final_state = fi_chunk_gated_delta_rule(
              q=q,
              k=k,
-@@ -424,11 +569,8 @@
+@@ -424,11 +573,8 @@
              output_final_state=output_final_state,
              cu_seqlens=cu_seqlens,
              use_qk_l2norm_in_kernel=use_qk_l2norm_in_kernel,
@@ -625,7 +636,7 @@
          return o, final_state
  
      def forward_native(
-@@ -542,6 +684,28 @@
+@@ -542,6 +688,28 @@
  
  @PluggableLayer.register("qwen_gated_delta_net_attention")
  class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
@@ -654,7 +665,7 @@
      def get_state_shape(
          self,
      ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
-@@ -575,6 +739,13 @@
+@@ -575,6 +743,13 @@
          self.gqa_interleaved_layout = gqa_interleaved_layout
          self.gdn_xpu_backend: str | None = None
          self.qkvz_layout = "interleaved" if gqa_interleaved_layout else "flat"
@@ -668,7 +679,7 @@
          if current_platform.is_xpu():
              requested, gdn_xpu_backend = _resolve_gdn_prefill_backend(vllm_config)
              _log_gdn_backend_decision(vllm_config, requested, gdn_xpu_backend)
-@@ -684,6 +855,12 @@
+@@ -684,6 +859,12 @@
  
          self.chunk_gated_delta_rule = ChunkGatedDeltaRule()
          self.gdn_prefill_backend = self.chunk_gated_delta_rule.gdn_prefill_backend
@@ -681,7 +692,7 @@
          self._prefill_kernels_warmed_up = False
          self.vllm_config = vllm_config
          # FlashInfer's prefill emits mid-prefill states, so an align-mode
-@@ -703,6 +880,13 @@
+@@ -703,6 +884,13 @@
          self.enable_packed_recurrent_decode = (
              envs.VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE
          )
@@ -695,7 +706,7 @@
          self.gdn_decode_kernel = envs.VLLM_GDN_DECODE_KERNEL.strip().lower()
          if self.gdn_decode_kernel == "cuda" and current_platform.is_cuda_alike():
              reason = self._fused_gdn_decode_unsupported_reason(vllm_config)
-@@ -722,11 +906,19 @@
+@@ -722,11 +910,19 @@
          elif current_platform.is_xpu():
              self.gdn_decode_kernel = "XPU"
  
@@ -715,7 +726,7 @@
  
          compilation_config = get_current_vllm_config().compilation_config
          if prefix in compilation_config.static_forward_context:
-@@ -780,6 +972,18 @@
+@@ -780,6 +976,18 @@
          self, vllm_config: VllmConfig
      ) -> str | None:
          conv_state_dtype, recurrent_state_dtype = self.get_state_dtype()
@@ -734,7 +745,7 @@
          if (
              self.gqa_interleaved_layout
              or self.head_k_dim != 128
-@@ -787,7 +991,10 @@
+@@ -787,7 +995,10 @@
              or self.norm.activation not in ("silu", "sigmoid")
              or vllm_config.model_config.dtype != torch.bfloat16
              or conv_state_dtype != torch.bfloat16
@@ -746,7 +757,7 @@
              or not current_platform.has_device_capability(80)
          ):
              return (
-@@ -1075,6 +1282,34 @@
+@@ -1075,6 +1286,34 @@
  
          return query, key, value
  
@@ -781,7 +792,7 @@
      def forward(
          self,
          hidden_states: torch.Tensor,
-@@ -1123,6 +1358,7 @@
+@@ -1123,6 +1362,7 @@
                  projected_states_ba,
                  z,
                  core_attn_out,
@@ -789,7 +800,7 @@
                  layer_name=_encode_layer_name(self.prefix),
                  use_aiter=True,
              )
-@@ -1147,8 +1383,11 @@
+@@ -1147,8 +1387,11 @@
          mixed_qkvz, _ = self.in_proj_qkvz(hidden_states)
          ba, _ = self.in_proj_ba(hidden_states)
  
@@ -801,7 +812,7 @@
              and hidden_states.dtype == torch.bfloat16
              and self.norm.weight.dtype in (torch.bfloat16, torch.float32)
          )
-@@ -1162,6 +1401,7 @@
+@@ -1162,6 +1405,7 @@
                  mixed_qkvz,
                  ba,
                  core_attn_out,
@@ -809,7 +820,7 @@
                  layer_name=_encode_layer_name(self.prefix),
              )
              output, _ = self.out_proj(core_attn_out.flatten(-2))
-@@ -1200,6 +1440,7 @@
+@@ -1200,6 +1444,7 @@
              b.contiguous(),
              a.contiguous(),
              core_attn_out,
@@ -817,7 +828,7 @@
              layer_name=_encode_layer_name(self.prefix),
          )
  
-@@ -1245,6 +1486,7 @@
+@@ -1245,6 +1490,7 @@
                  b.contiguous(),
                  a.contiguous(),
                  core_attn_out,
@@ -825,7 +836,7 @@
                  layer_name=_encode_layer_name(self.prefix),
              )
          else:
-@@ -1559,6 +1801,7 @@
+@@ -1559,6 +1805,7 @@
          b: torch.Tensor,
          a: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -833,7 +844,7 @@
      ):
          """Core conv1d + recurrent attention (standard path).
  
-@@ -1587,6 +1830,13 @@
+@@ -1587,6 +1834,13 @@
              and attn_metadata.num_prefills == 0
              and attn_metadata.num_decodes > 0
          ):
@@ -847,7 +858,7 @@
              return self._forward_core_decode_non_spec(
                  mixed_qkv=mixed_qkv,
                  b=b,
-@@ -1594,6 +1844,21 @@
+@@ -1594,6 +1848,21 @@
                  core_attn_out=core_attn_out,
                  attn_metadata=attn_metadata,
              )
@@ -869,7 +880,7 @@
  
          has_initial_state = attn_metadata.has_initial_state
          spec_query_start_loc = attn_metadata.spec_query_start_loc
-@@ -1780,10 +2045,24 @@
+@@ -1780,10 +2049,24 @@
              core_attn_out_spec, last_recurrent_state = None, None
  
          # 2.2: Process non-spec-decode part
@@ -897,7 +908,7 @@
              core_attn_out_decode, _ = fused_sigmoid_gating_delta_rule_update(
                  A_log=self.A_log,
                  a=a[:num_decode_tokens],
-@@ -1799,6 +2078,11 @@
+@@ -1799,6 +2082,11 @@
                  ],
                  ssm_state_indices=non_spec_state_indices_tensor,
                  use_qk_l2norm_in_kernel=True,
@@ -909,7 +920,7 @@
              )
          else:
              core_attn_out_decode = None
-@@ -1813,10 +2097,89 @@
+@@ -1813,10 +2101,89 @@
              prefill_has_initial_state = attn_metadata.prefill_has_initial_state
              assert prefill_state_indices is not None
              assert prefill_has_initial_state is not None
@@ -1002,7 +1013,7 @@
                  (
                      core_attn_out_non_spec,
                      last_recurrent_state,
-@@ -1832,51 +2195,25 @@
+@@ -1832,51 +2199,25 @@
                      chunk_indices=attn_metadata.chunk_indices,
                      chunk_offsets=attn_metadata.chunk_offsets,
                      use_qk_l2norm_in_kernel=False,
@@ -1068,7 +1079,7 @@
          elif attn_metadata.num_decodes > 0:
              core_attn_out_non_spec, last_recurrent_state = (
                  fused_sigmoid_gating_delta_rule_update(
-@@ -1902,14 +2239,407 @@
+@@ -1902,14 +2243,407 @@
  
          # 3. Merge core attention output
          if spec_sequence_masks is not None and core_attn_out_non_spec is not None:
@@ -1477,7 +1488,7 @@
  
      def _forward_core_decode_aiter(
          self,
-@@ -2117,6 +2847,7 @@
+@@ -2117,6 +2851,7 @@
          mixed_qkvz: torch.Tensor,
          ba: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -1485,7 +1496,7 @@
      ) -> None:
          forward_context = get_forward_context()
          attn_metadata_raw = forward_context.attn_metadata
-@@ -2142,6 +2873,7 @@
+@@ -2142,6 +2877,7 @@
              a=a,
              output_gate=output_gate,
              core_attn_out=core_attn_out,
@@ -1493,7 +1504,7 @@
          )
  
      def _can_use_fused_gdn_mtp_decode(
-@@ -2202,6 +2934,7 @@
+@@ -2202,6 +2938,7 @@
          a: torch.Tensor,
          output_gate: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -1501,7 +1512,7 @@
      ) -> None:
          forward_context = get_forward_context()
          attn_metadata_raw = forward_context.attn_metadata
-@@ -2213,10 +2946,11 @@
+@@ -2213,10 +2950,11 @@
              return
  
          assert isinstance(attn_metadata, GDNAttentionMetadata)
@@ -1516,7 +1527,7 @@
              self._forward_core_decode_spec_fused_norm(
                  mixed_qkv=mixed_qkv,
                  b=b,
-@@ -2226,11 +2960,17 @@
+@@ -2226,11 +2964,17 @@
                  attn_metadata=attn_metadata,
              )
              return
@@ -1534,7 +1545,7 @@
          )
          num_actual_tokens = attn_metadata.num_actual_tokens
          self._rms_norm_gated_cuda(
-@@ -2246,6 +2986,7 @@
+@@ -2246,6 +2990,7 @@
      b_or_ba: torch.Tensor,
      a_or_z_out: torch.Tensor,
      core_attn_out: torch.Tensor,
@@ -1542,7 +1553,7 @@
      layer_name: LayerNameType,
      use_aiter: bool = False,
  ) -> None:
-@@ -2278,6 +3019,7 @@
+@@ -2278,6 +3023,7 @@
              b=b_or_ba,
              a=a_or_z_out,
              core_attn_out=core_attn_out,
@@ -1550,7 +1561,7 @@
          )
  
  
-@@ -2293,6 +3035,7 @@
+@@ -2293,6 +3039,7 @@
      mixed_qkvz: torch.Tensor,
      ba: torch.Tensor,
      core_attn_out: torch.Tensor,
@@ -1558,7 +1569,7 @@
      layer_name: LayerNameType,
  ) -> None:
      layer_name = _resolve_layer_name(layer_name)
-@@ -2302,6 +3045,7 @@
+@@ -2302,6 +3049,7 @@
          mixed_qkvz=mixed_qkvz,
          ba=ba,
          core_attn_out=core_attn_out,

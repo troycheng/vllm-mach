@@ -38,7 +38,7 @@
   },
   "upstream_commit": "4ba787ec9959e566d3b587a796dff07673324da5",
   "base_image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
-  "patch_sha256": "86654359053596bfcdfc146dfc0333a8a22d191ce8be9dff9f3f09ca9bd1cb01",
+  "patch_sha256": "0dc0c9bf672aaeb2224656d907e24a45ef58a5f6664e082a37e2029fef9b96ef",
   "files": {
     "vllm/envs.py": {
       "upstream_sha256": "a9f665c49da1d8852c19a192f5d5848f0e38f4f56c76b5fafe0c17398945b357",
@@ -54,7 +54,7 @@
     },
     "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
       "upstream_sha256": "c6c037ad94d217aa2710cf29d25d8fa6e3856d1be9fc67fa8bd8681b1f5417f9",
-      "installed_sha256": "c081a983ce816a92c3d6c7215023c70eb5291b23760d0c42d049a1c01db4c8f9",
+      "installed_sha256": "c8e9f7d2ec94d86ccd63ce1328f542b96e5c1a8836da4206a883dda72436425b",
       "changed": true,
       "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
     },
@@ -159,6 +159,12 @@
       "installed_sha256": "4442b9e876e31eaee4b938ff28859bd37b6c1a7bea39a0858e442c7f1f54f0c6",
       "changed": true,
       "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/v1/attention/ops/triton_unified_attention.py": {
+      "upstream_sha256": "c1cf2300c99f5dc1fb297d7e556620842ab53c64c5ecda4c6ba89fb8e16215da",
+      "installed_sha256": "e716ef9195cc9d41ef3db9ac0a2f2ce1aa54cade91a4ec62cd0c98d27b5b9160",
+      "changed": true,
+      "purpose": "Explicit 2B segments16 D256 BF16 legacy attention merge; other profiles/geometries keep the stock kernel."
     }
   },
   "arithmetic_contract": {
@@ -169,7 +175,7 @@
   },
   "shared_patch": {
     "name": "common-vllm033.patch",
-    "sha256": "c1135d31be1c759d7385f4f1a55fa8944992b25b3bd8a7ab655b948221d92502",
+    "sha256": "bb325c7204b013d99a0da5e60321f74b5b00f17ca545e2ec4046925e6e5f7461",
     "files": [
       "vllm/envs.py",
       "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",

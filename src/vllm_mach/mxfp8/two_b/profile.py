@@ -117,6 +117,10 @@ def inspect_worker(worker):
     if not projection["native_m16_available"]:
         raise RuntimeError("The 2B champion requires native BF16 BA M16")
     pdl_state = pdl.verify_capture(required)
+    from . import ordered_reduction
+    ordering = ordered_reduction.receipt(require_complete=True)
+    from . import attention
+    from vllm_mach import gdn_prep
     from .. import swiglu_quant
     fusion_state = swiglu_quant.receipt(required)
     heads = [m for name, m in worker.get_model().named_modules() if name.endswith("lm_head")]
@@ -129,9 +133,11 @@ def inspect_worker(worker):
     return {"profile": NAME, "pid": os.getpid(), **contract,
             "versions": check_environment(),
             "runtime_sources": worker._mach_2b_runtime_sources,
-            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state, "swiglu_quant": fusion_state,
+            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state, "swiglu_quant": fusion_state, "ordered_reduction": ordering,
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
             "hybrid_head": hybrid,
+            "ordered_attention_sources": attention.identity(),
+            "ordered_prep_sources": gdn_prep.identity(),
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
 
 
@@ -166,6 +172,8 @@ def install_worker_hook():
     gdn = select_gdn(gdn)
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
+    from . import ordered_reduction
+    ordered_reduction.install()
     pdl.install()
     from .. import swiglu_quant
     swiglu_quant.install()
@@ -184,6 +192,8 @@ def install_worker_hook():
         install_worker_backend(self)
         pdl.prepare()
         gdn.install_runtime(self)
+        from vllm_mach.gdn_prep import verify_binding
+        verify_binding()
         ba.install(self)
         return result
 

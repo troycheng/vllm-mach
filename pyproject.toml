@@ -88,6 +88,7 @@ testpaths = [
     "tests/test_mxfp8_native_cpu.py",
     "tests/test_mxfp8_native_profile_cpu.py",
     "tests/test_mxfp8_norm_frontend_cpu.py",
+    "tests/test_mxfp8_2b_ordering_cpu.py",
     "tests/test_mxfp8_prepare_model.py",
     "tests/test_mxfp8_profile_cpu.py",
     "tests/test_mxfp8_projection_transform.py",

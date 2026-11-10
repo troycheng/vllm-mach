@@ -96,3 +96,43 @@ def validate_globals(fn, canonical_hash):
             actual = globals_.get(node.name)
             if actual is None or canonical_hash(actual.src) != canonical_hash(ast.unparse(node)):
                 raise RuntimeError('Ordered norm JIT helper differs: ' + node.name)
+
+
+def transform_2b(source, name, spec):
+    from vllm_mach.mxfp8.compile_choices import canonical_function_sha256
+    c = {'targets': spec}
+    before_hash = canonical_function_sha256(source, name)
+    assert before_hash in spec
+    tree = ast.parse(source)
+    fn = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name))
+    before = copy.deepcopy(fn)
+    if before_hash == '89c262027f0c0ce34bfeaf0b88543363412f53e3c5443fefefe6c38594fab08d':
+        assignments = {n.targets[0].id: n for n in fn.body if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)}
+        assert ast.unparse(assignments['tmp6'].value) == 'tl.sum(tmp5, 1)[:, None].to(tl.float32)'
+        assert ast.unparse(assignments['tmp2'].value) == 'tmp1 * tmp1'
+        assignments['tmp6'].value = ast.parse('_legacy_gdn_square_sum(tmp1, xmask, XBLOCK).to(tl.float32)', mode='eval').body
+    else:
+        reductions = [n for n in ast.walk(fn) if isinstance(n, ast.Assign) and isinstance(n.value, ast.Subscript) and isinstance(n.value.value, ast.Call) and (ast.unparse(n.value.value.func) == 'tl.sum')]
+        assert len(reductions) == 1
+        reduction = reductions[0]
+        call = reduction.value.value
+        assert ast.literal_eval(call.args[1]) == 1 and isinstance(call.args[0], ast.Name)
+        acc = call.args[0]
+        loop = next((n for n in fn.body if isinstance(n, ast.For)))
+        assigns = {n.targets[0].id: n for n in loop.body if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)}
+        updates = [n for n in assigns.values() if isinstance(n.value, ast.BinOp) and isinstance(n.value.op, ast.Add) and isinstance(n.value.left, ast.Name) and (n.value.left.id == acc.id)]
+        assert len(updates) == 1
+        update = updates[0]
+        broadcast = assigns[update.value.right.id].value
+        assert ast.unparse(broadcast.func) == 'tl.broadcast_to'
+        square = assigns[broadcast.args[0].id].value
+        assert isinstance(square, ast.BinOp) and isinstance(square.op, ast.Mult) and (ast.dump(square.left) == ast.dump(square.right))
+        update.value = ast.Call(func=ast.Attribute(value=ast.Name(id='tl', ctx=ast.Load()), attr='fma', ctx=ast.Load()), args=[copy.deepcopy(square.left), copy.deepcopy(square.right), copy.deepcopy(acc)], keywords=[])
+        reduction.value = ast.parse('_old_local_sum(' + acc.id + ', XBLOCK, R0_BLOCK, 8)', mode='eval').body
+    assert ast.dump(before.body[-1]) == ast.dump(fn.body[-1])
+    helpers = [n for n in ast.parse(Path(__file__).with_name('_ordered_reduction_2b_kernel.py').read_text()).body if isinstance(n, ast.FunctionDef)]
+    assert not set((n.name for n in helpers)) & set((n.name for n in tree.body if isinstance(n, ast.FunctionDef)))
+    tree.body[tree.body.index(fn):tree.body.index(fn)] = helpers
+    result = ast.unparse(ast.fix_missing_locations(tree)) + '\n'
+    assert canonical_function_sha256(result, name) == c['targets'][before_hash]['after_sha256']
+    return result
