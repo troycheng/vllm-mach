@@ -1,6 +1,6 @@
 # Mixed FA2 attention
 
-Mach's mixed FA2 integration derives from [LiRunGuo's vLLM PR #58013](https://github.com/vllm-project/vllm/pull/58013), original head `e17555d2673e632cbe85365a53490a138e4b2fae`. It targets vLLM 0.33.0; the [runtime source manifest](../src/vllm_mach/fp8/data/runtime_sources.json) records the upstream and installed fingerprints.
+Mach's mixed FA2 integration derives from [LiRunGuo's vLLM PR #58013](https://github.com/vllm-project/vllm/pull/58013), original head `e17555d2673e632cbe85365a53490a138e4b2fae`. The current adapter targets pinned vLLM 0.33.0; the [runtime source manifest](../src/vllm_mach/fp8/data/runtime_sources.json) records the upstream and installed fingerprints.
 
 After applying the matching FP8 source profile, set `VLLM_MACH_FP8_FA2=1` before workers construct attention metadata builders. With the flag absent, the original attention call executes. This feature is independent of block-FP8 linear and SiLU quantization and does not apply to the MXFP8 FlashInfer profile.
 
@@ -12,7 +12,7 @@ The supported contract matches the historical adapter: TP1/PP1/DCP1, FA2 decoder
 
 ## Historical validation (2026-10-06)
 
-The c32/c64 attention-input checks are byte-exact, including padding, stock fallback, capture fallback and changing-input graph replay. The full profile's [M4/M32/M64 fixed-gold checks](fp8-profile.md#precision-and-qualification) also match stock byte-for-byte.
+On the vLLM 0.29.0 stack, the c32/c64 attention-input checks were byte-exact, including padding, stock fallback, capture fallback and changing-input graph replay. The full profile's [M4/M32/M64 fixed-gold checks](fp8-profile.md#precision-and-qualification) also matched stock byte-for-byte on that stack.
 
 Mach uses `num_splits=1` for both mixed-batch calls. The original upstream head used zero and produced small decode differences on the tested FA2 binary; forcing one restored byte equality. The [diagnostic record](data/fp8-fa2-source-check-20261006.json) preserves both results. Reproduce with public synthetic inputs:
 

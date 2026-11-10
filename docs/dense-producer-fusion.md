@@ -3,7 +3,8 @@
 Eligible Dense TP2 decode uses the existing MXFP6 producer operations for
 rounded SwiGLU quantization and gated RMSNorm/output projection. The required
 extension is version 0.3.0, built from
-[`1aa0955`](https://github.com/Nekofish-L/mxfp6_sm120/commit/1aa0955aa0bedf6f2bbc87be367301fe5f7c4c8b), as listed in [runtime versions](installation.md#runtime-versions).
+[`1aa0955`](https://github.com/Nekofish-L/mxfp6_sm120/commit/1aa0955aa0bedf6f2bbc87be367301fe5f7c4c8b), as listed in [runtime versions](installation.md#runtime-versions). The original producer integration used native revision
+`cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`.
 
 These two routes are implemented in `gdn_decode.py`, `gdn_output.py`,
 `fused_mlp.py`, and `warmup.py`. Warmup also prepares the separately documented
@@ -25,7 +26,7 @@ its existing model implementation. Runtime fusion is
 limited to BF16 CUDA decode rows 1/2/4/8/16/24/32 and retains the existing
 fallback for other shapes.
 
-## Historical measurements
+## Historical measurements (vLLM 0.29.0)
 
 The offline comparison used Qwen3.8-27B native MXFP6 on two RTX 5090 GPUs,
 TP2, vLLM 0.29.0, FP32 SSM, a BF16 head, and 8218214400 bytes of KV cache per
