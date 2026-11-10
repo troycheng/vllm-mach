@@ -1,41 +1,36 @@
 # syntax=docker/dockerfile:1
-# Build from the public base and the qualified official kernel source:
-# docker build -f deploy/Dockerfile.mxfp8 \
-#   --build-arg MAX_JOBS=8 -t vllm-mach-mxfp8 .
-# Audit a local source checkout without building:
-# python3 deploy/build-mxfp8.py --source-dir ../mxfp6-sm120-champion --check-only
-ARG VLLM_IMAGE=docker.m.daocloud.io/vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b
+ARG VLLM_IMAGE=vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3
 FROM ${VLLM_IMAGE}
 
-# The base already supplies CUDA 13.0 nvcc/runtime and the pinned Torch/FI/Triton.
-# Its installed nvidia/cu13 headers are discovered and passed with -isystem,
-# never -I, so they do not shadow nvcc's CUDA 13.0 crt headers.
+# CUDA13.0.88/Torch2.14+cu130/FI0.7.2/DSL4.8 come from this public base.
+# Shared stack source must precede every native/setup.py and wheel build.
+COPY src/vllm_mach/__init__.py src/vllm_mach/stack.py /opt/mach/src/vllm_mach/
 ARG MAX_JOBS=2
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} TORCH_CUDA_ARCH_LIST=12.0a
 COPY deploy/requirements-mxfp8.txt /opt/mach/deploy/requirements-mxfp8.txt
-RUN python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_URL}" \
-    -r /opt/mach/deploy/requirements-mxfp8.txt
+# Retain complete1.40 telemetry exporters; remove incompatible orphan fragments.
+# Restore Torch-required NCCL on this SM120 image; do not resolve/replace core deps.
+RUN python3 -m pip uninstall -y opentelemetry-exporter-otlp-common opentelemetry-exporter-http-transport \
+    && python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_URL}" \
+       -r /opt/mach/deploy/requirements-mxfp8.txt \
+    && python3 -m pip check
 
-# Standard official wheel build produces both mxfp6_torch and mxfp8_torch,
-# including BA M16 and both dual tile families. No old binary/cache is copied.
-# CUTLASS e6233c... is archived afresh; patches 0001/0003/0004/0005/0006 all apply.
-ARG MXFP6_REVISION=ce0cd05a007504853d2bf3963a183e3c76f3c75b
-COPY deploy/install.py deploy/build-mxfp8.py /opt/mach/deploy/
-RUN test -n "${MXFP6_REVISION}" \
-    && python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \
+# Native 0.3.0 build identities and the complete MXFP6/MXFP8 operator set.
+ARG MXFP6_REVISION=1aa0955aa0bedf6f2bbc87be367301fe5f7c4c8b
+COPY deploy/install.py deploy/build-mxfp8.py deploy/build-mxfp6.py /opt/mach/deploy/
+# One standard wheel build produces both DSOs, BA M16 and both dual tile families.
+RUN python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \
     && mv /opt/mach-build/mxfp8-build.json /opt/mach/mxfp8-build.json \
     && rm -rf /opt/mach-build
 
-# Install the independent MXFP8 profile. Do not install the Dense/MoE/AR/IPC
-# profile or unrelated native extensions. Keep the resulting source SHA receipt.
-COPY pyproject.toml README.md LICENSE NOTICE /opt/mach/
+# Independent profile: do not install unrelated Dense/MoE/AR primitives.
 COPY src /opt/mach/src
+COPY pyproject.toml README.md LICENSE NOTICE /opt/mach/
 WORKDIR /opt/mach
 RUN python3 -m pip install --no-deps --no-build-isolation . \
     && python3 -m vllm_mach.mxfp8.install --apply > /opt/mach/runtime-source-install.json \
+    && python3 -m pip check \
     && rm -rf /opt/mach/build /opt/mach/src/*.egg-info
-
-# Models come from the profile's separately declared materialized assets.
 ENV OMP_NUM_THREADS=1 VLLM_SMALL_BATCH_ATTN=0
 ENTRYPOINT ["vllm-mach-mxfp8-serve"]

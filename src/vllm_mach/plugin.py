@@ -10,6 +10,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from .mxfp6 import register_dense_kernel
+from .stack import BASE_PACKAGES, CACHE_NAMESPACE, NATIVE_VERSION, check_versions
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ def register_compile_factors() -> None:
     from vllm import envs
 
     envs.environment_variables["VLLM_MACH_CODE_HASH"] = _integration_hash
+    envs.environment_variables["VLLM_MACH_STACK"] = lambda: CACHE_NAMESPACE
     for name, default in {
         "VLLM_MACH_FUSED_GEMMA_NORM": "1",
         "VLLM_MACH_MXFP8_BACKEND": "native",
@@ -50,14 +52,27 @@ def register_compile_factors() -> None:
 def register() -> None:
     """Register every compatible vLLM Mach backend."""
 
+    selected = bool(os.environ.get("VLLM_MACH_PROFILE")) or any(
+        os.environ.get(name) == "1" for name in
+        ("VLLM_MACH_NATIVE_MXFP8", "VLLM_MACH_LM_HEAD_SAMPLING")
+    ) or "mach" in {name.strip() for name in os.environ.get("VLLM_PLUGINS", "").split(",")}
     installed = version("vllm").split("+", 1)[0]
-    if installed != "0.29.0":
+    if installed != BASE_PACKAGES["vllm"]:
+        if selected:
+            raise RuntimeError(
+                f"Explicit Mach selection requires vllm=={BASE_PACKAGES['vllm']}; found {installed}"
+            )
         logger.warning(
-            "Skipping vLLM Mach plugin: requires vLLM 0.29.0; found %s. "
+            "Skipping vLLM Mach plugin: requires vLLM %s; found %s. "
             "The installed vLLM runtime will continue without external Mach hooks.",
-            installed,
+            BASE_PACKAGES["vllm"], installed,
         )
         return
+    if selected:
+        check_versions(BASE_PACKAGES, lookup=version)
+        if (os.environ.get("VLLM_MACH_NATIVE_MXFP8") == "1"
+                and not os.environ.get("MXFP8_LIBRARY_PATH")):
+            check_versions({"mxfp6-sm120": NATIVE_VERSION}, lookup=version)
     if os.environ.get("VLLM_MACH_LM_HEAD_SAMPLING", "0") == "1":
         from .mxfp6.sampling import install_sampling_hook
 

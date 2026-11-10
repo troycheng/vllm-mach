@@ -62,7 +62,7 @@ class CompileChoiceTests(unittest.TestCase):
             f"triton_poi_fused_fixture_{i}",
             {"XBLOCK": 512, "num_warps": 4, "num_stages": 1,
              "found_by_coordesc": False}, f"choice_{i:02d}") for i in range(23)]
-        module._POLICY = {"format_version": 1, "torch_version_prefix": "2.13.",
+        module._POLICY = {"format_version": 1, "torch_version": "2.14.0+cu130", "triton_version": "3.8.0",
                           "bindings": bindings, "canonical_conflicts": [],
                           "autotuner_init_sha256": "fixture"}
         meta = {"signature": {"in_ptr0": "*bf16", "out_ptr0": "*bf16",
@@ -72,21 +72,246 @@ class CompileChoiceTests(unittest.TestCase):
                 "enable_fp_fusion": True, "launch_pdl": False, "disable_ftz": False}
         return bindings, meta
 
-    def test_public_policy_has_23_bindings_12_keys_and_explicit_conflicts(self):
+    def test_public_policy_has_16_construction_bindings_11_keys_and_explicit_conflicts(self):
         policy = self.module.load_policy()
-        self.assertEqual(len(policy["bindings"]), 23)
-        self.assertEqual(len({row["semantic_key"] for row in policy["bindings"]}), 12)
+        self.assertEqual(len(policy["bindings"]), 16)
+        self.assertEqual(policy["format_version"], 2)
+        self.assertEqual(len({row["semantic_key"] for row in policy["bindings"]}), 11)
         self.assertEqual(len(policy["canonical_conflicts"]), 3)
-        conflict_sets = {tuple(row["bindings"]) for row in policy["canonical_conflicts"]}
-        self.assertEqual(conflict_sets, {
-            ("choice_02", "choice_08", "choice_14", "choice_16"),
-            ("choice_05", "choice_15"), ("choice_03", "choice_17")})
+        self.assertTrue(all(r["construction_kind"] in ("template", "generated") for r in policy["bindings"]))
+        conflict_sizes = sorted(len(r["bindings"]) for r in policy["canonical_conflicts"])
+        self.assertEqual(conflict_sizes, [2, 2, 2])
         text = self.module._POLICY_FILE.read_text()
         for forbidden in ("/task", "/legacy", ".best_config", "cache_key", "source_relative_path"):
             self.assertNotIn(forbidden, text)
         for row in policy["bindings"]:
             self.assertEqual(row["semantic_key"], self.module._json_hash(row["boundary"]))
             self.assertEqual(row["boundary"]["architecture"], {"type": "cuda", "cc": 120})
+
+    def test_actual_033_copy_source_matches_by_construction_and_exact_math(self):
+        path = SOURCE_FILE.parents[3] / "tests/data/inductor033-combo-copy.py.txt"
+        source = path.read_text()
+        fn = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
+        deco = next(n for n in fn.decorator_list if isinstance(n, ast.Call)
+                    and isinstance(n.func, ast.Attribute) and n.func.attr == "pointwise")
+        keywords = {n.arg: n.value for n in deco.keywords}
+        meta = {}
+        for k, v in zip(keywords["triton_meta"].keys, keywords["triton_meta"].values):
+            name = ast.literal_eval(k)
+            meta[name] = ({x.arg: ast.literal_eval(x.value) for x in v.keywords}
+                          if name == "device" else ast.literal_eval(v))
+        shape = ast.literal_eval(keywords["size_hints"])
+        source = function_source(source)  # CachingAutotuner receives JITFunction.src.
+        generated = self.module.select_recipe(source, shape, meta,
+            kernel_alias=fn.name, kernel_site=fn.name)
+        self.assertEqual(generated["construction_kind"], "generated")
+        self.assertEqual(generated["selected_fields"]["XBLOCK"], 512)
+        renamed = source.replace(fn.name, "triton_poi_fused_999")
+        self.assertEqual(self.module.select_recipe(renamed, shape, meta,
+            kernel_alias="triton_poi_fused_999", kernel_site="triton_poi_fused_999")["id"], generated["id"])
+        template = self.module.select_recipe(source, shape, meta,
+            kernel_alias="triton_", kernel_site="Placeholder.DESCRIPTIVE_NAME")
+        self.assertEqual(template["construction_kind"], "template")
+        self.assertEqual(template["selected_fields"]["XBLOCK"], 256)
+        self.assertEqual(len(self.module.inspect()["seen_bindings"]), 2)
+        self.assertFalse(any(k.startswith("choice_") for k in self.module.inspect()["seen_bindings"]))
+        for flags in ({"enable_fp_fusion": False}, {"disable_ftz": True},
+                      {"configs": [{(0,): [["tt.divisibility", 8]]}]}):
+            with self.assertRaisesRegex(self.module.CompileChoiceMismatch, "boundary changed"):
+                self.module.select_recipe(source, shape, {**meta, **flags}, kernel_alias=fn.name, kernel_site=fn.name)
+        changed = source.replace("tl.store(out_ptr0 + (x2), tmp0, xmask)",
+                                 "tl.store(out_ptr0 + (x2), tmp0 + 0.125, xmask)")
+        self.assertNotEqual(changed, source)
+        self.assertIsNone(self.module.select_recipe(changed, shape, meta,
+            kernel_alias=fn.name, kernel_site=fn.name))
+        with self.assertRaisesRegex(self.module.CompileChoiceMismatch, "exact site"):
+            self.module.select_recipe(source, shape, meta, kernel_alias=fn.name, kernel_site="wrong_site")
+        with self.assertRaisesRegex(self.module.CompileChoiceMismatch, "coverage incomplete"):
+            self.module.verify_coverage()
+
+    def test_gdn_output_pointer_update_is_one_explicit_math_preserving_rename(self):
+        source = (SOURCE_FILE.parents[3] / "tests/data/inductor033-gdn-output-rename.py.txt").read_text()
+        fn = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
+        new = self.module.recipe_from_source(source, fn.name, {}, "fixture")
+        self.assertEqual(new["semantic_key"], "62f2fdf17bbc0f38ec0752a423a9490c9f47e53a050cfad7da869fdfc1c1b185")
+        old = self.module.recipe_from_source(source.replace("out_ptr2", "out_ptr1"), fn.name, {}, "fixture")
+        self.assertEqual(old["semantic_key"], "000bcbaee5e2ee61dc880753956da52de3253e0fe53ad9f66701a1a6d6f49e50")
+        self.assertEqual(fn.args.args[3].arg, "out_ptr2")
+        rows = [r for r in self.module.load_policy()["bindings"] if r["semantic_key"] == new["semantic_key"]]
+        self.assertEqual({r["construction_kind"]:r["selected_fields"]["XBLOCK"] for r in rows},
+                         {"template":8,"generated":32})
+
+    def test_actual_residual_rms_keeps_gdn_tree_despite_kernel_renumbering(self):
+        data = SOURCE_FILE.parents[3] / "tests/data"
+        norm = (data/"inductor033-residual-rms.py.txt").read_text()
+        gdn = (data/"inductor033-gdn-output-rename.py.txt").read_text()
+        fn = next(n for n in ast.parse(norm).body if isinstance(n, ast.FunctionDef))
+        deco = next(n for n in fn.decorator_list if isinstance(n, ast.Call)
+                    and isinstance(n.func, ast.Attribute) and n.func.attr == "reduction")
+        keywords = {n.arg:n.value for n in deco.keywords}; meta = {}
+        for k,v in zip(keywords["triton_meta"].keys, keywords["triton_meta"].values):
+            name = ast.literal_eval(k)
+            meta[name] = ({x.arg:ast.literal_eval(x.value) for x in v.keywords}
+                          if name == "device" else ast.literal_eval(v))
+        shape = ast.literal_eval(keywords["size_hints"])
+        choose = lambda **kwargs:self.module.select_recipe(function_source(norm),shape,meta,
+            kernel_alias=fn.name,kernel_site=fn.name,**kwargs)
+        # Exact live module code constants identify the GDN partition. The new
+        # norm_1 must use GDN's old4096 tree, not attention's old1024 tree.
+        program = "gdn_source = " + repr(gdn) + "\nnorm_source = " + repr(norm) + "\nanswer = choose()\n"
+        scope = {"choose":choose};exec(compile(program,"<generated-wrapper-contract>","exec"),scope)
+        row = scope["answer"]
+        self.assertEqual(row["selected_fields"]["R0_BLOCK"],4096)
+        self.assertEqual(row["selected_fields"]["num_warps"],16)
+        anchors = {r["context_semantic_key"] for r in self.module.load_policy()["bindings"]
+                   if "context_semantic_key" in r}
+        attention = next(key for key in anchors if key.startswith("9f65"))
+        self.assertEqual(choose(kernel_context={attention})["selected_fields"]["R0_BLOCK"],1024)
+        with self.assertRaisesRegex(self.module.CompileChoiceMismatch,"exact site"):
+            choose(kernel_context=anchors)
+        with self.assertRaisesRegex(self.module.CompileChoiceMismatch,"exact site"):
+            choose(kernel_context=set())
+        with self.assertRaisesRegex(self.module.CompileChoiceMismatch,"exact site"):
+            choose()
+        keys = self.module._code_semantic_keys((gdn,norm))
+        self.assertEqual(len(keys),2)
+        self.assertIn(row["semantic_key"],keys)
+        self.assertIn(row["context_semantic_key"],keys)
+
+    def test_identical_norm_modules_keep_separate_gdn_and_attention_cached_tuners(self):
+        data = SOURCE_FILE.parents[3] / "tests/data"
+        norm = (data/"inductor033-residual-rms.py.txt").read_text()
+        anchors = [(data/"inductor033-gdn-output-rename.py.txt").read_text(),
+                   (data/"inductor033-attention-sigmoid.py.txt").read_text()]
+        fn = next(n for n in ast.parse(norm).body if isinstance(n, ast.FunctionDef))
+        module = self.module
+        class Compiler:
+            def __init__(self):self.cache = {};self.constructions = []
+            def triton(self, name, source, *, device_str):
+                if source in self.cache:return self.cache[source]
+                tree = ast.parse(source)
+                function = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
+                deco = next(n for n in function.decorator_list if isinstance(n, ast.Call)
+                            and isinstance(n.func, ast.Attribute) and n.func.attr == "reduction")
+                keywords = {n.arg:n.value for n in deco.keywords}
+                imeta = ast.literal_eval(keywords["inductor_meta"])
+                meta = {}
+                for k,v in zip(keywords["triton_meta"].keys, keywords["triton_meta"].values):
+                    key = ast.literal_eval(k)
+                    meta[key] = ({x.arg:ast.literal_eval(x.value) for x in v.keywords}
+                                 if key == "device" else ast.literal_eval(v))
+                row = module.select_recipe(function_source(source),ast.literal_eval(keywords["size_hints"]),meta,
+                    kernel_alias=name,kernel_site=name,kernel_context={imeta["mach_compile_context"]})
+                self.cache[source] = row;self.constructions.append((source, row, device_str))
+                return row
+        Compiler.triton = module._contextual_triton(Compiler.triton)
+        compiler = Compiler();results = []
+        for anchor in anchors:
+            # Execute only a source-string container + compiler call. Neither
+            # captured Triton source nor Torch is imported/executed.
+            program = ("anchor_source = " + repr(anchor) + "\nnorm_source = " + repr(norm)
+                       + "\nanswer = compiler.triton(name,norm_source,device_str='cuda')\n")
+            scope = {"compiler":compiler,"name":fn.name}
+            exec(compile(program,"<generated-cache-contract>","exec"),scope)
+            results.append(scope["answer"])
+        self.assertIsNot(results[0],results[1])
+        self.assertEqual([r["selected_fields"]["R0_BLOCK"] for r in results],[4096,1024])
+        self.assertEqual([r["selected_fields"]["num_warps"] for r in results],[16,8])
+        self.assertEqual(len(compiler.cache),2)
+        before = module.recipe_from_source(norm,fn.name,{},"fixture")["boundary"]
+        for source,row,device in compiler.constructions:
+            self.assertEqual(module.recipe_from_source(source,fn.name,{},"fixture")["boundary"],before)
+            self.assertEqual(module.canonical_function_sha256(source,fn.name),before["function_sha256"])
+            self.assertEqual(device,"cuda")
+            self.assertIn("'mach_compile_context':",source)
+
+    def test_actual_quality_boundaries_preserve_each_contexts_old_launch(self):
+        fixtures = json.loads((SOURCE_FILE.parents[3]/"tests/data/inductor033-quality-boundaries.json").read_text())
+        expected = {
+            "quality32": {"norm":{"gdn":(1024,8),"attention":(4096,16)},
+                          "swiglu":{"gdn":(1024,4),"attention":(512,8)},
+                          "copy":{"gdn":(512,8),"attention":(1024,4),"embedding":(1024,4)}},
+            "quality64": {"norm":{"gdn":(1024,8),"attention":(1024,8)},
+                          "swiglu":{"gdn":(1024,4),"attention":(1024,4)},
+                          "copy":{"gdn":(512,8),"attention":(1024,4),"embedding":(1024,4)}}}
+        class Compiler:
+            def __init__(self,module):self.module=module;self.cache={}
+            def triton(self,name,source,**kwargs):
+                if source in self.cache:return self.cache[source]
+                fn=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef))
+                deco=next(n for n in fn.decorator_list if isinstance(n,ast.Call)
+                          and isinstance(n.func,ast.Attribute) and any(k.arg=="inductor_meta" for k in n.keywords))
+                keywords={k.arg:k.value for k in deco.keywords};imeta=ast.literal_eval(keywords["inductor_meta"]);meta={}
+                for k,v in zip(keywords["triton_meta"].keys,keywords["triton_meta"].values):
+                    key=ast.literal_eval(k)
+                    meta[key]=({x.arg:ast.literal_eval(x.value) for x in v.keywords}
+                               if key=="device" else ast.literal_eval(v))
+                row=self.module.select_recipe(function_source(source),ast.literal_eval(keywords["size_hints"]),meta,
+                    kernel_alias=name,kernel_site=imeta["kernel_name"],
+                    kernel_context={imeta["mach_compile_context"]} if "mach_compile_context" in imeta else None)
+                self.cache[source]=row;return row
+        for mode, families in expected.items():
+            with patch.dict(os.environ,{"VLLM_MACH_MXFP8_MODE":"quality","VLLM_MACH_MXFP8_QUALITY_ROWS":mode[-2:]}):
+                module=load_module();data=fixtures[mode]
+                for family,roles in families.items():
+                    compiler=Compiler(module)
+                    compiler.triton=module._contextual_triton(Compiler.triton).__get__(compiler,Compiler)
+                    source=data[family+"_source"]
+                    name=next(n.name for n in ast.parse(source).body if isinstance(n,ast.FunctionDef))
+                    for role,(block,warps) in roles.items():
+                        with self.subTest(mode=mode,family=family,role=role):
+                            program=("anchor_source="+repr(data[role+"_anchor_source"])+"\nsource="+repr(source)
+                                     +"\nanswer=compiler.triton(name,source,device_str='cuda')\n")
+                            scope={"compiler":compiler,"name":name}
+                            exec(compile(program,"<quality-generated-context>","exec"),scope)
+                            fields=scope["answer"]["selected_fields"]
+                            self.assertEqual(fields.get("R0_BLOCK",fields["XBLOCK"]),block)
+                            self.assertEqual(fields["num_warps"],warps)
+                    separate=len(roles) if (family=="copy" or mode=="quality32") else 1
+                    self.assertEqual(len(compiler.cache),separate)
+                # Template construction has no enclosing graph anchor. It must
+                # retain its own1024/w4 choice, never acquire generated tags.
+                source=data["copy_source"]
+                name=next(n.name for n in ast.parse(source).body if isinstance(n,ast.FunctionDef))
+                source=source.replace(name,"triton_").replace("'kernel_name': 'triton_'","'kernel_name': 'Placeholder.DESCRIPTIVE_NAME'")
+                compiler=Compiler(module);compiler.triton=module._contextual_triton(Compiler.triton).__get__(compiler,Compiler)
+                row=compiler.triton("triton_",source,device_str="cuda")
+                self.assertEqual(row["construction_kind"],"template")
+                self.assertEqual(row["selected_fields"]["XBLOCK"],1024)
+                self.assertEqual(row["selected_fields"]["num_warps"],4)
+                self.assertTrue(all("mach_compile_context" not in source for source in compiler.cache))
+                gdn=data["gdn_anchor_source"];name=next(n.name for n in ast.parse(gdn).body if isinstance(n,ast.FunctionDef))
+                restored=module.recipe_from_source(gdn.replace("out_ptr2","out_ptr1"),name,{},"old")
+                self.assertEqual(restored["semantic_key"],
+                    "47ceb13fbbc6926d4b80435981cccc2fd3f9a4c1a2b8115d48c0ff2781fe5b2d" if mode=="quality32" else
+                    "1050ac67757dd5a7afa8aa25e52f90a9e44e69f651f1d2a4ee1d9b162b4f754b")
+
+    def test_same_construction_different_reduction_config_still_requires_exact_site(self):
+        bindings, meta = self.fixture()
+        self.module._POLICY["format_version"] = 2
+        for row in bindings: row["construction_kind"] = "generated"
+        bindings[1]["selected_fields"] = {"XBLOCK": 256, "num_warps": 4,
+                                          "num_stages": 1, "found_by_coordesc": False}
+        source = function_source(generated_source())
+        with self.assertRaisesRegex(self.module.CompileChoiceMismatch, "exact site"):
+            self.module.select_recipe(source, {"x": 65536}, meta,
+                kernel_alias="triton_poi_fused_fixture_999", kernel_site="triton_poi_fused_fixture_999")
+        row = self.module.select_recipe(source, {"x": 65536}, meta,
+            kernel_alias=bindings[1]["kernel_alias"], kernel_site=bindings[1]["kernel_site"])
+        self.assertEqual(row["id"], bindings[1]["id"])
+
+    def test_target_compiler_versions_reject_old_patch_cuda_and_triton_drift(self):
+        policy = self.module.load_policy()
+        self.assertEqual(policy["torch_version"], "2.14.0+cu130")
+        self.assertEqual(policy["triton_version"], "3.8.0")
+        self.module._require_compiler_versions(policy, "2.14.0+cu130", "3.8.0")
+        for torch_version, triton_version in (
+                ("2.13.0+cu130", "3.8.0"), ("2.14.1+cu130", "3.8.0"),
+                ("2.14.0+cu129", "3.8.0"), ("2.14.0", "3.8.0"),
+                ("2.14.0+cu130", "3.7.1"), ("2.14.0+cu130", "3.8.1")):
+            with self.subTest(torch=torch_version, triton=triton_version):
+                with self.assertRaisesRegex(RuntimeError, "Compile policy requires"):
+                    self.module._require_compiler_versions(policy, torch_version, triton_version)
 
     def test_function_key_ignores_name_decorators_comments_but_keeps_reduction(self):
         module = self.module
@@ -169,7 +394,7 @@ class CompileChoiceTests(unittest.TestCase):
             def process_pool():
                 return object()
         torch = types.ModuleType("torch")
-        torch.__version__ = "2.13.0+test"
+        torch.__version__ = "2.14.0+cu130"
         torch.__path__ = []
         inductor = types.ModuleType("torch._inductor")
         inductor.__path__ = []
@@ -184,6 +409,7 @@ class CompileChoiceTests(unittest.TestCase):
         heuristics.CachingAutotuner = Autotuner
         triton = types.ModuleType("triton")
         triton.Config = Config
+        triton.__version__ = "3.8.0"
         modules = {entry.__name__: entry for entry in (
             torch, inductor, config, async_compile, runtime, heuristics, triton)}
         module._POLICY["autotuner_init_sha256"] = module.canonical_function_sha256(
@@ -280,7 +506,7 @@ class CompileChoiceTests(unittest.TestCase):
     def test_quality_policies_are_independent_and_frozen_at_loading(self):
         production = self.module.load_policy()
         production_hash = self.module._json_hash(production)
-        for rows, count in ((32, 23), (64, 22)):
+        for rows, count in ((32, 19), (64, 16)):
             module = load_module()
             with patch.dict(os.environ, {"VLLM_MACH_MXFP8_MODE": "quality",
                                          "VLLM_MACH_MXFP8_QUALITY_ROWS": str(rows)}):
@@ -290,8 +516,9 @@ class CompileChoiceTests(unittest.TestCase):
                 self.assertEqual(module.inspect()["policy_mode"], f"quality{rows}")
                 self.assertEqual({row["boundary"]["architecture"]["cc"]
                                   for row in policy["bindings"]}, {120})
-                self.assertTrue(all(row.get("accepted_source_sha256")
-                                    and row.get("accepted_choice_sha256")
+                self.assertEqual(policy["format_version"], 2)
+                self.assertTrue(policy["baseline_inventory_sha256"])
+                self.assertTrue(all(row.get("observed_source_sha256") and row["construction_kind"]
                                     for row in policy["bindings"]))
                 for row in policy["bindings"]:
                     self.assertEqual(row["semantic_key"], module._json_hash(row["boundary"]))
@@ -313,9 +540,9 @@ class RealTritonMetadataTests(unittest.TestCase):
             import triton
             import triton.language as tl
         except ImportError:
-            raise unittest.SkipTest("Real Torch 2.13/Triton 3.7.1 runtime required")
-        if not torch.__version__.split("+", 1)[0].startswith("2.13.") or triton.__version__ != "3.7.1":
-            raise unittest.SkipTest("Test binds the locked Torch 2.13/Triton 3.7.1 ABI")
+            raise unittest.SkipTest("Real Torch 2.14/Triton 3.8.0 runtime required")
+        if torch.__version__ != "2.14.0+cu130" or triton.__version__ != "3.8.0":
+            raise unittest.SkipTest("Test binds the locked Torch 2.14/Triton 3.8.0 ABI")
         cls.torch, cls.triton, cls.tl = torch, triton, tl
 
     def setUp(self):
@@ -349,7 +576,7 @@ class RealTritonMetadataTests(unittest.TestCase):
         module, tl = self.module, self.tl
         row = module.recipe_from_source(generated_source(), "triton_poi_fused_fixture_0",
             {"XBLOCK": 512, "num_warps": 4, "num_stages": 1, "found_by_coordesc": False}, "choice_00")
-        module._POLICY = {"bindings": [row]}
+        module._POLICY = {"format_version": 1, "bindings": [row], "canonical_conflicts": []}
         meta = {"signature": {key: tl.str_to_ty(value, None) for key, value in row["boundary"]["signature"].items()},
                 "constants": {}, "configs": [{(0,): [["tt.divisibility", 16]]}],
                 "device": types.SimpleNamespace(type="cuda", cc=120),

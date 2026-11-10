@@ -1,28 +1,115 @@
 {
-  "vllm": "0.29.0",
-  "base": "98dff2a81d747d1dba01a47f939f48c3526d4206",
-  "source": "8983c0369e",
-  "files": [
-    "vllm/compilation/passes/fusion/allreduce_rms_fusion.py",
-    "vllm/envs.py",
-    "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py",
-    "vllm/model_executor/layers/logits_processor.py",
-    "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
-    "vllm/model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py",
-    "vllm/model_executor/models/qwen3_5.py",
-    "vllm/utils/flashinfer.py",
-    "vllm/v1/worker/gpu/cudagraph_utils.py",
-    "vllm/v1/worker/gpu/model_runner.py",
-    "vllm/v1/worker/gpu/sample/sampler.py",
-    "vllm/v1/worker/gpu_model_runner.py",
-    "vllm/v1/worker/gpu_worker.py"
-  ],
-  "moe_source": {
-    "repository": "Nekofish-L/mxfp6_sm120",
-    "adapter": "examples/vllm/adapter",
-    "files": [
-      "vllm/model_executor/layers/quantization/quark/quark_moe.py"
-    ],
-    "revision": "cd4e964c391fcb8aaf1a27d28a63d778e3a38ece"
+  "schema_version": 1,
+  "profile": "native-mxfp6-sm120-v033",
+  "vllm": "0.33.0",
+  "base": "4ba787ec9959e566d3b587a796dff07673324da5",
+  "source": "mach-unified-v033",
+  "namespaces": {
+    "vllm": {
+      "patch": "runtime.patch",
+      "patch_sha256": "b21b71605dde063882e7d403222711eaf06112671f1d25c97b3a1028ac95acf3",
+      "files": {
+        "vllm/compilation/passes/fusion/allreduce_rms_fusion.py": {
+          "upstream_sha256": "4f2ca81d7fa365d22c23194a768ab56a5c1380d62affaa4a706a5ce8f6b2d65d",
+          "installed_sha256": "b92ec2ef0c87025e01fa1620203968606442e382912be9bb5fef328d66dc300d"
+        },
+        "vllm/envs.py": {
+          "upstream_sha256": "a9f665c49da1d8852c19a192f5d5848f0e38f4f56c76b5fafe0c17398945b357",
+          "installed_sha256": "94853026324e045dfcb67e522db5c47f5811061353d6b9485142421267bfe665"
+        },
+        "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py": {
+          "upstream_sha256": "aec049372738a38fd644305c51e3a0068b008f3ca16da9dfca57191c434ab03f",
+          "installed_sha256": "827c881e694a7f97e9085787df4d790b3d693f3fc96431af06b6135ed524f18e"
+        },
+        "vllm/model_executor/layers/logits_processor.py": {
+          "upstream_sha256": "35cf8235cb529ba2d37358fe9b9e5a29f40b5c3cbcc9e6750c8480c51bd7da83",
+          "installed_sha256": "424bc3e8bf955f1b9c574fd90fc3757526283470a4fbabb54cd4ad3f766ec03e"
+        },
+        "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
+          "upstream_sha256": "c6c037ad94d217aa2710cf29d25d8fa6e3856d1be9fc67fa8bd8681b1f5417f9",
+          "installed_sha256": "c081a983ce816a92c3d6c7215023c70eb5291b23760d0c42d049a1c01db4c8f9"
+        },
+        "vllm/model_executor/layers/mamba/ops/gather_initial_states.py": {
+          "upstream_sha256": "5198bb6de6d91c583a5f65d926412a76ee04a06fa72aaba76eaf156b27cd0523",
+          "installed_sha256": "4442b9e876e31eaee4b938ff28859bd37b6c1a7bea39a0858e442c7f1f54f0c6"
+        },
+        "vllm/model_executor/layers/quantization/quark/quark_moe.py": {
+          "upstream_sha256": "18960e7d84dfec8eb1d76912a2b0cfd50cd3de531ad87e82edcf54227f970f92",
+          "installed_sha256": "3937923cd2f1a473a6cdba76ba622802e03f7a522b217ff6aa06f7db078a12d2"
+        },
+        "vllm/model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py": {
+          "upstream_sha256": "4fc155e658de3141499086102a747a5a91a67a0de929da58b30b3e30082b6332",
+          "installed_sha256": "b4e3207863129e7c62eecae5767e7fa814f6a7e768c417b1edc35b282af55803"
+        },
+        "vllm/model_executor/models/qwen3_5.py": {
+          "upstream_sha256": "ea7e71303c902b9678e85ff3e9a75a7ab6e69b5770605d540ad6ab1084e18187",
+          "installed_sha256": "b4cc1f76a7de0cbacd84296da128624df64de0a8da4629017cc7bad274c1438d"
+        },
+        "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py": {
+          "upstream_sha256": "000ab8996af9788fdb8843a6a3b91833e7a14c8acc0e1ea073a536330f64cb6f",
+          "installed_sha256": "f3e47fcba7cb32ca38104aa5c5b64855c071e8b46652ee17e27a49db119c3e0e"
+        },
+        "vllm/utils/flashinfer.py": {
+          "upstream_sha256": "bcd9e98c5c1a32a29b18e17c3e95fa20aaacec84a2978217eb290899852c04d4",
+          "installed_sha256": "2167238a27e1d130e991cbd7c71ab5b15401d86d576b787eea26f191b7fa273f"
+        },
+        "vllm/v1/attention/backends/gdn_attn.py": {
+          "upstream_sha256": "90f67d9fa8b06fd531579ed1198678c3251baabb47a7b0c9dfdc828d4361ec5e",
+          "installed_sha256": "5b35efdbe0f6842b45db52e2f4bcdec4324a088de330080090bd5fd602252d05"
+        },
+        "vllm/v1/attention/backends/utils.py": {
+          "upstream_sha256": "c1b7f17960f02c5e40b89a06356f13c9be26d2486df151b671a4e81bc7d2ebb0",
+          "installed_sha256": "43fb85ded0c8f58173f00096e6973f3f68d11020ffa350bad7b9d1785a2f050a"
+        },
+        "vllm/v1/worker/gpu/cudagraph_utils.py": {
+          "upstream_sha256": "1ff1655db4ca85ad2efcd8de9b3de37f053eb68d1d22202d45301c11866b0d40",
+          "installed_sha256": "036dd689d39fc70522f2c64a12026ac3db4f802123f02f9c9d73f169ca7f4d6e"
+        },
+        "vllm/v1/worker/gpu/model_runner.py": {
+          "upstream_sha256": "9145e2601f9e93db5e6c7e648c6741cff55f2a49f046800f79311e4977550121",
+          "installed_sha256": "a706b3cf635bf743d752550e6a8748d1378fa756b0fcf8fe9f7a3f920707bfab"
+        },
+        "vllm/v1/worker/gpu/sample/sampler.py": {
+          "upstream_sha256": "7f9941f9d7d04a7481ec393925ed5d000d4d77ee6db2ca6a8d9547c211d00a09",
+          "installed_sha256": "d39a3a6fd02d5d028e5f78e13676e5e1957a737eb60212f76ad6439804823a0e"
+        },
+        "vllm/v1/worker/gpu_model_runner.py": {
+          "upstream_sha256": "3ba41733f7062b9b70801025ee263979a0b11b8c0cea418d5d18caa26de6524d",
+          "installed_sha256": "0ded874f33e70cf04e35b51a6a0efb33597f6055c930f3ba2ebab54987d6163a"
+        },
+        "vllm/v1/worker/gpu_worker.py": {
+          "upstream_sha256": "e46a2659842b5b0238ca5d13ecb4a2dcff91f028493a7117d666edb0785a742c",
+          "installed_sha256": "4b1c1c93d584ad293ab91a7cbce2d942d19811bf9f52410aa1c7ea44abb22717"
+        }
+      },
+      "shared_patch": {
+        "name": "common-vllm033.patch",
+        "sha256": "74ca320d7ee5b1e73026b70a8424c82c117ed8c6d0aac1ef70d313ada9acc63d",
+        "files": [
+          "vllm/envs.py",
+          "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+          "vllm/model_executor/layers/mamba/ops/gather_initial_states.py",
+          "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py",
+          "vllm/utils/flashinfer.py",
+          "vllm/v1/attention/backends/gdn_attn.py",
+          "vllm/v1/attention/backends/utils.py",
+          "vllm/v1/worker/gpu/cudagraph_utils.py"
+        ]
+      }
+    },
+    "flashinfer": {
+      "patch": "flashinfer-local-ipc.patch",
+      "patch_sha256": "338b182c6cc90c9c44b52f5a0479dcec9691121d6e2d53563d1ead4085cc0904",
+      "files": {
+        "flashinfer/comm/mnnvl.py": {
+          "upstream_sha256": "f0d9c853080524a332226f95a7c11ba32317a2c5a740ef16a83a6cf46cef3997",
+          "installed_sha256": "1ea2efb58d54566ea3af378761a50d5b8a5555de777c17d1f32b420638fec567"
+        },
+        "flashinfer/comm/trtllm_ar.py": {
+          "upstream_sha256": "d0e5a8fa9335940f276fe92a5c8a1c497d7c046878c7457d7426cb89ba39f1c8",
+          "installed_sha256": "baa2f01d12d8cf16f0881eb85d484952631200be0775788e6823828466306c38"
+        }
+      }
+    }
   }
 }

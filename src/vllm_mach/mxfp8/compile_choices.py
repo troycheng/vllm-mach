@@ -19,6 +19,8 @@ import inspect as pyinspect
 import json
 import os
 from pathlib import Path
+import re
+import sys
 import threading
 import textwrap
 import weakref
@@ -211,14 +213,19 @@ def load_policy() -> dict:
         policy = json.loads(path.read_text())
         if mode != "production" and policy.get("profile_mode") != mode:
             raise RuntimeError("Quality compile-choice policy mode differs")
-        expected_count = 22 if mode == "quality64" else 23
-        if policy.get("format_version") != 1 or len(policy.get("bindings", [])) != expected_count:
+        version = policy.get("format_version")
+        expected_count = ({"production": 16, "quality32": 19, "quality64": 16}[mode]
+                          if version == 2 else 22 if mode == "quality64" else 23)
+        if (version not in (1, 2) or len(policy.get("bindings", [])) != expected_count
+                or (version == 2 and policy.get("binding_count") != expected_count)):
             raise RuntimeError("Invalid champion compile-choice policy format/count")
         seen = set()
         for row in policy["bindings"]:
             if row["id"] in seen or row["semantic_key"] != _json_hash(row["boundary"]):
                 raise RuntimeError("Invalid champion compile-choice identity")
             seen.add(row["id"])
+            if version == 2 and row.get("construction_kind") not in ("template", "generated"):
+                raise RuntimeError("Invalid champion construction discriminator")
             fields = row["selected_fields"]
             if not all(isinstance(value, int) and not isinstance(value, bool) and value > 0
                        for name, value in fields.items() if name != "found_by_coordesc"):
@@ -231,8 +238,101 @@ def load_policy() -> dict:
     return _POLICY
 
 
+def _construction_kind(kernel_alias: str, kernel_site: str | None) -> str | None:
+    # Inductor loads a placeholder module while generating kernels, then the
+    # named module in compile-time autotuning and the executable wrapper. The
+    # numeric suffix is local codegen order, not a stable call-site identity.
+    if kernel_alias == "triton_" and kernel_site == "Placeholder.DESCRIPTIVE_NAME":
+        return "template"
+    if kernel_alias == kernel_site and re.fullmatch(r"triton_[A-Za-z0-9_]+_[0-9]+", kernel_alias):
+        return "generated"
+    return None
+
+
+def _code_semantic_keys(constants) -> set[str]:
+    """Read embedded kernel descriptors from a live generated code unit."""
+    keys = set()
+    for source in constants:
+        if not isinstance(source, str) or "@triton.jit" not in source or "triton_meta" not in source:
+            continue
+        try:
+            functions = [node for node in ast.parse(source).body
+                         if isinstance(node, ast.FunctionDef) and node.name.startswith("triton_")]
+            for fn in functions:
+                keys.add(recipe_from_source(source, fn.name, {}, fn.name)["semantic_key"])
+        except (ValueError, TypeError, KeyError, SyntaxError, StopIteration):
+            continue
+    return keys
+
+
+def _enclosing_kernel_context(semantic_key: str, anchors: set[str]) -> set[str]:
+    # Both exec(autotuning_code) and executable wrapper imports expose the
+    # actual embedded sources in their module code object's constants. Read
+    # the nearest enclosing unit with this kernel and an explicit anchor;
+    # no cache path, former run, generated numeric suffix or graph size is used.
+    frame = sys._getframe(1)
+    try:
+        while frame is not None:
+            if frame.f_code.co_name == "<module>":
+                keys = _code_semantic_keys(frame.f_code.co_consts)
+                if semantic_key in keys and keys & anchors:
+                    return keys
+            frame = frame.f_back
+    finally:
+        del frame
+    return set()
+
+
+def _source_with_context(source: str, kernel_name: str, anchor: str) -> str:
+    """Separate Python autotuner cache identity; preserve all numeric metadata."""
+    tree = ast.parse(source)
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == kernel_name)
+    decorator = next(n for n in fn.decorator_list if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
+                     and n.func.value.id == "triton_heuristics")
+    meta = next(k.value for k in decorator.keywords if k.arg == "inductor_meta")
+    if not isinstance(meta, ast.Dict) or any(isinstance(k, ast.Constant) and k.value == "mach_compile_context" for k in meta.keys):
+        raise CompileChoiceMismatch("Missing or already tagged Inductor compile context")
+    lines = source.splitlines(keepends=True)
+    offset = sum(len(line) for line in lines[:meta.lineno - 1]) + meta.col_offset
+    if source[offset] != "{":
+        raise CompileChoiceMismatch("Inductor metadata source location changed")
+    offset += 1
+    tagged = source[:offset] + "'mach_compile_context': " + repr(anchor) + ", " + source[offset:]
+    before = recipe_from_source(source, kernel_name, {}, kernel_name)["boundary"]
+    after = recipe_from_source(tagged, kernel_name, {}, kernel_name)["boundary"]
+    if before != after:
+        raise CompileChoiceMismatch("Compile context tag changed numeric kernel metadata")
+    return tagged
+
+
+def _contextual_triton(original):
+    @wraps(original)
+    def compile_triton(self, kernel_name, source_code, *args, **kwargs):
+        # Identical named source can be reused by PyCodeCache across distinct
+        # graphs. Constructor-only selection cannot keep different reviewed
+        # configs apart. Tag this narrow exact boundary before that
+        # Python-module lookup, without touching the function or numeric flags.
+        try:
+            recipe = recipe_from_source(source_code, kernel_name, {}, kernel_name)
+        except (ValueError, TypeError, KeyError, SyntaxError, StopIteration):
+            return original(self, kernel_name, source_code, *args, **kwargs)
+        kind = _construction_kind(kernel_name, recipe["kernel_site"])
+        group = [row for row in load_policy()["bindings"]
+                 if row["semantic_key"] == recipe["semantic_key"]
+                 and row.get("construction_kind") == kind and "context_semantic_key" in row]
+        if group:
+            anchors = {row["context_semantic_key"] for row in group}
+            context = _enclosing_kernel_context(recipe["semantic_key"], anchors) & anchors
+            if len(context) != 1:
+                raise CompileChoiceMismatch("Ambiguous or missing generated kernel compilation context")
+            source_code = _source_with_context(source_code, kernel_name, next(iter(context)))
+        return original(self, kernel_name, source_code, *args, **kwargs)
+    return compile_triton
+
+
 def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
-                  kernel_site: str | None = None) -> dict | None:
+                  kernel_site: str | None = None, kernel_context: set[str] | None = None) -> dict | None:
     """Select a fixed recipe; leave unrelated kernels on native heuristics."""
     policy = load_policy()
     # Completely unrelated generated kernels retain native behavior, even if
@@ -266,12 +366,23 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
         with _LOCK:
             _MISMATCHES.append(mismatch)
         raise CompileChoiceMismatch(f"Champion Triton boundary changed: {mismatch}")
+    construction = None
+    if policy["format_version"] == 2:
+        construction = _construction_kind(kernel_alias, kernel_site)
+        group = [row for row in group if row["construction_kind"] == construction]
     choices = {_json_hash(row["selected_fields"]) for row in group}
-    exact = [row for row in group if row["kernel_alias"] == kernel_alias
-             and (kernel_site is None or row["kernel_site"] == kernel_site)]
-    if len(choices) > 1 and len(exact) != 1:
+    anchors = {row["context_semantic_key"] for row in group if "context_semantic_key" in row}
+    if anchors:
+        context = (_enclosing_kernel_context(key, anchors) if kernel_context is None else kernel_context)
+        exact = [row for row in group if row.get("context_semantic_key") in context]
+    else:
+        exact = [row for row in group if row["kernel_alias"] == kernel_alias
+                 and (kernel_site is None or row["kernel_site"] == kernel_site)]
+    if not group or (len(choices) > 1 and len(exact) != 1):
         mismatch = {"kernel_alias": kernel_alias, "kernel_site": kernel_site,
-                    "semantic_key": key, "reason": "ambiguous site discriminator",
+                    "semantic_key": key, "construction_kind": construction,
+                    "context_anchors": sorted(anchors),
+                    "reason": "ambiguous site discriminator",
                     "expected_bindings": [row["id"] for row in group]}
         with _LOCK:
             _MISMATCHES.append(mismatch)
@@ -280,7 +391,7 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
     with _LOCK:
         _SEMANTIC_HITS[key] += 1
         # Equivalent aliases may safely use one choice, but do not invent
-        # evidence that all 23 historical bindings were constructed.
+        # coverage for other required construction bindings.
         if exact or len(group) == 1:
             _BINDING_HITS[row["id"]] += 1
     return row
@@ -308,6 +419,13 @@ def _require_no_compile_pool(async_compile) -> None:
         raise RuntimeError("Champion compile policy must install before a compile process pool exists")
 
 
+def _require_compiler_versions(policy, torch_version: str, triton_version: str) -> None:
+    if torch_version != policy["torch_version"] or triton_version != policy["triton_version"]:
+        raise RuntimeError(
+            f"Compile policy requires Torch {policy['torch_version']} and Triton "
+            f"{policy['triton_version']}; found {torch_version} and {triton_version}")
+
+
 def install() -> bool:
     """Install in parent/GPU worker, before compilation; forbid subprocess pools."""
     global _INSTALLED, _ORIGINAL_INIT
@@ -317,11 +435,11 @@ def install() -> bool:
     config.compile_threads = 1
     from torch._inductor import async_compile
     from torch._inductor.runtime import triton_heuristics
+    import triton
     from triton import Config
 
     policy = load_policy()
-    if not torch.__version__.split("+", 1)[0].startswith(policy["torch_version_prefix"]):
-        raise RuntimeError(f"Champion compile policy requires {policy['torch_version_prefix']}; found {torch.__version__}")
+    _require_compiler_versions(policy, torch.__version__, triton.__version__)
     with _LOCK:
         _require_no_compile_pool(async_compile)
         os.environ["TORCHINDUCTOR_COMPILE_THREADS"] = "1"
@@ -331,7 +449,7 @@ def install() -> bool:
         cls = triton_heuristics.CachingAutotuner
         original = cls.__init__
         # Inspect runtime source before applying a narrow compatibility hook.
-        # No code generation, reduction body, or PyTorch source file is edited.
+        # No numerical body, reduction, compiler flags, or PyTorch source file is edited.
         actual = canonical_function_sha256(pyinspect.getsource(original))
         if actual != policy["autotuner_init_sha256"]:
             raise RuntimeError("Torch CachingAutotuner constructor differs from the qualified policy ABI")
@@ -348,7 +466,9 @@ def install() -> bool:
             imeta = bound.arguments.get("inductor_meta") or {}
             row = select_recipe(fn.src, bound.arguments["size_hints"],
                                 bound.arguments["triton_meta"],
-                                kernel_alias=fn.__name__, kernel_site=imeta.get("kernel_name"))
+                                kernel_alias=fn.__name__, kernel_site=imeta.get("kernel_name"),
+                                kernel_context=({imeta["mach_compile_context"]}
+                                                if "mach_compile_context" in imeta else None))
             if row is None:
                 return original(*bound.args, **bound.kwargs)
             selected = _make_config(row, Config)
@@ -368,6 +488,8 @@ def install() -> bool:
             return result
 
         cls.__init__ = initialize
+        if policy["format_version"] == 2:
+            async_compile.AsyncCompile.triton = _contextual_triton(async_compile.AsyncCompile.triton)
         _ORIGINAL_INIT = original
         _INSTALLED = True
         return True

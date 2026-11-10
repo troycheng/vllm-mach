@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-mach"
-version = "0.2.0"
+version = "0.3.0"
 description = "MXFP6, MXFP8 and block-FP8 inference for vLLM on SM120"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{name = "Tong Cheng"}]
-dependencies = ["vllm==0.29.0"]
+dependencies = ["vllm==0.33.0"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
@@ -45,6 +45,7 @@ include = ["vllm_mach*"]
 exclude = ["vllm_mach.exl3*"]
 
 [tool.setuptools.package-data]
+"vllm_mach.runtime" = ["*.patch"]
 "vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json", "gdn/*.cu"]
 "vllm_mach.mxfp8" = ["data/*.json", "data/*.patch"]
 "vllm_mach.mxfp8.two_b" = ["data/*.json"]
@@ -52,6 +53,9 @@ exclude = ["vllm_mach.exl3*"]
 
 [tool.pytest.ini_options]
 testpaths = [
+    "tests/test_stack_cpu.py",
+    "tests/test_runtime_profile_sources_cpu.py",
+    "tests/test_cpu_profile_entry.py",
     "tests/test_mxfp8_swiglu_quant.py",
     "tests/test_mxfp8_ssm.py",
     "tests/test_mxfp8_2b_model.py",
@@ -70,6 +74,7 @@ testpaths = [
     "tests/test_mxfp6_warmup.py",
     "tests/test_deployment.py",
     "tests/test_lm_head_switch_cpu.py",
+    "tests/test_teacher_decode_cpu.py",
     "tests/test_mach_compile_cache.py",
     "tests/test_mxfp8_benchmark.py",
     "tests/test_mxfp8_compile_choices.py",

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "scope": "CPU qualification of one already installed runtime profile; no installation or GPU work",
+  "common": [
+    "tests/test_mxfp8_swiglu_quant.py",
+    "tests/test_mxfp8_ssm.py",
+    "tests/test_mxfp8_2b_model.py",
+    "tests/test_mxfp8_2b_gdn_cpu.py",
+    "tests/test_mxfp8_2b_mixed_cpu.py",
+    "tests/test_mxfp8_2b_ba_graph_cpu.py",
+    "tests/test_mxfp8_2b_profile_cpu.py",
+    "tests/test_mxfp8_2b_hybrid_head_cpu.py",
+    "tests/test_mxfp8_2b_pdl_cpu.py",
+    "tests/test_fp8_profile_cpu.py",
+    "tests/test_fp8_linear_cpu.py",
+    "tests/test_fp8_activation_cpu.py",
+    "tests/test_fp8_attention_cpu.py",
+    "tests/test_deployment.py",
+    "tests/test_lm_head_switch_cpu.py",
+    "tests/test_mxfp8_benchmark.py",
+    "tests/test_mxfp8_deploy.py",
+    "tests/test_mxfp8_gdn_cpu.py",
+    "tests/test_mxfp8_graph_policy.py",
+    "tests/test_mxfp8_head_cpu.py",
+    "tests/test_mxfp8_install.py",
+    "tests/test_mxfp8_kv_cpu.py",
+    "tests/test_mxfp8_native_profile_cpu.py",
+    "tests/test_mxfp8_prepare_model.py",
+    "tests/test_mxfp8_norm_frontend_cpu.py",
+    "tests/test_mxfp8_profile_cpu.py",
+    "tests/test_mxfp8_projection_transform.py",
+    "tests/test_mxfp8_reconstruct_model.py",
+    "tests/native_mxfp6/test_benchmark.py",
+    "tests/native_mxfp6/test_fidelity.py",
+    "tests/test_stack_cpu.py",
+    "tests/test_runtime_profile_sources_cpu.py",
+    "tests/test_cpu_profile_entry.py"
+  ],
+  "isolated_global_module_mocks": [
+    "tests/test_mxfp8_native_cpu.py",
+    "tests/test_mxfp8_compile_choices.py",
+    "tests/test_fp8_compile_choices_cpu.py"
+  ],
+  "profile_extra": {
+    "mxfp8": [
+      "tests/native_mxfp6/test_gdn_runtime_registration.py"
+    ],
+    "block-fp8": [],
+    "native": [
+      "tests/native_mxfp6",
+      "--ignore=tests/native_mxfp6/test_benchmark.py",
+      "--ignore=tests/native_mxfp6/test_fidelity.py",
+      "tests/test_mach_compile_cache.py",
+      "tests/test_mxfp6_warmup.py",
+      "tests/test_serving_route_probe.py",
+      "--ignore=tests/native_mxfp6/test_gdn_runtime_registration.py"
+    ]
+  },
+  "profile_files": {
+    "tests/native_mxfp6/test_prefill.py": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_moe_ar_norm.py": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_gdn_runtime_registration.py": [
+      "mxfp8"
+    ]
+  },
+  "profile_tests": {
+    "tests/native_mxfp6/test_moe_quant_admission_cpu.py::test_installed_native_constructor_matches_audited_fixture": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_qwen3_5_quantization.py::test_manual_ar_norm_rejects_unsupported_execution_modes": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_qwen3_5_quantization.py::test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out": [
+      "mxfp8",
+      "block-fp8",
+      "native"
+    ],
+    "tests/test_runtime_profile_sources_cpu.py::test_selected_runtime_profile_sources_are_installed": [
+      "mxfp8",
+      "block-fp8",
+      "native"
+    ]
+  },
+  "required_tests": {
+    "mxfp8": [
+      "test_selected_runtime_profile_sources_are_installed",
+      "test_ordered_registration_accepts_current_source_and_rejects_drift"
+    ],
+    "block-fp8": [
+      "test_selected_runtime_profile_sources_are_installed",
+      "test_normal_forward_preserves_request_slices_cache_and_output"
+    ],
+    "native": [
+      "test_selected_runtime_profile_sources_are_installed",
+      "test_installed_native_constructor_matches_audited_fixture"
+    ]
+  }
+}

@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Opt-in fused BF16 SiLU/block-FP8 quantization for vLLM 0.29.0.
+"""Opt-in fused BF16 SiLU/block-FP8 quantization for vLLM 0.33.0.
 
 Registration is CPU-safe. Workers preload the native wheel after device setup;
 the opaque dispatcher preserves the original op outside the qualified boundary.
 """
 
 from __future__ import annotations
+
+from vllm_mach.stack import BASE_PACKAGES, TORCH_BUILD, NATIVE_EXTENSIONS, require_version
 
 from collections import Counter
 import hashlib
@@ -115,12 +117,12 @@ def verify_runtime() -> dict[str, Any]:
     import torch
 
     with _LOCK:
-        if version("vllm") != "0.29.0":
-            raise RuntimeError("FP8 activation requires vllm==0.29.0")
-        if torch.__version__ != "2.13.0+cu130":
-            raise RuntimeError("FP8 activation wheel requires Torch 2.13.0+cu130")
+        require_version("vllm", version("vllm"), BASE_PACKAGES["vllm"])
+        require_version("torch", torch.__version__, TORCH_BUILD)
         if torch.version.cuda != "13.0":
             raise RuntimeError("FP8 activation wheel requires Torch CUDA 13.0")
+        require_version("vllm-mach-fp8-activation", version("vllm-mach-fp8-activation"),
+                        NATIVE_EXTENSIONS["vllm-mach-fp8-activation"])
         if not _NATIVE_LOADED:
             spec = importlib.util.find_spec("mach_fp8_activation_ext")
             if spec is None or spec.origin is None:

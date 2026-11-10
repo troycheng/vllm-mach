@@ -6,6 +6,8 @@ after init_device; serving receipts describe actual installed paths.
 """
 from __future__ import annotations
 
+from vllm_mach.stack import BASE_PACKAGES, BUILD_PACKAGES, NATIVE_VERSION, require_version
+
 from functools import wraps
 from importlib.metadata import distribution, version
 import json
@@ -16,12 +18,8 @@ from .ssm import selected_dtype, select_gdn, ordered_enabled
 from . import kv
 
 NAME = "qwen35-4b-mxfp8-champion-v1"
-DEPENDENCIES = {
-    "vllm": "0.29.0", "torch": "2.13.0", "triton": "3.7.1",
-    "flashinfer-python": "0.6.18", "flashinfer-cubin": "0.6.18",
-    "nvidia-cutlass-dsl": "4.6.2", "cuda-bindings": "13.3.1",
-    "b12x": "1.2.6", "mxfp6-sm120": "0.2.1",
-}
+DEPENDENCIES = {**BASE_PACKAGES, "b12x": BUILD_PACKAGES["b12x"],
+                "mxfp6-sm120": NATIVE_VERSION}
 
 
 def quality_contract(rows):
@@ -170,8 +168,7 @@ def _verify_quality_capture(worker, rows):
 def check_environment():
     versions = {name: version(name) for name in DEPENDENCIES}
     for name, expected in DEPENDENCIES.items():
-        if versions[name].split("+", 1)[0] != expected:
-            raise RuntimeError(f"{NAME} requires {name}=={expected}, found {versions[name]}")
+        require_version(name, versions[name], expected)
     return versions
 
 

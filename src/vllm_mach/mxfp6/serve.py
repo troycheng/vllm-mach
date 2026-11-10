@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from vllm_mach.stack import NATIVE_EXTENSIONS
+
 import argparse
 import json
 import os
@@ -185,17 +187,17 @@ def main() -> None:
         (
             environment["VLLM_MACH_FUSED_AR_QUANT"] == "1",
             "vllm-mach-ar-norm",
-            "0.1.0a1",
+            NATIVE_EXTENSIONS["vllm-mach-ar-norm"],
         ),
         (
             environment["VLLM_SM120_OWNER_PREFILL"] == "1",
             "vllm-mach-owner-prefill",
-            "0.1.0a1",
+            NATIVE_EXTENSIONS["vllm-mach-owner-prefill"],
         ),
         (
             environment["VLLM_SM120_LOSSLESS_PREFILL"] == "1",
             "vllm-mach-lossless-prefill",
-            "0.1.0a4",
+            NATIVE_EXTENSIONS["vllm-mach-lossless-prefill"],
         ),
     ):
         if enabled:

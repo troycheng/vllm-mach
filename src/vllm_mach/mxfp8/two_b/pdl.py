@@ -10,13 +10,14 @@ import ast
 import copy
 import hashlib
 import importlib.util
+import inspect as pyinspect
 import json
 import os
 from pathlib import Path
 import sys
 import threading
 
-from ..compile_choices import recipe_from_source
+from ..compile_choices import canonical_function_sha256, recipe_from_source
 
 _POLICY_PATH = Path(__file__).with_name('data') / 'full_pdl.json'
 _INSTALLED = False
@@ -236,6 +237,8 @@ def prepare():
     data = policy()
     if torch.__version__ != data['torch_version'] or triton.__version__ != data['triton_version']:
         raise RuntimeError('2B PDL compiler version differs from its qualified policy')
+    if canonical_function_sha256(pyinspect.getsource(CachingAutotuner.__init__)) != data['autotuner_init_sha256']:
+        raise RuntimeError('2B PDL autotuner constructor differs from its qualified policy ABI')
     if _CAPTURING() or torch.cuda.get_device_capability() != (12, 0):
         raise RuntimeError('Prepare 2B PDL on SM120 before capture')
     native_backend.verify_runtime()

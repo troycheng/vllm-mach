@@ -12,11 +12,14 @@ import os
 from pathlib import Path
 
 from vllm_mach.mxfp8.ssm import selected_dtype
+from vllm_mach.mxfp8.install import load_manifest
 
 ROOT = Path(__file__).resolve().parent
-GDN_SHA = "d0e0bda56342d12a0891fa348efd00ffc475c8153f4f80becb501d96bbfd1e60"
-RUNNER_SHA = "7e6de891206992f6018bb2b26a2c2fff5f3eabe3de1fc9066f5eb8f7e62fb52d"
-FLA_SHA = "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755"
+# The reviewed installed sources are owned by the packaged overlay manifest.
+_SOURCE_FILES = load_manifest()["files"]
+GDN_SHA = _SOURCE_FILES["vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py"]["installed_sha256"]
+RUNNER_SHA = _SOURCE_FILES["vllm/v1/worker/gpu/model_runner.py"]["installed_sha256"]
+FLA_SHA = _SOURCE_FILES["vllm/third_party/flash_linear_attention/ops/fused_recurrent.py"]["installed_sha256"]
 W = 4
 ROWS = (1,2,4,8,16)+tuple(range(24,129,8))
 _ELIGIBLE_ROWS = ()

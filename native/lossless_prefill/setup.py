@@ -1,13 +1,17 @@
-"""Build the optional SM120 TP2 prefill collective against FlashInfer 0.6.18."""
+"""Build the optional SM120 TP2 prefill collective against the selected FlashInfer stack."""
 import importlib.metadata
 from pathlib import Path
 import subprocess
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_EXTENSIONS, TORCH_BUILD, check_versions
+
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 
-if importlib.metadata.version('flashinfer-python') != '0.6.18':
-    raise RuntimeError('This source profile requires flashinfer-python==0.6.18')
+check_versions({"torch": BASE_PACKAGES["torch"], "flashinfer-python": BASE_PACKAGES["flashinfer-python"]})
+
 if not CUDA_HOME or 'release 13.0,' not in subprocess.check_output(
     [str(Path(CUDA_HOME) / 'bin/nvcc'), '--version'], text=True
 ):
@@ -15,14 +19,14 @@ if not CUDA_HOME or 'release 13.0,' not in subprocess.check_output(
 root = Path(importlib.metadata.distribution('flashinfer-python').locate_file('flashinfer/data'))
 
 setup(
-    name='vllm-mach-lossless-prefill', version='0.1.0a4',
+    name='vllm-mach-lossless-prefill', version=NATIVE_EXTENSIONS["vllm-mach-lossless-prefill"],
     license='Apache-2.0', license_files=['LICENSE'],
     ext_modules=[CUDAExtension(
         name, [source],
         include_dirs=[str(root / p) for p in ('include', 'spdlog/include', 'cutlass/include')],
         extra_compile_args={
-            'cxx': ['-O3', '-std=c++17'],
-            'nvcc': ['-O3', '-std=c++17', '-arch=sm_120f', '-use_fast_math', '-DNDEBUG',
+            'cxx': ['-O3', '-std=c++20'],
+            'nvcc': ['-O3', '-std=c++20', '-arch=sm_120f', '-use_fast_math', '-DNDEBUG',
                      '-DFLASHINFER_ENABLE_F16', '-DFLASHINFER_ENABLE_BF16',
                      '-DFLASHINFER_ENABLE_FP8_E4M3', '-DFLASHINFER_ENABLE_FP8_E5M2',
                      '-DFLASHINFER_ENABLE_FP8_E8M0', '-DFLASHINFER_ENABLE_FP4_E2M1',

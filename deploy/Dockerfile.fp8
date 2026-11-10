@@ -1,21 +1,34 @@
 # syntax=docker/dockerfile:1
-# docker build -f deploy/Dockerfile.fp8 -t vllm-mach-fp8 .
-ARG VLLM_IMAGE=docker.m.daocloud.io/vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b
+ARG VLLM_IMAGE=vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3
 FROM ${VLLM_IMAGE}
+
+# CUDA13.0.88/Torch2.14+cu130/FI0.7.2/DSL4.8 come from this public base.
+# Shared stack source must precede every native/setup.py and wheel build.
+COPY src/vllm_mach/__init__.py src/vllm_mach/stack.py /opt/mach/src/vllm_mach/
 ARG MAX_JOBS=2
-ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} OMP_NUM_THREADS=1
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} TORCH_CUDA_ARCH_LIST=12.0a
+COPY deploy/requirements-mxfp8.txt /opt/mach/deploy/requirements-mxfp8.txt
+# Retain complete1.40 telemetry exporters; remove incompatible orphan fragments.
+# Restore Torch-required NCCL on this SM120 image; do not resolve/replace core deps.
+RUN python3 -m pip uninstall -y opentelemetry-exporter-otlp-common opentelemetry-exporter-http-transport \
+    && python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_URL}" \
+       -r /opt/mach/deploy/requirements-mxfp8.txt \
+    && python3 -m pip check
 
-COPY native/block_fp8 /opt/mach-native/block_fp8
-COPY native/fp8_activation /opt/mach-native/fp8_activation
+COPY native/block_fp8 /opt/mach/native/block_fp8
+COPY native/fp8_activation /opt/mach/native/fp8_activation
 RUN python3 -m pip wheel --no-deps --no-build-isolation --wheel-dir /opt/mach-wheels \
-      /opt/mach-native/block_fp8 /opt/mach-native/fp8_activation \
+      /opt/mach/native/block_fp8 /opt/mach/native/fp8_activation \
     && python3 -m pip install --no-deps /opt/mach-wheels/*.whl \
-    && rm -rf /opt/mach-native
+    && rm -rf /opt/mach/native
 
-COPY pyproject.toml README.md LICENSE NOTICE /opt/mach/
 COPY src /opt/mach/src
+COPY pyproject.toml README.md LICENSE NOTICE /opt/mach/
 WORKDIR /opt/mach
 RUN python3 -m pip install --no-deps --no-build-isolation . \
     && python3 -m vllm_mach.fp8.install --apply > /opt/mach/runtime-source-install.json \
+    && python3 -m pip check \
     && rm -rf /opt/mach/build /opt/mach/src/*.egg-info
+ENV OMP_NUM_THREADS=1
 ENTRYPOINT ["vllm-mach-fp8-serve"]

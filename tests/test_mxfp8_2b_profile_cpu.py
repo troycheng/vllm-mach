@@ -11,6 +11,10 @@ import types
 import unittest
 from unittest.mock import patch
 
+# Initialize the extension before patch.dict(sys.modules) snapshots; otherwise
+# restoring a snapshot can unload Python children of the live Triton extension.
+import triton
+
 import test_mxfp8_2b_ba_graph_cpu as graph_tests
 
 SOURCE = Path(__file__).resolve().parents[1] / "src"
@@ -75,6 +79,8 @@ class TwoBProfileContracts(unittest.TestCase):
                 self.assertEqual(json.loads(argv[argv.index("--compilation-config")+1]), contract["compilation_config"])
                 self.assertEqual(argv[argv.index("--kv-cache-dtype")+1], "bfloat16")
                 self.assertEqual(argv[argv.index("--attention-backend")+1], "FLASH_ATTN")
+                self.assertEqual(json.loads(argv[argv.index("--attention-config")+1]),
+                                 {"flash_attn_version": 2})
         for row in (0, 8, 16, 24, 128):
             with self.assertRaises(ValueError): self.profile.quality_contract(row)
         for environment in ({"VLLM_MACH_MXFP8_MODE": "quality"},
@@ -275,13 +281,13 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
 
     def test_plugin_routes_2b_without_registering_other_backends(self):
         plugin = load("plugin")
-        with patch.object(plugin, "version", return_value="0.29.0"), \
+        with patch.object(plugin, "version", side_effect=lambda name: "2.14.0+cu130" if name == "torch" else plugin.BASE_PACKAGES[name]), \
                 patch.object(plugin, "register_dense_kernel") as dense, \
                 patch.object(self.profile, "install_worker_hook") as hook:
             plugin.register()
             hook.assert_called_once_with()
             dense.assert_not_called()
-        with patch.object(plugin, "version", return_value="0.29.0"), \
+        with patch.object(plugin, "version", side_effect=lambda name: "2.14.0+cu130" if name == "torch" else plugin.BASE_PACKAGES[name]), \
                 patch.dict(os.environ, {"VLLM_MACH_PROFILE": "typo"}):
             with self.assertRaisesRegex(RuntimeError, "Unknown"):
                 plugin.register()
@@ -303,7 +309,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                 cfg = worker.vllm_config
                 cfg.model_config.hf_text_config = NS(hidden_size=2048, intermediate_size=6144,
                     num_hidden_layers=24, num_attention_heads=8, num_key_value_heads=2, head_dim=256)
-                cfg.attention_config = NS(backend=NS(name="FLASH_ATTN"))
+                cfg.attention_config = NS(backend=NS(name="FLASH_ATTN"), flash_attn_version=2)
                 cfg.cache_config.cache_dtype = "bfloat16"
                 worker._mach_2b_contract = profile.run_contract()
                 worker._mach_2b_runtime_sources = {}

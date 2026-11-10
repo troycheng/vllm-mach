@@ -8,6 +8,8 @@ activation cache: each invocation owns its outputs and uses vLLM's AR workspace.
 
 from __future__ import annotations
 
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_VERSION, NATIVE_EXTENSIONS
+
 import os
 import types
 from collections import Counter
@@ -32,9 +34,9 @@ def load_library():
     if _loaded:
         return
     for package, expected in (
-        ("flashinfer-python", "0.6.18"),
-        ("mxfp6-sm120", "0.2.1"),
-        ("vllm-mach-ar-norm", "0.1.0a1"),
+        ("flashinfer-python", BASE_PACKAGES["flashinfer-python"]),
+        ("mxfp6-sm120", NATIVE_VERSION),
+        ("vllm-mach-ar-norm", NATIVE_EXTENSIONS["vllm-mach-ar-norm"]),
     ):
         try:
             version = metadata.version(package).split("+", 1)[0]

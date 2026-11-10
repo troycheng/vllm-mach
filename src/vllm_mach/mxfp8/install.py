@@ -15,15 +15,18 @@ from pathlib import Path, PurePosixPath
 
 PROFILE = "qwen35-4b-mxfp8-champion-v1"
 DATA = Path(__file__).with_name("data")
+_COMMON_PATCH = Path(__file__).parents[1] / "runtime" / "common-vllm033.patch"
 
 
 def sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def _relative(name: str) -> Path:
+def _relative(name: str, namespace: str = "vllm") -> Path:
+    if namespace not in ("vllm", "flashinfer"):
+        raise RuntimeError(f"Invalid runtime source namespace: {namespace}")
     path = PurePosixPath(name)
-    if (path.is_absolute() or not path.parts or path.parts[0] != "vllm"
+    if (path.is_absolute() or not path.parts or path.parts[0] != namespace
             or any(part in (".", "..") for part in path.parts)
             or "\\" in name or path.as_posix() != name):
         raise RuntimeError(f"Invalid runtime source path: {name}")
@@ -43,18 +46,63 @@ def load_manifest(data_directory: Path | None = None) -> dict:
     patch = (directory / "runtime.patch").read_bytes()
     if sha256(patch) != manifest["patch_sha256"]:
         raise RuntimeError("Bundled runtime patch SHA256 mismatch")
+    load_shared_patch(manifest.get("shared_patch"), manifest["files"])
     return manifest
+
+
+def load_shared_patch(shared: dict | None, files: dict | None = None) -> bytes:
+    """Read the one packaged common overlay; fixtures may omit it entirely."""
+    if shared is None:
+        return b""
+    if shared.get("name") != "common-vllm033.patch":
+        raise RuntimeError("Unknown shared runtime patch")
+    names = shared.get("files", [])
+    if not names or len(names) != len(set(names)):
+        raise RuntimeError("Invalid shared runtime source set")
+    for name in names:
+        _relative(name)
+        if files is not None and (name not in files or
+                files[name]["upstream_sha256"] == files[name]["installed_sha256"]):
+            raise RuntimeError(f"Untracked or unchanged shared runtime source: {name}")
+    patch = _COMMON_PATCH.read_bytes()
+    if sha256(patch) != shared.get("sha256"):
+        raise RuntimeError("Bundled shared runtime patch SHA256 mismatch")
+    return patch
+
+
+def apply_profile_patch(sources: dict[str, bytes], patch: bytes,
+                        shared: dict | None = None, *,
+                        namespace: str = "vllm") -> dict[str, bytes]:
+    """Apply disjoint common/profile file sets in memory, preserving all guards."""
+    if shared is None:
+        return apply_patch(sources, patch, namespace=namespace)
+    if namespace != "vllm":
+        raise RuntimeError("Shared runtime patch is only valid in the vllm namespace")
+    names = set(shared["files"])
+    # Exact parser rejects a common header in the private patch (and vice
+    # versa), since each parser sees only its own disjoint source dictionary.
+    common = {name: value for name, value in sources.items() if name in names}
+    private = {name: value for name, value in sources.items() if name not in names}
+    if not names.issubset(sources):
+        raise RuntimeError("Missing shared runtime source")
+    common_patch = load_shared_patch(shared)
+    after = dict(sources)
+    after.update(apply_patch(common, common_patch))
+    after.update(apply_patch(private, patch))
+    return after
 
 
 def check_packages(expected: dict[str, str]) -> dict[str, str]:
     actual = {name: metadata.version(name) for name in expected}
+    from vllm_mach.stack import require_version
+
     for name, required in expected.items():
-        if actual[name].split("+", 1)[0] != required:
-            raise RuntimeError(f"{PROFILE} requires {name}=={required}, found {actual[name]}")
+        require_version(name, actual[name], required)
     return actual
 
 
-def apply_patch(sources: dict[str, bytes], patch: bytes) -> dict[str, bytes]:
+def apply_patch(sources: dict[str, bytes], patch: bytes, *,
+                namespace: str = "vllm") -> dict[str, bytes]:
     """Apply UTF-8 unified hunks at their exact offsets, with no fuzz or guessing."""
     lines = patch.decode("utf-8").splitlines(keepends=True)
     result = dict(sources)
@@ -65,7 +113,7 @@ def apply_patch(sources: dict[str, bytes], patch: bytes) -> dict[str, bytes]:
         if not lines[index].startswith("--- a/"):
             raise RuntimeError("Expected unified patch source header")
         name = lines[index][6:].rstrip("\n")
-        _relative(name)
+        _relative(name, namespace)
         index += 1
         if index >= len(lines) or lines[index] != f"+++ b/{name}\n":
             raise RuntimeError(f"Mismatched patch destination for {name}")
@@ -223,7 +271,8 @@ def install_profile(site: Path, *, apply: bool = False, verify_packages: bool = 
     before = _read_sources(site, manifest)
     state = inspect_sources(site, manifest)["state"]
     directory = DATA if data_directory is None else Path(data_directory)
-    after = (apply_patch(before, (directory / "runtime.patch").read_bytes())
+    after = (apply_profile_patch(before, (directory / "runtime.patch").read_bytes(),
+                                 manifest.get("shared_patch"))
              if state == "upstream" else before.copy())
     for name, source in after.items():
         if sha256(source) != manifest["files"][name]["installed_sha256"]:

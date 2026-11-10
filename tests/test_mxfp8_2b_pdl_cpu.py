@@ -47,6 +47,9 @@ def prepared_proxy(state, rows=16):
 
 def test_packaged_policy_preserves_arithmetic_and_twenty_config_variants():
     data = pdl.policy()  # Compares complete AST after removing only the PDL controls.
+    assert data['torch_version'] == '2.14.0+cu130'
+    assert data['triton_version'] == '3.8.0'
+    assert data['autotuner_init_sha256'] == '2e7dd6f9718a7934ae6ae482b2aad4f9776ad2483240f4de3100e468e3d64b70'
     assert len(data['kernels']) == 7
     assert sum(len(s['allowed_configs']) * len(s['layouts']) for s in data['kernels']) == 20
     assert len({s['semantic_key'] for s in data['kernels']}) == 4

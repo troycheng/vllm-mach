@@ -1,7 +1,7 @@
 """Cross-module profile contracts and the live worker warmup call sequence.
 
 Real Mach modules are imported together. CUDA entrypoints are replaced only
-for lifecycle ordering checks; no torch/vLLM installation is needed.
+for lifecycle ordering checks; Triton is imported before module isolation.
 """
 from collections import namedtuple
 from contextlib import ExitStack
@@ -17,6 +17,8 @@ import tempfile
 import types
 import unittest
 from unittest.mock import patch
+
+import triton
 
 SOURCE = Path(__file__).resolve().parents[1] / "src"
 PREFIXES = ("vllm", "torch", "mxfp6")
@@ -137,7 +139,7 @@ class ProfileTests(unittest.TestCase):
             for name, args, kwargs in entries:
                 with self.subTest(component=component, name=name):
                     inspect.signature(getattr(modules[component], name)).bind(*args, **kwargs)
-        self.assertEqual(len(modules["compile_choices"].load_policy()["bindings"]), 23)
+        self.assertEqual(len(modules["compile_choices"].load_policy()["bindings"]), 16)
 
     def test_environment_resets_stale_quality_and_sets_compile_before_validation(self):
         with tempfile.TemporaryDirectory() as directory:

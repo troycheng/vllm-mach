@@ -2,6 +2,8 @@
 import difflib
 import importlib.util
 import json
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -115,11 +117,15 @@ class InstallContracts(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "patch SHA256"):
             self.run_install(apply=True)
         with patch.object(self.installer.metadata, "version", return_value="0.30.0"):
-            with self.assertRaisesRegex(RuntimeError, "requires vllm==0.29.0"):
-                self.installer.check_packages({"vllm": "0.29.0"})
-        with patch.object(self.installer.metadata, "version", return_value="2.13.0+cu130"):
-            self.assertEqual(self.installer.check_packages({"torch": "2.13.0"}),
-                             {"torch": "2.13.0+cu130"})
+            with self.assertRaisesRegex(RuntimeError, "requires vllm==0.33.0"):
+                self.installer.check_packages({"vllm": "0.33.0"})
+        for build in ("2.14.0", "2.14.0+cpu", "2.14.0+cu128"):
+            with patch.object(self.installer.metadata, "version", return_value=build):
+                with self.assertRaisesRegex(RuntimeError, "torch==2.14.0\\+cu130"):
+                    self.installer.check_packages({"torch": "2.14.0"})
+        with patch.object(self.installer.metadata, "version", return_value="2.14.0+cu130"):
+            self.assertEqual(self.installer.check_packages({"torch": "2.14.0"}),
+                             {"torch": "2.14.0+cu130"})
 
     def test_lock_and_symlink_fail_before_source_publication(self):
         lock = self.site / ".vllm-mach-mxfp8-install.lock"
@@ -133,15 +139,78 @@ class InstallContracts(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "symlinked"):
             self.run_install(apply=True)
 
-    def test_bundled_profile_is_self_contained_and_has_frozen_compute_guards(self):
+    def test_shared_and_private_file_sets_compose_without_overlap(self):
+        name = "vllm/one.py"
+        common = "".join(difflib.unified_diff(self.before[name].decode().splitlines(True),
+            self.after[name].decode().splitlines(True), fromfile="a/"+name, tofile="b/"+name)).encode()
+        private = "".join("".join(difflib.unified_diff(value.decode().splitlines(True),
+            self.after[path].decode().splitlines(True), fromfile="a/"+path, tofile="b/"+path))
+            for path,value in self.before.items() if path != name).encode()
+        shared_file = self.data / "common-vllm033.patch"
+        shared_file.write_bytes(common)
+        manifest = json.loads((self.data / "runtime_sources.json").read_text())
+        manifest["shared_patch"] = {"name":shared_file.name,
+            "sha256":self.installer.sha256(common),"files":[name]}
+        manifest["patch_sha256"] = self.installer.sha256(private)
+        (self.data / "runtime.patch").write_bytes(private)
+        (self.data / "runtime_sources.json").write_text(json.dumps(manifest))
+        with patch.object(self.installer, "_COMMON_PATCH", shared_file):
+            self.assertEqual(self.run_install()["result_sha256"],
+                             {k:self.installer.sha256(v) for k,v in self.after.items()})
+            # Even matching digests cannot permit duplicate common file hunks.
+            manifest["patch_sha256"] = self.installer.sha256(private+common)
+            (self.data / "runtime.patch").write_bytes(private+common)
+            (self.data / "runtime_sources.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(RuntimeError, "untracked patch source"):
+                self.run_install(apply=True)
+            for key,value in self.before.items():
+                self.assertEqual((self.site / key).read_bytes(),value)
+            manifest["patch_sha256"] = self.installer.sha256(private)
+            (self.data / "runtime.patch").write_bytes(private)
+            (self.data / "runtime_sources.json").write_text(json.dumps(manifest))
+            self.assertTrue(self.run_install(apply=True)["applied"])
+            self.assertEqual(self.run_install(apply=True)["changes"],[])
+            shared_file.write_bytes(b"corrupt common patch\n")
+            with self.assertRaisesRegex(RuntimeError, "shared runtime patch SHA256"):
+                self.run_install(apply=True)
+
+    def test_shared_manifest_rejects_untracked_unchanged_and_escaping_sources(self):
+        for metadata in [
+            {"name":"../common.patch","files":["vllm/one.py"]},
+            {"name":"common-vllm033.patch","files":["vllm/guard.py"]},
+            {"name":"common-vllm033.patch","files":["vllm/missing.py"]},
+            {"name":"common-vllm033.patch","files":["flashinfer/one.py"]},
+        ]:
+            with self.assertRaises(RuntimeError):
+                manifest = self.installer.load_manifest(self.data)
+                self.installer.load_shared_patch(metadata,manifest["files"])
+
+    def test_actual_frozen_runtime_with_packaged_common_patch(self):
+        source = os.getenv("VLLM_MACH_TEST_UPSTREAM_SOURCE")
+        if not source:
+            self.skipTest("Set frozen vLLM source root for actual-source installation")
         manifest = self.installer.load_manifest()
-        self.assertEqual(manifest["packages"]["vllm"], "0.29.0")
+        for name in manifest["files"]:
+            target=self.site/name;target.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(Path(source)/name,target)
+        result=self.installer.install_profile(self.site,verify_packages=False)
+        self.assertEqual(result["result_sha256"],
+            {name:entry["installed_sha256"] for name,entry in manifest["files"].items()})
+        self.assertTrue(self.installer.install_profile(self.site,apply=True,
+            verify_packages=False)["applied"])
+        self.assertFalse(self.installer.install_profile(self.site,apply=True,
+            verify_packages=False)["applied"])
+
+    def test_bundled_profile_is_self_contained_and_records_source_changes(self):
+        manifest = self.installer.load_manifest()
+        self.assertEqual(manifest["packages"]["vllm"], "0.33.0")
         self.assertNotIn("mxfp6-sm120", manifest["packages"])
         for name, entry in manifest["files"].items():
             self.assertTrue(name.startswith("vllm/"))
             self.assertEqual(len(entry["installed_sha256"]), 64)
         gdn = manifest["files"]["vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py"]
-        self.assertNotEqual(gdn["installed_sha256"], gdn["frozen_champion_sha256"])
+        self.assertTrue(gdn["changed"])
+        self.assertNotEqual(gdn["upstream_sha256"], gdn["installed_sha256"])
         self.assertNotIn("upgrade_patch_sha256", manifest)
         self.assertTrue(all("previous_installed_sha256" not in entry
                             for entry in manifest["files"].values()))
@@ -149,7 +218,12 @@ class InstallContracts(unittest.TestCase):
                          ["runtime.patch"])
         fla = manifest["files"]["vllm/third_party/flash_linear_attention/ops/fused_recurrent.py"]
         self.assertEqual(fla["upstream_sha256"], fla["installed_sha256"])
-        patch_text = (self.installer.DATA / "runtime.patch").read_text()
+        private = (self.installer.DATA / "runtime.patch").read_bytes()
+        shared = self.installer.load_shared_patch(manifest["shared_patch"],manifest["files"])
+        self.assertEqual(len(manifest["shared_patch"]["files"]),8)
+        for name in manifest["shared_patch"]["files"]:
+            self.assertNotIn(("--- a/"+name+"\n").encode(),private)
+        patch_text = (private+shared).decode()
         for forbidden in ("/task", "vllm.mach.", "head_helpers", "experimental_overlay"):
             self.assertNotIn(forbidden, patch_text)
 

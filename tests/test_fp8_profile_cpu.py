@@ -28,6 +28,7 @@ def test_launch_keeps_full_capacity_precision_and_independent_features():
                 "--max-model-len": "8192", "--kv-cache-memory": str(19 * 2**30),
                 "--mamba-ssm-cache-dtype": "float32", "--dtype": "bfloat16",
                 "--linear-backend": "cutlass", "--attention-backend": "FLASH_ATTN",
+                "--attention-config": '{"flash_attn_version":2}',
                 "--tokenizer": "/models/tokenizer"}
     assert all(args[args.index(key) + 1] == value for key, value in expected.items())
 
@@ -44,8 +45,9 @@ def test_bad_feature_selection_has_no_environment_or_directory_side_effect(featu
 def test_profile_refuses_combined_lossy_flags_or_dependency_drift():
     settings = {"VLLM_MACH_PROFILE": profile.NAME, "VLLM_MACH_FP8_N64": "1"}
     with patch.dict(os.environ, settings, clear=True):
-        with patch.object(profile, "version", side_effect=profile.DEPENDENCIES.__getitem__):
-            assert profile.check_environment() == profile.DEPENDENCIES
+        actual = {**profile.DEPENDENCIES, "torch": "2.14.0+cu130"}
+        with patch.object(profile, "version", side_effect=actual.__getitem__):
+            assert profile.check_environment() == actual
             os.environ["VLLM_HYBRID_NVFP4_LM_HEAD"] = "1"
             with pytest.raises(RuntimeError, match="cannot be combined"):
                 profile.check_environment()

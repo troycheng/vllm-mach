@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
-"""Rebuild the pinned MXFP6 revision against the image's PyTorch ABI."""
-import json
-import os
+"""Compatibility entry point for the unified MXFP6/MXFP8 wheel builder."""
+import importlib.util
 from pathlib import Path
-import shlex
-import subprocess
 import sys
-import sysconfig
-import tarfile
-import urllib.request
 
-from install import patch_file
+# Public native 0.3.0 source shared with the Docker builds.
+REVISION = "1aa0955aa0bedf6f2bbc87be367301fe5f7c4c8b"
 
-REVISION = "ce0cd05a007504853d2bf3963a183e3c76f3c75b"  # unified MXFP8 decode kernels; official PDL ABI; package version 0.2.1
-CUTLASS = "e6233cbac5d7c7a865c19c91cd684ceece19513c"
-PATCHES = (
-    "0001-sm120-mxfp6-small-tile-runtime.patch",
-    "0003-sm120-streamk-persistent-workspace.patch",
-    "0004-sm120-single-stage-mainloop.patch",
-    "0005-sm120-static-problem-shape.patch",
-    "0006-sm120-pdl-release.patch",
+_spec = importlib.util.spec_from_file_location(
+    "mach_unified_native_builder", Path(__file__).with_name("build-mxfp8.py")
 )
-WORK = Path("/opt/mach-build")
+_builder = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_builder)
+
+# Retain the old import helpers for callers, with one implementation/pin source.
+CUTLASS = _builder.CUTLASS
+PATCHES = _builder.PATCHES
+discover_toolchain = _builder.discover_toolchain
+cmake_arguments = _builder.cmake_arguments
+
 SMOKE = """import torch, mxfp6
 from mxfp6 import mxfp8
 mxfp6.load_library()
@@ -36,64 +33,14 @@ assert 'bool use_pdl=False' in gemm, gemm
 """
 
 
-def discover_toolchain(cuda, site_paths=None):
-    """Admit CUDA 13 NVRTC sonames even without an unversioned linker alias."""
-    cuda = Path(cuda).resolve()
-    nvcc = cuda / "bin/nvcc"
-    if not nvcc.is_file():
-        raise RuntimeError(f"CUDA compiler not found: {nvcc}")
-    libraries = {path.resolve() for directory in (cuda / "targets/x86_64-linux/lib", cuda / "lib64")
-                 for pattern in ("libnvrtc.so", "libnvrtc.so.13", "libnvrtc.so.13.*")
-                 for path in directory.glob(pattern) if path.is_file()}
-    if len(libraries) != 1:
-        raise RuntimeError(f"Expected one CUDA 13 NVRTC library, found: {sorted(libraries)}")
-    if site_paths is None:
-        site_paths = [Path(value) for value in {sysconfig.get_path("purelib"),
-                      sysconfig.get_path("platlib"), *sys.path} if value]
-    includes = {path.resolve() for site in site_paths for path in Path(site).glob("nvidia/cu13/include")
-                if (path / "cuda_fp16.h").is_file() and (path / "cuda_bf16.h").is_file()}
-    if len(includes) != 1:
-        raise RuntimeError(f"Expected one installed nvidia/cu13/include directory, found: {sorted(includes)}")
-    return {"nvcc": str(nvcc), "nvrtc": str(next(iter(libraries))),
-            "cu13_include": str(next(iter(includes)))}
-
-
-def cmake_arguments(cutlass, toolchain):
-    return [f"-DCUTLASS_DIR={cutlass}", f"-DCMAKE_CUDA_COMPILER={toolchain['nvcc']}",
-            f"-DCUDA_NVRTC_LIB={toolchain['nvrtc']}",
-            "-DCMAKE_CUDA_FLAGS=-isystem " + shlex.quote(toolchain["cu13_include"])]
-
-
-def archive(repo, revision, parent):
-    parent.mkdir(parents=True, exist_ok=True)
-    target = WORK / (repo.split("/")[-1] + ".tar.gz")
-    urllib.request.urlretrieve(f"https://codeload.github.com/{repo}/tar.gz/{revision}", target)
-    with tarfile.open(target) as stream:
-        stream.extractall(parent, filter="data")
-    return parent / (repo.split("/")[-1] + "-" + revision)
-
-
-def main():
-    source = archive("Nekofish-L/mxfp6_sm120", REVISION, WORK)
-    cutlass = archive("NVIDIA/cutlass", CUTLASS, WORK / "cutlass-source")
-    for name in PATCHES:
-        patch_file(cutlass, source / "patches/cutlass" / name)
-    env = dict(os.environ)
-    cuda = Path(env["CUDA_HOME"])
-    toolchain = discover_toolchain(cuda)
-    env["PATH"] = str(cuda / "bin") + os.pathsep + env["PATH"]
-    env["CUDACXX"] = str(cuda / "bin/nvcc")
-    env["CMAKE_ARGS"] = shlex.join(cmake_arguments(cutlass, toolchain))
-    wheels = WORK / "wheels"
-    subprocess.run([sys.executable, "-m", "pip", "wheel", "--no-deps", "--no-build-isolation",
-                    str(source), "-w", str(wheels)], env=env, check=True)
-    wheel, = wheels.glob("mxfp6_sm120-0.2.1-*.whl")
-    subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "--force-reinstall", str(wheel)], check=True)
-    # This needs no GPU, but catches the dispatcher ABI mismatch of the PyPI wheel.
-    subprocess.run([sys.executable, "-c", SMOKE], check=True)
-    (WORK / "mxfp6-source.json").write_text(json.dumps({"revision": REVISION, "cutlass": CUTLASS,
-        "patches": list(PATCHES), "toolchain": toolchain}) + "\n")
+def main(argv=None):
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not any(arg == flag or arg.startswith(flag + "=")
+               for arg in args for flag in ("--revision", "--source-dir")):
+        args = ["--revision", REVISION, *args]
+    # The shared builder emits mxfp8-build.json containing both native DSOs.
+    return _builder.main(args)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

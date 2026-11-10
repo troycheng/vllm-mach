@@ -20,6 +20,7 @@ def quality_contract(rows):
     return {"max_model_len": 1024, "max_num_seqs": rows,
             "max_num_batched_tokens": max(8192, rows * 256),
             "kv_cache_memory_bytes": 4 * 2**30,
+            "attention_config": {"flash_attn_version": 2},
             "compilation_config": {"cudagraph_capture_sizes": captures,
                                    "max_cudagraph_capture_size": rows,
                                    "cudagraph_mode": "FULL_AND_PIECEWISE"}}
@@ -88,7 +89,7 @@ def _check_geometry(worker, contract):
             or cfg.scheduler_config.max_num_batched_tokens != contract["max_num_batched_tokens"]
             or cfg.cache_config.cache_dtype not in ("auto", "bfloat16")
             or (contract["attention_backend"] == "FLASH_ATTN"
-                and os.environ.get("VLLM_FLASH_ATTN_VERSION") != "2")):
+                and cfg.attention_config.flash_attn_version != 2)):
         raise RuntimeError("2B TP1, BF16 KV, fixed prefill and non-LoRA contract changed")
 
 

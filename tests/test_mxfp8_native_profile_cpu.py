@@ -196,10 +196,10 @@ class ProfileGlueTests(unittest.TestCase):
         Tensor.contiguous = lambda x: x
         ba = native_tests.load("vllm_mach.mxfp8.ba", "ba.py")
         ba.version = lambda name: "1.5.0"
-        with self.assertRaisesRegex(RuntimeError, "requires b12x 1.2.6"):
+        with self.assertRaisesRegex(RuntimeError, "requires b12x==1.5.1"):
             ba.install()
         self.assertEqual(schemas, [])
-        ba.version = lambda name: "1.2.6"
+        ba.version = lambda name: "1.5.1"
         self.assertTrue(ba.install())
         self.assertFalse(ba.install())
         self.assertEqual(schemas, [("mx8_ba_only::small_n", ())])

@@ -1,4 +1,4 @@
-"""Metadata helpers for the narrow vLLM 0.29 mixed FA2 source backport.
+"""Metadata helpers for the narrow vLLM 0.33 mixed FA2 source backport.
 
 The split algorithm comes from LiRunGuo's vLLM PR #58013. No runtime
 function replacement or attention-kernel registration happens here.
@@ -20,8 +20,6 @@ def build_split_metadata(builder, common, metadata) -> None:
     cfg = builder.vllm_config
     if (
         not builder.mach_fp8_fa2
-        or metadata.common_prefix_len
-        or metadata.use_cascade
         or builder.dcp_world_size != 1
         or cfg.parallel_config.tensor_parallel_size != 1
         or cfg.parallel_config.pipeline_parallel_size != 1
@@ -35,6 +33,9 @@ def build_split_metadata(builder, common, metadata) -> None:
         or metadata.causal is not True
     ):
         return
+    # v0.33 has no cascade metadata. Its num_decode_reqs counters describe
+    # DCP context attention and remain zero at TP1; derive our one-token
+    # decode prefix from the original CPU offsets instead.
     starts = common.query_start_loc_cpu
     n = common.num_reqs
     if (
@@ -82,8 +83,6 @@ def mixed_fa2_eligible(impl, metadata, query, output, key_cache, value_cache) ->
         and metadata.max_num_splits in (0, 1)
         and metadata.max_query_len > 1
         and metadata.causal is True
-        and not metadata.use_cascade
-        and metadata.common_prefix_len == 0
         and metadata.scheduler_metadata is None
         and metadata.mm_prefix_query_range_tensor is None
         and metadata.rswa_prefix_lens is None
