@@ -51,7 +51,7 @@ for obj in keep:
  obj.launchers=[types.SimpleNamespace(config=x.config)for x in obj.compile_results]
  body=canonical(obj.fn.src);expected=next(v['selected']for v in h.policy()['targets'].values()if v['after_sha256']==body)
  chosen=next(x for x in obj.launchers if h._config(x.config)==expected);obj.launchers=[chosen];obj._prune_compile_results_to_launcher(chosen)
-receipt=pickle.loads(pickle.dumps(h.receipt))(require_complete=True);json.dumps(receipt);assert len({x['body_sha256']for x in receipt['actual']})==4 and receipt['temporary_benchmark_constructors']>=1
+receipt=pickle.loads(pickle.dumps(h.receipt))(require_complete=True);json.dumps(receipt);assert len({x['body_sha256']for x in receipt['actual']})==len(h.policy()['targets']) and receipt['temporary_benchmark_constructors']>=1
 assert all(x['current_configs']is None and x['actual_launcher_configs'] and x['constructor_configs']==x['actual_launcher_configs'] for x in receipt['actual']);assert not torch.cuda.is_initialized()
 # A cold guard must reject an unqualified actual winner and preserve enough
 # source/config/launcher evidence to diagnose it without another model load.

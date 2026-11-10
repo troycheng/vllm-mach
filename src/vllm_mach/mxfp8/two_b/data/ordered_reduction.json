@@ -538,12 +538,149 @@
           "r0_": 128
         }
       ]
+    },
+    "ead7aa814b2fc25533cf16148d1115f3154747509d2819b843ac5b1a7086cfe9": {
+      "boundary": {
+        "function_sha256": "ead7aa814b2fc25533cf16148d1115f3154747509d2819b843ac5b1a7086cfe9",
+        "size_hints": {
+          "x": 8192,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*i32",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "out_ptr0": "*bf16",
+          "out_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    6
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "after_sha256": "7cfc5302d91de8c88e11ff4c181b334f3e6a30de8cf375281983e0945f293c54",
+      "selected": {
+        "kwargs": {
+          "XBLOCK": 2,
+          "R0_BLOCK": 1024
+        },
+        "num_warps": 8,
+        "num_stages": 1,
+        "num_ctas": 1
+      },
+      "size_hints": [
+        {
+          "x": 8192,
+          "r0_": 2048
+        },
+        {
+          "x": 2048,
+          "r0_": 2048
+        },
+        {
+          "x": 16384,
+          "r0_": 2048
+        }
+      ]
     }
   },
   "helpers_sha256": "b0e0e529678f620e18a09132afa7cd042725efd4ca20711cbcb711abbc5cfbad",
-  "allowed_unmodified": [
-    "ead7aa814b2fc25533cf16148d1115f3154747509d2819b843ac5b1a7086cfe9"
-  ],
+  "allowed_unmodified": [],
   "torch_benchmark_codegen_sha256": "7b924a88fe94374dc0dc33b5e6a592c52034f1180c85a9baf70c3e07d0cd0aaf",
   "format_version": 1
 }

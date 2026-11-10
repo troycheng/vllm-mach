@@ -58,7 +58,8 @@ def rewrite(source, name):
         if (body not in data['allowed_unmodified'] and
                 (_geometry(boundary) in [_geometry(b) for v in data['targets'].values() for b in _boundaries(v)]
                  or name.startswith(('triton_red_fused__to_copy_add_fused_add_rms_norm_',
-                                     'triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_silu_')))):
+                                     'triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_silu_',
+                                     'triton_red_fused__to_copy_add_embedding_rms_norm_')))):
             raise RuntimeError('Unqualified 2B norm source/geometry')
         return source
     if boundary not in _boundaries(original):

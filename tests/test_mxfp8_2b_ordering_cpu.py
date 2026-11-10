@@ -48,6 +48,28 @@ assert not torch.cuda.is_initialized()
 
 
 class Ordered2BCPU(unittest.TestCase):
+    def test_embedding_restores_only_reduction_and_preserves_gather_output(self):
+        body = 'ead7aa814b2fc25533cf16148d1115f3154747509d2819b843ac5b1a7086cfe9'
+        case = next(c for c in CASES if c['before'] == body)
+        self.assertNotIn(body, ordered_reduction.policy()['allowed_unmodified'])
+        changed = ordered_reduction.rewrite(case['source'], case['name'])
+        before = next(n for n in ast.parse(case['source']).body
+                      if isinstance(n, ast.FunctionDef) and n.name == case['name'])
+        after = next(n for n in ast.parse(changed).body
+                     if isinstance(n, ast.FunctionDef) and n.name == case['name'])
+        self.assertEqual(ast.dump(before.args), ast.dump(after.args))
+        # The last loop contains the original epsilon/rsqrt/gamma/BF16 store.
+        self.assertEqual(ast.dump(before.body[-1]), ast.dump(after.body[-1]))
+        loads = lambda fn: [ast.dump(n) for n in ast.walk(fn)
+                            if isinstance(n, ast.Call) and ast.unparse(n.func) == 'tl.load']
+        self.assertEqual(loads(before), loads(after))
+        self.assertEqual(case['after'], '7cfc5302d91de8c88e11ff4c181b334f3e6a30de8cf375281983e0945f293c54')
+        # A future changed body and new geometry must not regain an implicit
+        # unmodified path merely because its exact descriptor is unfamiliar.
+        unknown = case['source'].replace('1e-06', '2e-06').replace('8192', '4096')
+        with self.assertRaises(RuntimeError):
+            ordered_reduction.rewrite(unknown, case['name'])
+
     def test_finite_norm_transforms_and_all_actual_hint_variants(self):
         policy = ordered_reduction.policy()
         for case in CASES:
