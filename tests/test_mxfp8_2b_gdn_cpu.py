@@ -166,7 +166,8 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         helper = GDN.parents[1] / "gdn/legacy_reduction.py"
         functions = {n.name: hashlib.sha256(ast.dump(n, include_attributes=False).encode()).hexdigest()
                      for n in ast.parse(helper.read_text()).body if isinstance(n, ast.FunctionDef)}
-        self.assertEqual(functions, fixture["qualified_helper_functions"])
+        self.assertEqual({name: functions[name] for name in fixture["qualified_helper_functions"]},
+                         fixture["qualified_helper_functions"])
         worker = load_worker()
         self.assertEqual(worker._sha(helper), hashlib.sha256(helper.read_bytes()).hexdigest())
         source = (GDN / "worker.py").read_text()

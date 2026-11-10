@@ -443,6 +443,8 @@ def inspect_worker(worker):
     sources = {path.name:_sha(path) for path in ROOT.glob("*.py")}
     helper = ROOT.parents[1] / "gdn" / "legacy_reduction.py"
     sources["../../gdn/legacy_reduction.py"] = _sha(helper)
+    for name in ("bf16_small_gluon.py", "legacy_reduction_gluon.py"):
+        sources["../../gdn/" + name] = _sha(helper.parent / name)
     mode, quality_row, budget = _mode_contract()
     record = {"mode":"quality" if mode == "quality" else "normal",
         "profile_mode":mode,"quality_rows":quality_row,
@@ -450,7 +452,7 @@ def inspect_worker(worker):
         "production_throughput_profile":mode == "production",
         "implementation":"two_b_ordered_highM_w4",
         "recurrent_reduction_order":("legacy_local4_fp32" if selected_dtype() == "float32"
-                                     else "original_bf16_dispatch"),
+                                     else "qualified_gluon_local8_else_original_bf16"),
         "configured_rows":list(BF16_ROWS if selected_dtype() == "bfloat16" else ROWS),
         "low_rows_policy":("gluon_on_configured_rows_else_materialize_then_stock"
                            if selected_dtype() == "bfloat16" else

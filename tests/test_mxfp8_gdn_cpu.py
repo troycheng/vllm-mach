@@ -148,12 +148,14 @@ class OrderedGDNContracts(unittest.TestCase):
     def test_kernel_arithmetic_and_launch_contracts(self):
         # AST fingerprints bind operations AND launch expressions; paths and
         # comments are excluded so normal packaging cannot invalidate the pin.
+        # The two BF16 changes are separately bound to the old-exact component
+        # and original fallback ASTs by mxfp8_bf16_recurrent_order.json.
         fingerprints = {
             "lowm_allshape_triton": "17220ee86194044b5792a098e4f3c753992fdf4a83ac2c97600aebb603fabb94",
-            "ordered_allm_triton": "9c2bd05dcf56f7e0bdcc8262b11f3b7b0d98691668046dbe622be950ce180d90",
+            "ordered_allm_triton": "dab59137c278acc641191ab5bd3570dc5011e523fbece166a5b9b38f0bd15315",
             "ordered_m4_deferred_triton": "85fafccf509727d73972e0ba9b077449587869b0df4931df2e22845887f34e13",
             "ordered_m16_deferred_triton": "add8b45c3a8cb2c70bea6a98db434bf66200016ccfd3cdc89514de14c2223c63",
-            "bf16_small_gluon": "f428a464fd9ebddb1c6bfa0680139c798322ae51b5663ab92d3ce1f855e685ca",
+            "bf16_small_gluon": "5a3e55174101aa68e19a4da4e847e50f692bcf67f5a361132139b5b74c1b3d12",
         }
         for name, expected in fingerprints.items():
             tree = ast.parse((GDN / f"{name}.py").read_text())
@@ -178,10 +180,14 @@ class OrderedGDNContracts(unittest.TestCase):
         gluon.language, gluon.jit = language, Kernel
         experimental = types.ModuleType("triton.experimental")
         experimental.gluon = gluon
+        helpers = types.ModuleType("vllm_mach.mxfp8.gdn.legacy_reduction_gluon")
+        helpers._gl_old_square_128 = object()
+        helpers._gl_old_dot_128_8local = object()
         modules = {"triton": types.ModuleType("triton"),
                    "triton.experimental": experimental,
                    "triton.experimental.gluon": gluon,
-                   "triton.experimental.gluon.language": language}
+                   "triton.experimental.gluon.language": language,
+                   "vllm_mach.mxfp8.gdn.legacy_reduction_gluon": helpers}
         tensor = types.SimpleNamespace(shape=(32, 32, 128, 128), stride=lambda dim: 1)
         scratch = types.SimpleNamespace(**{name: object() for name in
             ("pending_k", "pending_d", "coeff", "prefix", "age")})
@@ -191,7 +197,7 @@ class OrderedGDNContracts(unittest.TestCase):
                     {"VLLM_MACH_MXFP8_BF16_GDN_PDL": setting,
                      "VLLM_MACH_MXFP8_BF16_GDN_GROUPED": grouped}):
                 spec = importlib.util.spec_from_file_location(
-                    "bf16_pdl_policy", GDN / "bf16_small_gluon.py")
+                    "vllm_mach.mxfp8.gdn.bf16_pdl_policy", GDN / "bf16_small_gluon.py")
                 module = importlib.util.module_from_spec(spec)
                 if "invalid" in (setting, grouped):
                     with self.assertRaisesRegex(ValueError, "must be 0 or 1"):

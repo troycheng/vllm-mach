@@ -6,6 +6,7 @@
     "tests/test_mxfp8_ssm.py",
     "tests/test_mxfp8_2b_model.py",
     "tests/test_mxfp8_2b_gdn_cpu.py",
+    "tests/test_mxfp8_bf16_recurrent_cpu.py",
     "tests/test_mxfp8_2b_mixed_cpu.py",
     "tests/test_mxfp8_2b_ba_graph_cpu.py",
     "tests/test_mxfp8_2b_profile_cpu.py",

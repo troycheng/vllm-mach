@@ -1,0 +1,28 @@
+{
+  "scope": "GPU three-case8step/twoflush/tworepeat exact against oldkernel; borrowed prefill fixture, not model accuracy qualification.",
+  "component_result_SHA256": "70359f8d7d61dfd17521003b57228e609aff98332784bf1196335ab36973fcfc",
+  "kernels": {
+    "bf16_small_gluon.py": {
+      "original_AST": "81643f9152e3f4051a705b8bbfab765632434868792acac5bc0fec07e76bca10",
+      "qualified_candidate_AST": "7576713451f222c65c70467c1c0eb70bab24f8162dd7386537c9e71fff49bbe7"
+    },
+    "ordered_allm_triton.py": {
+      "original_AST": "b3fd3c114b9e7d0c4c6dcfb8553d758e706e5a99e1fbfb133d975fff60ba475e",
+      "qualified_candidate_AST": "68485212c5b55934b1b9620a84a066965fe8a464e9c105977d39eb8ce67aa821"
+    }
+  },
+  "helpers": {
+    "legacy_reduction_gluon.py": {
+      "_gl_rn_mul": "be5aea2129178d184dc6c2a1c720222a261c8200f1f135b50f9b511fb174bcc6",
+      "_gl_rn_fma": "03d9eb0a70e546c45f3fd39e487e26684a8dd5defa67d29590f832a768244880",
+      "_gl_old_square_128": "7becb2e4a76d86ed0e3c026b58614124e19d90fb4694aabba80f1ddd616b70d7",
+      "_gl_old_dot_128_8local": "ad52df75488ff21932faf0e024735585f98f8a039cae177921e1ed168903cac2"
+    },
+    "legacy_reduction.py": {
+      "_rn_mul": "b4152bebeff8fde637da7f9361751446d3fa046841fbc400044772e059048eae",
+      "_rn_fma": "afd1f78dd8517dd5cd87c68b0b5d338cdfe426665c841d1d3d2a2aae217186c9",
+      "_old_square_128": "cae2c2501654360b638bd43029572da105da0c251524dc5ac6eef97c12881004",
+      "_old_dot_128_8local": "9ec7e9d1e2826b984840174f4c320016452ef5a72fc66eb1f5c695d6c0b4a1be"
+    }
+  }
+}
