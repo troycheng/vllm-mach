@@ -72,6 +72,119 @@ def test_disabled_and_missing_metadata():
     )
 
 
+def test_compiled_gdn_out_schema_and_caller_ownership(monkeypatch):
+    from torch._subclasses.fake_tensor import FakeTensorMode
+    from vllm.config import CompilationMode
+    from vllm.forward_context import ForwardContext, override_forward_context
+    from vllm_mach.mxfp6 import gdn_decode
+
+    owner = torch.nn.Module()
+    config = SimpleNamespace(mode=CompilationMode.VLLM_COMPILE, splitting_ops=[])
+    owner.vllm_config = SimpleNamespace(compilation_config=config)
+    assert gdn_decode._prepare_compiled_dispatch(owner)
+    assert gdn_decode._prepare_compiled_dispatch(owner)
+    assert config.splitting_ops == ["vllm::mach_gdn_forward_out"]
+    op = torch.ops.vllm.mach_gdn_forward_out.default
+    schema = op._schema
+    assert schema.arguments[0].alias_info is None
+    assert schema.arguments[1].name == "output"
+    assert schema.arguments[1].alias_info.is_write and not schema.returns
+
+    layer = SimpleNamespace(_mach_gdn_original=None, _mach_gdn_persistent=True,
+                            _mach_gdn_aux=None)
+    context = ForwardContext({"test": layer}, {}, {})
+    monkeypatch.setattr(gdn_decode, "_forward", lambda *args: args[-1].clone() * 2)
+    x = torch.arange(16, dtype=torch.bfloat16).reshape(4, 4)
+    initial = x.clone()
+    a, b = torch.empty_like(x), torch.empty_like(x)
+    with override_forward_context(context):
+        gdn_decode._compiled_forward_out(x, a, "test")
+        saved = a.clone()
+        gdn_decode._compiled_forward_out(x + 1, b, "test")
+    assert torch.equal(x, initial) and torch.equal(a, saved)
+    assert torch.equal(a, x * 2) and torch.equal(b, (x + 1) * 2)
+
+    # Check the compiled frontend's dataflow, not an incidental alias label.
+    graph = torch.fx.symbolic_trace(lambda x: gdn_decode._compiled_dispatch("test", x))
+    allocation = next(n for n in graph.graph.nodes if n.target is torch.empty_like)
+    call = next(n for n in graph.graph.nodes
+                if n.target is torch.ops.vllm.mach_gdn_forward_out)
+    returned = next(n for n in graph.graph.nodes if n.op == "output")
+    assert call.args[1] is allocation and returned.args[0] is allocation
+    with FakeTensorMode():
+        fake = torch.empty(4, 4, dtype=torch.bfloat16)
+        assert op(fake, torch.empty_like(fake), "test") is None
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA graph replay")
+@torch.inference_mode()
+def test_compiled_gdn_piecewise_changed_inputs(monkeypatch, default_vllm_config):
+    """An eager split op must write the buffer a downstream graph captured."""
+    from vllm.compilation import monitor
+    from vllm.compilation.cuda_graph import CUDAGraphWrapper, CUDAGraphOptions
+    from vllm.config import CompilationMode, CUDAGraphMode, get_current_vllm_config
+    from vllm.forward_context import BatchDescriptor, ForwardContext, override_forward_context
+    from vllm_mach.mxfp6 import gdn_decode
+
+    # The fixture establishes a context; set_current_vllm_config yields None.
+    config = get_current_vllm_config()
+    config.compilation_config.mode = CompilationMode.VLLM_COMPILE
+    config.compilation_config.splitting_ops = []
+    owner = torch.nn.Module()
+    owner.vllm_config = config
+    assert gdn_decode._prepare_compiled_dispatch(owner)
+    monkeypatch.setattr(monitor, "cudagraph_capturing_enabled", True)
+    layer = SimpleNamespace(_mach_gdn_original=None, _mach_gdn_persistent=True,
+                            _mach_gdn_aux=None)
+    context = ForwardContext({"test": layer}, {}, {},
+                             cudagraph_runtime_mode=CUDAGraphMode.PIECEWISE,
+                             batch_descriptor=BatchDescriptor(num_tokens=56))
+    fresh_results = []
+    factor = [2]
+
+    def fresh_forward(*args):
+        result = args[-1] * factor[0]
+        fresh_results.append(result)  # Prevent allocator reuse hiding the bug.
+        return result
+
+    monkeypatch.setattr(gdn_decode, "_forward", fresh_forward)
+    options = CUDAGraphOptions(weak_ref_output=False)
+    before = CUDAGraphWrapper(lambda x: (x.clone(), torch.empty_like(x)), config,
+                             CUDAGraphMode.PIECEWISE, options)
+    after = CUDAGraphWrapper(lambda output: output + 1, config,
+                            CUDAGraphMode.PIECEWISE, options)
+    before.is_debugging_mode = after.is_debugging_mode = True
+    x = torch.zeros(56, 16, device="cuda", dtype=torch.bfloat16)
+    a = torch.arange(x.numel(), device="cuda").reshape_as(x).to(x.dtype) / 128
+    b = -a - 1
+    stream = torch.cuda.Stream()
+    stream.wait_stream(torch.cuda.current_stream())
+    with torch.cuda.stream(stream), override_forward_context(context):
+        # Warm ordinary kernels before real vLLM piecewise captures.
+        warm_x, warm_out = before.runnable(x)
+        torch.ops.vllm.mach_gdn_forward_out(warm_x, warm_out, "test")
+        after.runnable(warm_out)
+        strong_storage = before(x)
+        static_address = strong_storage[1].data_ptr()
+        # A wrapper's first call only captures; the captured kernels have not
+        # populated its output yet. Capture both pieces before scoring replays.
+        graph_x, output = before(x)
+        torch.ops.vllm.mach_gdn_forward_out(graph_x, output, "test")
+        strong_result = after(output)
+        graph_x, output = before(x)
+        torch.ops.vllm.mach_gdn_forward_out(graph_x, output, "test")
+        assert torch.equal(after(output), x * 2 + 1)
+        for value, multiplier in [(a, 2), (b, 1), (a, 2)]:
+            x.copy_(value)
+            factor[0] = multiplier
+            graph_x, output = before(x)
+            assert output.data_ptr() == static_address
+            torch.ops.vllm.mach_gdn_forward_out(graph_x, output, "test")
+            result = after(output)
+            assert torch.equal(result, value * multiplier + 1)
+    torch.cuda.current_stream().wait_stream(stream)
+
+
 def test_launcher_defaults_state_fallback_and_resets_flags(monkeypatch):
     monkeypatch.setenv("VLLM_MACH_GDN_PERSISTENT", "1")
     monkeypatch.setenv("VLLM_MACH_GDN_BA_OVERLAP", "1")

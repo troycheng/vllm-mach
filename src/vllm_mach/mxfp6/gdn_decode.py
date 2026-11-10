@@ -23,20 +23,29 @@ _AUX_STREAMS: dict[int, torch.cuda.Stream] = {}
 _COMPILED_OP_REGISTERED = False
 
 
-def _compiled_forward(x: torch.Tensor, layer_name: str) -> torch.Tensor:
+def _compiled_forward_out(
+    x: torch.Tensor, output: torch.Tensor, layer_name: str
+) -> None:
     from vllm.forward_context import get_forward_context
 
     layer = get_forward_context().no_compile_layers[layer_name]
-    return _forward(layer, layer._mach_gdn_original,
-                    layer._mach_gdn_persistent, layer._mach_gdn_aux, x)
+    result = _forward(layer, layer._mach_gdn_original,
+                      layer._mach_gdn_persistent, layer._mach_gdn_aux, x)
+    output.copy_(result)
 
 
-def _compiled_fake(x: torch.Tensor, layer_name: str) -> torch.Tensor:
-    return torch.empty_like(x)
+def _compiled_fake_out(
+    x: torch.Tensor, output: torch.Tensor, layer_name: str
+) -> None:
+    return None
 
 
 def _compiled_dispatch(layer_name, x):
-    return torch.ops.vllm.mach_gdn_forward(x, layer_name)
+    # The caller owns a stable graph buffer; a split op cannot hand a fresh
+    # eager allocation to a downstream replay that captured a different address.
+    output = torch.empty_like(x)
+    torch.ops.vllm.mach_gdn_forward_out(x, output, layer_name)
+    return output
 
 
 def _prepare_compiled_dispatch(model):
@@ -53,14 +62,14 @@ def _prepare_compiled_dispatch(model):
         return False
     if not _COMPILED_OP_REGISTERED:
         direct_register_custom_op(
-            op_name="mach_gdn_forward", op_func=_compiled_forward,
-            mutates_args=[], fake_impl=_compiled_fake,
+            op_name="mach_gdn_forward_out", op_func=_compiled_forward_out,
+            mutates_args=["output"], fake_impl=_compiled_fake_out,
         )
         _COMPILED_OP_REGISTERED = True
     # Prefill state updates must execute outside captured piecewise regions,
     # just like vLLM's original GDN attention custom op.
-    if "vllm::mach_gdn_forward" not in config.splitting_ops:
-        config.splitting_ops.append("vllm::mach_gdn_forward")
+    if "vllm::mach_gdn_forward_out" not in config.splitting_ops:
+        config.splitting_ops.append("vllm::mach_gdn_forward_out")
     return True
 
 
