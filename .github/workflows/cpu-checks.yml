@@ -34,6 +34,7 @@ jobs:
           tests/test_mxfp8_flashinfer_layout_cpu.py
           tests/test_mxfp8_2b_sampler_metadata_cpu.py
           tests/test_mxfp8_2b_selector_graph_cpu.py
+          tests/test_mxfp8_2b_presence_graph_cpu.py
           tests/test_mxfp8_input_geometry_cpu.py
           tests/test_cpu_profile_entry.py
           tests/native_mxfp6/test_dense_prep_cpu.py
