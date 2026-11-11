@@ -127,6 +127,8 @@ def install(worker):
     runner._mach_sampling_sidecar = state
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, weight, tp_size=1)
     nv.capture_hybrid_nvfp4_lm_head(state, weight, tp_size=1)
+    from vllm_mach.mxfp8.two_b import selector_graph
+    selector_graph.install(worker, state)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
                  hybrid_success_calls=0, hybrid_success_rows=0, calls_by_rows={})
 
@@ -154,7 +156,9 @@ def inspect_worker(worker):
         return {"installed": False}
     state = installed["state"]
     stats = installed["stats"]
-    return dict(installed=True, candidates=state.candidates, max_rows=state.max_rows,
+    from vllm_mach.mxfp8.two_b import selector_graph
+    return dict(installed=True, selector_graph=selector_graph.receipt(state),
+                candidates=state.candidates, max_rows=state.max_rows,
                 backend=state.backend, full_bf16_parameter=True,
                 tie_guard=False, private_head_graph=state._head_graphs is not None,
                 head_graph_replays=(dict(state._head_graphs.replay_counts)

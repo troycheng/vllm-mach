@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Source-bound R128 gated norm with a private copy of the stock CUDA frontend."""
+"""Source-bound R128 gated norm with direct strided gate input and output."""
 import copy
 import functools
 import hashlib
@@ -95,8 +95,8 @@ def route(obj, args, kwargs, original):
         raise RuntimeError('Block-FP8 gated norm weight changed')
     if x.is_cuda and kwargs['stream'] != torch.cuda.current_stream(x.device).cuda_stream:
         raise RuntimeError('Block-FP8 gated norm stream changed')
-    out.copy_(_STATE['frontend'](x, weight, None, z=z, eps=1e-6,
-                              group_size=None, norm_before_gate=True, activation='silu'))
+    from ._guard_direct import run
+    run(x, weight, z, out)
     _STATE['hits'] += 1
     _STATE['rows'][str(rows)] = _STATE['rows'].get(str(rows), 0) + 1
     return None
@@ -116,8 +116,7 @@ def install():
     key = 'vllm/third_party/flash_linear_attention/ops/layernorm_guard.py'
     if hashlib.sha256(Path(guard.__file__).read_bytes()).hexdigest() != gates[key]:
         raise RuntimeError('Block-FP8 gated norm frontend source changed')
-    from ._guard_kernel import layer_norm_fwd_kernel
-    _STATE = dict(frontend=clone_frontend(guard, layer_norm_fwd_kernel), hits=0, fallbacks=0, rows={})
+    _STATE = dict(hits=0, fallbacks=0, rows={})
     for cls in [heuristics.CachingAutotuner, getattr(heuristics, 'StaticallyLaunchedAutotuner', None)]:
         if cls is None or 'run' not in cls.__dict__:
             continue
@@ -150,12 +149,12 @@ def cache_receipt(kernel):
 
 def inspect():
     if _STATE is not None:
-        from . import _guard_kernel
+        from . import _guard_direct_kernel
     return dict(installed=_STATE is not None,
-                actual_compiled=cache_receipt(_guard_kernel.layer_norm_fwd_kernel) if _STATE is not None else [],
+                actual_compiled=cache_receipt(_guard_direct_kernel.layer_norm_fwd_kernel) if _STATE is not None else [],
                 hits=0 if _STATE is None else _STATE['hits'],
                 fallbacks=0 if _STATE is None else _STATE['fallbacks'],
                 rows_per_block_calls={} if _STATE is None else dict(_STATE['rows']),
                 function_sha256=_BODY,
-                kernel_source_sha256=hashlib.sha256(Path(__file__).with_name('_guard_kernel.py').read_bytes()).hexdigest(),
-                output_contract='Stock CUDA frontend temporary allocation/contiguity/reshape and output copy preserved; private kernel binding; counts exclude CUDA graph replays.')
+                kernel_source_sha256=hashlib.sha256(Path(__file__).with_name('_guard_direct_kernel.py').read_bytes()).hexdigest(),
+                output_contract='Qualified R128 arithmetic with direct strided gate input and output store; original source/ABI/storage/stream guards preserved; counts exclude CUDA graph replays.')

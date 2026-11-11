@@ -1,4 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+# SPDX-FileCopyrightText: Songlin Yang, Yu Zhang
+#
+# Derived from vLLM's flash-linear-attention implementation, whose original
+# MIT-licensed source carries Copyright (c) 2023-2025, Songlin Yang, Yu Zhang.
 """Native MoE FP16 mixed GDN in the qualified legacy local8 order."""
 from vllm.triton_utils import tl, triton
 from vllm_mach.mxfp8.gdn.legacy_reduction import _old_dot_128_8local

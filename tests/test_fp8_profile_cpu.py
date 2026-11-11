@@ -225,3 +225,55 @@ def test_fla_qualification_is_reused_but_mutations_and_cache_conflicts_still_fai
         changed['selected']['num_warps'] = 8
         with pytest.raises(RuntimeError, match='policy changed'):
             prefill.choose(tuner, changed, values)
+
+
+def test_direct_gated_norm_changes_only_the_two_gate_addresses():
+    import ast
+    import copy
+    directory = Path(profile.__file__).parent
+    def kernel(name):
+        return next(n for n in ast.parse((directory / name).read_text()).body
+                    if isinstance(n, ast.FunctionDef) and n.name == 'layer_norm_fwd_kernel')
+    original = kernel('_guard_kernel.py')
+    direct = kernel('_guard_direct_kernel.py')
+    old = [n for n in ast.walk(original) if isinstance(n, ast.Assign)
+           and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'Z_base']
+    new = [n for n in ast.walk(direct) if isinstance(n, ast.Assign)
+           and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'Z_base']
+    assert len(old) == len(new) == 2
+    expected = ast.parse('Z + (rows[:, None] // 32) * 12288 + (rows[:, None] % 32) * 128 + col_offsets', mode='eval').body
+    for before, after in zip(old, new):
+        assert ast.dump(after.value, include_attributes=False) == ast.dump(expected, include_attributes=False)
+        after.value = copy.deepcopy(before.value)
+    assert ast.dump(direct, include_attributes=False) == ast.dump(original, include_attributes=False)
+
+
+def test_direct_gated_norm_caller_preserves_layout_output_and_launch_contract():
+    import ast
+    import math
+    import torch
+    directory = Path(profile.__file__).parent
+    node = next(n for n in ast.parse((directory / '_guard_direct.py').read_text()).body
+                if isinstance(n, ast.FunctionDef) and n.name == 'run')
+    launches = []
+    class Kernel:
+        def __getitem__(self, grid):
+            return lambda *args, **kwargs: launches.append((grid, args, kwargs))
+    namespace = dict(torch=torch, triton=NS(cdiv=lambda a, b: math.ceil(a / b)),
+                     guard=NS(calc_rows_per_block=lambda m, device: min(4, 2**math.ceil(math.log2(math.ceil(m / 340))))),
+                     layer_norm_fwd_kernel=Kernel())
+    exec(compile(ast.Module(body=[node], type_ignores=[]), '<actual_direct_caller>', 'exec'), namespace)
+    for t in (1, 4, 11, 22, 32, 64, 129, 2048):
+        x = torch.empty((t, 32, 128), dtype=torch.bfloat16)
+        weight = torch.empty(128, dtype=torch.bfloat16)
+        z = torch.empty((t, 96, 128), dtype=torch.bfloat16)[:, :32, :]
+        out = torch.empty_like(x)
+        assert namespace['run'](x, weight, z, out) is out
+        grid, args, kwargs = launches[-1]
+        assert args[0] is x and args[1] is out and args[2] is weight and args[4] is z
+        assert args[7:] == (128, 128, 128, t * 32, 128, 1e-6)
+        assert kwargs['num_warps'] == 1 and kwargs['num_stages'] == 3
+        assert kwargs['NORM_BEFORE_GATE'] and kwargs['IS_RMS_NORM'] and kwargs['ACTIVATION'] == 'silu'
+        assert grid == (math.ceil(t * 32 / kwargs['ROWS_PER_BLOCK']), 1)
+        with pytest.raises(AssertionError):
+            namespace['run'](x, weight, torch.empty_like(x), out)
