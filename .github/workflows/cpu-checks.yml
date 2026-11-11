@@ -32,6 +32,7 @@ jobs:
           tests/test_teacher_decode_cpu.py
           tests/test_mxfp8_deploy.py
           tests/test_mxfp8_flashinfer_layout_cpu.py
+          tests/test_mxfp8_2b_sampler_metadata_cpu.py
           tests/test_cpu_profile_entry.py
           tests/native_mxfp6/test_dense_prep_cpu.py
           tests/native_mxfp6/test_dense_prefill_cpu.py

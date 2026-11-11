@@ -12,6 +12,7 @@
     "tests/test_mxfp8_2b_ba_graph_cpu.py",
     "tests/test_mxfp8_2b_profile_cpu.py",
     "tests/test_mxfp8_2b_hybrid_head_cpu.py",
+    "tests/test_mxfp8_2b_sampler_metadata_cpu.py",
     "tests/test_mxfp8_2b_pdl_cpu.py",
     "tests/test_fp8_profile_cpu.py",
     "tests/test_fp8_linear_cpu.py",
@@ -99,6 +100,9 @@
     ],
     "tests/test_mxfp8_4b_bf16_ordering_cpu.py::test_selected_mxfp8_4b_actual_prep_binding": [
       "mxfp8"
+    ],
+    "tests/test_mxfp8_2b_sampler_metadata_cpu.py::test_selected_2b_sampler_metadata_actual_runtime": [
+      "mxfp8"
     ]
   },
   "required_tests": {
@@ -110,7 +114,8 @@
       "test_selected_mxfp8_4b_actual_prep_binding",
       "test_low_rows_warm_bound_pool_with_only_zero_slots_before_capture",
       "test_native_requires_registered_selector_and_exact_supported_format",
-      "test_actual_forward_split_nhd_hnd_without_impl_layout_attribute"
+      "test_actual_forward_split_nhd_hnd_without_impl_layout_attribute",
+      "test_selected_2b_sampler_metadata_actual_runtime"
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",

@@ -225,11 +225,13 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         events = []
         Worker, _ = self.lifecycle(events)
         hybrid = load("mxfp8.two_b.hybrid_head")
+        metadata = load("mxfp8.two_b.sampler_metadata")
         with patch.dict(os.environ, {"VLLM_MACH_2B_HYBRID_HEAD": "1"}), \
-                patch.object(hybrid, "install", side_effect=lambda obj: events.append("hybrid")):
+                patch.object(hybrid, "install", side_effect=lambda obj: events.append("hybrid")), \
+                patch.object(metadata, "install", side_effect=lambda obj: events.append("sampler_metadata")):
             self.profile.install_worker_hook()
             obj = Worker(); obj.init_device(); obj.compile_or_warm_up_model()
-        self.assertEqual(events[-4:], ["prepare_pools", "compile", "hybrid", "compiled"])
+        self.assertEqual(events[-5:], ["prepare_pools", "compile", "hybrid", "sampler_metadata", "compiled"])
 
     def test_quality_skips_production_dispatch_and_contract_drift_rejects_compile(self):
         for row in (4, 32, 64):
