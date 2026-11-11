@@ -9,6 +9,8 @@ import threading
 from pathlib import Path
 from types import MethodType
 
+from . import dense_attention
+
 _DATA = Path(__file__).parents[1] / 'profile'
 _ENABLED = False
 _INSTALLED = False
@@ -62,6 +64,7 @@ def resolve_backend(config, requested):
     from . import dense_prefill, dense_prep
 
     dense_prep.configure(config)
+    dense_attention.configure(config)
     requested = dense_prefill.resolve_backend(config, requested)
     if not model_eligible(config) or not _sm120():
         _ENABLED = False
@@ -254,6 +257,7 @@ def decode(layer, mixed, a, b, state, out, indices):
 
 
 def prepare_attention(model):
+    dense_attention.prepare(model)
     if not _ENABLED:
         return
     import torch
@@ -291,6 +295,13 @@ def prepare_attention(model):
 
 
 def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_head_size, bf16, use_fp8):
+    if dense_attention._ENABLED:
+        selected = dense_attention.reduction(
+            stock, num_seqs=num_seqs, heads=heads, kv_heads=kv_heads,
+            segments=segments, head_size=head_size, padded_head_size=padded_head_size,
+            bf16=bf16, use_fp8=use_fp8)
+        if selected is not stock:
+            return selected
     if not (_ENABLED and getattr(_CONTEXT, 'attention', None) is not None
             and num_seqs in _DECODE_ROWS and heads == 8 and kv_heads == 1
             and segments == 16 and head_size == padded_head_size == 256 and bf16 and not use_fp8):
@@ -318,6 +329,6 @@ def receipt():
     return dict(enabled=_ENABLED, installed=_INSTALLED, **_STATS,
                 packed=packed.receipt(), dense_prep=dense_prep.receipt(),
                 dense_prefill=dense_prefill.receipt(), dense_norm=dense_norm.receipt(),
-                dense_packed=dense_packed.receipt(),
+                dense_packed=dense_packed.receipt(), dense_attention=dense_attention.receipt(),
                 mixed_fp16=mixed_fp16.receipt(),
                 counters='host launches/captures, not replays')
