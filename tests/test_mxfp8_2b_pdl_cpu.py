@@ -143,3 +143,61 @@ def test_receipt_rejects_missing_producer_or_native_capture(state):
         state.verify_capture({16})
     state._COUNTS['native_capture_m16']=78
     assert state.verify_capture({16})['ready']
+
+
+def test_six_pointer_full16_source_preserves_qualified_body_and_all_other_clones(monkeypatch):
+    from vllm_mach.mxfp8.two_b import pdl_norm
+    from vllm_mach.mxfp8.compile_choices import canonical_function_sha256, recipe_from_source
+    monkeypatch.setenv('VLLM_MACH_PROFILE', 'qwen35-2b-mxfp8-champion-v1')
+    monkeypatch.setenv('VLLM_MACH_MXFP8_SSM_DTYPE', 'float32')
+    changed = []
+    for spec in pdl.policy()['kernels']:
+        for layout in spec['layouts']:
+            for config in spec['allowed_configs']:
+                result = pdl_norm.source(spec, layout['rows'], config)
+                if result == spec['source']:
+                    continue
+                changed.append((spec['name'], layout['rows']))
+                assert layout['rows'] == 16 and spec['semantic_key'] == pdl_norm.SEMANTIC
+                assert canonical_function_sha256(result, spec['name']) == pdl_norm.AFTER
+                before = recipe_from_source(spec['source'], spec['name'], {}, spec['name'])['boundary']
+                after = recipe_from_source(result, spec['name'], {}, spec['name'])['boundary']
+                assert after == {**before, 'function_sha256': pdl_norm.AFTER}
+                for instruction in ('gdc_wait', 'gdc_launch_dependents'):
+                    assert result.count(instruction) == spec['source'].count(instruction) == 1
+    assert len(changed) == 2  # Same six-pointer numeric body with two source aliases.
+
+
+@pytest.mark.parametrize('profile,ssm,rows,config', [
+    ('qwen35-2b-mxfp8-champion-v1', 'bfloat16', 16, None),
+    ('qwen35-4b-mxfp8-champion-v1', 'float32', 16, None),
+    ('qwen35-2b-mxfp8-champion-v1', 'float32', 24, None),
+    ('qwen35-2b-mxfp8-champion-v1', 'float32', 32, None),
+    ('qwen35-2b-mxfp8-champion-v1', 'float32', 64, None),
+    ('qwen35-2b-mxfp8-champion-v1', 'float32', 16, {'kwargs': {'R0_BLOCK': 512, 'XBLOCK': 2}, 'num_warps': 8, 'num_stages': 1, 'num_ctas': 1}),
+])
+def test_six_pointer_pdl_scope_keeps_unselected_source_bytes(monkeypatch, profile, ssm, rows, config):
+    from vllm_mach.mxfp8.two_b import pdl_norm
+    monkeypatch.setenv('VLLM_MACH_PROFILE', profile)
+    monkeypatch.setenv('VLLM_MACH_MXFP8_SSM_DTYPE', ssm)
+    spec = next(s for s in pdl.policy()['kernels'] if s['source_sha256'].startswith('164c9f1b'))
+    assert pdl_norm.source(spec, rows, config or pdl_norm.CONFIG) == spec['source']
+
+
+def test_six_pointer_actual_clone_route_records_effective_source(state, monkeypatch):
+    from vllm_mach.mxfp8.two_b import pdl_norm
+    spec = next(s for s in state.policy()['kernels'] if s['source_sha256'].startswith('164c9f1b'))
+    desc = state._descriptor(spec['name'], spec['original_source'])
+    original, clone = Kernel(pdl_norm.CONFIG), Kernel(pdl_norm.CONFIG)
+    clone._mach_pdl_source_sha256 = 'qualified-source'
+    clone._mach_pdl_norm_ordered = True
+    proxy = state._Proxy(original, desc)
+    index = desc['arg_names'].index('xnumel')
+    args = tuple([object()] * index + [16, 2048])
+    proxy._checked_rows.add(16)
+    state._CLONES[state._kernel_key(spec, 16, pdl_norm.CONFIG)] = clone
+    bound(state, monkeypatch)
+    assert proxy.run(*args, stream=7) is clone.answer
+    selected = next(iter(state._SELECTED.values()))
+    assert selected['compiled_source_sha256'] == 'qualified-source' and selected['norm_ordered']
+    assert clone.calls == [(args, {'stream': 7})]
