@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Qualified MoE FP16 prefill and M32 reductions; unrelated paths stay upstream."""
+"""Qualified native MoE FP16 reductions; unrelated paths stay upstream."""
 import functools
 import hashlib
 import importlib
@@ -14,9 +14,11 @@ _ENABLED = False
 _INSTALLED = False
 _CONTEXT = threading.local()
 _WARMED = set()
+_DECODE_ROWS = (1, 2, 4, 8, 16, 24, 32)
+_PACKED_ROWS = (16, 24, 32)
 _STATS = {'prepared': [], 'pins': {}, 'prep_calls': 0, 'norm_calls': {},
-          'packed_calls': {}, 'attention_calls': 0, 'attention_capture': {},
-          'norm_choices': {}, 'pin_choices': {}, 'attention_choices': []}
+          'packed_calls': {}, 'packed_capture': {}, 'attention_calls': 0, 'attention_capture': {},
+          'norm_choices': {}, 'norm_capture': {}, 'pin_choices': {}, 'attention_choices': []}
 
 
 def enabled():
@@ -137,7 +139,7 @@ def install():
         expected = dict(BLOCK_N=128, HAS_BIAS=False, HAS_Z=True,
                         IS_RMS_NORM=True, NORM_BEFORE_GATE=True, num_warps=1)
         if (len(args) != 13 or args[11] != 128
-                or kwargs.get('ROWS_PER_BLOCK') not in (2, 4)
+                or kwargs.get('ROWS_PER_BLOCK') not in (1, 2, 4)
                 or kwargs.get('ACTIVATION') not in ('silu', 'swish')
                 or any(kwargs.get(k) != v for k, v in expected.items())):
             return original_norm(*args, **kwargs)
@@ -145,7 +147,10 @@ def install():
         result = layer_norm_fwd_kernel.run(*args, **kwargs)
         key = prefix + ':row' + str(kwargs['ROWS_PER_BLOCK'])
         _STATS['norm_calls'][key] = _STATS['norm_calls'].get(key, 0) + 1
-        _STATS['norm_choices'][key] = dict(hash=result.metadata.hash, num_warps=result.metadata.num_warps, num_stages=result.metadata.num_stages, ptx_sha256=hashlib.sha256(result.asm['ptx'].encode()).hexdigest())
+        if torch.cuda.is_current_stream_capturing():
+            capture_key = key + ':m' + str(args[10])
+            _STATS['norm_capture'][capture_key] = _STATS['norm_capture'].get(capture_key, 0) + 1
+        _STATS['norm_choices'][key] = dict(rows=args[10], capturing=torch.cuda.is_current_stream_capturing(), hash=result.metadata.hash, num_warps=result.metadata.num_warps, num_stages=result.metadata.num_stages, ptx_sha256=hashlib.sha256(result.asm['ptx'].encode()).hexdigest())
         return result
     guard.layer_norm_fwd_kernel.run = norm_run
     _INSTALLED = True
@@ -179,7 +184,7 @@ def prepare(layer):
         if (layer.get_state_dtype()[1] != torch.float16 or x.shape != z.shape or x.shape[-1] != 128
                 or x.dtype != z.dtype or x.dtype != torch.bfloat16
                 or x.stride(-1) != 1 or z.stride(-1) != 1
-                or guard.calc_rows_per_block(x.numel() // 128, x.device) != 4):
+                or guard.calc_rows_per_block(x.numel() // 128, x.device) not in (1, 2, 4)):
             return original(x, z)
         previous = getattr(_CONTEXT, 'norm', None)
         _CONTEXT.norm = layer.prefix
@@ -191,7 +196,7 @@ def prepare(layer):
     original_decode = layer._rms_norm_gated_cuda
 
     def decode_norm(x, z, out):
-        if (layer.get_state_dtype()[1] != torch.float16 or x.shape != (32, 16, 128) or z.shape != x.shape or out.shape != x.shape
+        if (layer.get_state_dtype()[1] != torch.float16 or x.ndim != 3 or x.shape[0] not in _DECODE_ROWS or x.shape[1:] != (16, 128) or z.shape != x.shape or out.shape != x.shape
                 or x.dtype != z.dtype or x.dtype != out.dtype or x.dtype != torch.bfloat16):
             return original_decode(x, z, out)
         previous = getattr(_CONTEXT, 'norm', None)
@@ -219,22 +224,25 @@ def prepare(layer):
 
 def decode(layer, mixed, a, b, state, out, indices):
     import torch
-    if (not _ENABLED or not getattr(layer, '_mach_native_legacy', False) or mixed.shape != (32, 4096)
+    if (not _ENABLED or not getattr(layer, '_mach_native_legacy', False) or mixed.ndim != 2 or mixed.shape[0] not in _PACKED_ROWS or mixed.shape[1] != 4096
             or mixed.stride() != (6144, 1) or mixed.dtype != torch.bfloat16
             or state.dtype != torch.float16 or state.stride() != (278528, 16384, 128, 1)
-            or a.shape != (32, 16) or b.shape != a.shape
+            or a.shape != (mixed.shape[0], 16) or b.shape != a.shape
             or a.stride() != (16, 1) or b.stride() != (16, 1)
-            or indices.shape != (32,) or indices.dtype != torch.int32 or indices.stride() != (1,)):
+            or indices.shape != (mixed.shape[0],) or indices.dtype != torch.int32 or indices.stride() != (1,)):
         return False
     from . import packed
     packed.decode(mixed, a, b, layer.A_log, layer.dt_bias, state, out, indices)
     _STATS['packed_calls'][layer.prefix] = _STATS['packed_calls'].get(layer.prefix, 0) + 1
+    if torch.cuda.is_current_stream_capturing():
+        _STATS['packed_capture'][layer.prefix] = _STATS['packed_capture'].get(layer.prefix, 0) + 1
     return True
 
 
 def prepare_attention(model):
     if not _ENABLED:
         return
+    import torch
     from vllm.v1.attention.backends.triton_attn import TritonAttentionImpl
     for layer in model.modules():
         impl = getattr(layer, 'impl', None)
@@ -250,7 +258,16 @@ def prepare_attention(model):
         def forward(self, *args, _original=original, _name=name, _owner=layer, **kwargs):
             previous = getattr(_CONTEXT, 'attention', None)
             owner = kwargs.get('layer', args[0] if args else None)
-            _CONTEXT.attention = _name if owner is _owner and owner.layer_name == _name else None
+            metadata = kwargs.get('attn_metadata', args[5] if len(args) > 5 else None)
+            query = kwargs.get('query', args[1] if len(args) > 1 else None)
+            admitted = (owner is _owner and owner.layer_name == _name
+                        and metadata is not None and metadata.max_query_len == 1
+                        and metadata.num_actual_tokens in _DECODE_ROWS
+                        and metadata.seq_lens.shape == (metadata.num_actual_tokens,)
+                        and query is not None and query.dtype == torch.bfloat16
+                        and query.shape[0] == metadata.num_actual_tokens
+                        and query.numel() == metadata.num_actual_tokens * 8 * 256)
+            _CONTEXT.attention = _name if admitted else None
             try:
                 return _original(*args, **kwargs)
             finally:
@@ -261,7 +278,7 @@ def prepare_attention(model):
 
 def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_head_size, bf16, use_fp8):
     if not (_ENABLED and getattr(_CONTEXT, 'attention', None) is not None
-            and num_seqs == 32 and heads == 8 and kv_heads == 1
+            and num_seqs in _DECODE_ROWS and heads == 8 and kv_heads == 1
             and segments == 16 and head_size == padded_head_size == 256 and bf16 and not use_fp8):
         return stock
     from ...mxfp8.two_b._attention_reduction_kernel import reduce_segments_explicit_old_lane as target
@@ -274,7 +291,7 @@ def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
                 _STATS['attention_calls'] += 1
                 if torch.cuda.is_current_stream_capturing():
                     _STATS['attention_capture'][prefix] = _STATS['attention_capture'].get(prefix, 0) + 1
-                row = dict(prefix=prefix, hash=result.metadata.hash, num_warps=result.metadata.num_warps, num_stages=result.metadata.num_stages, ptx_sha256=hashlib.sha256(result.asm['ptx'].encode()).hexdigest())
+                row = dict(prefix=prefix, rows=num_seqs, grid=list(grid), capturing=torch.cuda.is_current_stream_capturing(), hash=result.metadata.hash, num_warps=result.metadata.num_warps, num_stages=result.metadata.num_stages, ptx_sha256=hashlib.sha256(result.asm['ptx'].encode()).hexdigest())
                 if row not in _STATS['attention_choices']:
                     _STATS['attention_choices'].append(row)
                 return result

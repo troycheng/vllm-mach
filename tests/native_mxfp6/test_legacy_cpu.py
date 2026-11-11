@@ -86,10 +86,25 @@ class NativeLegacyAdmission(unittest.TestCase):
         with patch.object(legacy._CONTEXT, 'attention', None, create=True):
             self.assertIs(legacy.attention(stock, **kw), stock)
         with patch.object(legacy._CONTEXT, 'attention', 'model.layers.3.self_attn.attn', create=True):
-            for key, value in [('num_seqs', 4), ('heads', 16), ('kv_heads', 2),
+            for key, value in [('num_seqs', 48), ('heads', 16), ('kv_heads', 2),
                                ('segments', 64), ('head_size', 128), ('bf16', False),
                                ('use_fp8', True)]:
                 self.assertIs(legacy.attention(stock, **{**kw, key: value}), stock)
+
+    def test_qualified_grid_rows_use_same_attention_kernel(self):
+        stock = object()
+        target = object()
+        module = 'vllm_mach.mxfp8.two_b._attention_reduction_kernel'
+        with patch.object(legacy, '_ENABLED', True), patch.object(
+                legacy._CONTEXT, 'attention', 'model.layers.3.self_attn.attn', create=True), patch.dict(
+                    'sys.modules', {module: N(reduce_segments_explicit_old_lane=target)}):
+            for rows in (1, 2, 4, 8, 16, 24, 32):
+                with self.subTest(rows=rows):
+                    result = legacy.attention(stock, num_seqs=rows, heads=8, kv_heads=1,
+                        segments=16, head_size=256, padded_head_size=256, bf16=True, use_fp8=False)
+                    self.assertIsNot(result, stock)
+        self.assertEqual(legacy._PACKED_ROWS, (16, 24, 32))
+        self.assertEqual(legacy._DECODE_ROWS, (1, 2, 4, 8, 16, 24, 32))
 
 
 if __name__ == '__main__':
