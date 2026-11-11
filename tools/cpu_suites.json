@@ -26,6 +26,7 @@
     "tests/test_mxfp8_head_cpu.py",
     "tests/test_mxfp8_install.py",
     "tests/test_mxfp8_kv_cpu.py",
+    "tests/test_mxfp8_flashinfer_layout_cpu.py",
     "tests/test_mxfp8_native_profile_cpu.py",
     "tests/test_mxfp8_prepare_model.py",
     "tests/test_mxfp8_norm_frontend_cpu.py",
@@ -108,7 +109,8 @@
       "test_selected_mxfp8_4b_keeps_actual_stock_prep_callable",
       "test_selected_mxfp8_4b_actual_prep_binding",
       "test_low_rows_warm_bound_pool_with_only_zero_slots_before_capture",
-      "test_native_requires_registered_selector_and_exact_supported_format"
+      "test_native_requires_registered_selector_and_exact_supported_format",
+      "test_actual_forward_split_nhd_hnd_without_impl_layout_attribute"
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",

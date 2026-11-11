@@ -31,6 +31,7 @@ jobs:
           tests/test_stack_cpu.py
           tests/test_teacher_decode_cpu.py
           tests/test_mxfp8_deploy.py
+          tests/test_mxfp8_flashinfer_layout_cpu.py
           tests/test_cpu_profile_entry.py
       - name: Build wheel and source distribution
         run: python -m build --no-isolation

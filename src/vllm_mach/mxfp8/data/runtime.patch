@@ -522,7 +522,7 @@
 +        elif self.use_separate_kv_head_slots:
 +            head_axis = (
 +                2
-+                if get_flashinfer_layout_string(self.kv_cache_layout) == "NHD"
++                if get_flashinfer_layout_string(kv_cache_layout) == "NHD"
 +                else 1
 +            )
 +            kv_cache_tuple = tuple(
