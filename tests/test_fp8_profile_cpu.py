@@ -106,7 +106,7 @@ def test_fla_choices_require_exact_scalar_dtype_key_and_available_config():
     class Config:
         def __init__(self, **values): self.values = values
         def __eq__(self, other): return isinstance(other, Config) and self.values == other.values
-    with patch.dict(sys.modules, {'triton': NS(Config=Config)}), patch.object(prefill, '_UNKNOWN', {}):
+    with patch.dict(sys.modules, {'triton': NS(Config=Config)}), patch.object(prefill, '_UNKNOWN', {}), patch.object(prefill, '_QUALIFIED', {}):
         for row in rows:
             n = next(i for i, v in enumerate(row['key']) if isinstance(v, str))
             keys = ['key' + str(i) for i in range(n)]
@@ -160,3 +160,68 @@ def test_exact_division_selector_keeps_unknown_formats_on_original_op():
             assert not quantize.eligible(x, q, s, *args)
         with patch.object(x, 'is_cuda', False):
             assert not quantize.eligible(x, q, s, *args)
+
+
+def test_fla_qualification_is_reused_but_mutations_and_cache_conflicts_still_fail():
+    import copy
+    import sys
+    from vllm_mach.fp8 import prefill
+
+    class Config:
+        constructions = 0
+
+        def __init__(self, **values):
+            Config.constructions += 1
+            self.values = values
+
+        def __eq__(self, other):
+            return isinstance(other, Config) and self.values == other.values
+
+    class Configs(list):
+        scans = 0
+
+        def __contains__(self, value):
+            self.scans += 1
+            return super().__contains__(value)
+
+    row = dict(function='kernel', key=[32, 'torch.bfloat16'],
+               selected=dict(kwargs={'BK': 64}, num_warps=4, num_stages=3))
+    values = dict(N=32, x=NS(dtype='torch.bfloat16'))
+    member = Config(**copy.deepcopy(row['selected']))
+    configs = Configs([member])
+    tuner = NS(keys=['N'], arg_names=['N', 'x'], configs=configs, cache={})
+    with patch.dict(sys.modules, {'triton': NS(Config=Config)}), \
+            patch.object(prefill, '_QUALIFIED', {}), patch.object(prefill, '_UNKNOWN', {}):
+        # Installation can qualify before the first actual invocation.
+        state = prefill._qualify(tuner, row)
+        constructions, scans = Config.constructions, configs.scans
+        for _ in range(3):
+            assert prefill.choose(tuner, row, values) == row['key']
+            assert tuner.cache[tuple(row['key'])] is state['config']
+        assert (Config.constructions, configs.scans) == (constructions, scans)
+        assert prefill.choose(tuner, row, dict(values, N=33)) is None
+        assert tuner.cache.keys() == {tuple(row['key'])}
+        # Equal external entries retain the old acceptance semantics.
+        tuner.cache[tuple(row['key'])] = Config(**copy.deepcopy(row['selected']))
+        assert prefill.choose(tuner, row, values) == row['key']
+        for bad in (None, Config(kwargs={'BK': 128})):
+            tuner.cache[tuple(row['key'])] = bad
+            with pytest.raises(RuntimeError, match='conflicting tuning'):
+                prefill.choose(tuner, row, values)
+        tuner.cache.clear()
+        tuner.configs = Configs([Config(kwargs={'BK': 128}), member])
+        assert prefill.choose(tuner, row, values) == row['key']
+        assert state['selected_index'] == 1
+        member.values['kwargs']['BK'] = 128
+        with pytest.raises(RuntimeError, match='Config disappeared'):
+            prefill.choose(tuner, row, values)
+        member.values['kwargs']['BK'] = 64
+        assert prefill.choose(tuner, row, values) == row['key']
+        state['config'].values['kwargs']['BK'] = 128
+        with pytest.raises(RuntimeError, match='Config mutated'):
+            prefill.choose(tuner, row, values)
+        state['config'].values['kwargs']['BK'] = 64
+        changed = copy.deepcopy(row)
+        changed['selected']['num_warps'] = 8
+        with pytest.raises(RuntimeError, match='policy changed'):
+            prefill.choose(tuner, changed, values)

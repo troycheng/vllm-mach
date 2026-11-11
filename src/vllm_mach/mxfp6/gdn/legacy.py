@@ -161,7 +161,10 @@ def install():
 
 
 def prepare(layer):
-    """Bind only an already prepared native MoE instance before graph capture."""
+    """Bind already prepared native norm paths before graph capture."""
+    from . import dense_norm
+
+    dense_norm.prepare(layer)
     if not _ENABLED or getattr(layer, '_mach_native_legacy', False):
         return
     import torch
@@ -304,8 +307,8 @@ def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
 
 
 def receipt():
-    from . import dense_prefill, dense_prep, packed
+    from . import dense_norm, dense_prefill, dense_prep, packed
     return dict(enabled=_ENABLED, installed=_INSTALLED, **_STATS,
                 packed=packed.receipt(), dense_prep=dense_prep.receipt(),
-                dense_prefill=dense_prefill.receipt(),
+                dense_prefill=dense_prefill.receipt(), dense_norm=dense_norm.receipt(),
                 counters='host launches/captures, not replays')

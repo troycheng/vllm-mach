@@ -36,5 +36,6 @@ jobs:
           tests/test_cpu_profile_entry.py
           tests/native_mxfp6/test_dense_prep_cpu.py
           tests/native_mxfp6/test_dense_prefill_cpu.py
+          tests/native_mxfp6/test_dense_norm_cpu.py
       - name: Build wheel and source distribution
         run: python -m build --no-isolation

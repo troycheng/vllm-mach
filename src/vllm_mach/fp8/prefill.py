@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Block-only current-FLA selection and shared old-order post-convolution prep."""
+import copy
 import functools
 import hashlib
 import importlib
@@ -16,6 +17,7 @@ _ACTUAL = {}
 _UNKNOWN = {}
 _PREP = 0
 _STOCK_PREP = None
+_QUALIFIED = {}
 
 
 def fused_post_conv_prep(conv_output, a, b, A_log, dt_bias, num_k_heads,
@@ -36,9 +38,27 @@ def fused_post_conv_prep(conv_output, a, b, A_log, dt_bias, num_k_heads,
                           head_k_dim, head_v_dim, apply_l2norm, output_g_exp)
 
 
-def choose(tuner, row, values):
-    """Exact autotune key, including original argument-order dtype suffix."""
+def _qualify_list(tuner, state):
+    reference = state['reference']
+    if reference not in tuner.configs:
+        raise RuntimeError('Qualified block-FP8 FLA Config disappeared')
+    index = tuner.configs.index(reference)
+    state.update(config_list=tuner.configs, config_count=len(tuner.configs),
+                 selected_index=index, member=tuner.configs[index])
+
+
+def _qualify(tuner, row):
     from triton import Config
+    state = dict(tuner=tuner, row=copy.deepcopy(row),
+                 config=Config(**copy.deepcopy(row['selected'])),
+                 reference=Config(**copy.deepcopy(row['selected'])))
+    _qualify_list(tuner, state)
+    _QUALIFIED[id(tuner)] = state
+    return state
+
+
+def choose(tuner, row, values):
+    """Validate each actual key/cache entry; qualify immutable policy once."""
     bound = {k: v for k, v in values.items() if k in tuner.arg_names}
     key = [bound[k] for k in tuner.keys if k in bound]
     key.extend(str(v.dtype) for v in bound.values() if hasattr(v, 'dtype'))
@@ -47,12 +67,27 @@ def choose(tuner, row, values):
         if key not in _UNKNOWN[row['function']]:
             _UNKNOWN[row['function']].append(key)
         return None
-    config = Config(**row['selected'])
-    if config not in tuner.configs:
-        raise RuntimeError('Qualified block-FP8 FLA Config disappeared')
-    if tuple(key) in tuner.cache and tuner.cache[tuple(key)] != config:
-        raise RuntimeError('Block-FP8 FLA selection installed after conflicting tuning')
-    tuner.cache[tuple(key)] = config
+    state = _QUALIFIED.get(id(tuner))
+    if state is None or state['tuner'] is not tuner:
+        state = _qualify(tuner, row)
+    if row != state['row']:
+        raise RuntimeError('Qualified block-FP8 FLA policy changed')
+    # Config and list entries are mutable. Keep a private pristine reference,
+    # and requalify replaced/reordered lists without scanning on the hot path.
+    if state['config'] != state['reference']:
+        raise RuntimeError('Qualified cached FLA Config mutated')
+    configs = tuner.configs
+    if (configs is not state['config_list'] or len(configs) != state['config_count']
+            or configs[state['selected_index']] is not state['member']
+            or state['member'] != state['reference']):
+        _qualify_list(tuner, state)
+    config = state['config']
+    cache_key = tuple(key)
+    if cache_key in tuner.cache:
+        cached = tuner.cache[cache_key]
+        if cached is not config and cached != config:
+            raise RuntimeError('Block-FP8 FLA selection installed after conflicting tuning')
+    tuner.cache[cache_key] = config
     return key
 
 
@@ -80,6 +115,7 @@ def install():
         tuner = getattr(module, row['function'])
         while not isinstance(tuner, Autotuner):
             tuner = tuner.fn
+        _qualify(tuner, row)
         original = tuner.run
 
         @functools.wraps(original)
