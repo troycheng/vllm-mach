@@ -68,7 +68,7 @@
       "upstream_sha256": "9145e2601f9e93db5e6c7e648c6741cff55f2a49f046800f79311e4977550121",
       "installed_sha256": "e647c70f6a85aad43e3c62b97bd0f744540102a1ad3695a29a34904e6c433680",
       "changed": true,
-      "purpose": "Public full-vocabulary runner plus frozen prompt-logprob profile warmup; no compact routes."
+      "purpose": "Public full-vocabulary runner plus frozen prompt-logprob profile warmup; selected 2B/4B instances prebuild immutable single-sample logit geometry. General/draft and dynamic mapping paths remain original."
     },
     "vllm/v1/worker/gpu_worker.py": {
       "upstream_sha256": "e46a2659842b5b0238ca5d13ecb4a2dcff91f028493a7117d666edb0785a742c",

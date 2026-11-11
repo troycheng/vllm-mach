@@ -66,6 +66,7 @@ testpaths = [
     "tests/test_mxfp8_2b_hybrid_head_cpu.py",
     "tests/test_mxfp8_2b_sampler_metadata_cpu.py",
     "tests/test_mxfp8_2b_selector_graph_cpu.py",
+    "tests/test_mxfp8_input_geometry_cpu.py",
     "tests/test_mxfp8_2b_pdl_cpu.py",
     "tests/test_fp8_profile_cpu.py",
     "tests/test_fp8_compile_choices_cpu.py",

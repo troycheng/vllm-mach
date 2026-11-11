@@ -96,6 +96,7 @@ def _check_geometry(worker, contract):
 def inspect_worker(worker):
     worker = _worker(worker)
     from . import ba, gdn, graph_policy, hybrid_head, pdl, sampler_metadata
+    from .. import input_geometry
     from ..worker import verify_worker_execution
     import torch
     contract = worker._mach_2b_contract
@@ -136,6 +137,7 @@ def inspect_worker(worker):
             "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state, "swiglu_quant": fusion_state, "ordered_reduction": ordering,
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
             "hybrid_head": hybrid, "sampler_metadata": sampler_metadata.inspect_worker(worker),
+            "input_geometry": input_geometry.inspect_worker(worker),
             "ordered_attention_sources": attention.identity(),
             "ordered_prep_sources": gdn_prep.identity(),
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
@@ -188,6 +190,8 @@ def install_worker_hook():
         self._mach_2b_ready = False
         self._mach_2b_steps = 0
         result = original_init(self, *args, **kwargs)
+        from .. import input_geometry
+        input_geometry.install(self)
         _check_geometry(self, contract)
         install_worker_backend(self)
         pdl.prepare()

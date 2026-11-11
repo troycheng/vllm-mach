@@ -55,7 +55,7 @@ class DenseAttentionTests(unittest.TestCase):
                     calls.append((self.kind, grid, args, kwargs))
                     pitch = values.get('block_table_stride', 8)
                     key = 1 if pitch == 1 else 16 if pitch % 16 == 0 else 8
-                    return N(hash='compiled-' + str(key), metadata=N(num_warps=4, num_stages=3), asm={'ptx': str(key)})
+                    return N(hash=f"compiled-m{values['num_seqs']}-{key}", metadata=N(num_warps=4, num_stages=3), asm={'ptx': str(key)})
                 return run
         self.target, self.stock = Kernel('target'), Kernel('stock')
         for p in [patch.dict(os.environ, {}, clear=True),
@@ -64,7 +64,7 @@ class DenseAttentionTests(unittest.TestCase):
                   patch.object(dense_prep, '_sm120', return_value=True),
                   patch.object(dense_attention, '_ENABLED', False),
                   patch.object(dense_attention, '_WARMED', set()),
-                  patch.object(dense_attention, '_STATS', dict(prepared=[], calls={}, capture_calls={}, kernels={}, warmups={})),
+                  patch.object(dense_attention, '_STATS', dict(prepared=[], calls={}, capture_calls={}, capture_rows={}, kernels={}, warmups={})),
                   patch.object(dense_attention, '_target', return_value=self.target),
                   patch.object(legacy, '_ENABLED', False)]:
             self.stack.enter_context(p)
@@ -77,7 +77,8 @@ class DenseAttentionTests(unittest.TestCase):
                 chosen = legacy.attention(outer.stock, num_seqs=attn_metadata.seq_lens.shape[0],
                     heads=self.num_heads, kv_heads=self.num_kv_heads, segments=16,
                     head_size=256, padded_head_size=256, bf16=query.dtype == outer.bf16, use_fp8=False)
-                chosen[(32, 12)](**outer.values(output))
+                rows = attn_metadata.num_actual_tokens
+                chosen[(rows, 12)](**outer.values(output, rows=rows))
                 return output
         self.Impl = Impl
         self.stack.enter_context(patch.dict(sys.modules, {
@@ -94,15 +95,15 @@ class DenseAttentionTests(unittest.TestCase):
         return N(layer_name=f'model.layers.{index}.self_attn.attn', impl=self.Impl(),
                  _q_scale=Tensor((), self.fp32))
 
-    def values(self, output=None):
-        return dict(output_ptr=output or Tensor((32, 12, 256), self.bf16),
+    def values(self, output=None, rows=32):
+        return dict(output_ptr=output or Tensor((rows, 12, 256), self.bf16),
                     segm_output_ptr=Tensor((32, 12, 16, 256), self.fp32),
                     segm_max_ptr=Tensor((32, 12, 16), self.fp32),
                     segm_expsum_ptr=Tensor((32, 12, 16), self.fp32),
-                    seq_lens_ptr=Tensor((32,), self.i32), num_seqs=32, num_query_heads=12,
+                    seq_lens_ptr=Tensor((rows,), self.i32), num_seqs=rows, num_query_heads=12,
                     out_scale_inv=1., output_stride_0=3072, output_stride_1=256,
                     block_table_stride=8, TILE_SIZE=16, HEAD_SIZE=256, HEAD_SIZE_PADDED=256,
-                    query_start_len_ptr=Tensor((33,), self.i32), BLOCK_Q=2,
+                    query_start_len_ptr=Tensor((rows + 1,), self.i32), BLOCK_Q=2,
                     NUM_SEGMENTS_PER_SEQ=16, USE_FP8=False)
 
     def prepare(self):
@@ -140,14 +141,15 @@ class DenseAttentionTests(unittest.TestCase):
         layer, model = self.prepare()
         self.assertFalse(hasattr(layer, 'kv_cache'))
         self.assertTrue(layer.impl._mach_dense_fp32_attention)
-        self.assertEqual([r[3]['block_table_stride'] for r in self.launches], [1, 8, 16])
+        self.assertEqual([r[3]['block_table_stride'] for r in self.launches], [1, 8, 16] * 2)
+        self.assertEqual([r[3]['num_seqs'] for r in self.launches], [32] * 3 + [4] * 3)
         self.assertFalse(dense_attention._STATS['calls'])
         self.assertFalse(dense_attention._STATS['capture_calls'])
-        self.assertEqual(dense_attention._STATS['warmups'], {'cuda:0': 3})
+        self.assertEqual(dense_attention._STATS['warmups'], {'cuda:0:m32': 3, 'cuda:0:m4': 3})
         bound = layer.impl.forward
         legacy.prepare_attention(model)
         self.assertIs(layer.impl.forward, bound)
-        self.assertEqual(len(self.launches), 3)
+        self.assertEqual(len(self.launches), 6)
 
     def test_forward_pos_keyword_mixed_restores_context_and_original_output(self):
         layer, _ = self.prepare(); self.launches.clear(); self.capturing = True
@@ -166,7 +168,19 @@ class DenseAttentionTests(unittest.TestCase):
         self.assertIsNone(dense_attention._CONTEXT.prefix)
         self.assertEqual(dense_attention._STATS['calls'], {layer.layer_name: 3})
         self.assertEqual(dense_attention._STATS['capture_calls'], {layer.layer_name: 3})
-        values['attn_metadata'].num_actual_tokens = 4
+        self.assertEqual(dense_attention._STATS['capture_rows'], {layer.layer_name + ':m32': 3})
+        values.update(query=Tensor((4, 3072), self.bf16),
+                      attn_metadata=N(max_query_len=1, num_actual_tokens=4,
+                                      seq_lens=Tensor((4,), self.i32)),
+                      output=Tensor((4, 12, 256), self.bf16))
+        with patch.object(dense_attention.hashlib, 'sha256', side_effect=AssertionError('hot-path hashing')):
+            self.assertIs(forward(**values), values['output'])
+            self.assertIs(forward(*values.values()), values['output'])
+            self.assertIs(forward(layer, **{k: v for k, v in values.items() if k != 'layer'}), values['output'])
+        self.assertEqual(dense_attention._STATS['calls'], {layer.layer_name: 6})
+        self.assertEqual(dense_attention._STATS['capture_rows'], {layer.layer_name + ':m32': 3, layer.layer_name + ':m4': 3})
+        self.assertEqual([r[1] for r in self.launches], [(32, 12)] * 3 + [(4, 12)] * 3)
+        values['attn_metadata'].num_actual_tokens = 8
         forward(**values)
         self.assertEqual(self.launches[-1][0], 'stock')
 
@@ -192,7 +206,16 @@ class DenseAttentionTests(unittest.TestCase):
             changed = {**values, key: value}
             selected[(32, 12)](**changed)
             self.assertEqual(self.launches[-1], ('stock', (32, 12), (), changed))
-        self.assertIs(legacy.attention(self.stock, num_seqs=4, heads=12, kv_heads=2,
+        selected4 = legacy.attention(self.stock, num_seqs=4, heads=12, kv_heads=2,
+            segments=16, head_size=256, padded_head_size=256, bf16=True, use_fp8=False)
+        values4 = self.values(rows=4)
+        selected4[(4, 12)](**values4)
+        self.assertEqual(self.launches[-1], ('target', (4, 12), (), values4))
+        # Reserve32 scratch at M4 is valid; a mismatched M32 CU remains stock.
+        wrong = {**values4, 'query_start_len_ptr': Tensor((33,), self.i32)}
+        selected4[(4, 12)](**wrong)
+        self.assertEqual(self.launches[-1], ('stock', (4, 12), (), wrong))
+        self.assertIs(legacy.attention(self.stock, num_seqs=8, heads=12, kv_heads=2,
             segments=16, head_size=256, padded_head_size=256, bf16=True, use_fp8=False), self.stock)
 
 

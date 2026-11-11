@@ -197,6 +197,7 @@ def write_receipt(worker, phase):
     from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
     from . import native_backend, projection_parallel, swiglu_quant, greedy_head, norm_frontend
     from vllm_mach import gdn_prep
+    from . import input_geometry
 
     receipt = {
         "profile": NAME, "phase": phase, "pid": os.getpid(),
@@ -204,6 +205,7 @@ def write_receipt(worker, phase):
         "versions": check_environment(),
         "runtime_sources": worker._mach_mxfp8_runtime_sources,
         "native": native_backend.inspect(worker),
+        "input_geometry": input_geometry.inspect_worker(worker),
         "dual": dual.inspect_worker(worker), "ba": ba.inspect_worker(worker),
         "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_cache(worker),
         "norm_frontend": norm_frontend.inspect_frontend(),
@@ -268,6 +270,8 @@ def install_worker_hook():
         self._mach_mxfp8_ready = False
         self._mach_mxfp8_steps = 0
         result = original_init(self, *args, **kwargs)
+        from . import input_geometry
+        input_geometry.install(self)
         from .worker import install_worker_backend
         from . import ba, dual
         install_worker_backend(self)

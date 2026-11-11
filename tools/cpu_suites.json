@@ -43,7 +43,8 @@
     "tests/test_mxfp8_ordered_reduction_cpu.py",
     "tests/test_mxfp8_2b_ordering_cpu.py",
     "tests/test_mxfp8_4b_bf16_ordering_cpu.py",
-    "tests/test_attention_segments_cpu.py"
+    "tests/test_attention_segments_cpu.py",
+    "tests/test_mxfp8_input_geometry_cpu.py"
   ],
   "isolated_global_module_mocks": [
     "tests/test_mxfp8_native_cpu.py",
@@ -120,7 +121,8 @@
       "test_native_requires_registered_selector_and_exact_supported_format",
       "test_actual_forward_split_nhd_hnd_without_impl_layout_attribute",
       "test_selected_2b_sampler_metadata_actual_runtime",
-      "test_selected_2b_selector_graph_actual_runtime"
+      "test_selected_2b_selector_graph_actual_runtime",
+      "test_actual_prepare_inputs_all_fields_and_retained_prefixes"
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",

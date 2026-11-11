@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Qualified Dense FP32 M32 NT16 merge; other native paths keep their choice."""
+"""Qualified Dense FP32 M4/M32 NT16 merge; other native paths keep their choice."""
 import functools
 import hashlib
 import importlib
@@ -13,7 +13,9 @@ _ENABLED = False
 _VERIFIED = False
 _CONTEXT = threading.local()
 _WARMED = set()
-_STATS = {'prepared': [], 'calls': {}, 'capture_calls': {}, 'kernels': {}, 'warmups': {}}
+_ROWS = (4, 32)
+_STATS = {'prepared': [], 'calls': {}, 'capture_calls': {}, 'capture_rows': {},
+          'kernels': {}, 'warmups': {}}
 
 
 def configure(config):
@@ -57,25 +59,27 @@ def _warmup(device):
     import torch
 
     target = _target()
-    out = torch.empty((32, 12, 256), dtype=torch.bfloat16, device=device)
-    staging = torch.zeros((32, 12, 16, 256), dtype=torch.float32, device=device)
-    maxima = torch.zeros((32, 12, 16), dtype=torch.float32, device=device)
-    sums = torch.ones_like(maxima)
-    lengths = torch.full((32,), 256, dtype=torch.int32, device=device)
-    cu = torch.arange(33, dtype=torch.int32, device=device)
     # Runtime table pitch is not used to address staging. Compile its three
-    # Triton integer specializations without touching any model/cache storage.
-    for pitch in (1, 8, 16):
-        result = target[(32, 12)](
-            output_ptr=out, segm_output_ptr=staging, segm_max_ptr=maxima,
-            segm_expsum_ptr=sums, seq_lens_ptr=lengths, num_seqs=32,
-            num_query_heads=12, out_scale_inv=1.0, output_stride_0=3072,
-            output_stride_1=256, block_table_stride=pitch, TILE_SIZE=16,
-            HEAD_SIZE=256, HEAD_SIZE_PADDED=256, query_start_len_ptr=cu,
-            BLOCK_Q=2, NUM_SEGMENTS_PER_SEQ=16, USE_FP8=False)
-        _remember(result)
+    # integer specializations for each qualified row count, keeping M32 first
+    # and never touching model/cache storage.
+    for rows in (32, 4):
+        out = torch.empty((rows, 12, 256), dtype=torch.bfloat16, device=device)
+        staging = torch.zeros((rows, 12, 16, 256), dtype=torch.float32, device=device)
+        maxima = torch.zeros((rows, 12, 16), dtype=torch.float32, device=device)
+        sums = torch.ones_like(maxima)
+        lengths = torch.full((rows,), 256, dtype=torch.int32, device=device)
+        cu = torch.arange(rows + 1, dtype=torch.int32, device=device)
+        for pitch in (1, 8, 16):
+            result = target[(rows, 12)](
+                output_ptr=out, segm_output_ptr=staging, segm_max_ptr=maxima,
+                segm_expsum_ptr=sums, seq_lens_ptr=lengths, num_seqs=rows,
+                num_query_heads=12, out_scale_inv=1.0, output_stride_0=3072,
+                output_stride_1=256, block_table_stride=pitch, TILE_SIZE=16,
+                HEAD_SIZE=256, HEAD_SIZE_PADDED=256, query_start_len_ptr=cu,
+                BLOCK_Q=2, NUM_SEGMENTS_PER_SEQ=16, USE_FP8=False)
+            _remember(result)
+        _STATS['warmups'][f'{device}:m{rows}'] = 3
     _WARMED.add(device)
-    _STATS['warmups'][str(device)] = 3
 
 
 def prepare(model):
@@ -103,11 +107,12 @@ def prepare(model):
             owner = kwargs.get('layer', args[0] if args else None)
             query = kwargs.get('query', args[1] if len(args) > 1 else None)
             metadata = kwargs.get('attn_metadata', args[5] if len(args) > 5 else None)
+            rows = getattr(metadata, 'num_actual_tokens', 0)
             admitted = (_ENABLED and owner is _owner and owner.layer_name == _name
                         and metadata is not None and metadata.max_query_len == 1
-                        and metadata.num_actual_tokens == 32 and metadata.seq_lens.shape == (32,)
+                        and rows in _ROWS and metadata.seq_lens.shape == (rows,)
                         and query is not None and query.dtype == torch.bfloat16
-                        and query.is_cuda and query.shape[0] == 32 and query.numel() == 32 * 12 * 256)
+                        and query.is_cuda and query.shape[0] == rows and query.numel() == rows * 12 * 256)
             previous = getattr(_CONTEXT, 'prefix', None)
             if not admitted and previous is None:
                 return _original(*args, **kwargs)
@@ -123,7 +128,7 @@ def prepare(model):
 
 def reduction(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_head_size, bf16, use_fp8):
     prefix = getattr(_CONTEXT, 'prefix', None)
-    if not (_ENABLED and prefix is not None and num_seqs == 32 and heads == 12
+    if not (_ENABLED and prefix is not None and num_seqs in _ROWS and heads == 12
             and kv_heads == 2 and segments == 16 and head_size == padded_head_size == 256
             and bf16 and not use_fp8):
         return stock
@@ -134,17 +139,17 @@ def reduction(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
             def run(*args, **kwargs):
                 import torch
                 values = {**dict(zip(target.arg_names, args)), **kwargs}
-                expected = dict(num_seqs=32, num_query_heads=12, out_scale_inv=1.0,
+                expected = dict(num_seqs=num_seqs, num_query_heads=12, out_scale_inv=1.0,
                                 output_stride_0=3072, output_stride_1=256, TILE_SIZE=16,
                                 HEAD_SIZE=256, HEAD_SIZE_PADDED=256, BLOCK_Q=2,
                                 NUM_SEGMENTS_PER_SEQ=16, USE_FP8=False)
-                shapes = {'output_ptr': ((32, 12, 256), torch.bfloat16),
-                          'seq_lens_ptr': ((32,), torch.int32),
-                          'query_start_len_ptr': ((33,), torch.int32)}
+                shapes = {'output_ptr': ((num_seqs, 12, 256), torch.bfloat16),
+                          'seq_lens_ptr': ((num_seqs,), torch.int32),
+                          'query_start_len_ptr': ((num_seqs + 1,), torch.int32)}
                 staging = {'segm_output_ptr': (12, 16, 256),
                            'segm_max_ptr': (12, 16), 'segm_expsum_ptr': (12, 16)}
                 out = values.get('output_ptr')
-                if (not isinstance(grid, (tuple, list)) or tuple(grid) != (32, 12)
+                if (not isinstance(grid, (tuple, list)) or tuple(grid) != (num_seqs, 12)
                         or out is None or out.device not in _WARMED
                         or type(values.get('block_table_stride')) is not int or values['block_table_stride'] <= 0
                         or kwargs.get('num_warps', 4) != 4 or kwargs.get('num_stages', 3) != 3
@@ -154,11 +159,11 @@ def reduction(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
                         or any(k not in values or values[k].shape != shape or values[k].dtype != dtype
                                or not values[k].is_cuda or values[k].device != out.device
                                or not values[k].is_contiguous() for k, (shape, dtype) in shapes.items())
-                        # Scratch may reserve more sequences than this M32
-                        # launch. Only the first32 dense rows are addressed;
+                        # Scratch may reserve more sequences than this
+                        # launch. Only the first num_seqs rows are addressed;
                         # allocation capacity is not a JIT or arithmetic key.
                         or any(k not in values or len(values[k].shape) != len(tail) + 1
-                               or values[k].shape[0] < 32 or values[k].shape[1:] != tail
+                               or values[k].shape[0] < num_seqs or values[k].shape[1:] != tail
                                or values[k].dtype != torch.float32 or not values[k].is_cuda
                                or values[k].device != out.device or not values[k].is_contiguous()
                                for k, tail in staging.items())):
@@ -167,6 +172,8 @@ def reduction(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
                 _STATS['calls'][prefix] = _STATS['calls'].get(prefix, 0) + 1
                 if torch.cuda.is_current_stream_capturing():
                     _STATS['capture_calls'][prefix] = _STATS['capture_calls'].get(prefix, 0) + 1
+                    key = f'{prefix}:m{num_seqs}'
+                    _STATS['capture_rows'][key] = _STATS['capture_rows'].get(key, 0) + 1
                 _remember(result)
                 return result
             return run
@@ -176,5 +183,5 @@ def reduction(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
 def receipt():
     return dict(enabled=_ENABLED, source_verified=_VERIFIED, **_STATS,
                 source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-                scope='Native Dense FP32 SSM M32 decode Hq12/KV2/D256 NT16 only',
+                scope='Native Dense FP32 SSM M4/M32 decode Hq12/KV2/D256 NT16 only',
                 counters='Actual host launches/captures; warmups separate, not graph replays')
