@@ -113,17 +113,17 @@ def install():
     original_prep = qwen.fused_post_conv_prep
 
     @functools.wraps(original_prep)
-    def prep(conv, a, b, A_log, dt_bias, num_k_heads, head_k_dim, head_v_dim,
+    def prep(conv_output, a, b, A_log, dt_bias, num_k_heads, head_k_dim, head_v_dim,
              apply_l2norm=True, output_g_exp=False):
         match = (_ENABLED and num_k_heads == 8 and A_log.numel() == 16
-                 and head_k_dim == head_v_dim == 128 and conv.is_cuda
-                 and conv.dtype == torch.bfloat16 and conv.ndim == 2
-                 and conv.shape[1] == 4096 and apply_l2norm is True
+                 and head_k_dim == head_v_dim == 128 and conv_output.is_cuda
+                 and conv_output.dtype == torch.bfloat16 and conv_output.ndim == 2
+                 and conv_output.shape[1] == 4096 and apply_l2norm is True
                  and output_g_exp is False)
         implementation = original_prep
         if match:
             from ..._gdn_prep_kernel import fused_post_conv_prep as implementation
-        result = implementation(conv, a, b, A_log, dt_bias, num_k_heads,
+        result = implementation(conv_output, a, b, A_log, dt_bias, num_k_heads,
                                 head_k_dim, head_v_dim, apply_l2norm, output_g_exp)
         if match:
             _STATS['prep_calls'] += 1
@@ -195,14 +195,14 @@ def prepare(layer):
     norm._forward_method = forward
     original_decode = layer._rms_norm_gated_cuda
 
-    def decode_norm(x, z, out):
-        if (layer.get_state_dtype()[1] != torch.float16 or x.ndim != 3 or x.shape[0] not in _DECODE_ROWS or x.shape[1:] != (16, 128) or z.shape != x.shape or out.shape != x.shape
-                or x.dtype != z.dtype or x.dtype != out.dtype or x.dtype != torch.bfloat16):
-            return original_decode(x, z, out)
+    def decode_norm(x, output_gate, out):
+        if (layer.get_state_dtype()[1] != torch.float16 or x.ndim != 3 or x.shape[0] not in _DECODE_ROWS or x.shape[1:] != (16, 128) or output_gate.shape != x.shape or out.shape != x.shape
+                or x.dtype != output_gate.dtype or x.dtype != out.dtype or x.dtype != torch.bfloat16):
+            return original_decode(x, output_gate, out)
         previous = getattr(_CONTEXT, 'norm', None)
         _CONTEXT.norm = layer.prefix
         try:
-            return original_decode(x, z, out)
+            return original_decode(x, output_gate, out)
         finally:
             _CONTEXT.norm = previous
     layer._rms_norm_gated_cuda = decode_norm

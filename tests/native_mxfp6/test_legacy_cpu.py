@@ -106,6 +106,64 @@ class NativeLegacyAdmission(unittest.TestCase):
         self.assertEqual(legacy._PACKED_ROWS, (16, 24, 32))
         self.assertEqual(legacy._DECODE_ROWS, (1, 2, 4, 8, 16, 24, 32))
 
+    def test_prefill_wrapper_accepts_real_qwen_keyword_and_mixed_calls(self):
+        try:
+            import ast
+            import functools
+            import inspect
+            from pathlib import Path
+            import torch
+            import triton
+            from torch._subclasses.fake_tensor import FakeTensorMode
+            from vllm.third_party.flash_linear_attention.ops import fused_gdn_prefill_post_conv as upstream
+            from vllm.model_executor.layers.mamba.gdn import qwen_gdn_linear_attn as qwen
+            from vllm_mach import _gdn_prep_kernel as shared
+        except ModuleNotFoundError as error:
+            self.skipTest(str(error))
+        # Compile the actual nested product wrapper, retaining its real Python
+        # argument binder. wraps() otherwise makes inspect.signature hide drift.
+        tree = ast.parse(inspect.getsource(legacy.install))
+        wrapper = next(n for n in tree.body[0].body if isinstance(n, ast.FunctionDef) and n.name == 'prep')
+        namespace = dict(vars(legacy), original_prep=upstream.fused_post_conv_prep,
+                         torch=torch, _ENABLED=True, _STATS={'prep_calls': 0})
+        exec(compile(ast.Module(body=[wrapper], type_ignores=[]), '<actual-native-prep-wrapper>', 'exec'), namespace)
+        prep = namespace['prep']
+        abi = lambda fn: [(n, p.kind, p.default) for n, p in inspect.signature(fn, follow_wrapped=False).parameters.items()]
+        self.assertEqual(abi(prep), abi(upstream.fused_post_conv_prep))
+        self.assertEqual(abi(prep), abi(shared.fused_post_conv_prep))
+        prepare_tree = ast.parse(inspect.getsource(legacy.prepare))
+        decode = next(n for n in prepare_tree.body[0].body if isinstance(n, ast.FunctionDef) and n.name == 'decode_norm')
+        self.assertEqual([p.arg for p in decode.args.args], list(inspect.signature(qwen.QwenGatedDeltaNetAttention._rms_norm_gated_cuda).parameters)[1:])
+        sentinel = object()
+        fallback = dict(vars(legacy), torch=torch, layer=N(get_state_dtype=lambda: (torch.bfloat16, torch.float32)), original_decode=lambda x, output_gate, out: sentinel)
+        exec(compile(ast.Module(body=[decode], type_ignores=[]), '<actual-native-decode-norm-wrapper>', 'exec'), fallback)
+        self.assertIs(fallback['decode_norm'](x=object(), output_gate=object(), out=object()), sentinel)
+        calls = []
+        class DeviceLaunch:
+            def __init__(self, name): self.name = name
+            def __getitem__(self, grid):
+                def run(*args, **kwargs): calls.append((self.name, grid, args, kwargs))
+                return run
+        with FakeTensorMode(), patch.object(upstream, 'triton', triton), patch.object(shared, 'triton', triton), patch.object(upstream, '_fused_post_conv_kernel', DeviceLaunch('upstream')), patch.object(shared, '_fused_post_conv_kernel', DeviceLaunch('qualified')):
+            conv = torch.empty(64, 4096, dtype=torch.bfloat16, device='cuda:0')
+            a = torch.empty(64, 16, dtype=torch.bfloat16, device='cuda:0')
+            values = dict(conv_output=conv, a=a, b=a, A_log=torch.empty(16, device='cuda:0'), dt_bias=torch.empty(16, dtype=torch.bfloat16, device='cuda:0'), num_k_heads=8, head_k_dim=128, head_v_dim=128, apply_l2norm=True, output_g_exp=False)
+            # Both real qwen warmup and runtime callsites are keyword calls.
+            sites = [n for n in ast.walk(ast.parse(Path(qwen.__file__).read_text())) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == 'fused_post_conv_prep']
+            self.assertEqual(len(sites), 2)
+            for call in sites:
+                self.assertFalse(call.args)
+                self.assertEqual({k.arg for k in call.keywords}, set(values))
+                self.assertEqual(len(prep(**{k.arg: values[k.arg] for k in call.keywords})), 5)
+            self.assertEqual(len(prep(*values.values())), 5)
+            first = list(values)[:5]
+            self.assertEqual(len(prep(*(values[k] for k in first), **{k: v for k, v in values.items() if k not in first})), 5)
+            # An unmatched frontend keeps the actual upstream body/allocation.
+            self.assertEqual(len(prep(**{**values, 'apply_l2norm': False})), 5)
+        self.assertEqual([x[0] for x in calls], ['qualified'] * 4 + ['upstream'])
+        self.assertEqual(namespace['_STATS']['prep_calls'], 4)
+        self.assertFalse(torch.cuda.is_initialized())
+
 
 if __name__ == '__main__':
     unittest.main()
