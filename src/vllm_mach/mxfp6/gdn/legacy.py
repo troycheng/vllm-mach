@@ -162,9 +162,10 @@ def install():
 
 def prepare(layer):
     """Bind already prepared native norm paths before graph capture."""
-    from . import dense_norm
+    from . import dense_norm, dense_packed
 
     dense_norm.prepare(layer)
+    dense_packed.prepare(layer)
     if not _ENABLED or getattr(layer, '_mach_native_legacy', False):
         return
     import torch
@@ -215,6 +216,8 @@ def prepare(layer):
     layer._rms_norm_gated_cuda = decode_norm
     layer._mach_native_legacy = True
     _STATS['prepared'].append(layer.prefix)
+    from . import mixed_fp16
+    mixed_fp16.prepare(layer)
     from . import packed
     # Empty indices compile the exact pitch/dtype without touching live slots.
     device = layer.in_proj_ba.weight.device
@@ -230,6 +233,10 @@ def prepare(layer):
 
 
 def decode(layer, mixed, a, b, state, out, indices):
+    from . import dense_packed
+
+    if dense_packed.decode(layer, mixed, a, b, state, out, indices):
+        return True
     import torch
     if (not _ENABLED or not getattr(layer, '_mach_native_legacy', False) or mixed.ndim != 2 or mixed.shape[0] not in _PACKED_ROWS or mixed.shape[1] != 4096
             or mixed.stride() != (6144, 1) or mixed.dtype != torch.bfloat16
@@ -307,8 +314,10 @@ def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
 
 
 def receipt():
-    from . import dense_norm, dense_prefill, dense_prep, packed
+    from . import dense_norm, dense_packed, dense_prefill, dense_prep, mixed_fp16, packed
     return dict(enabled=_ENABLED, installed=_INSTALLED, **_STATS,
                 packed=packed.receipt(), dense_prep=dense_prep.receipt(),
                 dense_prefill=dense_prefill.receipt(), dense_norm=dense_norm.receipt(),
+                dense_packed=dense_packed.receipt(),
+                mixed_fp16=mixed_fp16.receipt(),
                 counters='host launches/captures, not replays')

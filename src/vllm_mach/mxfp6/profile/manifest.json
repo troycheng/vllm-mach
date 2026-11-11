@@ -27,7 +27,7 @@
         },
         "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
           "upstream_sha256": "c6c037ad94d217aa2710cf29d25d8fa6e3856d1be9fc67fa8bd8681b1f5417f9",
-          "installed_sha256": "d1f35e6d2ed2c80793bb8bba26f8c53e83572fc25595af38bd9ad7946ced98b9"
+          "installed_sha256": "dbe8912cd418914ea1e1e19daea6d95c46379fe616e60fd8e0fbcbb6e788be0b"
         },
         "vllm/model_executor/layers/mamba/ops/gather_initial_states.py": {
           "upstream_sha256": "5198bb6de6d91c583a5f65d926412a76ee04a06fa72aaba76eaf156b27cd0523",
@@ -92,7 +92,7 @@
       },
       "shared_patch": {
         "name": "common-vllm033.patch",
-        "sha256": "0bf492ce21fe767fd107264ab397829f4c2b232f98a8d2b3619bc7804de001bd",
+        "sha256": "f7c48298e20365349f33cf5a177f68292b588276cddc729d1af658944f907d03",
         "files": [
           "vllm/envs.py",
           "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",

@@ -894,7 +894,7 @@
  
          has_initial_state = attn_metadata.has_initial_state
          spec_query_start_loc = attn_metadata.spec_query_start_loc
-@@ -1780,10 +2056,24 @@
+@@ -1780,11 +2056,32 @@
              core_attn_out_spec, last_recurrent_state = None, None
  
          # 2.2: Process non-spec-decode part
@@ -914,15 +914,24 @@
 -            query_decode, key_decode, value_decode = self.rearrange_mixed_qkv(
 -                mixed_qkv_non_spec[:num_decode_tokens]  # type: ignore[index]
 -            )
+-            core_attn_out_decode, _ = fused_sigmoid_gating_delta_rule_update(
 +            query_decode, key_decode, value_decode = (
 +                self.rearrange_mixed_qkv_flashinfer
 +                if strided_decode
 +                else self.rearrange_mixed_qkv
 +            )(mixed_qkv_non_spec[:num_decode_tokens])  # type: ignore[index]
-             core_attn_out_decode, _ = fused_sigmoid_gating_delta_rule_update(
++            decode_update = fused_sigmoid_gating_delta_rule_update
++            if (getattr(self, "_mach_native_mixed_fp16", False)
++                    and attn_metadata.num_prefills > 0):
++                from vllm_mach.mxfp6.gdn.mixed_fp16 import update
++                decode_update = functools.partial(
++                    update, self, attn_metadata, decode_update
++                )
++            core_attn_out_decode, _ = decode_update(
                  A_log=self.A_log,
                  a=a[:num_decode_tokens],
-@@ -1799,6 +2089,11 @@
+                 b=b[:num_decode_tokens],
+@@ -1799,6 +2096,11 @@
                  ],
                  ssm_state_indices=non_spec_state_indices_tensor,
                  use_qk_l2norm_in_kernel=True,
@@ -934,7 +943,7 @@
              )
          else:
              core_attn_out_decode = None
-@@ -1813,10 +2108,89 @@
+@@ -1813,10 +2115,89 @@
              prefill_has_initial_state = attn_metadata.prefill_has_initial_state
              assert prefill_state_indices is not None
              assert prefill_has_initial_state is not None
@@ -1027,7 +1036,7 @@
                  (
                      core_attn_out_non_spec,
                      last_recurrent_state,
-@@ -1832,51 +2206,25 @@
+@@ -1832,51 +2213,25 @@
                      chunk_indices=attn_metadata.chunk_indices,
                      chunk_offsets=attn_metadata.chunk_offsets,
                      use_qk_l2norm_in_kernel=False,
@@ -1093,7 +1102,7 @@
          elif attn_metadata.num_decodes > 0:
              core_attn_out_non_spec, last_recurrent_state = (
                  fused_sigmoid_gating_delta_rule_update(
-@@ -1902,14 +2250,407 @@
+@@ -1902,14 +2257,407 @@
  
          # 3. Merge core attention output
          if spec_sequence_masks is not None and core_attn_out_non_spec is not None:
@@ -1502,7 +1511,7 @@
  
      def _forward_core_decode_aiter(
          self,
-@@ -2117,6 +2858,7 @@
+@@ -2117,6 +2865,7 @@
          mixed_qkvz: torch.Tensor,
          ba: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -1510,7 +1519,7 @@
      ) -> None:
          forward_context = get_forward_context()
          attn_metadata_raw = forward_context.attn_metadata
-@@ -2142,6 +2884,7 @@
+@@ -2142,6 +2891,7 @@
              a=a,
              output_gate=output_gate,
              core_attn_out=core_attn_out,
@@ -1518,7 +1527,7 @@
          )
  
      def _can_use_fused_gdn_mtp_decode(
-@@ -2202,6 +2945,7 @@
+@@ -2202,6 +2952,7 @@
          a: torch.Tensor,
          output_gate: torch.Tensor,
          core_attn_out: torch.Tensor,
@@ -1526,7 +1535,7 @@
      ) -> None:
          forward_context = get_forward_context()
          attn_metadata_raw = forward_context.attn_metadata
-@@ -2213,10 +2957,11 @@
+@@ -2213,10 +2964,11 @@
              return
  
          assert isinstance(attn_metadata, GDNAttentionMetadata)
@@ -1541,7 +1550,7 @@
              self._forward_core_decode_spec_fused_norm(
                  mixed_qkv=mixed_qkv,
                  b=b,
-@@ -2226,11 +2971,17 @@
+@@ -2226,11 +2978,17 @@
                  attn_metadata=attn_metadata,
              )
              return
@@ -1559,7 +1568,7 @@
          )
          num_actual_tokens = attn_metadata.num_actual_tokens
          self._rms_norm_gated_cuda(
-@@ -2246,6 +2997,7 @@
+@@ -2246,6 +3004,7 @@
      b_or_ba: torch.Tensor,
      a_or_z_out: torch.Tensor,
      core_attn_out: torch.Tensor,
@@ -1567,7 +1576,7 @@
      layer_name: LayerNameType,
      use_aiter: bool = False,
  ) -> None:
-@@ -2278,6 +3030,7 @@
+@@ -2278,6 +3037,7 @@
              b=b_or_ba,
              a=a_or_z_out,
              core_attn_out=core_attn_out,
@@ -1575,7 +1584,7 @@
          )
  
  
-@@ -2293,6 +3046,7 @@
+@@ -2293,6 +3053,7 @@
      mixed_qkvz: torch.Tensor,
      ba: torch.Tensor,
      core_attn_out: torch.Tensor,
@@ -1583,7 +1592,7 @@
      layer_name: LayerNameType,
  ) -> None:
      layer_name = _resolve_layer_name(layer_name)
-@@ -2302,6 +3056,7 @@
+@@ -2302,6 +3063,7 @@
          mixed_qkvz=mixed_qkvz,
          ba=ba,
          core_attn_out=core_attn_out,
@@ -1978,6 +1987,38 @@
                  # AITER carries its own reusable varlen metadata and has no use
                  # for FLA's chunk indices, so it replaces them rather than
                  # extending what _build_chunk_metadata returns.
+--- a/vllm/v1/attention/backends/triton_attn.py
++++ b/vllm/v1/attention/backends/triton_attn.py
+@@ -6,6 +6,8 @@
+ from typing import ClassVar
+ 
+ import torch
++
++from vllm_mach.runtime.attention import preserve_old_softmax_segments
+ 
+ import vllm.envs as envs
+ from vllm._aiter_ops import rocm_aiter_ops
+@@ -208,6 +210,20 @@
+             dtype=torch.float32,
+             device=device,
+         )
++        if self.max_seqs_64_segments > 0 and preserve_old_softmax_segments(vllm_config):
++            # Keep the allocated scratch bytes and request capacity unchanged.
++            # Only its partition view follows the original Mach 16-segment path.
++            self.num_par_softmax_segments = NUM_PAR_SOFTMAX_SEGMENTS
++            self.max_seqs_64_segments = 0
++            self.softmax_segm_output = self.softmax_segm_output.view(
++                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS, headdim_padded
++            )
++            self.softmax_segm_max = self.softmax_segm_max.view(
++                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS
++            )
++            self.softmax_segm_expsum = self.softmax_segm_expsum.view(
++                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS
++            )
+         self.rswa_window = model_config.rswa_window
+         # R-SWA restages prefix lengths in build(), which the no-op
+         # update_draft_decode_metadata() does not refresh.
 --- a/vllm/v1/attention/backends/utils.py
 +++ b/vllm/v1/attention/backends/utils.py
 @@ -1296,7 +1296,7 @@
@@ -2211,38 +2252,6 @@
  
      def run_fullgraph(
          self, desc: BatchExecutionDescriptor
---- a/vllm/v1/attention/backends/triton_attn.py
-+++ b/vllm/v1/attention/backends/triton_attn.py
-@@ -6,6 +6,8 @@
- from typing import ClassVar
- 
- import torch
-+
-+from vllm_mach.runtime.attention import preserve_old_softmax_segments
- 
- import vllm.envs as envs
- from vllm._aiter_ops import rocm_aiter_ops
-@@ -208,6 +210,20 @@
-             dtype=torch.float32,
-             device=device,
-         )
-+        if self.max_seqs_64_segments > 0 and preserve_old_softmax_segments(vllm_config):
-+            # Keep the allocated scratch bytes and request capacity unchanged.
-+            # Only its partition view follows the original Mach 16-segment path.
-+            self.num_par_softmax_segments = NUM_PAR_SOFTMAX_SEGMENTS
-+            self.max_seqs_64_segments = 0
-+            self.softmax_segm_output = self.softmax_segm_output.view(
-+                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS, headdim_padded
-+            )
-+            self.softmax_segm_max = self.softmax_segm_max.view(
-+                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS
-+            )
-+            self.softmax_segm_expsum = self.softmax_segm_expsum.view(
-+                -1, self.num_heads_q, NUM_PAR_SOFTMAX_SEGMENTS
-+            )
-         self.rswa_window = model_config.rswa_window
-         # R-SWA restages prefix lengths in build(), which the no-op
-         # update_draft_decode_metadata() does not refresh.
 --- a/vllm/v1/attention/ops/triton_unified_attention.py
 +++ b/vllm/v1/attention/ops/triton_unified_attention.py
 @@ -1208,7 +1208,26 @@

@@ -127,7 +127,10 @@
       "test_native_requires_registered_selector_and_exact_supported_format",
       "test_default_and_explicit_backend_semantics",
       "test_real_legacy_entry_selects_dense_only_without_moe_bundle",
-      "test_real_legacy_prepare_binds_dense_after_warmup_without_moe"
+      "test_real_legacy_prepare_binds_dense_after_warmup_without_moe",
+      "test_real_legacy_prepare_warms_before_capture_without_kv_cache",
+      "test_actual_varlen_metadata_prefix_and_pool_capacity_are_not_quality_specific",
+      "test_private_clone_preserves_original_globals_defaults_and_aliases"
     ]
   }
 }
