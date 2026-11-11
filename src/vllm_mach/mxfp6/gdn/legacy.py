@@ -59,9 +59,10 @@ def _sm120():
 def resolve_backend(config, requested):
     """Preserve explicit user choices, including an explicitly requested auto."""
     global _ENABLED
-    from . import dense_prep
+    from . import dense_prefill, dense_prep
 
     dense_prep.configure(config)
+    requested = dense_prefill.resolve_backend(config, requested)
     if not model_eligible(config) or not _sm120():
         _ENABLED = False
         return requested
@@ -303,7 +304,8 @@ def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
 
 
 def receipt():
-    from . import dense_prep, packed
+    from . import dense_prefill, dense_prep, packed
     return dict(enabled=_ENABLED, installed=_INSTALLED, **_STATS,
                 packed=packed.receipt(), dense_prep=dense_prep.receipt(),
+                dense_prefill=dense_prefill.receipt(),
                 counters='host launches/captures, not replays')

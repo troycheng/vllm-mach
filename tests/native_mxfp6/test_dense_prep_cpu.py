@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace as N
 from unittest.mock import patch
 
-from vllm_mach.mxfp6.gdn import dense_prep, legacy
+from vllm_mach.mxfp6.gdn import dense_prefill, dense_prep, legacy
 from vllm_mach.runtime import attention
 
 
@@ -43,9 +43,11 @@ class DensePrepAdmission(unittest.TestCase):
             for requested in ('auto', 'flashinfer', 'triton'):
                 cfg = config()
                 cfg.cache_config.mamba_ssm_cache_dtype = dtype
+                cfg.additional_config = {'gdn_prefill_backend': requested}
                 with self.subTest(dtype=dtype, requested=requested), patch.object(
                         dense_prep, 'install') as install, patch.object(
-                        legacy, 'install') as moe_install, patch.object(legacy, '_ENABLED', False):
+                        legacy, 'install') as moe_install, patch.object(legacy, '_ENABLED', False), patch.object(
+                        dense_prefill, 'install'), patch.object(dense_prefill.dense_prep, '_sm120', return_value=True):
                     self.assertEqual(legacy.resolve_backend(cfg, requested), requested)
                     install.assert_called_once()
                     moe_install.assert_not_called()
