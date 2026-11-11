@@ -315,7 +315,7 @@ def _ordered_spec(row):
     if spec is not None:
         from vllm_mach.mxfp8 import ordered_reduction
         if ordered_reduction.active(spec):
-            return spec
+            return ordered_reduction.effective_spec(spec, row["boundary"], row["selected_fields"])
     return None
 
 
@@ -328,7 +328,7 @@ def _runtime_bindings(policy, *, include_original=False):
         if spec is not None:
             boundary = {**row["boundary"], "function_sha256": spec["function_sha256"]}
             rows.append({**row, "boundary": boundary, "semantic_key": _json_hash(boundary),
-                         "ordered_original_semantic_key": row["semantic_key"]})
+                         "ordered_original_semantic_key": row["semantic_key"], "ordered_reduction": spec})
     return rows
 
 
@@ -357,10 +357,11 @@ def _contextual_triton(original):
                 raise CompileChoiceMismatch("Ambiguous ordered norm source binding")
             row = ordered[0]
             from vllm_mach.mxfp8 import ordered_reduction
-            ordered_reduction.validate(row["ordered_reduction"], recipe["boundary"], row["selected_fields"])
-            source_code = ordered_reduction.transform(source_code, kernel_name, row["ordered_reduction"])
+            spec = _ordered_spec(row)
+            ordered_reduction.validate(spec, recipe["boundary"], row["selected_fields"])
+            source_code = ordered_reduction.transform(source_code, kernel_name, spec)
             actual = recipe_from_source(source_code, kernel_name, {}, kernel_name)["boundary"]
-            expected = {**row["boundary"], "function_sha256": row["ordered_reduction"]["function_sha256"]}
+            expected = {**row["boundary"], "function_sha256": spec["function_sha256"]}
             if actual != expected:
                 raise CompileChoiceMismatch("Ordered norm transformed source differs")
         return original(self, kernel_name, source_code, *args, **kwargs)

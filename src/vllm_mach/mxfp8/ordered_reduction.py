@@ -26,6 +26,20 @@ def active(spec):
     return True
 
 
+def effective_spec(spec, boundary, selected):
+    """Restore the captured three-input carry only in ordered 4B BF16."""
+    from vllm_mach.gdn_prep import four_b_enabled
+    if (four_b_enabled()
+            and boundary['function_sha256'] == '558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac'
+            and selected == {'R0_BLOCK': 1024, 'XBLOCK': 1, 'found_by_coordesc': False, 'num_stages': 1, 'num_warps': 8}
+            and spec.get('version') == 1 and spec.get('group') == 4
+            and spec.get('chunk_accumulation') == 'separate'
+            and spec.get('function_sha256') == 'a19edf67cd0d52b765fcf01ca25e3e53bb1c552ea9d40dcd71a851e8066e00fe'):
+        return {**spec, 'chunk_accumulation': 'explicit_fma',
+                'function_sha256': '1d3d314c0a12bba248cda538834c19860127605c4dbc1e0b9179c4fc616774e9'}
+    return spec
+
+
 def validate(spec, boundary, selected):
     if spec.get('version') == 2:
         if (set(spec) != {'version', 'kind', 'function_sha256', 'helper_sha256'}
@@ -42,10 +56,13 @@ def validate(spec, boundary, selected):
     if set(spec) != _FIELDS or type(spec['version']) is not int or spec['version'] != 1:
         raise ValueError('Unknown ordered norm source contract')
     group = spec['group']
-    if group not in (4, 8) or spec['chunk_accumulation'] not in (('fma', 'separate') if group == 4 else ('original',)):
+    if group not in (4, 8) or spec['chunk_accumulation'] not in (('fma', 'separate', 'explicit_fma') if group == 4 else ('original',)):
         raise ValueError('Unsupported ordered norm local/FMA tree')
     if (selected['XBLOCK'], selected['R0_BLOCK'], selected['num_warps']) != (1, 1024 if group == 4 else 4096, 8 if group == 4 else 16):
         raise ValueError('Ordered norm tile differs')
+    if spec['chunk_accumulation'] == 'explicit_fma' and (boundary['function_sha256'] != '558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac'
+            or spec['function_sha256'] != '1d3d314c0a12bba248cda538834c19860127605c4dbc1e0b9179c4fc616774e9'):
+        raise ValueError('Unsupported explicit carry FMA boundary')
     if boundary['architecture'] != {'type': 'cuda', 'cc': 120} or any(
             value != '*bf16' for value in boundary['signature'].values() if isinstance(value, str) and value.startswith('*')):
         raise ValueError('Ordered norm architecture/dtype differs')
@@ -88,7 +105,11 @@ def transform(source, kernel_name, spec):
         square = assignments[broadcast.args[0].id].value
         if not isinstance(square, ast.BinOp) or not isinstance(square.op, ast.Mult) or ast.dump(square.left) != ast.dump(square.right):
             raise ValueError('Expected exact square before norm accumulation')
-        if spec['chunk_accumulation'] == 'fma':
+        if spec['chunk_accumulation'] == 'explicit_fma':
+            expression = "tl.inline_asm_elementwise('fma.rn.f32 $0, $1, $2, $3;', constraints='=f,f,f,f', args=[SQUARE, SQUARE, ACCUMULATOR], dtype=tl.float32, is_pure=True, pack=1)"
+            expression = expression.replace('SQUARE', ast.unparse(square.left)).replace('ACCUMULATOR', accumulator.id)
+            update.value = ast.parse(expression, mode='eval').body
+        elif spec['chunk_accumulation'] == 'fma':
             update.value = ast.Call(func=ast.Attribute(value=ast.Name(id='tl',ctx=ast.Load()),attr='fma',ctx=ast.Load()),
                                     args=[copy.deepcopy(square.left),copy.deepcopy(square.right),copy.deepcopy(accumulator)],keywords=[])
         else:

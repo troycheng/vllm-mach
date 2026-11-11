@@ -73,3 +73,32 @@ gdn_prep.verify_binding()
 assert gdn.fused_post_conv_prep is (gdn_prep.fused_post_conv_prep if {enabled!r} else stock)
 assert not torch.cuda.is_initialized()
 '''],env=env,check=True,timeout=90)
+
+
+@pytest.mark.parametrize('mode,dtype,flag,profile,enabled',[
+ ('production','bfloat16','1','qwen35-4b-mxfp8-champion-v1',True),
+ ('quality32','bfloat16','1','qwen35-4b-mxfp8-champion-v1',False),
+ ('quality64','bfloat16','1','qwen35-4b-mxfp8-champion-v1',False),
+ ('production','float32','1','qwen35-4b-mxfp8-champion-v1',False),
+ ('production','bfloat16','0','qwen35-4b-mxfp8-champion-v1',False),
+ ('production','bfloat16','1','qwen35-2b-mxfp8-champion-v1',False),
+])
+def test_exact_body_tile_and_profile_only(monkeypatch,mode,dtype,flag,profile,enabled):
+ scope(monkeypatch,dtype,flag,mode);monkeypatch.setenv('VLLM_MACH_PROFILE',profile)
+ m=compiler();p=m.load_policy();row=next(r for r in p['bindings']if r['boundary']['function_sha256']=='558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac')
+ spec=m._ordered_spec(row)
+ assert (spec['chunk_accumulation']=='explicit_fma')is enabled
+ if not enabled:assert spec==row['ordered_reduction']
+ source,fn=templates(m)[row['boundary']['function_sha256']]
+ b=decode(row['boundary']);meta=dict(signature=b['signature'],constants=b['constants'],configs=b['specialization'],**b['compiler_flags'])
+ decorator="@triton_heuristics.reduction(size_hints="+repr(b['size_hints'])+", triton_meta={**META}, inductor_meta={'kernel_name': NAME})"
+ meta_source=repr(meta)[:-1]+", 'device': DeviceProperties(type='cuda', cc=120)}"
+ decorator=decorator.replace('{**META}',meta_source).replace('NAME',repr(fn.name))
+ source=source.replace('@triton.jit',decorator+'\n@triton.jit',1)
+ transformed=m._contextual_triton(lambda self,name,s:s)(None,fn.name,source)
+ target=next(n for n in ast.parse(transformed).body if isinstance(n,ast.FunctionDef)and n.name==fn.name)
+ assert m.canonical_function_sha256(transformed,fn.name)==spec['function_sha256']
+ assert ast.dump(fn.body[-1])==ast.dump(target.body[-1])
+ b=decode(row['boundary']);meta=dict(signature=b['signature'],constants=b['constants'],configs=b['specialization'],device=b['architecture'],**b['compiler_flags'])
+ selected=m.select_recipe(ast.unparse(target),b['size_hints'],meta,kernel_alias=row['kernel_alias'],kernel_site=row['kernel_site'],require_ordered=True)
+ assert selected['ordered_reduction']==spec and selected['selected_fields']==row['selected_fields']

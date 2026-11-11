@@ -164,7 +164,7 @@
       "upstream_sha256": "c1cf2300c99f5dc1fb297d7e556620842ab53c64c5ecda4c6ba89fb8e16215da",
       "installed_sha256": "b680560dfaa7e4671d7adc97998b9fedfac5a26ddcdbdc08de87eefdab2bf860",
       "changed": true,
-      "purpose": "Explicit 2B and prepared native MoE FP16/M32 NT16 D256 BF16 legacy merge; unmatched profiles and geometries keep the stock kernel."
+      "purpose": "Explicit 2B and native MoE FP16 low-batch decode (1..32) NT16 D256 BF16 legacy merge; unmatched profiles and geometries keep the stock kernel."
     },
     "vllm/v1/attention/backends/triton_attn.py": {
       "upstream_sha256": "53b221f99c54b6bc21580d7e3e96a12c5eb1de7397bb4bfafb9d0cb6129cb223",
