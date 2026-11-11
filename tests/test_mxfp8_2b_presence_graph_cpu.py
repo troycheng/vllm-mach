@@ -1,5 +1,6 @@
 """Qualified presence arithmetic, instance ownership, finite dispatch and startup."""
 import ast
+import copy
 import hashlib
 import importlib.util
 import inspect
@@ -14,6 +15,16 @@ from unittest.mock import patch
 SOURCE = Path(__file__).resolve().parents[1] / 'src'
 sys.path.insert(0, str(SOURCE))
 from vllm_mach.mxfp8.two_b import presence_graph as mod
+
+
+def canonical_ast(node):
+    # Python 3.12 adds this empty schema field to function definitions.
+    # Keep nonempty type parameters significant; normalize only absent vs [].
+    node = copy.deepcopy(node)
+    for part in ast.walk(node):
+        if getattr(part, "type_params", None) == []:
+            delattr(part, "type_params")
+    return ast.dump(node, include_attributes=False)
 
 
 class Value:
@@ -102,13 +113,28 @@ class PresenceCPU(unittest.TestCase):
             self.assertFalse(mod.install(N(_mach_2b_contract=c), N(_head_graphs=None)))
         self.assertEqual(mod.receipt(N()), {'installed':False})
 
+    def test_canonical_normalizes_only_empty_schema_field(self):
+        source = ast.parse("def example(x):\n    return x * x\n")
+        absent = copy.deepcopy(source)
+        for node in ast.walk(absent):
+            if hasattr(node, 'type_params'): delattr(node, 'type_params')
+        self.assertEqual(canonical_ast(source), canonical_ast(absent))
+        changed = copy.deepcopy(source)
+        # Simulate the new schema when this test runs on an older parser.
+        if 'type_params' not in changed.body[0]._fields:
+            changed.body[0]._fields = (*changed.body[0]._fields, 'type_params')
+        changed.body[0].type_params = [ast.Name(id='T', ctx=ast.Load())]
+        self.assertNotEqual(canonical_ast(changed), canonical_ast(source))
+        arithmetic = ast.parse("def example(x):\n    return x + x\n")
+        self.assertNotEqual(canonical_ast(arithmetic), canonical_ast(source))
+
     def test_qualified_body_and_original_method_signature(self):
         tree = ast.parse(inspect.getsource(mod.PresenceHeadGraph))
         get = next(n for n in tree.body[0].body if isinstance(n, ast.FunctionDef) and n.name == 'get')
-        digest = hashlib.sha256(ast.dump(get, include_attributes=False).encode()).hexdigest()
-        self.assertEqual(digest, 'a1181d7dda83977689017cdc2f956bcdd85db9bd2e58328963f6a555cc231e20')
+        digest = hashlib.sha256(canonical_ast(get).encode()).hexdigest()
+        self.assertEqual(digest, '166dc937b719ffa9602691acaa51ad9ae0a61839034b3fe8b6843f9ec8fa37d5')
         body = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'body')
-        self.assertEqual(hashlib.sha256(ast.dump(body, include_attributes=False).encode()).hexdigest(), 'ca52b64d3fa60cd3025becc6da8d568338d7e846476e154565ee3565aae139cc')
+        self.assertEqual(hashlib.sha256(canonical_ast(body).encode()).hexdigest(), 'af41e73882aa3543aa3b47fe24672a3dc4d09da1197b7596451912480adfb80d')
         module = ast.parse((SOURCE/'vllm_mach/mxfp6/sampling.py').read_text())
         original = next(n for n in ast.walk(module) if isinstance(n, ast.FunctionDef) and n.name == '_get_local_topk')
         for args in (get.args, original.args):

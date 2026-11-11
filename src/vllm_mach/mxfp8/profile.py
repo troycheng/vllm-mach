@@ -270,8 +270,6 @@ def install_worker_hook():
         self._mach_mxfp8_ready = False
         self._mach_mxfp8_steps = 0
         result = original_init(self, *args, **kwargs)
-        from . import input_geometry
-        input_geometry.install(self)
         from .worker import install_worker_backend
         from . import ba, dual
         install_worker_backend(self)

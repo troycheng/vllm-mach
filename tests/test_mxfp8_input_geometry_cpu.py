@@ -44,6 +44,15 @@ class GeometryCPU(unittest.TestCase):
         target.body = saved
         self.assertEqual(ast.dump(tree), ast.dump(ast.parse(source)))
 
+    def test_only_2b_profile_installs_shared_geometry(self):
+        root = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8"
+        def calls(path):
+            tree = ast.parse(path.read_text())
+            return [n for n in ast.walk(tree) if isinstance(n, ast.Call)
+                    and ast.unparse(n.func) == "input_geometry.install"]
+        self.assertEqual(len(calls(root / "two_b/profile.py")), 1)
+        self.assertEqual(calls(root / "profile.py"), [])
+
     def test_unsupported_cold_context_keeps_original(self):
         for name, value in [("speculative_config", object()), ("enable_dbo", True),
                             ("prefill_context_parallel_size", 2), ("decode_context_parallel_size", 2),

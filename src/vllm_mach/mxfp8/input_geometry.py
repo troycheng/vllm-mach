@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Runner-owned immutable logit geometry for the selected TP1 MXFP8 profiles."""
+"""Runner-owned immutable logit geometry for the selected 2B MXFP8 profile."""
 from __future__ import annotations
 
 import __future__
