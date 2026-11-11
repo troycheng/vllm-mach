@@ -544,25 +544,3 @@
                  k_cache, v_cache = kv_cache.transpose(1, 2).split(
                      self.num_kv_heads, dim=-2
                  )
---- a/vllm/v1/attention/ops/triton_unified_attention.py
-+++ b/vllm/v1/attention/ops/triton_unified_attention.py
-@@ -1208,7 +1208,18 @@
-     )
- 
-     if use_3d:
--        reduce_segments[(q.shape[0], num_query_heads)](
-+        reduction_kernel = reduce_segments
-+        # Only the explicitly selected 2B profile owns this finite legacy tree.
-+        import os
-+        if os.environ.get("VLLM_MACH_PROFILE") == "qwen35-2b-mxfp8-champion-v1":
-+            from vllm_mach.mxfp8.two_b.attention import reduction
-+            reduction_kernel = reduction(
-+                reduce_segments, profile=os.environ["VLLM_MACH_PROFILE"],
-+                segments=num_par_softmax_segments, head_size=head_size,
-+                padded_head_size=head_size_padded, bf16=out.dtype == torch.bfloat16,
-+                use_fp8=output_scale is not None,
-+            )
-+        reduction_kernel[(q.shape[0], num_query_heads)](
-             output_ptr=out,
-             segm_output_ptr=softmax_segm_output,
-             segm_max_ptr=softmax_segm_max,

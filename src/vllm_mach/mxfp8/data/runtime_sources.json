@@ -38,7 +38,7 @@
   },
   "upstream_commit": "4ba787ec9959e566d3b587a796dff07673324da5",
   "base_image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
-  "patch_sha256": "0dc0c9bf672aaeb2224656d907e24a45ef58a5f6664e082a37e2029fef9b96ef",
+  "patch_sha256": "86654359053596bfcdfc146dfc0333a8a22d191ce8be9dff9f3f09ca9bd1cb01",
   "files": {
     "vllm/envs.py": {
       "upstream_sha256": "a9f665c49da1d8852c19a192f5d5848f0e38f4f56c76b5fafe0c17398945b357",
@@ -54,7 +54,7 @@
     },
     "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
       "upstream_sha256": "c6c037ad94d217aa2710cf29d25d8fa6e3856d1be9fc67fa8bd8681b1f5417f9",
-      "installed_sha256": "906865191e7132bfcce5d85da0ab07f97cbd66950d1aad31882cc090ce6fdfb3",
+      "installed_sha256": "d1f35e6d2ed2c80793bb8bba26f8c53e83572fc25595af38bd9ad7946ced98b9",
       "changed": true,
       "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
     },
@@ -162,9 +162,9 @@
     },
     "vllm/v1/attention/ops/triton_unified_attention.py": {
       "upstream_sha256": "c1cf2300c99f5dc1fb297d7e556620842ab53c64c5ecda4c6ba89fb8e16215da",
-      "installed_sha256": "e716ef9195cc9d41ef3db9ac0a2f2ce1aa54cade91a4ec62cd0c98d27b5b9160",
+      "installed_sha256": "b680560dfaa7e4671d7adc97998b9fedfac5a26ddcdbdc08de87eefdab2bf860",
       "changed": true,
-      "purpose": "Explicit 2B segments16 D256 BF16 legacy attention merge; other profiles/geometries keep the stock kernel."
+      "purpose": "Explicit 2B and prepared native MoE FP16/M32 NT16 D256 BF16 legacy merge; unmatched profiles and geometries keep the stock kernel."
     },
     "vllm/v1/attention/backends/triton_attn.py": {
       "upstream_sha256": "53b221f99c54b6bc21580d7e3e96a12c5eb1de7397bb4bfafb9d0cb6129cb223",
@@ -179,7 +179,7 @@
   },
   "shared_patch": {
     "name": "common-vllm033.patch",
-    "sha256": "2733f75fd18e4b36d6d74819d5045be133e9e453f4eb509abbcb9389a4f27c4a",
+    "sha256": "0bf492ce21fe767fd107264ab397829f4c2b232f98a8d2b3619bc7804de001bd",
     "files": [
       "vllm/envs.py",
       "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
@@ -189,7 +189,8 @@
       "vllm/v1/attention/backends/gdn_attn.py",
       "vllm/v1/attention/backends/triton_attn.py",
       "vllm/v1/attention/backends/utils.py",
-      "vllm/v1/worker/gpu/cudagraph_utils.py"
+      "vllm/v1/worker/gpu/cudagraph_utils.py",
+      "vllm/v1/attention/ops/triton_unified_attention.py"
     ]
   }
 }

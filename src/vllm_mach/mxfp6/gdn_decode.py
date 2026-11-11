@@ -79,7 +79,8 @@ def enabled(name: str) -> bool:
 
 def stats() -> dict:
     """Host dispatch/capture counts, not counts of CUDA Graph replays."""
-    return dict(_STATS)
+    from .gdn.legacy import receipt
+    return dict(_STATS, legacy=receipt())
 
 
 def select_path(rows, state_dtype, metadata, *, persistent, overlap):
@@ -252,18 +253,20 @@ def _forward(layer, original, persistent, aux, hidden_states, quantized=None):
         ba.record_stream(main)
         b.record_stream(main)
         a.record_stream(main)
-        fused_recurrent_gated_delta_rule_packed_decode(
-            mixed_qkv=qkv,
-            a=a,
-            b=b,
-            A_log=layer.A_log,
-            dt_bias=layer.dt_bias,
-            scale=128**-0.5,
-            initial_state=state,
-            out=core.unsqueeze(1),
-            ssm_state_indices=indices,
-            use_qk_l2norm_in_kernel=True,
-        )
+        from .gdn import legacy
+        if not legacy.decode(layer, qkv, a, b, state, core.unsqueeze(1), indices):
+            fused_recurrent_gated_delta_rule_packed_decode(
+                mixed_qkv=qkv,
+                a=a,
+                b=b,
+                A_log=layer.A_log,
+                dt_bias=layer.dt_bias,
+                scale=128**-0.5,
+                initial_state=state,
+                out=core.unsqueeze(1),
+                ssm_state_indices=indices,
+                use_qk_l2norm_in_kernel=True,
+            )
     if getattr(layer, "_mach_gdn_output_fused", False):
         from .gdn_output import project as output_projection
 
@@ -397,6 +400,11 @@ def prepare(model):
                 device.index if aux is not None else None,
             )
         layer._mach_gdn_prepared = True
+    from .gdn import legacy
+    for layer in layers:
+        legacy.prepare(layer)
+    legacy.prepare_attention(model)
+    torch.cuda.synchronize(device)
     _STATS["prepared_layers"] += len(layers)
     init_logger("vllm.mach.gdn").info(
         "Mach GDN prepared %d layers: persistent=%s rows=%s, BA overlap=%s rows=%s",

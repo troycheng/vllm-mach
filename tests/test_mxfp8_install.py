@@ -220,7 +220,7 @@ class InstallContracts(unittest.TestCase):
         self.assertEqual(fla["upstream_sha256"], fla["installed_sha256"])
         private = (self.installer.DATA / "runtime.patch").read_bytes()
         shared = self.installer.load_shared_patch(manifest["shared_patch"],manifest["files"])
-        self.assertEqual(len(manifest["shared_patch"]["files"]),9)
+        self.assertEqual(len(manifest["shared_patch"]["files"]),10)
         for name in manifest["shared_patch"]["files"]:
             self.assertNotIn(("--- a/"+name+"\n").encode(),private)
         patch_text = (private+shared).decode()

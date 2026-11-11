@@ -117,7 +117,8 @@
     "native": [
       "test_selected_runtime_profile_sources_are_installed",
       "test_installed_native_constructor_matches_audited_fixture",
-      "test_native_requires_registered_selector_and_exact_supported_format"
+      "test_native_requires_registered_selector_and_exact_supported_format",
+      "test_default_and_explicit_backend_semantics"
     ]
   }
 }
