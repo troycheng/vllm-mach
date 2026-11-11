@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Rebuild two finite RMS bodies at the existing FP8 constructor boundary."""
+"""Rebuild finite RMS bodies at the existing FP8 constructor boundary."""
 from __future__ import annotations
 
 import ast
@@ -14,8 +14,10 @@ from ..mxfp8.compile_choices import canonical_function_sha256
 _HELPERS_SHA = 'f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81'
 _E875 = 'e875b0b81961dbe40ad7195d00887558772d0f2d4b803dfa59dbc7800410ed5b'
 _558 = '558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac'
+_EMBED = '3e6a42e2b0987dce312dc19c4fa55b2bb483df9802bc33e04b21a6c47b0c6d97'
 # Both tile orders were replayed against their actual selected 0.29 PTX.
 _AFTER = {
+    (_EMBED, 1024): '4480da6f4c73b10ec6a6ba9e7b2d555ae8bc9a0ce2b04bd9b02566ac4cd855ec',
     (_E875, 1024): '727bce2d92acfe174f4775c330c5126c56a9109891bd35d85b34d64d96516169',
     (_558, 4096): 'fe0038bef367024b1d6ec6c3fa52c38f3b43f21ff7486dda727819dd201e44b1',
     (_E875, 4096): '48aa89937e6fd1490bfb9d7689062dfaebc017ad9148cb9e1dffe4e5b5d0a8c2',
@@ -24,7 +26,7 @@ _AFTER = {
 
 
 def specification(body, selected):
-    if body not in (_E875, _558):
+    if body not in (_E875, _558, _EMBED):
         return None
     tile = selected['R0_BLOCK']
     after = _AFTER.get((body, tile))
@@ -51,7 +53,20 @@ def rewrite(source, name, boundary, selected):
     spec = specification(body, selected)
     if spec is None:
         return source
-    arithmetic.validate(spec, boundary, selected)
+    if body == _EMBED:
+        # This gather has integer IDs; do not widen the shared BF16-only validator.
+        signature = dict(in_ptr0='*i32', in_ptr1='*bf16', in_ptr2='*bf16',
+                         out_ptr0='*bf16', out_ptr2='*bf16', xnumel='i32',
+                         r0_numel='i32', XBLOCK='constexpr', R0_BLOCK='constexpr')
+        if (boundary['signature'] != signature or boundary['constants'] != {}
+                or boundary['size_hints'] not in [dict(x=x, r0_=4096) for x in (2048, 8192, 16384)]
+                or boundary['architecture'] != dict(type='cuda', cc=120)
+                or boundary['compiler_flags'] != dict(enable_fp_fusion=True, disable_ftz=False,
+                                                       launch_pdl=False, native_matmul=False)
+                or arithmetic.helper_sha256() != _HELPERS_SHA):
+            raise ValueError('Block-FP8 embedding RMS boundary changed')
+    else:
+        arithmetic.validate(spec, boundary, selected)
     changed = arithmetic.transform(source, name, spec)
     if canonical_function_sha256(changed, name) != spec['function_sha256']:
         raise RuntimeError('Block-FP8 ordered RMS arithmetic changed')

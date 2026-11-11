@@ -78,9 +78,9 @@ class CompileChoicesTests(unittest.TestCase):
             with patch.dict(os.environ, {"VLLM_MACH_FP8_COMPILE_MODE": mode}):
                 p = m.load_policy()
                 snapshots[mode] = p
-                self.assertEqual(len(p["bindings"]), 3)
+                self.assertEqual(len(p["bindings"]), 4)
                 self.assertEqual(p["binding_semantics"], "exact_boundary_and_selected_config")
-                self.assertEqual(sum(len(r["provenance_bindings"]) for r in p["bindings"]), 6)
+                self.assertEqual(sum(len(r["provenance_bindings"]) for r in p["bindings"]), 7)
                 keys = [v["semantic_key"] for r in p["bindings"] for v in r["variants"]]
                 self.assertEqual(len(keys), len(set(keys)))
                 self.assertEqual(p["torch_version"], "2.14.0+cu130")
@@ -119,8 +119,19 @@ class CompileChoicesTests(unittest.TestCase):
                 if role == "final_inplace":
                     self.assertEqual(selected["id"], "rms_group_01")
             receipt = self.m.inspect()
-            self.assertEqual(receipt["required_bindings"], 3)
-            self.assertEqual(receipt["missing_bindings"], [])
+            self.assertEqual(receipt["required_bindings"], 4)
+            self.assertEqual(receipt["missing_bindings"], ["embedding_rms"])
+            embedding = (ROOT / 'tests/fixtures/fp8_ordered/embedding_norm.py').read_text().replace("'x': 2048,", "'x': 8192,")
+            fn = next(n for n in ast.parse(embedding).body if isinstance(n, ast.FunctionDef))
+            deco = next(n for n in fn.decorator_list if isinstance(n, ast.Call))
+            keywords = {k.arg: k.value for k in deco.keywords}
+            meta = {ast.literal_eval(k): ({x.arg: ast.literal_eval(x.value) for x in v.keywords}
+                    if ast.literal_eval(k) == 'device' else ast.literal_eval(v))
+                    for k, v in zip(keywords['triton_meta'].keys, keywords['triton_meta'].values)}
+            chosen = self.m.select_recipe(embedding, ast.literal_eval(keywords['size_hints']), meta,
+                                          kernel_alias=fn.name, kernel_site=fn.name)
+            self.assertEqual(chosen['id'], 'embedding_rms')
+            self.assertEqual(self.m.inspect()['missing_bindings'], [])
             # The separately generated old out-of-place variant is accepted,
             # but its absence must not add a required runtime group.
             policy = self.m.load_policy()
@@ -138,7 +149,7 @@ class CompileChoicesTests(unittest.TestCase):
             module = load_module()
             rows = module.load_policy(mode)["bindings"]
             self.assertEqual([(r["selected_fields"]["R0_BLOCK"], r["selected_fields"]["num_warps"])
-                              for r in rows], choices)
+                              for r in rows[:3]], choices)
 
     def test_off_does_not_import_torch_or_change_env(self):
         with patch.dict(os.environ, {"VLLM_MACH_FP8_COMPILE_MODE": ""}):
@@ -338,10 +349,10 @@ class OrderedReductionTests(unittest.TestCase):
             for row in policy['bindings']:
                 for variant in row['variants']:
                     body = variant['boundary']['function_sha256']
-                    if body not in (ordered._E875, ordered._558):
+                    if body not in (ordered._E875, ordered._558, ordered._EMBED):
                         self.assertIsNone(ordered.specification(body, row['selected_fields']))
                         continue
-                    filename = 'premlp_norm.py' if body == ordered._E875 else 'layer1_norm.py'
+                    filename = {ordered._E875: 'premlp_norm.py', ordered._558: 'layer1_norm.py', ordered._EMBED: 'embedding_norm.py'}[body]
                     source = (files / filename).read_text()
                     name = next(n.name for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
                     changed = ordered.rewrite(source, name, variant['boundary'], row['selected_fields'])
@@ -356,7 +367,25 @@ class OrderedReductionTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         ordered.rewrite(source.replace('1e-06', '2e-06'), name, variant['boundary'], row['selected_fields'])
                     seen.add(body)
-            self.assertEqual(seen, {ordered._E875, ordered._558})
+            self.assertEqual(seen, {ordered._E875, ordered._558, ordered._EMBED})
+
+    def test_embedding_gather_boundary_is_finite_and_keeps_shared_BF16_guard(self):
+        import copy
+        from vllm_mach.fp8 import ordered_reduction as ordered
+        from vllm_mach.mxfp8 import ordered_reduction as shared
+        row = load_module().load_policy('quality4')['bindings'][-1]
+        boundary = row['variants'][0]['boundary']
+        source = (ROOT / 'tests/fixtures/fp8_ordered/embedding_norm.py').read_text()
+        name = 'triton_red_fused__to_copy_add_embedding_rms_norm_0'
+        spec = ordered.specification(ordered._EMBED, row['selected_fields'])
+        with self.assertRaises(ValueError): shared.validate(spec, boundary, row['selected_fields'])
+        for field, value in [('signature', {**boundary['signature'], 'in_ptr0':'*i64'}),
+                             ('constants', {'xnumel':140}), ('size_hints', dict(x=140,r0_=4096)),
+                             ('architecture',dict(type='cuda',cc=100))]:
+            with self.assertRaises(ValueError):
+                ordered.rewrite(source,name,{**boundary,field:value},row['selected_fields'])
+        with self.assertRaises(RuntimeError):
+            ordered.specification(ordered._EMBED,{**row['selected_fields'],'R0_BLOCK':4096})
 
     def test_work_qualified_math_files_do_not_require_runtime_imports(self):
         from vllm_mach.fp8 import ordered_reduction as ordered

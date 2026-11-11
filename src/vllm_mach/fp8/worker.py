@@ -43,9 +43,10 @@ def inspect(worker=None):
     from . import compile_choices
     features = selected_features()
     result = {"features": list(features), "compile_choices": compile_choices.inspect()}
-    from . import quantize, prefill, guard_norm
+    from . import quantize, prefill, guard_norm, packed_fp32
     result["legacy_math"] = {"quantize": quantize.receipt(require=False),
-                             "prefill": prefill.inspect(worker), "guard_norm": guard_norm.inspect()}
+                             "prefill": prefill.inspect(worker), "guard_norm": guard_norm.inspect(),
+                             "packed_fp32": packed_fp32.receipt()}
     if "n64" in features or "ordered" in features:
         from . import linear
         result["linear"] = linear.inspect(worker)
@@ -102,8 +103,9 @@ def install_worker_hook():
             raise RuntimeError("Block-FP8 profile requires CUDA SM120")
         self._mach_fp8_sources = sources
         self._mach_fp8_compiled = False
-        from . import prefill, guard_norm
+        from . import prefill, guard_norm, packed_fp32
         prefill.install()
+        packed_fp32.install()
         guard_norm.install()
         if "n64" in features or "ordered" in features:
             from . import linear
