@@ -5,8 +5,10 @@ import json
 import os
 import shutil
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 FILE = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/install.py"
@@ -200,6 +202,38 @@ class InstallContracts(unittest.TestCase):
             verify_packages=False)["applied"])
         self.assertFalse(self.installer.install_profile(self.site,apply=True,
             verify_packages=False)["applied"])
+
+    def test_no_prefix_commit_keeps_blocks_and_enabled_cache_behavior(self):
+        name = "vllm/v1/core/kv_cache_manager.py"
+        text = (self.installer.DATA / "runtime.patch").read_text()
+        section = text.split("--- a/" + name + "\n")[1]
+        # Execute the actual bundled tail, including its original commit path.
+        lines = [line[1:] for line in section.splitlines(keepends=True)
+                 if line.startswith((" ", "+")) and not line.startswith("+++")]
+        start = next(i for i, line in enumerate(lines) if "# P/D: delay caching" in line)
+        returns = [i for i in range(start, len(lines))
+                   if lines[i].strip() == "return self.create_kv_cache_blocks(new_blocks)"]
+        self.assertEqual(len(returns), 2)
+        body = textwrap.indent(textwrap.dedent("".join(lines[start:returns[-1] + 1])), "    ")
+        namespace = {}
+        exec("def commit(self, request, new_blocks, total_computed_tokens, "
+             "num_new_tokens, delay_cache_blocks):\n" + body, namespace)
+        request = SimpleNamespace(num_tokens=16)
+        blocks, returned = object(), object()
+        for enabled in (False, True):
+            for delayed in (False, True):
+                with self.subTest(prefix=enabled, delayed=delayed):
+                    commits, outputs = [], []
+                    def create(value):
+                        outputs.append(value)
+                        return returned
+                    manager = SimpleNamespace(enable_caching=enabled,
+                        create_kv_cache_blocks=create,
+                        coordinator=SimpleNamespace(cache_blocks=lambda *args: commits.append(args)))
+                    value = namespace["commit"](manager, request, blocks, 15, 3, delayed)
+                    self.assertIs(value, returned)
+                    self.assertEqual(outputs, [blocks])
+                    self.assertEqual(commits, [(request, 16)] if enabled and not delayed else [])
 
     def test_bundled_profile_is_self_contained_and_records_source_changes(self):
         manifest = self.installer.load_manifest()
