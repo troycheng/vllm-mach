@@ -1,6 +1,45 @@
 # SPDX-License-Identifier: Apache-2.0
 """Fixed activation inputs for qualified Block-FP8 exact2048 graph islands."""
 import threading
+from contextlib import nullcontext
+
+
+def _qualified_metadata_parameters():
+    # Keep the same one-time source qualification as the tested prototype.
+    import hashlib
+    import inspect
+    try:
+        from vllm.model_executor import parameter
+        source = inspect.getsourcefile(parameter)
+        with open(source, 'rb') as handle:
+            qualified = hashlib.sha256(handle.read()).hexdigest() == (
+                '1a4bbd7400fd1ba79e8e1e8d19666cd22881ec83c35e6e01b3fdc78faee23171')
+    except (ImportError, OSError, TypeError):
+        qualified = False
+    if not qualified:
+        return (), None
+    return ((parameter.ModelWeightParameter, parameter.BlockQuantScaleParameter),
+            parameter.BasevLLMParameter.__torch_function__.__func__)
+
+
+_METADATA_PARAMETER_TYPES = ()
+_BASE_TORCH_FUNCTION = None
+_METADATA_INITIALIZED = False
+
+
+def _initialize_metadata_parameters():
+    global _METADATA_PARAMETER_TYPES, _BASE_TORCH_FUNCTION, _METADATA_INITIALIZED
+    if not _METADATA_INITIALIZED:
+        _METADATA_PARAMETER_TYPES, _BASE_TORCH_FUNCTION = _qualified_metadata_parameters()
+        _METADATA_INITIALIZED = True
+
+
+def _metadata_context(t):
+    import torch
+    if (type(t) in _METADATA_PARAMETER_TYPES and
+            getattr(type(t).__torch_function__, '__func__', None) is _BASE_TORCH_FUNCTION):
+        return torch._C.DisableTorchFunctionSubclass()
+    return nullcontext()
 
 CORE=2048*4096
 GATE=(2048-1)*12288+4096
@@ -21,6 +60,7 @@ def role(t):
 
 class ActivationBank:
     def __init__(self,device):
+        _initialize_metadata_parameters()
         import torch
         self.device=torch.device(device);self.capture_stream=torch.cuda.current_stream(self.device)
         self.stream=self.capture_stream.cuda_stream;self.thread=threading.get_ident()
@@ -56,9 +96,10 @@ class ActivationBank:
             if not isinstance(t,torch.Tensor):
                 if type(t)not in(int,float,bool,type(None)):return self.reject('unknown_scalar_type',dict(index=i,type=type(t).__name__))
                 spec.append(('scalar',type(t).__name__,t));continue
-            storage=(str(t.device),t.untyped_storage().data_ptr())
-            if storage in readonly:
-                spec.append(('readonly',str(t.device),t.data_ptr(),tuple(t.shape),tuple(t.stride()),str(t.dtype)));continue
+            with _metadata_context(t):
+                storage=(str(t.device),t.untyped_storage().data_ptr())
+                if storage in readonly:
+                    spec.append(('readonly',str(t.device),t.data_ptr(),tuple(t.shape),tuple(t.stride()),str(t.dtype)));continue
             name=role(t)
             if name is None or name in seen or t.device!=self.device:return self.reject('activation_layout_role_device',dict(index=i,role=name,shape=list(t.shape),stride=list(t.stride()),dtype=str(t.dtype),device=str(t.device)))
             seen.add(name);key=(name,tuple(t.shape),tuple(t.stride()))
