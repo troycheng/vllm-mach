@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 # Public native 0.3.0 source shared with the Docker builds.
-REVISION = "1aa0955aa0bedf6f2bbc87be367301fe5f7c4c8b"
+REVISION = "eb61051b24790d133f50730240641f388bfddc36"
 
 _spec = importlib.util.spec_from_file_location(
     "mach_unified_native_builder", Path(__file__).with_name("build-mxfp8.py")

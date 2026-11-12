@@ -17,7 +17,7 @@ RUN python3 -m pip uninstall -y opentelemetry-exporter-otlp-common opentelemetry
     && python3 -m pip check
 
 # Native 0.3.0 build identities and the complete MXFP6/MXFP8 operator set.
-ARG MXFP6_REVISION=1aa0955aa0bedf6f2bbc87be367301fe5f7c4c8b
+ARG MXFP6_REVISION=eb61051b24790d133f50730240641f388bfddc36
 COPY deploy/install.py deploy/build-mxfp8.py deploy/build-mxfp6.py /opt/mach/deploy/
 RUN python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \
     && mv /opt/mach-build/mxfp8-build.json /opt/mach/mxfp8-build.json \
