@@ -3,7 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import sys
-from types import SimpleNamespace as NS
+from types import ModuleType, SimpleNamespace as NS
 import unittest
 from unittest.mock import patch
 
@@ -113,9 +113,38 @@ class SamplerMetadataCPU(unittest.TestCase):
 
     def test_unselected_profiles_do_not_import_runtime(self):
         for contract in ({}, {"mode": "quality"},
-                         {"mode": "production", "ssm_dtype": "bfloat16", "hybrid_greedy_head": True},
+                         {"mode": "production", "ssm_dtype": "float16", "hybrid_greedy_head": True},
+                         {"mode": "quality", "ssm_dtype": "bfloat16", "hybrid_greedy_head": True},
+                         {"mode": "production", "ssm_dtype": "bfloat16", "hybrid_greedy_head": False},
                          {"mode": "production", "ssm_dtype": "float32", "hybrid_greedy_head": False}):
             self.assertFalse(mod.install(NS(_mach_2b_contract=contract)))
+
+    def test_fp32_and_bf16_admit_the_same_sampler_instance_lifecycle(self):
+        for dtype in ("float32", "bfloat16"):
+            with self.subTest(ssm_dtype=dtype):
+                _, sampler, reqs = fixture()
+                modules = {}
+                for name, attribute, value in (
+                    ("sampler", "Sampler", type(sampler)),
+                    ("logit_bias", "LogitBiasState", Bias),
+                    ("penalties", "PenaltiesState", Penalties),
+                    ("bad_words", "BadWordsState", BadWords),
+                ):
+                    path = "vllm.v1.worker.gpu.sample." + name
+                    module = ModuleType(path)
+                    setattr(module, attribute, value)
+                    modules[path] = module
+                worker = NS(_mach_2b_contract={"mode": "production", "ssm_dtype": dtype,
+                                              "hybrid_greedy_head": True},
+                            model_runner=NS(sampler=sampler, req_states=reqs))
+                # These module substitutions exist only for the guarded imports;
+                # the same product refresh state runs for both admitted dtypes.
+                with patch.dict(sys.modules, modules), patch.object(mod, "version", return_value="0.33.0"):
+                    self.assertTrue(mod.install(worker))
+                    self.assertFalse(mod.install(worker))
+                sampler.apply_staged_writes()
+                sampler.apply_staged_writes()
+                self.assertEqual((sampler.copies, mod.inspect_worker(worker)["skips"]), (1, 1))
 
 
 def test_selected_2b_sampler_metadata_actual_runtime():

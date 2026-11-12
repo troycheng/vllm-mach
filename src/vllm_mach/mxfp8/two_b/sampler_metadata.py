@@ -79,7 +79,7 @@ class _RefreshState:
 def install(worker):
     contract = getattr(worker, "_mach_2b_contract", {})
     if (contract.get("mode") != "production"
-            or contract.get("ssm_dtype") != "float32"
+            or contract.get("ssm_dtype") not in ("float32", "bfloat16")
             or not contract.get("hybrid_greedy_head")):
         return False
     if getattr(worker, _STATE, None) is not None:
