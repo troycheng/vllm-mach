@@ -165,5 +165,127 @@ class NativeLegacyAdmission(unittest.TestCase):
         self.assertFalse(torch.cuda.is_initialized())
 
 
+
+
+class NativeQualificationCache(unittest.TestCase):
+    class Config:
+        def __init__(self, kwargs=None, num_warps=4, num_ctas=1, num_stages=3,
+                     maxnreg=None, pre_hook=None, ir_override=None):
+            self.kwargs = dict(kwargs or {})
+            self.num_warps, self.num_ctas, self.num_stages = num_warps, num_ctas, num_stages
+            self.maxnreg, self.pre_hook, self.ir_override = maxnreg, pre_hook, ir_override
+
+        def __eq__(self, other):
+            return isinstance(other, type(self)) and legacy._config_state(self) == legacy._config_state(other)
+
+    def fixture(self):
+        row = {'selected': dict(kwargs={'BK': 64}, num_warps=4, num_stages=3)}
+        tuner = N(configs=[self.Config(num_warps=2), self.Config(**row['selected'])], cache={})
+        return row, tuner, legacy._QualifiedChoice(tuner, row, self.Config)
+
+    def test_same_choice_equivalent_external_cache_and_missing_cache(self):
+        row, tuner, qualified = self.fixture()
+        key = (16, 128, 'torch.bfloat16')
+        choice = qualified.choose(tuner, row, key)
+        tuner.cache[key] = choice
+        self.assertIs(qualified.choose(tuner, row, key), choice)
+        tuner.cache[key] = self.Config(**row['selected'])
+        self.assertIs(qualified.choose(tuner, row, key), choice)
+        tuner.cache.clear()
+        self.assertIs(qualified.choose(tuner, row, key), choice)
+
+    def test_mutations_preserve_original_membership_and_cache_contract(self):
+        for case in ('cache', 'member', 'removed', 'choice', 'row', 'reordered'):
+            row, tuner, qualified = self.fixture()
+            key = ('key',)
+            if case == 'cache': tuner.cache[key] = self.Config(num_warps=8)
+            elif case == 'member': tuner.configs[1].kwargs['BK'] = 32
+            elif case == 'removed': tuner.configs.pop()
+            elif case == 'choice': qualified.choice.num_stages = 5
+            elif case == 'row': row['selected']['kwargs']['BK'] = 32
+            elif case == 'reordered': tuner.configs.reverse()
+            expected = self.Config(**row['selected'])
+            reject = expected not in tuner.configs or (key in tuner.cache and tuner.cache[key] != expected)
+            with self.subTest(case=case):
+                if reject:
+                    with self.assertRaisesRegex(RuntimeError, 'selection changed'):
+                        qualified.choose(tuner, row, key)
+                else:
+                    self.assertEqual(qualified.choose(tuner, row, key), expected)
+
+    def test_compiled_metadata_and_ptx_cache_invalidates_on_real_changes(self):
+        result = N(metadata=N(hash='h', num_warps=1, num_stages=3), asm={'ptx': 'actual PTX'})
+        cache = {}
+        original = legacy.hashlib.sha256
+        with patch.object(legacy.hashlib, 'sha256', wraps=original) as digest:
+            first = legacy._compiled_info(result, cache)
+            self.assertIs(legacy._compiled_info(result, cache), first)
+            self.assertEqual(digest.call_count, 1)
+            result.asm['ptx'] = 'changed actual PTX'
+            changed = legacy._compiled_info(result, cache)
+            self.assertNotEqual(changed['ptx_sha256'], first['ptx_sha256'])
+            result.metadata.num_warps = 4
+            self.assertEqual(legacy._compiled_info(result, cache)['num_warps'], 4)
+            other = N(metadata=result.metadata, asm=result.asm)
+            legacy._compiled_info(other, cache)
+            self.assertEqual(digest.call_count, 4)
+
+    def test_actual_tuner_wrapper_disabled_unknown_and_receipt(self):
+        import ast
+        import functools
+        import inspect
+        row, tuner, qualified = self.fixture()
+        row.update(key=[16], function='actual_fixture')
+        tuner.arg_names, tuner.keys = ['H'], ['H']
+        calls = []
+        result = N(hash='actual-result')
+        original = lambda *a, **kw: calls.append((a, kw)) or result
+        tree = ast.parse(inspect.getsource(legacy.install))
+        run = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'run')
+        namespace = dict(functools=functools, original=original, row=row,
+                         qualified=qualified, _ENABLED=False, _STATS={'pins': {}, 'pin_choices': {}})
+        exec(compile(ast.Module(body=[run], type_ignores=[]), '<actual-native-tuner-run>', 'exec'), namespace)
+        wrapper = namespace['run']
+        self.assertIs(wrapper(tuner, 16, grid=(1,)), result)
+        self.assertFalse(tuner.cache)
+        namespace['_ENABLED'] = True
+        self.assertIs(wrapper(tuner, 32, grid=(1,)), result)
+        self.assertFalse(tuner.cache)
+        wrapper(tuner, 16, grid=(1,))
+        self.assertIs(tuner.cache[(16,)], qualified.choice)
+        self.assertEqual(namespace['_STATS']['pins'], {'actual_fixture': 1})
+        self.assertEqual(namespace['_STATS']['pin_choices']['actual_fixture']['hash'], 'actual-result')
+        self.assertEqual(calls, [((16,), {'grid': (1,)}), ((32,), {'grid': (1,)}), ((16,), {'grid': (1,)})])
+
+    def test_actual_norm_wrapper_keeps_dynamic_capture_and_receipt(self):
+        import ast
+        import inspect
+        result = N(metadata=N(hash='compiled', num_warps=1, num_stages=3), asm={'ptx': 'norm PTX'})
+        calls = []
+        target = N(run=lambda *a, **kw: calls.append((a, kw)) or result)
+        capture = unittest.mock.Mock(side_effect=[False, True])
+        tree = ast.parse(inspect.getsource(legacy.install))
+        node = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'norm_run')
+        stats = dict(norm_calls={}, norm_capture={}, norm_choices={})
+        original = unittest.mock.Mock(return_value='upstream')
+        namespace = dict(vars(legacy), _ENABLED=True, _STATS=stats, norm_compiled={},
+                         original_norm=original, torch=N(cuda=N(is_current_stream_capturing=capture)))
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<actual-native-norm-run>', 'exec'), namespace)
+        args = tuple([None] * 10 + [2167, 128, 1e-6])
+        kw = dict(BLOCK_N=128, HAS_BIAS=False, HAS_Z=True, IS_RMS_NORM=True,
+                  NORM_BEFORE_GATE=True, num_warps=1, ROWS_PER_BLOCK=4, ACTIVATION='silu')
+        with patch.object(legacy._CONTEXT, 'norm', 'layer0', create=True), patch.dict(
+                'sys.modules', {'vllm_mach.fp8._guard_kernel': N(layer_norm_fwd_kernel=target)}):
+            for _ in range(2): self.assertIs(namespace['norm_run'](*args, **kw), result)
+            namespace['_ENABLED'] = False
+            self.assertEqual(namespace['norm_run'](*args, **kw), 'upstream')
+        self.assertEqual(calls, [(args, kw), (args, kw)])
+        self.assertEqual(capture.call_count, 2)
+        self.assertEqual(stats['norm_calls'], {'layer0:row4': 2})
+        self.assertEqual(stats['norm_capture'], {'layer0:row4:m2167': 1})
+        self.assertTrue(stats['norm_choices']['layer0:row4']['capturing'])
+        self.assertEqual(stats['norm_choices']['layer0:row4']['hash'], 'compiled')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -16,6 +16,7 @@
     "tests/test_mxfp8_2b_selector_graph_cpu.py",
     "tests/test_mxfp8_2b_pdl_cpu.py",
     "tests/test_fp8_profile_cpu.py",
+    "tests/test_fp8_prefill_graph_cpu.py",
     "tests/test_fp8_linear_cpu.py",
     "tests/test_fp8_activation_cpu.py",
     "tests/test_fp8_attention_cpu.py",
@@ -112,6 +113,12 @@
     ],
     "tests/test_mxfp8_2b_presence_graph_cpu.py::test_selected_2b_presence_graph_actual_runtime": [
       "mxfp8"
+    ],
+    "tests/test_fp8_prefill_graph_cpu.py::test_selected_block_prefill_graph_actual_runtime": [
+      "block-fp8"
+    ],
+    "tests/test_fp8_prefill_graph_cpu.py::test_selected_block_prefill_graph_warm_cache_fallback": [
+      "block-fp8"
     ]
   },
   "required_tests": {
@@ -131,7 +138,9 @@
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",
-      "test_normal_forward_preserves_request_slices_cache_and_output"
+      "test_normal_forward_preserves_request_slices_cache_and_output",
+      "test_selected_block_prefill_graph_actual_runtime",
+      "test_selected_block_prefill_graph_warm_cache_fallback"
     ],
     "native": [
       "test_selected_runtime_profile_sources_are_installed",

@@ -55,6 +55,8 @@ def inspect(worker=None):
         result["activation"] = activation.inspect()
     if worker is not None:
         result["sources"] = worker._mach_fp8_sources
+        from . import prefill_graph
+        result["prefill_graph"] = prefill_graph.inspect_worker(worker)
     return result
 
 
@@ -93,10 +95,13 @@ def install_worker_hook():
         return False
     original_init = Worker.init_device
     original_compile = Worker.compile_or_warm_up_model
+    original_load = Worker.load_model
 
     @wraps(original_init)
     def init(self, *args, **kwargs):
         validate_worker_config(self)
+        from . import prefill_graph
+        prefill_graph.configure(self, features)
         result = original_init(self, *args, **kwargs)
         import torch
         if torch.cuda.get_device_capability() != (12, 0):
@@ -115,11 +120,21 @@ def install_worker_hook():
             activation.install()
         return result
 
+    @wraps(original_load)
+    def load_model(self, *args, **kwargs):
+        result = original_load(self, *args, **kwargs)
+        from . import prefill_graph
+        prefill_graph.bind_model(self)
+        return result
+
     @wraps(original_compile)
     def compile_model(self, *args, **kwargs):
         if selected_features() != features:
             raise RuntimeError("Block-FP8 feature selection changed before compilation")
+        from . import prefill_graph
+        prefill_graph.before_compile(self)
         result = original_compile(self, *args, **kwargs)
+        prefill_graph.after_compile(self)
         compile_choices.verify_coverage()
         receipt = write_receipt(self)
         if "linear" in receipt:
@@ -142,6 +157,7 @@ def install_worker_hook():
 
     Worker.init_device = init
     Worker.compile_or_warm_up_model = compile_model
+    Worker.load_model = load_model
     # These public worker RPCs can replace weight/scale storage after capture.
     # This profile has no online reload or weight-transfer contract.
     Worker.reload_weights = reject_weight_update

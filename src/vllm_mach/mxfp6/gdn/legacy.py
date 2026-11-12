@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Qualified native MoE FP16 reductions; unrelated paths stay upstream."""
+import copy
 import functools
 import hashlib
 import importlib
@@ -16,11 +17,55 @@ _ENABLED = False
 _INSTALLED = False
 _CONTEXT = threading.local()
 _WARMED = set()
+_ATTENTION_COMPILED = {}
 _DECODE_ROWS = (1, 2, 4, 8, 16, 24, 32)
 _PACKED_ROWS = (16, 24, 32)
 _STATS = {'prepared': [], 'pins': {}, 'prep_calls': 0, 'norm_calls': {},
           'packed_calls': {}, 'packed_capture': {}, 'attention_calls': 0, 'attention_capture': {},
           'norm_choices': {}, 'norm_capture': {}, 'pin_choices': {}, 'attention_choices': []}
+
+
+def _config_state(config):
+    return (tuple(config.kwargs.items()), config.num_warps, config.num_ctas,
+            config.num_stages, config.maxnreg, config.pre_hook, config.ir_override)
+
+
+class _QualifiedChoice:
+    """Keep the finite member qualified; mutations take the original slow path."""
+    def __init__(self, tuner, row, Config):
+        self.Config = Config
+        self.selected = copy.deepcopy(row['selected'])
+        self.choice = Config(**copy.deepcopy(self.selected))
+        self.state = _config_state(self.choice)
+        self.index = next((i for i, c in enumerate(tuner.configs) if c == self.choice), None)
+        self.member = tuner.configs[self.index] if self.index is not None else None
+
+    def choose(self, tuner, row, key):
+        stable = (row['selected'] == self.selected
+                  and _config_state(self.choice) == self.state
+                  and self.index is not None and self.index < len(tuner.configs)
+                  and tuner.configs[self.index] is self.member
+                  and _config_state(self.member) == self.state)
+        choice = self.choice if stable else self.Config(**row['selected'])
+        cached = tuner.cache.get(key)
+        if ((not stable and choice not in tuner.configs)
+                or (key in tuner.cache and cached is not choice and cached != choice)):
+            raise RuntimeError('Native qualified FLA selection changed')
+        return choice
+
+
+def _compiled_info(result, cache):
+    """Cache immutable PTX hashing while checking actual object/metadata identity."""
+    metadata, ptx = result.metadata, result.asm['ptx']
+    state = (metadata.hash, metadata.num_warps, metadata.num_stages)
+    previous = cache.get(id(result))
+    if (previous is None or previous[0] is not result
+            or previous[1] != state or previous[2] is not ptx):
+        info = dict(hash=state[0], num_warps=state[1], num_stages=state[2],
+                    ptx_sha256=hashlib.sha256(ptx.encode()).hexdigest())
+        previous = (result, state, ptx, info)
+        cache[id(result)] = previous
+    return previous[3]
 
 
 def enabled():
@@ -96,17 +141,16 @@ def install():
         while not isinstance(tuner, Autotuner):
             tuner = tuner.fn
         original = tuner.run
+        qualified = _QualifiedChoice(tuner, row, Config)
 
         @functools.wraps(original)
-        def run(self, *args, _row=row, _original=original, **kwargs):
+        def run(self, *args, _row=row, _original=original, _qualified=qualified, **kwargs):
             values = {**dict(zip(self.arg_names, args)), **kwargs}
             bound = {k: v for k, v in values.items() if k in self.arg_names}
             key = [bound[k] for k in self.keys if k in bound]
             key.extend(str(v.dtype) for v in bound.values() if hasattr(v, 'dtype'))
             if _ENABLED and key == _row['key']:
-                choice = Config(**_row['selected'])
-                if choice not in self.configs or (tuple(key) in self.cache and self.cache[tuple(key)] != choice):
-                    raise RuntimeError('Native qualified FLA selection changed')
+                choice = _qualified.choose(self, _row, tuple(key))
                 self.cache[tuple(key)] = choice
             result = _original(*args, **kwargs)
             if _ENABLED and key == _row['key']:
@@ -138,6 +182,7 @@ def install():
     qwen.fused_post_conv_prep = prep
     from vllm.third_party.flash_linear_attention.ops import layernorm_guard as guard
     original_norm = guard.layer_norm_fwd_kernel.run
+    norm_compiled = {}
 
     def norm_run(*args, **kwargs):
         prefix = getattr(_CONTEXT, 'norm', None)
@@ -154,10 +199,11 @@ def install():
         result = layer_norm_fwd_kernel.run(*args, **kwargs)
         key = prefix + ':row' + str(kwargs['ROWS_PER_BLOCK'])
         _STATS['norm_calls'][key] = _STATS['norm_calls'].get(key, 0) + 1
-        if torch.cuda.is_current_stream_capturing():
+        capturing = torch.cuda.is_current_stream_capturing()
+        if capturing:
             capture_key = key + ':m' + str(args[10])
             _STATS['norm_capture'][capture_key] = _STATS['norm_capture'].get(capture_key, 0) + 1
-        _STATS['norm_choices'][key] = dict(rows=args[10], capturing=torch.cuda.is_current_stream_capturing(), hash=result.metadata.hash, num_warps=result.metadata.num_warps, num_stages=result.metadata.num_stages, ptx_sha256=hashlib.sha256(result.asm['ptx'].encode()).hexdigest())
+        _STATS['norm_choices'][key] = dict(rows=args[10], capturing=capturing, **_compiled_info(result, norm_compiled))
         return result
     guard.layer_norm_fwd_kernel.run = norm_run
     _INSTALLED = True
@@ -314,9 +360,10 @@ def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
                 result = target[grid](*args, **kwargs)
                 prefix = _CONTEXT.attention
                 _STATS['attention_calls'] += 1
-                if torch.cuda.is_current_stream_capturing():
+                capturing = torch.cuda.is_current_stream_capturing()
+                if capturing:
                     _STATS['attention_capture'][prefix] = _STATS['attention_capture'].get(prefix, 0) + 1
-                row = dict(prefix=prefix, rows=num_seqs, grid=list(grid), capturing=torch.cuda.is_current_stream_capturing(), hash=result.metadata.hash, num_warps=result.metadata.num_warps, num_stages=result.metadata.num_stages, ptx_sha256=hashlib.sha256(result.asm['ptx'].encode()).hexdigest())
+                row = dict(prefix=prefix, rows=num_seqs, grid=list(grid), capturing=capturing, **_compiled_info(result, _ATTENTION_COMPILED))
                 if row not in _STATS['attention_choices']:
                     _STATS['attention_choices'].append(row)
                 return result

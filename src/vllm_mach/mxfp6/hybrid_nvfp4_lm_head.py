@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from functools import cache
 from threading import Lock
 from weakref import ref
 from time import perf_counter
@@ -133,8 +134,21 @@ class _HybridHeadGraphs:
             self.lock.release()
 
 
+@cache
+def _use_m24_global_scale() -> bool:
+    """Lock the immutable worker/profile selection on its first eligible use."""
+    return (os.environ.get("VLLM_MACH_PROFILE") == "qwen35-2b-mxfp8-champion-v1"
+            and os.environ.get("VLLM_MACH_MXFP8_SSM_DTYPE", "float32") == "bfloat16"
+            and os.environ.get("VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH", "0") == "0")
+
+
 def _global_scale(tensor: torch.Tensor) -> torch.Tensor:
     """Return the FlashInfer NVFP4 global scale for a BF16 activation/weight."""
+    if (_use_m24_global_scale() and tuple(tensor.shape) == (24, 2048)
+            and tensor.dtype == torch.bfloat16 and tensor.is_cuda
+            and tensor.is_contiguous()):
+        from vllm_mach.mxfp8.two_b._global_scale_kernel import fused_scale
+        return fused_scale(tensor)
     # Inference activations and the loaded lm-head weights are finite BF16
     # tensors.  Reducing them in BF16 is exact for ``amax`` (there is no
     # accumulation), while avoiding the full-tensor BF16->FP32 cast and the
