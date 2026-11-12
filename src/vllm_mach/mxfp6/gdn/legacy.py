@@ -18,6 +18,7 @@ _INSTALLED = False
 _CONTEXT = threading.local()
 _WARMED = set()
 _ATTENTION_COMPILED = {}
+_QUALIFIED_CACHES = {}
 _DECODE_ROWS = (1, 2, 4, 8, 16, 24, 32)
 _PACKED_ROWS = (16, 24, 32)
 _STATS = {'prepared': [], 'pins': {}, 'prep_calls': 0, 'norm_calls': {},
@@ -130,6 +131,7 @@ def install():
     import torch
     from triton import Config
     from triton.runtime.autotuner import Autotuner
+    from .qualified_cache import attach
     from vllm.model_executor.layers.mamba.gdn import qwen_gdn_linear_attn as qwen
     gates = json.loads((_DATA / 'legacy_sources.json').read_text())
     for filename, digest in gates.items():
@@ -160,7 +162,9 @@ def install():
                 if hasattr(result, 'hash'):
                     _STATS['pin_choices'][_row['function']]['hash'] = result.hash
             return result
-        tuner.run = MethodType(run, tuner)
+        baseline = MethodType(run, tuner)
+        tuner.run, cache = attach(tuner, row, qualified, enabled, original, baseline)
+        _QUALIFIED_CACHES[row['function']] = cache
     original_prep = qwen.fused_post_conv_prep
 
     @functools.wraps(original_prep)
@@ -374,6 +378,10 @@ def attention(stock, *, num_seqs, heads, kv_heads, segments, head_size, padded_h
 def receipt():
     from . import dense_norm, dense_packed, dense_prefill, dense_prep, mixed_fp16, packed
     return dict(enabled=_ENABLED, installed=_INSTALLED, **_STATS,
+                pin_cache_lookups={name: dict(first_actual_key=cache.first_real_lookup,
+                    selected=cache.row['selected'])
+                    for name, cache in _QUALIFIED_CACHES.items()},
+                pin_counter_scope='First actual cache lookup, not successful launches; legacy pins/pin_choices only cover rare fallback',
                 packed=packed.receipt(), dense_prep=dense_prep.receipt(),
                 dense_prefill=dense_prefill.receipt(), dense_norm=dense_norm.receipt(),
                 dense_packed=dense_packed.receipt(), dense_attention=dense_attention.receipt(),

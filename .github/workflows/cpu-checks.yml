@@ -44,5 +44,6 @@ jobs:
           tests/native_mxfp6/test_dense_packed_cpu.py
           tests/native_mxfp6/test_dense_attention_cpu.py
           tests/native_mxfp6/test_mixed_fp16_cpu.py
+          tests/native_mxfp6/test_legacy_cpu.py
       - name: Build wheel and source distribution
         run: python -m build --no-isolation
