@@ -3,6 +3,8 @@
 from collections.abc import MutableMapping
 from functools import wraps
 
+_MISSING = object()
+
 
 class RawTunerView:
     """Use the existing backing dict; choose() cannot recurse into the facade."""
@@ -71,7 +73,7 @@ def attach(tuner, row, qualified, enabled, original, baseline):
         # Preserve current policy's mutation/qualified-key check in that rare
         # case, rather than silently losing it. Normal six-tuner calls form
         # no key here; the original run and its hooks/kwargs remain unchanged.
-        prior_nargs = tuner.nargs
+        prior_nargs = getattr(tuner, 'nargs', _MISSING)
         cache.qualification_error = None
         try:
             if enabled() and len(tuner.configs) <= 1:
@@ -86,7 +88,11 @@ def attach(tuner, row, qualified, enabled, original, baseline):
             # restore that qualification-error case; leaf/prehook errors retain
             # exactly the original upstream partial state.
             if cache.qualification_error is error:
-                tuner.nargs = prior_nargs
+                if prior_nargs is _MISSING:
+                    if hasattr(tuner, 'nargs'):
+                        del tuner.nargs
+                else:
+                    tuner.nargs = prior_nargs
             raise
         finally:
             cache.qualification_error = None

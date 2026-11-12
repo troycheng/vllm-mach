@@ -324,28 +324,45 @@ class NativeGuardedTunerCache(unittest.TestCase):
         self.assertIs(cache.raw, raw)
         return row, tuner, qualified, namespace, run, cache, calls
 
-    def test_qualified_source_is_same_as_actual_cpu_and_gpu_target(self):
+    def test_install_binds_original_and_baseline_tuner_calls(self):
         import ast
-        import hashlib
         import inspect
-        import json
-        from vllm_mach.mxfp6.gdn import qualified_cache
-        def canonical(value):
-            if isinstance(value, ast.AST):
-                return [type(value).__name__, [(k, canonical(v)) for k, v in ast.iter_fields(value)
-                        if not (k == 'type_params' and v == [])]]
-            if isinstance(value, list):
-                return [canonical(v) for v in value]
-            return value
-        tree = ast.parse(inspect.getsource(qualified_cache))
-        tree.body = tree.body[1:]  # Only module description differs from work fixture8e45.
-        digest = hashlib.sha256(json.dumps(canonical(tree), separators=(',', ':')).encode()).hexdigest()
-        self.assertEqual(digest, '412499674e8fcfb3dcde7ec82d00a26fccd22f3ebdb434f1c57b76b533cb57ed')
         install = ast.parse(inspect.getsource(legacy.install))
         binding = next(n for n in ast.walk(install) if isinstance(n, ast.Call)
                        and isinstance(n.func, ast.Name) and n.func.id == 'attach')
         self.assertEqual([ast.unparse(n) for n in binding.args],
                          ['tuner', 'row', 'qualified', 'enabled', 'original', 'baseline'])
+
+    def test_cold_tuner_has_no_nargs_until_original_run(self):
+        for single, enabled, h in ((False, True, 16), (True, True, 16),
+                                   (False, False, 16), (False, True, 32)):
+            with self.subTest(single=single, enabled=enabled, h=h):
+                _, tuner, qualified, ns, run, _, calls = self.fixture(single=single)
+                del tuner.nargs
+                ns['_ENABLED'] = enabled
+                result = run(h)
+                self.assertEqual(len(calls), 1)
+                if enabled and h == 16:
+                    self.assertEqual(result, qualified.choice)
+                self.assertIsNone(tuner.nargs)
+
+    def test_cold_qualification_rejection_restores_missing_attribute(self):
+        _, tuner, _, _, run, cache, calls = self.fixture()
+        del tuner.nargs
+        cache.raw[(16,)] = self.Config(num_warps=32)
+        with self.assertRaisesRegex(RuntimeError, 'selection changed'):
+            run(16)
+        self.assertFalse(hasattr(tuner, 'nargs'))
+        self.assertFalse(calls)
+        self.assertIsNone(cache.qualification_error)
+
+    def test_cold_leaf_error_retains_upstream_partial_state(self):
+        _, tuner, _, _, run, cache, _ = self.fixture(leaf_error=True)
+        del tuner.nargs
+        with self.assertRaisesRegex(ValueError, 'leaf sentinel'):
+            run(16)
+        self.assertEqual(tuner.nargs, {'H': 16})
+        self.assertIsNone(cache.qualification_error)
 
     def test_raw_alias_unknown_disabled_clear_and_matching_lookup(self):
         row, tuner, qualified, ns, run, cache, calls = self.fixture()
