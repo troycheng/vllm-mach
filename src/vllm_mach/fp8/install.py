@@ -10,8 +10,8 @@ import re
 
 # Shared exact-hunk staging/rollback mechanics, not the MXFP8 source profile.
 from ..mxfp8.install import (
-    _commit, _read_sources, _relative, apply_patch, inspect_sources as inspect_manifest,
-    sha256,
+    _commit, _read_sources, _relative, apply_profile_patch,
+    inspect_sources as inspect_manifest, load_shared_patch, sha256,
 )
 from .profile import NAME
 
@@ -31,6 +31,7 @@ def load_manifest(data_directory=None):
     patch = (directory / "runtime.patch").read_bytes()
     if sha256(patch) != manifest["patch_sha256"]:
         raise RuntimeError("Block-FP8 patch SHA256 differs")
+    load_shared_patch(manifest.get("shared_patch"), manifest["files"])
     return manifest
 
 
@@ -50,7 +51,8 @@ def install_profile(site, *, apply=False, verify_packages=True, data_directory=N
     site = Path(site).resolve()
     before = _read_sources(site, manifest)
     state = inspect_sources(site, manifest)["state"]
-    after = (apply_patch(before, (directory / "runtime.patch").read_bytes())
+    after = (apply_profile_patch(before, (directory / "runtime.patch").read_bytes(),
+                                 manifest.get("shared_patch"))
              if state == "upstream" else before.copy())
     for name, source in after.items():
         if sha256(source) != manifest["files"][name]["installed_sha256"]:

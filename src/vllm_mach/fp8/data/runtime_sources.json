@@ -67,6 +67,19 @@
       "upstream_sha256": "c466cefbe403bd2b5562bc5d871881f7918f53c5425d0c0b776766bb74506e21",
       "installed_sha256": "c466cefbe403bd2b5562bc5d871881f7918f53c5425d0c0b776766bb74506e21",
       "changed": false
+    },
+    "vllm/v1/core/kv_cache_manager.py": {
+      "upstream_sha256": "39ae1c1564a034fd59736a92d962bfab5a0af03529e01349b765422dbd5a355d",
+      "installed_sha256": "27e10fd3e0c7ed5d6d725dc67c28a84fd4b08a79b5c10bce52e8024a8b8912a6",
+      "changed": true,
+      "purpose": "Return before prefix-cache commit bookkeeping when prefix caching is disabled; allocation, retirement, Mamba state, events and enabled-prefix behavior remain original."
     }
+  },
+  "shared_patch": {
+    "name": "common-vllm033.patch",
+    "sha256": "4eb9798e102ef8bf068b98426a74e68e03935a16f5b663ee8a3a5ecc12d43d96",
+    "files": [
+      "vllm/v1/core/kv_cache_manager.py"
+    ]
   }
 }

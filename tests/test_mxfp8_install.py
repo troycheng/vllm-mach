@@ -187,6 +187,41 @@ class InstallContracts(unittest.TestCase):
                 manifest = self.installer.load_manifest(self.data)
                 self.installer.load_shared_patch(metadata,manifest["files"])
 
+    def test_shared_patch_selects_only_explicit_profile_sources(self):
+        common = (self.data / "runtime.patch").read_bytes()
+        shared_file = self.data / "common-vllm033.patch"
+        shared_file.write_bytes(common)
+        manifest = self.installer.load_manifest(self.data)
+        metadata = {"name": shared_file.name, "sha256": self.installer.sha256(common),
+                    "files": ["vllm/one.py"]}
+        with patch.object(self.installer, "_COMMON_PATCH", shared_file):
+            selected = self.installer.load_shared_patch(metadata, manifest["files"])
+            self.assertEqual(self.installer.apply_patch(
+                {"vllm/one.py": self.before["vllm/one.py"]}, selected),
+                {"vllm/one.py": self.after["vllm/one.py"]})
+            self.assertNotIn(b"--- a/vllm/two.py", selected)
+            metadata["files"] = ["vllm/missing.py"]
+            with self.assertRaisesRegex(RuntimeError, "Missing shared runtime patch source"):
+                self.installer.load_shared_patch(metadata)
+
+    def test_block_installer_applies_only_its_shared_kv_source(self):
+        source = os.getenv("VLLM_MACH_TEST_UPSTREAM_SOURCE")
+        if not source:
+            self.skipTest("Set frozen vLLM source root for actual-source installation")
+        from vllm_mach.fp8 import install as block
+        manifest = block.load_manifest()
+        name = "vllm/v1/core/kv_cache_manager.py"
+        self.assertEqual(manifest["shared_patch"]["files"], [name])
+        for path in manifest["files"]:
+            target = self.site / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(Path(source) / path, target)
+        result = block.install_profile(self.site, apply=True, verify_packages=False)
+        self.assertEqual(result["result_sha256"],
+                         {path: entry["installed_sha256"] for path, entry in manifest["files"].items()})
+        self.assertFalse(block.install_profile(self.site, apply=True,
+                                              verify_packages=False)["applied"])
+
     def test_actual_frozen_runtime_with_packaged_common_patch(self):
         source = os.getenv("VLLM_MACH_TEST_UPSTREAM_SOURCE")
         if not source:
@@ -205,7 +240,9 @@ class InstallContracts(unittest.TestCase):
 
     def test_no_prefix_commit_keeps_blocks_and_enabled_cache_behavior(self):
         name = "vllm/v1/core/kv_cache_manager.py"
-        text = (self.installer.DATA / "runtime.patch").read_text()
+        manifest = self.installer.load_manifest()
+        text = self.installer.load_shared_patch(manifest["shared_patch"],
+                                               manifest["files"]).decode()
         section = text.split("--- a/" + name + "\n")[1]
         # Execute the actual bundled tail, including its original commit path.
         lines = [line[1:] for line in section.splitlines(keepends=True)
@@ -254,7 +291,7 @@ class InstallContracts(unittest.TestCase):
         self.assertEqual(fla["upstream_sha256"], fla["installed_sha256"])
         private = (self.installer.DATA / "runtime.patch").read_bytes()
         shared = self.installer.load_shared_patch(manifest["shared_patch"],manifest["files"])
-        self.assertEqual(len(manifest["shared_patch"]["files"]),10)
+        self.assertEqual(len(manifest["shared_patch"]["files"]),11)
         for name in manifest["shared_patch"]["files"]:
             self.assertNotIn(("--- a/"+name+"\n").encode(),private)
         patch_text = (private+shared).decode()

@@ -88,11 +88,17 @@
         "vllm/v1/attention/ops/triton_unified_attention.py": {
           "upstream_sha256": "c1cf2300c99f5dc1fb297d7e556620842ab53c64c5ecda4c6ba89fb8e16215da",
           "installed_sha256": "b680560dfaa7e4671d7adc97998b9fedfac5a26ddcdbdc08de87eefdab2bf860"
+        },
+        "vllm/v1/core/kv_cache_manager.py": {
+          "upstream_sha256": "39ae1c1564a034fd59736a92d962bfab5a0af03529e01349b765422dbd5a355d",
+          "installed_sha256": "27e10fd3e0c7ed5d6d725dc67c28a84fd4b08a79b5c10bce52e8024a8b8912a6",
+          "changed": true,
+          "purpose": "Return before prefix-cache commit bookkeeping when prefix caching is disabled; allocation, retirement, Mamba state, events and enabled-prefix behavior remain original."
         }
       },
       "shared_patch": {
         "name": "common-vllm033.patch",
-        "sha256": "f7c48298e20365349f33cf5a177f68292b588276cddc729d1af658944f907d03",
+        "sha256": "4eb9798e102ef8bf068b98426a74e68e03935a16f5b663ee8a3a5ecc12d43d96",
         "files": [
           "vllm/envs.py",
           "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
@@ -103,7 +109,8 @@
           "vllm/v1/attention/backends/triton_attn.py",
           "vllm/v1/attention/backends/utils.py",
           "vllm/v1/worker/gpu/cudagraph_utils.py",
-          "vllm/v1/attention/ops/triton_unified_attention.py"
+          "vllm/v1/attention/ops/triton_unified_attention.py",
+          "vllm/v1/core/kv_cache_manager.py"
         ]
       }
     },

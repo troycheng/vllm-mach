@@ -67,7 +67,19 @@ def load_shared_patch(shared: dict | None, files: dict | None = None) -> bytes:
     patch = _COMMON_PATCH.read_bytes()
     if sha256(patch) != shared.get("sha256"):
         raise RuntimeError("Bundled shared runtime patch SHA256 mismatch")
-    return patch
+    # Profiles explicitly own different subsets of this SHA-locked overlay.
+    sections = {}
+    for section in re.split(rb"(?=^--- a/)", patch, flags=re.MULTILINE):
+        if not section:
+            continue
+        name = section.split(b"\n", 1)[0][6:].decode("utf-8")
+        _relative(name)
+        if name in sections:
+            raise RuntimeError(f"Duplicate shared runtime source: {name}")
+        sections[name] = section
+    if not set(names).issubset(sections):
+        raise RuntimeError("Missing shared runtime patch source")
+    return b"".join(value for name, value in sections.items() if name in names)
 
 
 def apply_profile_patch(sources: dict[str, bytes], patch: bytes,
