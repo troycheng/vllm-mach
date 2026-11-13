@@ -271,6 +271,8 @@ def prepare(layer):
     _STATS['prepared'].append(layer.prefix)
     from . import mixed_fp16
     mixed_fp16.prepare(layer)
+    from . import direct_norm
+    direct_norm.prepare(layer)
     from . import packed
     # Empty indices compile the exact pitch/dtype without touching live slots.
     device = layer.in_proj_ba.weight.device
