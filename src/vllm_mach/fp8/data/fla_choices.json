@@ -25,7 +25,7 @@
         },
         "num_warps": 4,
         "num_ctas": 1,
-        "num_stages": 4,
+        "num_stages": 3,
         "maxnreg": null,
         "pre_hook": null,
         "ir_override": null
