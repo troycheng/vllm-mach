@@ -367,6 +367,47 @@ def _reset_allocated(ids,kind):
     _ALLOCATION_RESETS[kind] += 1
     _ALLOCATION_RESETS["ids"] += len(unique)
 
+_PAGEABLE_RESET = _reset_allocated
+
+def _reset_allocated_pinned(ids,kind):
+    if not ids or not _READY: return
+    import torch
+    from . import metadata_reset as kernels
+    unique = sorted(set(ids))
+    # CPU scheduler knows these newly assigned IDs. No device age read or
+    # capture-time host slot value is involved.
+    ids_by_device = {}
+    for key,scratch in _VIEW_SCRATCH.items():
+        pages = key[1][0]
+        if unique[-1] >= pages:
+            raise RuntimeError(f"allocated block outside GDN state pool: {unique[-1]}/{pages}")
+        dev = torch.device(key[3])
+        if key[3] not in ids_by_device:
+            host_ids = torch.tensor(unique,dtype=torch.int32,device="cpu",pin_memory=True)
+            ids_by_device[key[3]] = host_ids.to(dev,non_blocking=True)
+        device_ids = ids_by_device[key[3]]
+        kernels.reset_metadata(device_ids,scratch,pages)
+    _ALLOCATION_RESETS[kind] += 1
+    _ALLOCATION_RESETS["ids"] += len(unique)
+
+def _install_reset_policy(worker):
+    """Choose the upload policy once; leave every non-selected hot path intact."""
+    global _reset_allocated
+    if _reset_allocated is not _PAGEABLE_RESET and _reset_allocated is not _reset_allocated_pinned:
+        raise RuntimeError("GDN reset function is owned by another hook")
+    contract = getattr(worker, "_mach_mxfp8_contract", {})
+    selected = (os.environ.get("VLLM_MACH_PROFILE") == "qwen35-4b-mxfp8-champion-v1"
+                and contract.get("mode") == "production"
+                and contract.get("ssm_dtype") == "bfloat16"
+                and contract.get("ordered_gdn") is True
+                and contract.get("kv_dtype") == "fp8_e4m3"
+                and contract.get("compact_greedy_head") is True
+                and worker.vllm_config.cache_config.mamba_ssm_cache_dtype == "bfloat16"
+                and os.environ.get("VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH") == "0")
+    _reset_allocated = _reset_allocated_pinned if selected else _PAGEABLE_RESET
+
+
+
 def _install_runner_lifecycle():
     from vllm.v1.worker.gpu.model_runner import GPUModelRunner
     if getattr(GPUModelRunner,"_mach_mxfp8_ordered_lifecycle",False): return
@@ -431,6 +472,8 @@ def inspect_worker(worker):
         "fallback_dispatch":{f"{p}|m{m}":n for (p,m),n in _FALLBACK.items()},
         "profile_dispatch":{f"{p}|m{m}":n for (p,m),n in _PROFILE.items()},
         "new_block_metadata_resets":dict(_ALLOCATION_RESETS),
+        "reset_id_upload":("fresh_pinned_nonblocking" if _reset_allocated is _reset_allocated_pinned
+                           else "pageable" if _reset_allocated is _PAGEABLE_RESET else "foreign"),
         "scratch_bytes":sum(sum(getattr(s,n).numel()*getattr(s,n).element_size()
                   for n in ("pending_k","pending_d","coeff","prefix","age"))
                   for s in _VIEW_SCRATCH.values()),
@@ -492,6 +535,7 @@ def install_runtime(worker):
     _claim_worker(worker)
     _check_config(worker)
     _RUN_MODE, _QUALITY_ROW, _ = _mode_contract()
+    _install_reset_policy(worker)
     _register_gdn()
     _install_runner_lifecycle()
 
