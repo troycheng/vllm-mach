@@ -1,0 +1,49 @@
+name: Portable CPU checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-packaging:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test and build tools
+        run: python -m pip install 'setuptools>=77' wheel build pytest
+      - name: Compile Python sources
+        run: python -m compileall -q src deploy tools tests
+      - name: Check version, build, teacher and test-runner contracts
+        env:
+          PYTHONPATH: src
+        run: >-
+          python -m pytest -q
+          tests/test_stack_cpu.py
+          tests/test_teacher_decode_cpu.py
+          tests/test_mxfp8_deploy.py
+          tests/test_mxfp8_flashinfer_layout_cpu.py
+          tests/test_mxfp8_2b_sampler_metadata_cpu.py
+          tests/test_mxfp8_2b_selector_graph_cpu.py
+          tests/test_mxfp8_2b_presence_graph_cpu.py
+          tests/test_mxfp8_input_geometry_cpu.py
+          tests/test_fp8_prefill_graph_cpu.py
+          tests/test_cpu_profile_entry.py
+          tests/native_mxfp6/test_dense_prep_cpu.py
+          tests/native_mxfp6/test_dense_prefill_cpu.py
+          tests/native_mxfp6/test_dense_norm_cpu.py
+          tests/native_mxfp6/test_dense_packed_cpu.py
+          tests/native_mxfp6/test_dense_attention_cpu.py
+          tests/native_mxfp6/test_mixed_fp16_cpu.py
+          tests/native_mxfp6/test_legacy_cpu.py
+      - name: Build wheel and source distribution
+        run: python -m build --no-isolation

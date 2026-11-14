@@ -1,6 +1,6 @@
 --- a/vllm/_custom_ops.py
 +++ b/vllm/_custom_ops.py
-@@ -542,7 +542,9 @@
+@@ -549,7 +549,9 @@
          )
  
      # Call the C++ kernel
@@ -34,31 +34,29 @@
 +from vllm_mach.fp8.attention import (
 +    build_split_metadata, mixed_fa2_eligible, mixed_fa2_enabled,
 +)
- from typing import ClassVar
+ from typing import Any, ClassVar
  
  import numpy as np
-@@ -280,6 +284,10 @@
+@@ -543,6 +547,10 @@
      num_decode_tokens: int = 0
      num_prefill_tokens: int = 0
  
-+    # Narrow backport of LiRunGuo's vLLM PR #58013.
++    # Narrow mixed FA2 split: independent of upstream DCP context counts.
 +    num_split_decodes: int = 0
 +    prefill_query_start_loc: torch.Tensor | None = None
 +
      # Optional aot scheduling
      scheduler_metadata: torch.Tensor | None = None
-     prefix_scheduler_metadata: torch.Tensor | None = None
-@@ -443,6 +451,9 @@
- 
-         self.max_num_splits = 0  # No upper bound on the number of splits.
-         self.aot_schedule = get_flash_attn_version() == 3
-+        self.mach_fp8_fa2 = (
-+            mixed_fa2_enabled() and get_flash_attn_version() == 2
-+        )
- 
-         self.fa4_hd256 = uses_fa4_hd256_kernel(self.headdim) and (
-             get_flash_attn_version(
-@@ -788,6 +799,8 @@
+     max_num_splits: int = 0
+@@ -713,6 +721,7 @@
+             kv_cache_block_size=self.block_size,
+             supports_fa4_hd256=True,
+         )
++        self.mach_fp8_fa2 = mixed_fa2_enabled() and fa_version == 2
+         self.fa4_hd256 = fa_version == 4 and uses_fa4_hd256_kernel(
+             self.headdim, head_size_v
+         )
+@@ -1019,6 +1028,8 @@
              attn_metadata.rswa_window = self.rswa_window
              attn_metadata.rswa_window_tensor = self.persistent_rswa_window_tensor
  
@@ -67,50 +65,50 @@
          return attn_metadata
  
      def update_block_table(
-@@ -1159,6 +1172,46 @@
-                     block_table = block_table[:, :num_pages]
-                     num_splits = 1
+@@ -1401,6 +1412,46 @@
+                 block_table = block_table[:, :num_pages]
+                 num_splits = 1
  
-+                if attn_metadata.num_split_decodes and mixed_fa2_eligible(
-+                    self, attn_metadata, query[:num_actual_tokens],
-+                    output[:num_actual_tokens], key_cache, value_cache,
-+                ):
-+                    nd = attn_metadata.num_split_decodes
-+                    segments = (
-+                        (slice(0, nd), cu_seqlens_q[:nd + 1], slice(0, nd), 1),
-+                        (slice(nd, num_actual_tokens),
-+                         attn_metadata.prefill_query_start_loc,
-+                         slice(nd, None), max_seqlen_q),
++            if attn_metadata.num_split_decodes and mixed_fa2_eligible(
++                self, attn_metadata, query[:num_actual_tokens],
++                output[:num_actual_tokens], key_cache, value_cache,
++            ):
++                nd = attn_metadata.num_split_decodes
++                segments = (
++                    (slice(0, nd), cu_seqlens_q[:nd + 1], slice(0, nd), 1),
++                    (slice(nd, num_actual_tokens),
++                     attn_metadata.prefill_query_start_loc,
++                     slice(nd, None), max_seqlen_q),
++                )
++                for tokens, starts, reqs, qmax in segments:
++                    _FA4_DENSE_ATTENTION_KERNEL(
++                        q=query[tokens],
++                        k=key_cache,
++                        v=value_cache,
++                        out=output[tokens],
++                        cu_seqlens_q=starts,
++                        max_seqlen_q=qmax,
++                        seqused_k=seqused_k[reqs],
++                        max_seqlen_k=max_seqlen_k,
++                        softmax_scale=self.scale,
++                        causal=causal,
++                        alibi_slopes=self.alibi_slopes,
++                        window_size=sliding_window_size,
++                        block_table=block_table[reqs],
++                        softcap=self.logits_soft_cap,
++                        scheduler_metadata=scheduler_metadata,
++                        fa_version=self.vllm_flash_attn_version,
++                        q_descale=q_descale[reqs] if q_descale is not None else None,
++                        k_descale=k_descale[reqs],
++                        v_descale=v_descale[reqs],
++                        dynamic_causal=dynamic_causal,
++                        num_splits=1,
++                        s_aux=self.sinks,
++                        mask_mod=rswa_mask_mod_fn or mm_mask_mod,
++                        aux_tensors=rswa_aux or mm_aux,
 +                    )
-+                    for tokens, starts, reqs, qmax in segments:
-+                        flash_attn_varlen_func(
-+                            q=query[tokens],
-+                            k=key_cache,
-+                            v=value_cache,
-+                            out=output[tokens],
-+                            cu_seqlens_q=starts,
-+                            max_seqlen_q=qmax,
-+                            seqused_k=seqused_k[reqs],
-+                            max_seqlen_k=max_seqlen_k,
-+                            softmax_scale=self.scale,
-+                            causal=causal,
-+                            alibi_slopes=self.alibi_slopes,
-+                            window_size=sliding_window_size,
-+                            block_table=block_table[reqs],
-+                            softcap=self.logits_soft_cap,
-+                            scheduler_metadata=scheduler_metadata,
-+                            fa_version=self.vllm_flash_attn_version,
-+                            q_descale=q_descale[reqs] if q_descale is not None else None,
-+                            k_descale=k_descale[reqs],
-+                            v_descale=v_descale[reqs],
-+                            dynamic_causal=dynamic_causal,
-+                            num_splits=1,
-+                            s_aux=self.sinks,
-+                            mask_mod=rswa_mask_mod_fn or mm_mask_mod,
-+                            aux_tensors=rswa_aux or mm_aux,
-+                        )
-+                    return output
++                return output
 +
-                 flash_attn_varlen_func(
-                     q=query[:num_actual_tokens],
-                     k=key_cache,
+             _FA4_DENSE_ATTENTION_KERNEL(
+                 q=query[:num_actual_tokens],
+                 k=key_cache,

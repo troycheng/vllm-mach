@@ -5,12 +5,15 @@ import subprocess
 import sys
 import sysconfig
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_EXTENSIONS, TORCH_BUILD, check_versions
+
 from setuptools import setup
 import torch
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 
-if torch.__version__ != "2.13.0+cu130":
-    raise RuntimeError("Build FP8 activation with Torch2.13.0+cu130")
+check_versions({"torch": BASE_PACKAGES["torch"]})
+
 if torch.version.cuda != "13.0" or not CUDA_HOME:
     raise RuntimeError("Build FP8 activation with Torch CUDA13.0 and CUDA_HOME")
 nvcc = subprocess.check_output([str(Path(CUDA_HOME) / "bin/nvcc"), "--version"],
@@ -31,7 +34,7 @@ system_include_flags = ["-isystem", str(runtime_include)]
 
 setup(
     name="vllm-mach-fp8-activation",
-    version="0.1.0a1",
+    version=NATIVE_EXTENSIONS["vllm-mach-fp8-activation"],
     license="Apache-2.0",
     license_files=["LICENSE"],
     ext_modules=[CUDAExtension(

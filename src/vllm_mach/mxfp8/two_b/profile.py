@@ -20,6 +20,7 @@ def quality_contract(rows):
     return {"max_model_len": 1024, "max_num_seqs": rows,
             "max_num_batched_tokens": max(8192, rows * 256),
             "kv_cache_memory_bytes": 4 * 2**30,
+            "attention_config": {"flash_attn_version": 2},
             "compilation_config": {"cudagraph_capture_sizes": captures,
                                    "max_cudagraph_capture_size": rows,
                                    "cudagraph_mode": "FULL_AND_PIECEWISE"}}
@@ -88,13 +89,14 @@ def _check_geometry(worker, contract):
             or cfg.scheduler_config.max_num_batched_tokens != contract["max_num_batched_tokens"]
             or cfg.cache_config.cache_dtype not in ("auto", "bfloat16")
             or (contract["attention_backend"] == "FLASH_ATTN"
-                and os.environ.get("VLLM_FLASH_ATTN_VERSION") != "2")):
+                and cfg.attention_config.flash_attn_version != 2)):
         raise RuntimeError("2B TP1, BF16 KV, fixed prefill and non-LoRA contract changed")
 
 
 def inspect_worker(worker):
     worker = _worker(worker)
-    from . import ba, gdn, graph_policy, hybrid_head, pdl
+    from . import ba, gdn, graph_policy, hybrid_head, pdl, sampler_metadata, metadata_classification
+    from .. import input_geometry
     from ..worker import verify_worker_execution
     import torch
     contract = worker._mach_2b_contract
@@ -116,6 +118,10 @@ def inspect_worker(worker):
     if not projection["native_m16_available"]:
         raise RuntimeError("The 2B champion requires native BF16 BA M16")
     pdl_state = pdl.verify_capture(required)
+    from . import ordered_reduction
+    ordering = ordered_reduction.receipt(require_complete=True)
+    from . import attention
+    from vllm_mach import gdn_prep
     from .. import swiglu_quant
     fusion_state = swiglu_quant.receipt(required)
     heads = [m for name, m in worker.get_model().named_modules() if name.endswith("lm_head")]
@@ -128,9 +134,13 @@ def inspect_worker(worker):
     return {"profile": NAME, "pid": os.getpid(), **contract,
             "versions": check_environment(),
             "runtime_sources": worker._mach_2b_runtime_sources,
-            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state, "swiglu_quant": fusion_state,
+            "native": native, "gdn": state, "ba": projection, "graph": graph, "pdl": pdl_state, "swiglu_quant": fusion_state, "ordered_reduction": ordering,
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
-            "hybrid_head": hybrid,
+            "hybrid_head": hybrid, "sampler_metadata": sampler_metadata.inspect_worker(worker),
+            "metadata_classification": metadata_classification.inspect_worker(worker),
+            "input_geometry": input_geometry.inspect_worker(worker),
+            "ordered_attention_sources": attention.identity(),
+            "ordered_prep_sources": gdn_prep.identity(),
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
 
 
@@ -165,6 +175,8 @@ def install_worker_hook():
     gdn = select_gdn(gdn)
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
+    from . import ordered_reduction
+    ordered_reduction.install()
     pdl.install()
     from .. import swiglu_quant
     swiglu_quant.install()
@@ -179,10 +191,14 @@ def install_worker_hook():
         self._mach_2b_ready = False
         self._mach_2b_steps = 0
         result = original_init(self, *args, **kwargs)
+        from .. import input_geometry
+        input_geometry.install(self)
         _check_geometry(self, contract)
         install_worker_backend(self)
         pdl.prepare()
         gdn.install_runtime(self)
+        from vllm_mach.gdn_prep import verify_binding
+        verify_binding()
         ba.install(self)
         return result
 
@@ -213,6 +229,10 @@ def install_worker_hook():
         if contract["hybrid_greedy_head"]:
             from .hybrid_head import install
             install(self)
+            from . import sampler_metadata
+            sampler_metadata.install(self)
+            from . import metadata_classification
+            metadata_classification.install(self)
         write_receipt(self, "compiled")
         self._mach_2b_ready = True
         return result

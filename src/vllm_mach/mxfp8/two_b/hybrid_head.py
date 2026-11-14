@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Opt-in K128 NVFP4 proposals and BF16 refinement for the 2B greedy head.
+"""Prepare the 2B K128 sidecar and instance-bound greedy/presence head paths.
 
-Install after worker warmup/capture. Stochastic sampling, processors and score
-requests retain the original full BF16 path. This is an approximate greedy
-head: indexed reduction can change equal-maximum BF16 token ties.
+The BF16 parameter stays intact. Stochastic sampling retains its original RNG,
+top-p and history updates; unsupported contexts keep the original entry.
 """
 from __future__ import annotations
 
@@ -127,6 +126,10 @@ def install(worker):
     runner._mach_sampling_sidecar = state
     nv.warmup_hybrid_nvfp4_lm_head_kernels(state, weight, tp_size=1)
     nv.capture_hybrid_nvfp4_lm_head(state, weight, tp_size=1)
+    from vllm_mach.mxfp8.two_b import selector_graph
+    selector_graph.install(worker, state)
+    from vllm_mach.mxfp8.two_b import presence_graph
+    presence_graph.install(worker, state)
     stats = dict(calls=0, sampling_fallback_calls=0, head_fallback_calls=0,
                  hybrid_success_calls=0, hybrid_success_rows=0, calls_by_rows={})
 
@@ -154,7 +157,11 @@ def inspect_worker(worker):
         return {"installed": False}
     state = installed["state"]
     stats = installed["stats"]
-    return dict(installed=True, candidates=state.candidates, max_rows=state.max_rows,
+    from vllm_mach.mxfp8.two_b import selector_graph
+    from vllm_mach.mxfp8.two_b import presence_graph
+    return dict(installed=True, selector_graph=selector_graph.receipt(state),
+                presence_graph=presence_graph.receipt(worker),
+                candidates=state.candidates, max_rows=state.max_rows,
                 backend=state.backend, full_bf16_parameter=True,
                 tie_guard=False, private_head_graph=state._head_graphs is not None,
                 head_graph_replays=(dict(state._head_graphs.replay_counts)

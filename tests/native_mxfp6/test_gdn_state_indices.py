@@ -6,6 +6,48 @@ import torch
 from vllm.v1.kv_cache_interface import MambaSpec
 
 
+@pytest.mark.parametrize("num_requests", [0, 1, 4])
+@pytest.mark.parametrize("strided", [False, True])
+def test_aligned_state_indices_accept_padded_cpu_rows(num_requests, strided):
+    """Active lengths own the output shape; trailing table rows stay unused."""
+    from vllm.v1.attention.backends.utils import mamba_get_block_table_tensor
+
+    spec = MambaSpec(
+        block_size=16, shapes=((16, 128),), dtypes=(torch.bfloat16,),
+        num_speculative_blocks=2,
+    )
+    lengths = torch.tensor([0, 99, 1, 99, 17, 99, 32, 99], dtype=torch.int32)
+    lengths = lengths[::2] if strided else lengths[::2].contiguous()
+    lengths = lengths[:num_requests]
+    table = torch.arange((num_requests + 3) * 16, dtype=torch.int32).reshape(
+        num_requests + 3, 16
+    )
+    if strided:
+        table = table[:, ::2]
+    starts = [0, 0, 1, 1][:num_requests]
+    expected = torch.tensor(
+        [[int(table[row, start + offset]) for offset in range(3)]
+         for row, start in enumerate(starts)], dtype=table.dtype,
+    ).reshape(num_requests, 3)
+    result = mamba_get_block_table_tensor(table, lengths, spec, "align")
+    assert result.shape == (num_requests, 3)
+    torch.testing.assert_close(result, expected, rtol=0, atol=0)
+    for mode in ("all", "none"):
+        assert mamba_get_block_table_tensor(table, lengths, spec, mode) is table
+
+
+def test_aligned_state_indices_reject_short_table_and_cross_device():
+    from vllm.v1.attention.backends.utils import mamba_get_block_table_tensor
+
+    spec = MambaSpec(block_size=16, shapes=((16, 128),), dtypes=(torch.bfloat16,))
+    table = torch.zeros((2, 8), dtype=torch.int32)
+    with pytest.raises(AssertionError, match="fewer than"):
+        mamba_get_block_table_tensor(table, torch.ones(3, dtype=torch.int32), spec, "align")
+    # Meta is a different device without requiring a CUDA context in CPU CI.
+    with pytest.raises(AssertionError, match="seq_lens is on"):
+        mamba_get_block_table_tensor(table, torch.empty(2, device="meta"), spec, "align")
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 @pytest.mark.parametrize("block_size", [16, 320, 560])
 @pytest.mark.parametrize("num_requests", [0, 1, 4, 16, 64, 65, 256])

@@ -1,0 +1,175 @@
+{
+  "kernels": [
+    {
+      "function": "chunk_fwd_kernel_o",
+      "module": "vllm.third_party.flash_linear_attention.ops.chunk_o",
+      "source": "vllm/third_party/flash_linear_attention/ops/chunk_o.py",
+      "key": [
+        16,
+        128,
+        128,
+        64,
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.float32",
+        "torch.bfloat16",
+        "torch.int32",
+        "torch.int32"
+      ],
+      "selected": {
+        "kwargs": {
+          "BK": 64,
+          "BV": 32
+        },
+        "num_warps": 4,
+        "num_ctas": 1,
+        "num_stages": 3,
+        "maxnreg": null,
+        "pre_hook": null,
+        "ir_override": null
+      }
+    },
+    {
+      "function": "merge_16x16_to_64x64_inverse_kernel",
+      "module": "vllm.third_party.flash_linear_attention.ops.solve_tril",
+      "source": "vllm/third_party/flash_linear_attention/ops/solve_tril.py",
+      "key": [
+        16,
+        64,
+        true,
+        "torch.float32",
+        "torch.bfloat16",
+        "torch.int32",
+        "torch.int32"
+      ],
+      "selected": {
+        "kwargs": {},
+        "num_warps": 4,
+        "num_ctas": 1,
+        "num_stages": 3,
+        "maxnreg": null,
+        "pre_hook": null,
+        "ir_override": null
+      }
+    },
+    {
+      "function": "recompute_w_u_fwd_kernel",
+      "module": "vllm.third_party.flash_linear_attention.ops.wy_fast",
+      "source": "vllm/third_party/flash_linear_attention/ops/wy_fast.py",
+      "key": [
+        16,
+        128,
+        128,
+        64,
+        64,
+        64,
+        true,
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.float32",
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.float32",
+        "torch.int32",
+        "torch.int32"
+      ],
+      "selected": {
+        "kwargs": {},
+        "num_warps": 4,
+        "num_ctas": 1,
+        "num_stages": 3,
+        "maxnreg": null,
+        "pre_hook": null,
+        "ir_override": null
+      }
+    },
+    {
+      "function": "chunk_gated_delta_rule_fwd_kernel_h_blockdim64",
+      "module": "vllm.third_party.flash_linear_attention.ops.chunk_delta_h",
+      "source": "vllm/third_party/flash_linear_attention/ops/chunk_delta_h.py",
+      "key": [
+        16,
+        128,
+        128,
+        64,
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.bfloat16",
+        "torch.float32",
+        "torch.bfloat16",
+        "torch.float16",
+        "torch.float32",
+        "torch.int32",
+        "torch.int64"
+      ],
+      "selected": {
+        "kwargs": {
+          "BV": 32
+        },
+        "num_warps": 4,
+        "num_ctas": 1,
+        "num_stages": 3,
+        "maxnreg": null,
+        "pre_hook": null,
+        "ir_override": null
+      }
+    },
+    {
+      "function": "chunk_scaled_dot_kkt_fwd_kernel",
+      "module": "vllm.third_party.flash_linear_attention.ops.chunk_scaled_dot_kkt",
+      "source": "vllm/third_party/flash_linear_attention/ops/chunk_scaled_dot_kkt.py",
+      "key": [
+        16,
+        128,
+        64,
+        true,
+        "torch.bfloat16",
+        "torch.float32",
+        "torch.float32",
+        "torch.float32",
+        "torch.int32",
+        "torch.int32"
+      ],
+      "selected": {
+        "kwargs": {
+          "BK": 64
+        },
+        "num_warps": 4,
+        "num_ctas": 1,
+        "num_stages": 3,
+        "maxnreg": null,
+        "pre_hook": null,
+        "ir_override": null
+      }
+    },
+    {
+      "function": "chunk_local_cumsum_scalar_kernel",
+      "module": "vllm.third_party.flash_linear_attention.ops.cumsum",
+      "source": "vllm/third_party/flash_linear_attention/ops/cumsum.py",
+      "key": [
+        1,
+        16,
+        64,
+        true,
+        false,
+        "torch.float32",
+        "torch.float32",
+        "torch.int32",
+        "torch.int32"
+      ],
+      "selected": {
+        "kwargs": {},
+        "num_warps": 2,
+        "num_ctas": 1,
+        "num_stages": 3,
+        "maxnreg": null,
+        "pre_hook": null,
+        "ir_override": null
+      }
+    }
+  ]
+}

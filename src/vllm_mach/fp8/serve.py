@@ -48,6 +48,8 @@ def build_argv(model, *, tokenizer=None, host="127.0.0.1", port=8000,
             "--max-num-batched-tokens", "2048", "--gpu-memory-utilization", "0.85",
             "--no-enable-prefix-caching", "--mamba-ssm-cache-dtype", "float32",
             "--attention-backend", "FLASH_ATTN", "--quantization", "compressed-tensors",
+            "--attention-config", '{"flash_attn_version":2}',
+            "--additional-config", '{"gdn_prefill_backend":"triton"}',
             "--linear-backend", "cutlass", "--kv-cache-memory", str(19 * 2**30),
             "--seed", "20260907"]
 

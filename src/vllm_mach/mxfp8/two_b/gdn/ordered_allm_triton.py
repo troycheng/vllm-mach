@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import torch
 from vllm.triton_utils import tl, triton
 from vllm.third_party.flash_linear_attention.ops.op import exp
+from ...gdn.legacy_reduction import _old_square_128, _old_dot_128, _old_dot_128_8local
 
 HV, H, V, K, BV = 16, 16, 128, 128, 32
 NV = V // BV
@@ -65,6 +66,14 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
                     SCALE: tl.constexpr, H: tl.constexpr, HV: tl.constexpr,
                     V: tl.constexpr, K: tl.constexpr, BV: tl.constexpr,
                     NV: tl.constexpr):
+    # The high-M caller fixes one warp: FP32 has local4 state dots,
+    # while BF16 uses the separately qualified local8 state layout.
+    legacy_fp32: tl.constexpr = (
+        base.dtype.element_ty == tl.float32 and H == 16 and HV == 16
+        and K == 128 and V == 128 and BV == 32 and NV == 4 and W == 4)
+    legacy_bf16: tl.constexpr = (
+        base.dtype.element_ty == tl.bfloat16 and H == 16 and HV == 16
+        and K == 128 and V == 128 and BV == 32 and NV == 4 and W == 4)
     iv = tl.program_id(0)
     ihv = tl.program_id(1)
     it = tl.program_id(2)
@@ -107,8 +116,15 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     b_q = tl.load(ptr_mixed + ik * K + ok).to(tl.float32)
     b_k = tl.load(ptr_mixed + H * K + ik * K + ok).to(tl.float32)
     b_v = tl.load(ptr_mixed + 2 * H * K + ihv * V + ov).to(tl.float32)
-    b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
-    b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
+    if legacy_fp32:
+        b_q = b_q / tl.sqrt(_old_square_128(b_q) + 1e-6)
+        b_k = b_k / tl.sqrt(_old_square_128(b_k) + 1e-6)
+    elif legacy_bf16:
+        b_q = b_q / tl.sqrt(_old_square_128(b_q) + 1e-6)
+        b_k = b_k / tl.sqrt(_old_square_128(b_k) + 1e-6)
+    else:
+        b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
+        b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
     b_q = b_q * SCALE
     a_val = tl.load(a + it * stride_a + ihv).to(tl.float32)
     b_val = tl.load(b + it * stride_b + ihv).to(tl.float32)
@@ -122,10 +138,20 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     # Keep the stock packed FLA update/reduction source expressions and order.
     alpha = exp(g_val)
     b_h *= alpha
-    b_v -= tl.sum(b_h * b_k[None, :], 1)
+    if legacy_fp32:
+        b_v -= _old_dot_128(b_h, b_k[None, :], BV)
+    elif legacy_bf16:
+        b_v -= _old_dot_128_8local(b_h, b_k[None, :], BV)
+    else:
+        b_v -= tl.sum(b_h * b_k[None, :], 1)
     b_v *= beta_val
     b_h += b_v[:, None] * b_k[None, :]
-    b_o = tl.sum(b_h * b_q[None, :], 1)
+    if legacy_fp32:
+        b_o = _old_dot_128(b_h, b_q[None, :], BV)
+    elif legacy_bf16:
+        b_o = _old_dot_128_8local(b_h, b_q[None, :], BV)
+    else:
+        b_o = tl.sum(b_h * b_q[None, :], 1)
     tl.store(output_ptr, b_o.to(out.dtype.element_ty))
 
     if old_age == W - 1:

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-"""Optional native MXFP8 GEMM backend for vLLM 0.29.0 workers.
+"""Optional native MXFP8 GEMM backend for vLLM 0.33.0 workers.
 
 GEMM-only replacement of FlashInfer CUTLASS MXFP8. Activation quantization,
 weight layout, bias, and reshape follow the vLLM class. Package integration

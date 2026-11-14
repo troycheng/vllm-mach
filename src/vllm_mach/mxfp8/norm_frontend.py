@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Keep the 4B recipe's two-dimensional GDN norm frontend.
 
-The shared runtime keeps its three-dimensional optimization for other profiles.
+The shared runtime uses the upstream norm frontend for other profiles.
 The complete 4B profile validates that runtime before installing this hook.
 """
 from __future__ import annotations
@@ -15,17 +15,8 @@ import textwrap
 PROFILE = "qwen35-4b-mxfp8-champion-v1"
 _INSTALLED = {}
 _CURRENT_BODY = """
-if current_platform.is_cuda() and core_attn_out.ndim == z.ndim == 3:
-    core_attn_out = self.norm(core_attn_out, z)
-    core_attn_out = core_attn_out.reshape(-1, self.value_dim // self.tp_size)
-else:
-    z_shape_og = z.shape
-    core_attn_out = core_attn_out.reshape(-1, core_attn_out.shape[-1])
-    z = z.reshape(-1, z.shape[-1])
-    core_attn_out = self.norm(core_attn_out, z)
-    core_attn_out = core_attn_out.reshape(z_shape_og)
-    core_attn_out = core_attn_out.flatten(-2)
-output, _ = self.out_proj(core_attn_out)
+core_attn_out = self.norm(core_attn_out, z)
+output, _ = self.out_proj(core_attn_out.flatten(-2))
 return output
 """
 

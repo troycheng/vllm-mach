@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "scope": "CPU qualification of one already installed runtime profile; no installation or GPU work",
+  "common": [
+    "tests/test_mxfp8_swiglu_quant.py",
+    "tests/test_mxfp8_ssm.py",
+    "tests/test_mxfp8_2b_model.py",
+    "tests/test_mxfp8_2b_gdn_cpu.py",
+    "tests/test_mxfp8_2b_packed_cpu.py",
+    "tests/test_mxfp8_bf16_recurrent_cpu.py",
+    "tests/test_mxfp8_2b_mixed_cpu.py",
+    "tests/test_mxfp8_2b_ba_graph_cpu.py",
+    "tests/test_mxfp8_2b_profile_cpu.py",
+    "tests/test_mxfp8_2b_hybrid_head_cpu.py",
+    "tests/test_mxfp8_2b_sampler_metadata_cpu.py",
+    "tests/test_mxfp8_2b_selector_graph_cpu.py",
+    "tests/test_mxfp8_2b_pdl_cpu.py",
+    "tests/test_fp8_profile_cpu.py",
+    "tests/test_fp8_prefill_graph_cpu.py",
+    "tests/test_fp8_prefill_metadata_cpu.py",
+    "tests/test_fp8_linear_cpu.py",
+    "tests/test_fp8_activation_cpu.py",
+    "tests/test_fp8_attention_cpu.py",
+    "tests/test_deployment.py",
+    "tests/test_lm_head_switch_cpu.py",
+    "tests/test_mxfp8_benchmark.py",
+    "tests/test_mxfp8_deploy.py",
+    "tests/test_mxfp8_gdn_cpu.py",
+    "tests/test_mxfp8_graph_policy.py",
+    "tests/test_mxfp8_head_cpu.py",
+    "tests/test_mxfp8_install.py",
+    "tests/test_mxfp8_kv_cpu.py",
+    "tests/test_mxfp8_flashinfer_layout_cpu.py",
+    "tests/test_mxfp8_native_profile_cpu.py",
+    "tests/test_mxfp8_prepare_model.py",
+    "tests/test_mxfp8_norm_frontend_cpu.py",
+    "tests/test_mxfp8_profile_cpu.py",
+    "tests/test_mxfp8_projection_transform.py",
+    "tests/test_mxfp8_reconstruct_model.py",
+    "tests/native_mxfp6/test_benchmark.py",
+    "tests/native_mxfp6/test_fidelity.py",
+    "tests/test_stack_cpu.py",
+    "tests/test_runtime_profile_sources_cpu.py",
+    "tests/test_cpu_profile_entry.py",
+    "tests/test_mxfp8_ordered_reduction_cpu.py",
+    "tests/test_mxfp8_2b_ordering_cpu.py",
+    "tests/test_mxfp8_4b_bf16_ordering_cpu.py",
+    "tests/test_attention_segments_cpu.py",
+    "tests/test_mxfp8_input_geometry_cpu.py",
+    "tests/test_mxfp8_2b_presence_graph_cpu.py"
+  ],
+  "isolated_global_module_mocks": [
+    "tests/test_mxfp8_native_cpu.py",
+    "tests/test_mxfp8_compile_choices.py",
+    "tests/test_fp8_compile_choices_cpu.py"
+  ],
+  "profile_extra": {
+    "mxfp8": [
+      "tests/native_mxfp6/test_gdn_runtime_registration.py",
+      "tests/test_mxfp8_2b_metadata_classification_cpu.py"
+    ],
+    "block-fp8": [],
+    "native": [
+      "tests/native_mxfp6",
+      "--ignore=tests/native_mxfp6/test_benchmark.py",
+      "--ignore=tests/native_mxfp6/test_fidelity.py",
+      "tests/test_mach_compile_cache.py",
+      "tests/test_mxfp6_warmup.py",
+      "tests/test_serving_route_probe.py",
+      "--ignore=tests/native_mxfp6/test_gdn_runtime_registration.py"
+    ]
+  },
+  "profile_files": {
+    "tests/native_mxfp6/test_prefill.py": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_moe_ar_norm.py": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_gdn_runtime_registration.py": [
+      "mxfp8"
+    ]
+  },
+  "profile_tests": {
+    "tests/native_mxfp6/test_moe_quant_admission_cpu.py::test_installed_native_constructor_matches_audited_fixture": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_qwen3_5_quantization.py::test_manual_ar_norm_rejects_unsupported_execution_modes": [
+      "native"
+    ],
+    "tests/native_mxfp6/test_qwen3_5_quantization.py::test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out": [
+      "mxfp8",
+      "block-fp8",
+      "native"
+    ],
+    "tests/test_runtime_profile_sources_cpu.py::test_selected_runtime_profile_sources_are_installed": [
+      "mxfp8",
+      "block-fp8",
+      "native"
+    ],
+    "tests/test_mxfp8_2b_ordering_cpu.py::test_selected_mxfp8_actual_compiler_lifecycle": [
+      "mxfp8"
+    ],
+    "tests/test_mxfp8_2b_ordering_cpu.py::test_selected_mxfp8_4b_keeps_actual_stock_prep_callable": [
+      "mxfp8"
+    ],
+    "tests/test_mxfp8_4b_bf16_ordering_cpu.py::test_selected_mxfp8_4b_actual_prep_binding": [
+      "mxfp8"
+    ],
+    "tests/test_mxfp8_2b_sampler_metadata_cpu.py::test_selected_2b_sampler_metadata_actual_runtime": [
+      "mxfp8"
+    ],
+    "tests/test_mxfp8_2b_selector_graph_cpu.py::test_selected_2b_selector_graph_actual_runtime": [
+      "mxfp8"
+    ],
+    "tests/test_mxfp8_2b_presence_graph_cpu.py::test_selected_2b_presence_graph_actual_runtime": [
+      "mxfp8"
+    ],
+    "tests/test_fp8_prefill_graph_cpu.py::test_selected_block_prefill_graph_actual_runtime": [
+      "block-fp8"
+    ],
+    "tests/test_fp8_prefill_graph_cpu.py::test_selected_block_prefill_graph_warm_cache_fallback": [
+      "block-fp8"
+    ],
+    "tests/test_fp8_prefill_metadata_cpu.py::test_readonly_metadata_real_cpu_cases": [
+      "block-fp8"
+    ]
+  },
+  "required_tests": {
+    "mxfp8": [
+      "test_selected_runtime_profile_sources_are_installed",
+      "test_ordered_registration_accepts_current_source_and_rejects_drift",
+      "test_selected_mxfp8_actual_compiler_lifecycle",
+      "test_selected_mxfp8_4b_keeps_actual_stock_prep_callable",
+      "test_selected_mxfp8_4b_actual_prep_binding",
+      "test_low_rows_warm_bound_pool_with_only_zero_slots_before_capture",
+      "test_native_requires_registered_selector_and_exact_supported_format",
+      "test_actual_forward_split_nhd_hnd_without_impl_layout_attribute",
+      "test_selected_2b_sampler_metadata_actual_runtime",
+      "test_selected_2b_selector_graph_actual_runtime",
+      "test_actual_prepare_inputs_all_fields_and_retained_prefixes",
+      "test_selected_2b_presence_graph_actual_runtime"
+    ],
+    "block-fp8": [
+      "test_selected_runtime_profile_sources_are_installed",
+      "test_normal_forward_preserves_request_slices_cache_and_output",
+      "test_selected_block_prefill_graph_actual_runtime",
+      "test_selected_block_prefill_graph_warm_cache_fallback",
+      "test_readonly_metadata_real_cpu_cases"
+    ],
+    "native": [
+      "test_selected_runtime_profile_sources_are_installed",
+      "test_installed_native_constructor_matches_audited_fixture",
+      "test_native_requires_registered_selector_and_exact_supported_format",
+      "test_default_and_explicit_backend_semantics",
+      "test_real_legacy_entry_selects_dense_only_without_moe_bundle",
+      "test_real_legacy_prepare_binds_dense_after_warmup_without_moe",
+      "test_real_legacy_prepare_warms_before_capture_without_kv_cache",
+      "test_prepare_warms_three_pitch_keys_before_binding_without_cache",
+      "test_actual_varlen_metadata_prefix_and_pool_capacity_are_not_quality_specific",
+      "test_private_clone_preserves_original_globals_defaults_and_aliases"
+    ]
+  }
+}

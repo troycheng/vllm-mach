@@ -16,9 +16,7 @@ No additional BF16 rounding occurs between SiLU and multiplication.
 `get_fused_op()` selects the original or Mach op, so compiler imports work
 before device initialization. The worker calls `verify_runtime()` and
 `install()` after its original device setup and before model warmup/capture.
-These load a prebuilt `vllm-mach-fp8-activation` wheel for
-vLLM0.29.0/Torch2.13.0+cu130/NVCC13.0.88; no request-path compilation occurs. Missing
-or incompatible binaries fail startup when explicitly enabled.
+These load a prebuilt `vllm-mach-fp8-activation` wheel matching Mach 0.3's [runtime versions](installation.md#runtime-versions); no request-path compilation occurs. Missing or incompatible binaries fail startup when explicitly enabled.
 
 The installed profile changes only the group128 activation-fusion target
 and the eager wrapper's final op call. The Mach op retains `out`/`scales`

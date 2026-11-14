@@ -9,6 +9,9 @@ pytest.importorskip("triton")
 if not torch.cuda.is_available():
     pytest.skip("CUDA required for sampler flag tests", allow_module_level=True)
 
+from vllm.config import VllmConfig
+from vllm.config.device import DeviceConfig
+from vllm.config.reasoning import ReasoningConfig
 from vllm.sampling_params import SamplingParams
 from vllm.v1.worker.gpu.sample.sampler import Sampler
 from vllm.v1.worker.gpu.states import RequestState
@@ -16,11 +19,6 @@ from vllm.v1.worker.gpu.states import RequestState
 DEVICE = torch.device("cuda")
 VOCAB_SIZE = 128
 
-
-class MockReasoningConfig:
-    reasoning_start_token_ids = [90]
-    reasoning_end_token_ids = [91]
-    natural_reasoning_end_token_ids = [91]
 
 
 def _make_sampler() -> Sampler:
@@ -32,12 +30,22 @@ def _make_sampler() -> Sampler:
         vocab_size=VOCAB_SIZE,
         device=DEVICE,
     )
+    # 0.33 owns prompt lengths in RequestState, not Sampler.add_request.
+    req_states.prompt_len.np.fill(1)
+    reasoning = ReasoningConfig()
+    reasoning._reasoning_start_token_ids = [90]
+    reasoning._reasoning_end_token_ids = [91]
+    reasoning._natural_reasoning_end_token_ids = [91]
+    reasoning._enabled = True
+    config = VllmConfig(
+        device_config=DeviceConfig(device=DEVICE), reasoning_config=reasoning
+    )
     return Sampler(
+        vllm_config=config,
         max_num_reqs=4,
         vocab_size=VOCAB_SIZE,
         device=DEVICE,
         req_states=req_states,
-        reasoning_config=MockReasoningConfig(),
     )
 
 
@@ -65,23 +73,23 @@ def test_logits_processing_cache_matches_request_features(
     sampling_params: SamplingParams, expected: bool
 ):
     sampler = _make_sampler()
-    sampler.add_request(3, prompt_len=1, sampling_params=sampling_params)
+    sampler.add_request(3, sampling_params=sampling_params)
 
     assert sampler.needs_logits_processing[3] == expected
 
 
 def test_logits_processing_cache_is_overwritten_when_slot_is_reused():
     sampler = _make_sampler()
-    sampler.add_request(3, 1, SamplingParams.for_sampler_warmup())
-    sampler.add_request(3, 1, SamplingParams())
+    sampler.add_request(3, SamplingParams.for_sampler_warmup())
+    sampler.add_request(3, SamplingParams())
 
     assert not sampler.needs_logits_processing[3]
 
 
 def test_logits_processing_cache_only_checks_active_requests():
     sampler = _make_sampler()
-    sampler.add_request(0, 1, SamplingParams(temperature=0.0))
-    sampler.add_request(2, 1, SamplingParams.for_sampler_warmup())
+    sampler.add_request(0, SamplingParams(temperature=0.0))
+    sampler.add_request(2, SamplingParams.for_sampler_warmup())
 
     sampling_only = np.array([0], dtype=np.int32)
     with_processing = np.array([0, 2], dtype=np.int32)
@@ -109,8 +117,8 @@ def test_compact_greedy_requires_unmodified_logits(params, expected):
     from types import SimpleNamespace
 
     sampler = _make_sampler()
-    sampler.add_request(0, 1, params)
-    sampler.add_request(2, 1, SamplingParams.for_sampler_warmup())
+    sampler.add_request(0, params)
+    sampler.add_request(2, SamplingParams.for_sampler_warmup())
     batch = SimpleNamespace(
         num_reqs=1, num_draft_tokens=0, idx_mapping_np=np.array([0])
     )
@@ -124,7 +132,7 @@ def test_compact_greedy_falls_back_for_diagnostics_and_speculation(reason):
     from types import SimpleNamespace
 
     sampler = _make_sampler()
-    sampler.add_request(0, 1, SamplingParams(temperature=0))
+    sampler.add_request(0, SamplingParams(temperature=0))
     batch = SimpleNamespace(
         num_reqs=1, num_draft_tokens=0, idx_mapping_np=np.array([0])
     )

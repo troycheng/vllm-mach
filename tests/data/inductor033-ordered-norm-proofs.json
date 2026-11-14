@@ -1,0 +1,30 @@
+[
+  {
+    "original_function_sha256": "e875b0b81961dbe40ad7195d00887558772d0f2d4b803dfa59dbc7800410ed5b",
+    "group": 4,
+    "chunk_accumulation": "fma",
+    "transformed_function_sha256": "727bce2d92acfe174f4775c330c5126c56a9109891bd35d85b34d64d96516169",
+    "proof": "five actual old4B norm replay;7 defined outputs exact;full M32 gold query-mean0.05108014034687515"
+  },
+  {
+    "original_function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
+    "group": 8,
+    "chunk_accumulation": "original",
+    "transformed_function_sha256": "fe0038bef367024b1d6ec6c3fa52c38f3b43f21ff7486dda727819dd201e44b1",
+    "proof": "five actual old4B norm replay;7 defined outputs exact;full M32 gold query-mean0.05108014034687515"
+  },
+  {
+    "original_function_sha256": "e875b0b81961dbe40ad7195d00887558772d0f2d4b803dfa59dbc7800410ed5b",
+    "group": 8,
+    "chunk_accumulation": "original",
+    "transformed_function_sha256": "48aa89937e6fd1490bfb9d7689062dfaebc017ad9148cb9e1dffe4e5b5d0a8c2",
+    "proof": "five actual old4B norm replay;7 defined outputs exact;full M32 gold query-mean0.05108014034687515"
+  },
+  {
+    "original_function_sha256": "57dd0d114f6350e142b3fc4fd276f8bb7ab9d0ec650f295ed53276396addc453",
+    "group": 8,
+    "chunk_accumulation": "original",
+    "transformed_function_sha256": "c2baba096ec03f7f60bd6fd07d0914f0df2fca939ae1625c2d05b59280246bf7",
+    "proof": "five actual old4B norm replay;7 defined outputs exact;full M32 gold query-mean0.05108014034687515"
+  }
+]

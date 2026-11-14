@@ -250,7 +250,9 @@ def test_native_moe_partitions_vllm_cache_by_rank(monkeypatch, fusion):
     monkeypatch.setenv("VLLM_QWEN3_5_FUSED_AR_NORM", str(int(fusion)))
     prepare = prepare_compiled_ar_norm if fusion else _prepare_qwen35_moe_graph_cache
 
-    configs = [VllmConfig(), VllmConfig()]
+    from vllm.config.device import DeviceConfig
+
+    configs = [VllmConfig(device_config=DeviceConfig(device="cpu")) for _ in range(2)]
     for rank, config in enumerate(configs):
         config.parallel_config.rank = rank
         config.compilation_config.mode = CompilationMode.VLLM_COMPILE

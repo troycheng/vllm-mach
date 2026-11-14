@@ -10,13 +10,14 @@ import ast
 import copy
 import hashlib
 import importlib.util
+import inspect as pyinspect
 import json
 import os
 from pathlib import Path
 import sys
 import threading
 
-from ..compile_choices import recipe_from_source
+from ..compile_choices import canonical_function_sha256, recipe_from_source
 
 _POLICY_PATH = Path(__file__).with_name('data') / 'full_pdl.json'
 _INSTALLED = False
@@ -205,7 +206,9 @@ class _Proxy:
                 raise RuntimeError('PDL launcher was not precompiled')
             record = f'{spec["semantic_key"]}:m{rows}:config{_config_key(config)}'
             _SELECTED[record] = dict(semantic_key=spec['semantic_key'], rows=rows, config=config,
-                                     source_sha256=spec['source_sha256'], actual_source_sha256=d['actual_source_sha256'])
+                                     source_sha256=spec['source_sha256'], actual_source_sha256=d['actual_source_sha256'],
+                                     compiled_source_sha256=getattr(_CLONES[key], '_mach_pdl_source_sha256', None),
+                                     norm_ordered=getattr(_CLONES[key], '_mach_pdl_norm_ordered', False))
             _COUNTS[f'producer_capture_m{rows}'] += 1
             return _CLONES[key].run(*args, **kwargs)
         return self._original.run(*args, **kwargs)
@@ -236,6 +239,8 @@ def prepare():
     data = policy()
     if torch.__version__ != data['torch_version'] or triton.__version__ != data['triton_version']:
         raise RuntimeError('2B PDL compiler version differs from its qualified policy')
+    if canonical_function_sha256(pyinspect.getsource(CachingAutotuner.__init__)) != data['autotuner_init_sha256']:
+        raise RuntimeError('2B PDL autotuner constructor differs from its qualified policy ABI')
     if _CAPTURING() or torch.cuda.get_device_capability() != (12, 0):
         raise RuntimeError('Prepare 2B PDL on SM120 before capture')
     native_backend.verify_runtime()
@@ -243,12 +248,15 @@ def prepare():
         raise RuntimeError('Install native MXFP8 with the use_pdl GEMM API')
     root = Path(os.environ['TORCHINDUCTOR_CACHE_DIR']) / 'mach_full_pdl'
     root.mkdir(parents=True, exist_ok=True)
+    from . import pdl_norm
     for spec in data['kernels']:
-        path = root / (spec['pdl_source_sha256'] + '.py')
-        path.write_text(spec['source'])
         for layout in spec['layouts']:
             for config in spec['allowed_configs']:
                 key = _kernel_key(spec, layout['rows'], config)
+                source = pdl_norm.source(spec, layout['rows'], config)
+                source_sha = _sha(source)
+                path = root / (source_sha + '.py')
+                path.write_text(source)
                 module_name = '_mach_pdl_' + _sha(str(key))
                 module_spec = importlib.util.spec_from_file_location(module_name, path)
                 module = importlib.util.module_from_spec(module_spec)
@@ -279,6 +287,10 @@ def prepare():
                     raise RuntimeError('PDL compiled kernel lacks dependency instructions')
                 _COMPILED.append(dict(source_sha256=spec['source_sha256'], rows=layout['rows'],
                                       config=config, ptx_sha256=_sha(ptx), dependency_instructions=True))
+                kernel._mach_pdl_source_sha256 = source_sha
+                kernel._mach_pdl_norm_ordered = source != spec['source']
+                _COMPILED[-1].update(compiled_source_sha256=source_sha,
+                                     norm_ordered=kernel._mach_pdl_norm_ordered)
                 args = _allocate(layout)
                 kernel.run(*args, stream=torch.cuda.current_stream().cuda_stream)
                 torch.cuda.synchronize()  # Startup scratch lifetime only.

@@ -1,7 +1,7 @@
 """Cross-module profile contracts and the live worker warmup call sequence.
 
 Real Mach modules are imported together. CUDA entrypoints are replaced only
-for lifecycle ordering checks; no torch/vLLM installation is needed.
+for lifecycle ordering checks; Triton is imported before module isolation.
 """
 from collections import namedtuple
 from contextlib import ExitStack
@@ -17,6 +17,8 @@ import tempfile
 import types
 import unittest
 from unittest.mock import patch
+
+import triton
 
 SOURCE = Path(__file__).resolve().parents[1] / "src"
 PREFIXES = ("vllm", "torch", "mxfp6")
@@ -45,9 +47,11 @@ class ProfileTests(unittest.TestCase):
         # Tensor annotations are deferred; importing these modules must not
         # access CUDA or load native libraries even when torch is present.
         sys.modules["torch"] = types.ModuleType("torch")
-        return {name: importlib.import_module(f"vllm_mach.mxfp8.{name}") for name in
+        modules = {name: importlib.import_module(f"vllm_mach.mxfp8.{name}") for name in
                 ("worker", "native_backend", "dual", "ba", "gdn", "head", "kv",
                  "graph_policy", "projection_parallel", "compile_choices", "swiglu_quant", "greedy_head", "norm_frontend")}
+        modules["gdn_prep"] = importlib.import_module("vllm_mach.gdn_prep")
+        return modules
 
     def test_compact_head_selection_is_explicit_and_reset(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -132,12 +136,13 @@ class ProfileTests(unittest.TestCase):
             "projection_parallel": [("prepare_model", (worker,), {"cache_directory": Path("/public/aot")}),
                                     ("verify_capture", (worker,), {}), ("inspect_worker", (worker,), {})],
             "compile_choices": [("install", (), {}), ("verify_coverage", (), {}), ("inspect", (), {})],
+            "gdn_prep": [("verify_binding", (), {})],
         }
         for component, entries in calls.items():
             for name, args, kwargs in entries:
                 with self.subTest(component=component, name=name):
                     inspect.signature(getattr(modules[component], name)).bind(*args, **kwargs)
-        self.assertEqual(len(modules["compile_choices"].load_policy()["bindings"]), 23)
+        self.assertEqual(len(modules["compile_choices"].load_policy()["bindings"]), 16)
 
     def test_environment_resets_stale_quality_and_sets_compile_before_validation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -275,6 +280,7 @@ class ProfileTests(unittest.TestCase):
                        "dual": ["install", "prepare_model", "verify_capture"],
                        "ba": ["install", "prepare_model", "verify_capture"],
                        "gdn": ["install_runtime", "prepare_layers", "initialize_cache", "prepare_pools"],
+                       "gdn_prep": ["verify_binding"],
                        "kv": ["install_scales", "inspect_cache"],
                        "projection_parallel": ["prepare_model", "verify_capture"], "head": ["install_head"],
                        "swiglu_quant": ["install", "receipt"], "greedy_head": ["install"]}
@@ -327,7 +333,7 @@ class ProfileTests(unittest.TestCase):
     def test_compile_warmup_is_not_serving_and_lifecycle_order_is_preserved(self):
         events = self.lifecycle()
         expected = ["original_init", "worker.install_worker_backend", "dual.install", "ba.install",
-                    "norm_frontend.install", "gdn.install_runtime", "original_load", "kv.install_scales", "dual.prepare_model",
+                    "norm_frontend.install", "gdn.install_runtime", "gdn_prep.verify_binding", "original_load", "kv.install_scales", "dual.prepare_model",
                     "ba.prepare_model", "gdn.prepare_layers", "projection_parallel.prepare_model",
                     "original_cache", "gdn.initialize_cache", "gdn.prepare_pools", "original_compile",
                     "original_execute", "worker.verify_worker_execution", "dual.verify_capture", "ba.verify_capture",

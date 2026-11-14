@@ -1,14 +1,23 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "profile_mode": "quality4",
-  "torch_version": "2.13.0+cu130",
-  "autotuner_init_sha256": "76354c38ef8f0405b8a7f21a3fc58bbe6be75797b9c894d67a5ef089f11954a6",
-  "scope": "six stock RMS reduction sites; exact descriptors only",
+  "torch_version": "2.14.0+cu130",
+  "triton_version": "3.8.0",
+  "autotuner_init_sha256": "2e7dd6f9718a7934ae6ae482b2aad4f9776ad2483240f4de3100e468e3d64b70",
+  "scope": "stock RMS and embedding RMS; exact descriptors and selected configurations only",
   "bindings": [
     {
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
-      "heuristic": "reduction",
+      "id": "rms_group_00",
+      "kernel_aliases": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1"
+      ],
+      "kernel_sites": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1"
+      ],
       "selected_fields": {
         "XBLOCK": 1,
         "R0_BLOCK": 1024,
@@ -16,7 +25,6 @@
         "num_stages": 1,
         "found_by_coordesc": false
       },
-      "id": "rms_00",
       "variants": [
         {
           "name": "stock",
@@ -150,12 +158,21 @@
           "semantic_key": "923de6c9cac2609ae597b06c6e282e415ea58745cf673730dfb36f04a419c13f",
           "source_sha256": "75252d7f7cff92559e858c1e8e00ca42d25951468131a247fb47e6af4d54e0b3"
         }
+      ],
+      "provenance_bindings": [
+        "rms_00",
+        "rms_01",
+        "rms_05"
       ]
     },
     {
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
-      "heuristic": "reduction",
+      "id": "rms_group_01",
+      "kernel_aliases": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_2"
+      ],
+      "kernel_sites": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_2"
+      ],
       "selected_fields": {
         "XBLOCK": 1,
         "R0_BLOCK": 1024,
@@ -163,154 +180,6 @@
         "num_stages": 1,
         "found_by_coordesc": false
       },
-      "id": "rms_01",
-      "variants": [
-        {
-          "name": "stock",
-          "boundary": {
-            "function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
-            "size_hints": {
-              "x": 2048,
-              "r0_": 4096
-            },
-            "signature": {
-              "in_ptr0": "*bf16",
-              "in_ptr1": "*bf16",
-              "in_ptr2": "*bf16",
-              "in_ptr3": "*bf16",
-              "out_ptr1": "*bf16",
-              "out_ptr2": "*bf16",
-              "xnumel": "i32",
-              "r0_numel": "i32",
-              "XBLOCK": "constexpr",
-              "R0_BLOCK": "constexpr"
-            },
-            "constants": {},
-            "specialization": [
-              {
-                "__mapping__": [
-                  [
-                    {
-                      "__tuple__": [
-                        0
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        1
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        2
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        3
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        4
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        5
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        7
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ]
-                ]
-              }
-            ],
-            "compiler_flags": {
-              "enable_fp_fusion": true,
-              "disable_ftz": false,
-              "launch_pdl": false,
-              "native_matmul": false
-            },
-            "architecture": {
-              "type": "cuda",
-              "cc": 120
-            }
-          },
-          "semantic_key": "923de6c9cac2609ae597b06c6e282e415ea58745cf673730dfb36f04a419c13f",
-          "source_sha256": "77183b583697be420bc844a3e7290a8000fefe9e44c1bcdb068aea2d6c5e7d25"
-        }
-      ]
-    },
-    {
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
-      "heuristic": "reduction",
-      "selected_fields": {
-        "XBLOCK": 1,
-        "R0_BLOCK": 1024,
-        "num_warps": 8,
-        "num_stages": 1,
-        "found_by_coordesc": false
-      },
-      "id": "rms_02",
       "variants": [
         {
           "name": "stock",
@@ -534,12 +403,21 @@
           "semantic_key": "ed8e9964566804c110ea7d3cad9c135408b1e21eb98a0d6832011056608c4df1",
           "source_sha256": "be7cba0bd249b0e566174aa32a0d8fa6a36dc0a4ef895cd9e15c9ca35107ab01"
         }
+      ],
+      "provenance_bindings": [
+        "rms_02"
       ]
     },
     {
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_0",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_0",
-      "heuristic": "reduction",
+      "id": "rms_group_02",
+      "kernel_aliases": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_0",
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1"
+      ],
+      "kernel_sites": [
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_0",
+        "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1"
+      ],
       "selected_fields": {
         "XBLOCK": 1,
         "R0_BLOCK": 4096,
@@ -547,7 +425,6 @@
         "num_stages": 1,
         "found_by_coordesc": false
       },
-      "id": "rms_03",
       "variants": [
         {
           "name": "stock",
@@ -653,131 +530,20 @@
           "semantic_key": "5fdf8bc511e8cf746c6f6e52c67554758586a9e983d534f4649da45bedf427f7",
           "source_sha256": "73e119552c5e023ba446813e8a41937e33867c451ec886ecc6052a7ce959cc43"
         }
+      ],
+      "provenance_bindings": [
+        "rms_03",
+        "rms_04"
       ]
     },
     {
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
-      "heuristic": "reduction",
-      "selected_fields": {
-        "XBLOCK": 1,
-        "R0_BLOCK": 4096,
-        "num_warps": 16,
-        "num_stages": 1,
-        "found_by_coordesc": false
-      },
-      "id": "rms_04",
-      "variants": [
-        {
-          "name": "stock",
-          "boundary": {
-            "function_sha256": "e875b0b81961dbe40ad7195d00887558772d0f2d4b803dfa59dbc7800410ed5b",
-            "size_hints": {
-              "x": 2048,
-              "r0_": 4096
-            },
-            "signature": {
-              "in_ptr0": "*bf16",
-              "in_ptr1": "*bf16",
-              "in_ptr2": "*bf16",
-              "out_ptr1": "*bf16",
-              "xnumel": "i32",
-              "r0_numel": "i32",
-              "XBLOCK": "constexpr",
-              "R0_BLOCK": "constexpr"
-            },
-            "constants": {},
-            "specialization": [
-              {
-                "__mapping__": [
-                  [
-                    {
-                      "__tuple__": [
-                        0
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        1
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        2
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        3
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        5
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ]
-                ]
-              }
-            ],
-            "compiler_flags": {
-              "enable_fp_fusion": true,
-              "disable_ftz": false,
-              "launch_pdl": false,
-              "native_matmul": false
-            },
-            "architecture": {
-              "type": "cuda",
-              "cc": 120
-            }
-          },
-          "semantic_key": "5fdf8bc511e8cf746c6f6e52c67554758586a9e983d534f4649da45bedf427f7",
-          "source_sha256": "8c70cbd02ddb1d3ff242a25db01dce597a85c88ccffbba65937c306c85198e64"
-        }
-      ]
-    },
-    {
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1",
-      "heuristic": "reduction",
+      "id": "embedding_rms",
+      "kernel_aliases": [
+        "triton_red_fused__to_copy_add_embedding_rms_norm_0"
+      ],
+      "kernel_sites": [
+        "triton_red_fused__to_copy_add_embedding_rms_norm_0"
+      ],
       "selected_fields": {
         "XBLOCK": 1,
         "R0_BLOCK": 1024,
@@ -785,22 +551,20 @@
         "num_stages": 1,
         "found_by_coordesc": false
       },
-      "id": "rms_05",
       "variants": [
         {
           "name": "stock",
           "boundary": {
-            "function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
+            "function_sha256": "3e6a42e2b0987dce312dc19c4fa55b2bb483df9802bc33e04b21a6c47b0c6d97",
             "size_hints": {
               "x": 2048,
               "r0_": 4096
             },
             "signature": {
-              "in_ptr0": "*bf16",
+              "in_ptr0": "*i32",
               "in_ptr1": "*bf16",
               "in_ptr2": "*bf16",
-              "in_ptr3": "*bf16",
-              "out_ptr1": "*bf16",
+              "out_ptr0": "*bf16",
               "out_ptr2": "*bf16",
               "xnumel": "i32",
               "r0_numel": "i32",
@@ -879,20 +643,7 @@
                   [
                     {
                       "__tuple__": [
-                        5
-                      ]
-                    },
-                    [
-                      [
-                        "tt.divisibility",
-                        16
-                      ]
-                    ]
-                  ],
-                  [
-                    {
-                      "__tuple__": [
-                        7
+                        6
                       ]
                     },
                     [
@@ -916,10 +667,13 @@
               "cc": 120
             }
           },
-          "semantic_key": "923de6c9cac2609ae597b06c6e282e415ea58745cf673730dfb36f04a419c13f",
-          "source_sha256": "914f45d93da2c7954963c84b53283b7462ed03c12cefca44af583c3d87cbe0f9"
+          "semantic_key": "2ca6695ed3a129ce535d5a6078d7065b84fdc8c4c88b1a9f4a8a8f04c15bc7a6"
         }
+      ],
+      "provenance_bindings": [
+        "embedding_rms"
       ]
     }
-  ]
+  ],
+  "binding_semantics": "exact_boundary_and_selected_config"
 }

@@ -13,7 +13,11 @@ import types
 import unittest
 from unittest.mock import patch
 
-GDN = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/gdn"
+if os.environ.get("MACH_TEST_RUNTIME_PROFILE"):
+    from importlib.metadata import distribution
+    GDN = Path(distribution("vllm-mach").locate_file("vllm_mach/mxfp8/gdn/worker.py")).resolve().parent
+else:
+    GDN = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/gdn"
 
 
 def load_worker():
@@ -148,12 +152,14 @@ class OrderedGDNContracts(unittest.TestCase):
     def test_kernel_arithmetic_and_launch_contracts(self):
         # AST fingerprints bind operations AND launch expressions; paths and
         # comments are excluded so normal packaging cannot invalidate the pin.
+        # The two BF16 changes are separately bound to the old-exact component
+        # and original fallback ASTs by mxfp8_bf16_recurrent_order.json.
         fingerprints = {
             "lowm_allshape_triton": "17220ee86194044b5792a098e4f3c753992fdf4a83ac2c97600aebb603fabb94",
-            "ordered_allm_triton": "9c2bd05dcf56f7e0bdcc8262b11f3b7b0d98691668046dbe622be950ce180d90",
+            "ordered_allm_triton": "dab59137c278acc641191ab5bd3570dc5011e523fbece166a5b9b38f0bd15315",
             "ordered_m4_deferred_triton": "85fafccf509727d73972e0ba9b077449587869b0df4931df2e22845887f34e13",
             "ordered_m16_deferred_triton": "add8b45c3a8cb2c70bea6a98db434bf66200016ccfd3cdc89514de14c2223c63",
-            "bf16_small_gluon": "f428a464fd9ebddb1c6bfa0680139c798322ae51b5663ab92d3ce1f855e685ca",
+            "bf16_small_gluon": "9eff8aec4f1bfd1d0aa9c3d2b5eb505442aec27dcfcf383905f6135f5490dfd7",
         }
         for name, expected in fingerprints.items():
             tree = ast.parse((GDN / f"{name}.py").read_text())
@@ -178,10 +184,14 @@ class OrderedGDNContracts(unittest.TestCase):
         gluon.language, gluon.jit = language, Kernel
         experimental = types.ModuleType("triton.experimental")
         experimental.gluon = gluon
+        helpers = types.ModuleType("vllm_mach.mxfp8.gdn.legacy_reduction_gluon")
+        helpers._gl_old_square_128 = object()
+        helpers._gl_old_dot_128_8local = object()
         modules = {"triton": types.ModuleType("triton"),
                    "triton.experimental": experimental,
                    "triton.experimental.gluon": gluon,
-                   "triton.experimental.gluon.language": language}
+                   "triton.experimental.gluon.language": language,
+                   "vllm_mach.mxfp8.gdn.legacy_reduction_gluon": helpers}
         tensor = types.SimpleNamespace(shape=(32, 32, 128, 128), stride=lambda dim: 1)
         scratch = types.SimpleNamespace(**{name: object() for name in
             ("pending_k", "pending_d", "coeff", "prefix", "age")})
@@ -191,7 +201,7 @@ class OrderedGDNContracts(unittest.TestCase):
                     {"VLLM_MACH_MXFP8_BF16_GDN_PDL": setting,
                      "VLLM_MACH_MXFP8_BF16_GDN_GROUPED": grouped}):
                 spec = importlib.util.spec_from_file_location(
-                    "bf16_pdl_policy", GDN / "bf16_small_gluon.py")
+                    "vllm_mach.mxfp8.gdn.bf16_pdl_policy", GDN / "bf16_small_gluon.py")
                 module = importlib.util.module_from_spec(spec)
                 if "invalid" in (setting, grouped):
                     with self.assertRaisesRegex(ValueError, "must be 0 or 1"):
@@ -238,6 +248,123 @@ class OrderedGDNContracts(unittest.TestCase):
             self.assertLess(original, reset)
         update = next(n for n in lifecycle.body if isinstance(n, ast.FunctionDef) and n.name == "update")
         self.assertIn("kv_cache_block_copies", ast.unparse(update.body[0]))
+
+
+
+
+
+class PinnedResetPolicyCPU(unittest.TestCase):
+    def test_pageable_body_unchanged_and_pinned_single_upload_inverse(self):
+        tree = ast.parse((GDN / "worker.py").read_text())
+        original = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_reset_allocated")
+        self.assertEqual(hashlib.sha256(ast.dump(original, include_attributes=False).encode()).hexdigest(),
+                         "db27f9e7f6d32b07811428e406b513d584439ae2bd15853fbb11acf43e371fd8")
+        import copy
+        pinned = copy.deepcopy(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_reset_allocated_pinned"))
+        pair = ast.parse('host_ids = torch.tensor(unique,dtype=torch.int32,device="cpu",pin_memory=True)\nids_by_device[key[3]] = host_ids.to(dev,non_blocking=True)').body
+        changes = 0
+        for owner in ast.walk(pinned):
+            for field, value in ast.iter_fields(owner):
+                if isinstance(value, list):
+                    for i in range(len(value)-1):
+                        if ast.dump(ast.Module(body=value[i:i+2], type_ignores=[]), include_attributes=False) == ast.dump(ast.Module(body=pair, type_ignores=[]), include_attributes=False):
+                            value[i:i+2] = ast.parse('ids_by_device[key[3]] = torch.tensor(unique,dtype=torch.int32,device=dev)').body
+                            changes += 1
+                            break
+        pinned.name = original.name
+        self.assertEqual(changes, 1)
+        self.assertEqual(ast.dump(pinned, include_attributes=False), ast.dump(original, include_attributes=False))
+
+    def test_startup_selector_only_qualified_bf16_profile_and_foreign_owner(self):
+        worker = load_worker()
+        ns = types.SimpleNamespace
+        target = ns(_mach_mxfp8_contract=dict(mode="production", ssm_dtype="bfloat16", ordered_gdn=True,
+                                             kv_dtype="fp8_e4m3", compact_greedy_head=True),
+                    vllm_config=ns(cache_config=ns(mamba_ssm_cache_dtype="bfloat16")))
+        env = {"VLLM_MACH_PROFILE": "qwen35-4b-mxfp8-champion-v1", "VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH": "0"}
+        with patch.dict(os.environ, env, clear=True):
+            original = worker._reset_allocated
+            self.assertIs(original, worker._PAGEABLE_RESET)
+            worker._install_reset_policy(target)
+            self.assertIs(worker._reset_allocated, worker._reset_allocated_pinned)
+            for key, value in (("mode", "quality"), ("ssm_dtype", "float32"), ("ordered_gdn", False),
+                               ("kv_dtype", "bfloat16"), ("compact_greedy_head", False)):
+                old = target._mach_mxfp8_contract[key]; target._mach_mxfp8_contract[key] = value
+                worker._install_reset_policy(target)
+                self.assertIs(worker._reset_allocated, original)
+                target._mach_mxfp8_contract[key] = old
+            target.vllm_config.cache_config.mamba_ssm_cache_dtype = "float32"
+            worker._install_reset_policy(target); self.assertIs(worker._reset_allocated, original)
+            target.vllm_config.cache_config.mamba_ssm_cache_dtype = "bfloat16"
+            with patch.dict(os.environ, {"VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH": "1"}):
+                worker._install_reset_policy(target); self.assertIs(worker._reset_allocated, original)
+            for profile in ("qwen35-2b-mxfp8-champion-v1", "block-fp8", "other"):
+                with patch.dict(os.environ, {"VLLM_MACH_PROFILE": profile}):
+                    worker._install_reset_policy(target); self.assertIs(worker._reset_allocated, original)
+            # Even a callable claiming equality cannot be overwritten by the selector.
+            class Foreign:
+                def __call__(self, *args): pass
+                def __eq__(self, other): return True
+            foreign = Foreign(); worker._reset_allocated = foreign
+            with self.assertRaisesRegex(RuntimeError, "another hook"):
+                worker._install_reset_policy(target)
+            self.assertIs(worker._reset_allocated, foreign)
+
+    def test_actual_reset_bodies_fresh_pin_order_counters_and_original_errors(self):
+        worker = load_worker()
+        package = "_mach_reset_policy_cpu_fixture"
+        parent = types.ModuleType(package); parent.__path__ = []
+        kernels = types.ModuleType(package + ".metadata_reset"); parent.metadata_reset = kernels
+        torch = types.ModuleType("torch"); torch.int32 = object(); torch.device = lambda value: value
+        events = []; hosts = []
+        class Tensor:
+            def __init__(self, values, device, pinned): self.values, self.device, self.pinned = list(values), device, pinned
+            def to(self, device, non_blocking=False):
+                events.append(("to", id(self), device, non_blocking))
+                assert self.device == "cpu" and self.pinned and non_blocking
+                return Tensor(self.values, device, False)
+        def tensor(values, **kwargs):
+            self.assertIs(kwargs["dtype"], torch.int32)
+            value = Tensor(values, kwargs["device"], kwargs.get("pin_memory", False))
+            events.append(("tensor", list(values), value.device, value.pinned))
+            if value.pinned: hosts.append(value)
+            return value
+        torch.tensor = tensor
+        def reset(ids, scratch, pages): events.append(("kernel", scratch, list(ids.values), ids.device, pages))
+        kernels.reset_metadata = reset
+        worker.__package__ = package
+        worker.__spec__ = importlib.util.spec_from_file_location(package + ".worker", GDN / "worker.py")
+        with patch.dict(sys.modules, {"torch": torch, package: parent, package + ".metadata_reset": kernels}):
+            for ids, ready in (([9, 1, 9, 3], True), ([1, 15], True), ([], True), ([3], False), ([16], True)):
+                outcomes = []
+                for fn in (worker._PAGEABLE_RESET, worker._reset_allocated_pinned):
+                    worker._READY = ready
+                    worker._VIEW_SCRATCH = {(i, (16, 32, 4), (), "cuda:0", "fixture"): i for i in range(8)}
+                    worker._ALLOCATION_RESETS = {"new": 0, "cached": 0, "ids": 0}
+                    events.clear(); error = None
+                    try: fn(ids, "new")
+                    except RuntimeError as exc: error = (type(exc).__name__, str(exc))
+                    outcomes.append(([e for e in events if e[0] == "kernel"], dict(worker._ALLOCATION_RESETS), error))
+                    if ids and ready and max(ids) < 16:
+                        self.assertEqual(len(outcomes[-1][0]), 8)
+                        self.assertEqual([e[1] for e in outcomes[-1][0]], list(range(8)))
+                        if fn is worker._reset_allocated_pinned:
+                            self.assertEqual([e[0] for e in events], ["tensor", "to"] + ["kernel"]*8)
+                self.assertEqual(*outcomes)
+            worker._READY = True; worker._VIEW_SCRATCH = {(i, (16,), (), "cuda:0", "fixture"): i for i in range(8)}
+            start = len(hosts)
+            worker._reset_allocated_pinned([1, 3], "cached"); worker._reset_allocated_pinned([1, 3], "cached")
+            self.assertEqual(len(hosts)-start, 2)
+            self.assertIsNot(hosts[-1], hosts[-2])
+
+    def test_policy_installed_before_original_runner_lifecycle(self):
+        tree = ast.parse((GDN / "worker.py").read_text())
+        node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "install_runtime")
+        statements = [ast.unparse(n) for n in node.body]
+        index = lambda text: next(i for i, value in enumerate(statements) if text in value)
+        self.assertLess(index("_check_config(worker)"), index("_install_reset_policy(worker)"))
+        self.assertLess(index("_RUN_MODE, _QUALITY_ROW"), index("_install_reset_policy(worker)"))
+        self.assertLess(index("_install_reset_policy(worker)"), index("_install_runner_lifecycle()"))
 
 
 if __name__ == "__main__":

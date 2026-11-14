@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 import sys
-from importlib.metadata import distribution
+from importlib.metadata import distribution, version
 from pathlib import Path
 
 
@@ -162,7 +162,7 @@ def main():
         )
         if sources["changed_files"]:
             raise RuntimeError("Native source profile is not installed")
-        packages = {"vllm": "0.29.0"}
+        packages = {"vllm": version("vllm")}
         identity = {"format": "NVFP4" if fp4 else "MXFP6"}
         argv = ["vllm", *command[3:]]
     argv += ["--worker-extension-cls", "serving_route_probe.RouteProbe"]

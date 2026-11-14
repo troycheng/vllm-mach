@@ -1,0 +1,686 @@
+{
+  "targets": {
+    "50ba4c9e48f04fda214c0a83d2616b310d14a96585aaf7bcfdef0ad8c7dddd6c": {
+      "boundary": {
+        "function_sha256": "50ba4c9e48f04fda214c0a83d2616b310d14a96585aaf7bcfdef0ad8c7dddd6c",
+        "size_hints": {
+          "x": 8192,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "out_ptr1": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "after_sha256": "8c0314e6c400b2936cc2dbc31f36fb0122a6c229854ef126ea9d38f42e3e365f",
+      "selected": {
+        "kwargs": {
+          "XBLOCK": 2,
+          "R0_BLOCK": 1024
+        },
+        "num_warps": 8,
+        "num_stages": 1,
+        "num_ctas": 1
+      },
+      "size_hints": [
+        {
+          "x": 8192,
+          "r0_": 2048
+        },
+        {
+          "x": 2048,
+          "r0_": 2048
+        },
+        {
+          "x": 16384,
+          "r0_": 2048
+        }
+      ]
+    },
+    "8b4507891b4a080ba2cf67c16b6e443e85b91da40300718152a9119456d96137": {
+      "boundary": {
+        "function_sha256": "8b4507891b4a080ba2cf67c16b6e443e85b91da40300718152a9119456d96137",
+        "size_hints": {
+          "x": 8192,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "in_ptr3": "*bf16",
+          "out_ptr1": "*bf16",
+          "out_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    7
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "after_sha256": "4ac43b0ca2e10439022083845ffa62d4ca46f0faffb64036d31916da45b67e9a",
+      "selected": {
+        "kwargs": {
+          "XBLOCK": 2,
+          "R0_BLOCK": 1024
+        },
+        "num_warps": 8,
+        "num_stages": 1,
+        "num_ctas": 1
+      },
+      "size_hints": [
+        {
+          "x": 8192,
+          "r0_": 2048
+        },
+        {
+          "x": 2048,
+          "r0_": 2048
+        },
+        {
+          "x": 16384,
+          "r0_": 2048
+        }
+      ]
+    },
+    "631ad7c50634b430b32d6871f23531a73a979bae4af2cdbfc8f26411a582b877": {
+      "boundary": {
+        "function_sha256": "631ad7c50634b430b32d6871f23531a73a979bae4af2cdbfc8f26411a582b877",
+        "size_hints": {
+          "x": 8192,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_out_ptr0": "*bf16",
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "after_sha256": "b1e58c905b835625747d7b13fd142fbd89efa5f67b758875775d2703d81caceb",
+      "selected": {
+        "kwargs": {
+          "XBLOCK": 2,
+          "R0_BLOCK": 1024
+        },
+        "num_warps": 8,
+        "num_stages": 1,
+        "num_ctas": 1
+      },
+      "size_hints": [
+        {
+          "x": 8192,
+          "r0_": 2048
+        },
+        {
+          "x": 2048,
+          "r0_": 2048
+        },
+        {
+          "x": 16384,
+          "r0_": 2048
+        }
+      ]
+    },
+    "89c262027f0c0ce34bfeaf0b88543363412f53e3c5443fefefe6c38594fab08d": {
+      "boundary": {
+        "function_sha256": "89c262027f0c0ce34bfeaf0b88543363412f53e3c5443fefefe6c38594fab08d",
+        "size_hints": {
+          "x": 131072,
+          "r0_": 128
+        },
+        "signature": {
+          "in_ptr0": "*bf16",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "out_ptr1": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    5
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "after_sha256": "0d12c0389afba8255fc8eeab6e8b26ea120c1c639c755ecb66d33750a74c0583",
+      "selected": {
+        "kwargs": {
+          "XBLOCK": 8
+        },
+        "num_warps": 2,
+        "num_stages": 1,
+        "num_ctas": 1
+      },
+      "size_hints": [
+        {
+          "x": 131072,
+          "r0_": 128
+        },
+        {
+          "x": 32768,
+          "r0_": 128
+        },
+        {
+          "x": 262144,
+          "r0_": 128
+        }
+      ]
+    },
+    "ead7aa814b2fc25533cf16148d1115f3154747509d2819b843ac5b1a7086cfe9": {
+      "boundary": {
+        "function_sha256": "ead7aa814b2fc25533cf16148d1115f3154747509d2819b843ac5b1a7086cfe9",
+        "size_hints": {
+          "x": 8192,
+          "r0_": 2048
+        },
+        "signature": {
+          "in_ptr0": "*i32",
+          "in_ptr1": "*bf16",
+          "in_ptr2": "*bf16",
+          "out_ptr0": "*bf16",
+          "out_ptr2": "*bf16",
+          "xnumel": "i32",
+          "r0_numel": "i32",
+          "XBLOCK": "constexpr",
+          "R0_BLOCK": "constexpr"
+        },
+        "constants": {},
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    6
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ],
+        "compiler_flags": {
+          "enable_fp_fusion": true,
+          "disable_ftz": false,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "architecture": {
+          "type": "cuda",
+          "cc": 120
+        }
+      },
+      "after_sha256": "7cfc5302d91de8c88e11ff4c181b334f3e6a30de8cf375281983e0945f293c54",
+      "selected": {
+        "kwargs": {
+          "XBLOCK": 2,
+          "R0_BLOCK": 1024
+        },
+        "num_warps": 8,
+        "num_stages": 1,
+        "num_ctas": 1
+      },
+      "size_hints": [
+        {
+          "x": 8192,
+          "r0_": 2048
+        },
+        {
+          "x": 2048,
+          "r0_": 2048
+        },
+        {
+          "x": 16384,
+          "r0_": 2048
+        }
+      ]
+    }
+  },
+  "helpers_sha256": "b0e0e529678f620e18a09132afa7cd042725efd4ca20711cbcb711abbc5cfbad",
+  "allowed_unmodified": [],
+  "torch_benchmark_codegen_sha256": "7b924a88fe94374dc0dc33b5e6a592c52034f1180c85a9baf70c3e07d0cd0aaf",
+  "format_version": 1
+}

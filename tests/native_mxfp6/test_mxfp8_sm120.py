@@ -33,7 +33,7 @@ def _check_checkpoint_and_graph():
     layer.weight = torch.nn.Parameter(packed.dequantized_values(), False)
     scales = runtime.unpack_scales(packed.scales, n, k)
     layer.weight_scale = torch.nn.Parameter(scales, False)
-    kernel = Mxfp8Sm120LinearKernel(Mxfp8LinearLayerConfig())
+    kernel = Mxfp8Sm120LinearKernel(Mxfp8LinearLayerConfig(weight_shape=(n, k)))
     layer.scheme = SimpleNamespace(kernel=kernel)
     kernel.process_weights_after_loading(layer)
     assert torch.equal(layer.weight.view(torch.uint8), packed.dequantized_values().view(torch.uint8))
@@ -87,7 +87,7 @@ def _check_intermediate_prefill_workspace():
         layer.weight = torch.nn.Parameter(packed.dequantized_values(), False)
         layer.weight_scale = torch.nn.Parameter(packed.scales, False)
         layer.scheme = SimpleNamespace(
-            kernel=Mxfp8Sm120LinearKernel(Mxfp8LinearLayerConfig()))
+            kernel=Mxfp8Sm120LinearKernel(Mxfp8LinearLayerConfig(weight_shape=(n, k))))
         model.append(layer)
     warmup_mxfp8(model, [1, 16, 32, 4096])
     before = runtime.workspace_stats()["fallback_launches"]
@@ -114,7 +114,7 @@ def test_flashinfer_decode_graph(monkeypatch):
         layer.weight = torch.nn.Parameter(packed.dequantized_values(), False)
         layer.weight_scale = torch.nn.Parameter(packed.scales, False)
         layer.scheme = SimpleNamespace(
-            kernel=Mxfp8Sm120LinearKernel(Mxfp8LinearLayerConfig()))
+            kernel=Mxfp8Sm120LinearKernel(Mxfp8LinearLayerConfig(weight_shape=(n, k))))
         model.append(layer)
     warmup_mxfp8(model, [1, 16, 32])
     for layer in model:

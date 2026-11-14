@@ -12,13 +12,13 @@ The profile combines the following optimizations:
 | 2. M32 MLP dual activation | All 32 gate/up layers, `M32/N18432/K2560`; high plus BF16-rounded residual, separate FP32 accumulators and final BF16 rounding |
 | 3. Dual QKVZ | All 24 linear-attention projections, M32/M64 and `N12288/K2560` |
 | 4. M64 QKVZ pipereg | The selected cfg2 register-pipeline variant; other shapes retain their declared routes |
-| 5. Small-M BA | BF16 GEMV for M1–8, original fallback elsewhere; standalone `b12x==1.2.6` |
+| 5. Small-M BA | BF16 GEMV for M1–8, original fallback elsewhere; standalone b12x |
 | 6. Ordered-W4 GDN | FP32 state; M1/2/8 full-store, M4/16 deferred, M24–128 step8 deferred; materialization/reset/slot ownership and fallback lifecycle |
 | 7. Full-vocabulary head | NVFP4 coarse scores, `topk(sorted=False)` K2048, indexed BF16 score replacement; original sampler and tied BF16 head |
 | 8. FlashInfer FP8 KV | Eight layers, E4M3 storage, 16 fixed FP32 scales and device/CPU/float mirror installation before profiling |
 | 9. Graph policy | FULL small decode, exact2048 PIECEWISE, other large tails routed before padding |
 | 10. Parallel QKVZ/BA | Closed fork/join at M1/2/4/8/16/24/32/64 for linear-attention ordinals 1–23; ordinal0 serial |
-| 11. Compile choices | Production 23, quality M32 23 and quality M64 22 fixed choices, selected by the declared mode and rebuilt from source; no inherited compiler cache |
+| 11. Compile choices | Production 16, quality M32 19 and quality M64 16 fixed bindings, selected by the declared mode and rebuilt from source; no inherited compiler cache |
 | 12. Fixed model | BF16 revision `851bf6…` source, exact L0 codes, 595 verified output tensors, tokenizer/config and KV metadata |
 | 13. Build/run/measurement | Official source wheel, bundled Mach runtime installer, unified lifecycle/receipts and fixed six-point client |
 
@@ -28,10 +28,7 @@ FP4 candidate scoring and FP8 KV reduce precision; measured BF16 error is listed
 
 ## Build, prepare, serve, benchmark
 
-Use Mach runtime commit `ace36a3db9e5ca1db422346c9c307f2aa840bcdd` or a later revision documented to contain the same qualified runtime. The Dockerfile pins a public vLLM base
-and requires the **full official kernel commit containing all three dual
-variants** pinned below. The version label `mxfp6-sm120==0.2.1` alone does
-not identify that source revision.
+Use Mach 0.3 with the [current runtime versions](installation.md#runtime-versions). The Dockerfile builds both native libraries from the pinned public source and applies the matching MXFP8 runtime profile.
 
 ```bash
 docker buildx build --load -f deploy/Dockerfile.mxfp8 \
@@ -62,11 +59,7 @@ For a faster package mirror, set Docker build argument `PIP_INDEX_URL` to its
 HTTPS simple index. Both build-tool wheels are verified against fixed PyPI
 SHA256 hashes, regardless of the download mirror.
 
-Pinned runtime: vLLM 0.29.0, Torch 2.13.0, Triton 3.7.1, FlashInfer Python/cubin
-0.6.18, CUTLASS DSL 4.6.2, CUDA bindings 13.3.1 and standalone b12x 1.2.6.
-CUDA 13.0/CUTLASS source pins and build details are recorded by the build tool.
-See [runtime installation](mxfp8-installation.md) for source guards and the
-independent installer; ordinary Mach MXFP6 patches are not a substitute.
+See [runtime installation](mxfp8-installation.md) for the independent MXFP8 installer and [runtime versions](installation.md#runtime-versions) for the shared dependency pins.
 
 ## Configuration and receipts
 
@@ -128,7 +121,7 @@ See the [single MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the default F
 
 ## Validation
 
-The [current precision table](performance.md#qwen35-4b-precision) reports October 20 M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and raw logprobs with runtime receipts.
+The [October 20 precision table](performance.md#qwen35-4b-precision) reports M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and raw logprobs with runtime receipts.
 
 The BF16 reference uses FLASH_ATTN and BF16 KV at each matching physical shape; this profile uses FLASHINFER and FP8 KV. Fixed-gold requests use the existing full-vocabulary NVFP4 head with K2048 BF16 score refinement. Hybrid candidate selection has separate [generation and sampling validation](lm-head-sampling.md).
 

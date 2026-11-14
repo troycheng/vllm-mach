@@ -1,2 +1,0 @@
-# Build tool; vLLM/Torch come from the base image and MXFP6 is built from source.
-cmake==4.1.0

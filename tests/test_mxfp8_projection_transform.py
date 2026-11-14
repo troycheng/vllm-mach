@@ -65,6 +65,27 @@ class ProjectionTransformContracts(unittest.TestCase):
         self.assertEqual(audit['pairs'][0]['late_alignment_weights'],['bw','bp'])
         self.assertIn('        bw = copy_if_misaligned(bw)\n',changed)
 
+    def test_torch214_metadata_checks_stay_between_projection_results(self):
+        middle = (
+            "        assert_tensor_metadata(qout, (32, 12288), (12288, 1), torch.bfloat16, 'qkvz')\n"
+            "        assert_alignment(qout, 16, 'qkvz')\n"
+            "        assert_size_stride_grouped((bw, bp), ((64, 2560), (64, 2560)), ((2560, 1), (2560, 1)), 'input')\n"
+            "        bw = copy_if_misaligned(bw)\n"
+            "        bp = copy_if_misaligned(bp)\n"
+        )
+        original = source(middle=middle)
+        changed, audit = self.transform.transform_source(original)
+        self.assertIn(middle, changed)
+        self.assertLess(changed.index('_qkvz_ba_pair(x,'), changed.index(middle))
+        self.assertLess(changed.index(middle), changed.index('bout = _qkvz_ba_pending_1'))
+        self.assertEqual(audit['pairs'][0]['late_alignment_weights'], ['bw', 'bp'])
+        for unsafe in (
+            middle.replace('qout, (32,', 'arbitrary_gpu_work(), (32,'),
+            middle.replace('assert_tensor_metadata(', 'assert_unknown('),
+        ):
+            with self.assertRaises(ValueError):
+                self.transform.transform_source(source(middle=unsafe))
+
     def test_closed_stream_dependencies_and_original_serial_order(self):
         runtime=load('projection_parallel')
         events=[]

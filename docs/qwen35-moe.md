@@ -1,20 +1,8 @@
 # Qwen3.5-35B-A3B MXFP6
 
-[Current default/full numerical fidelity](profile-fidelity-20260917.md) covers
-matched BF16 references at physical M4 and M32, with FP8/NVFP4 comparisons and
-repeatability checks. These precision diagnostics are separate from the serving
-throughput measurements below.
+[September 17 default/full numerical fidelity](profile-fidelity-20260917.md) covers matched BF16 references at physical M4 and M32, with FP8/NVFP4 comparisons and repeatability checks. These precision diagnostics are separate from the serving throughput measurements below.
 
-Mach supports the Quark packed E3M2 checkpoint with dynamic per-32 E4M3
-activations on two SM120 GPUs. The default launcher uses TP2, BF16 activations,
-FP32 recurrent state and vLLM's default compilation/CUDA Graph configuration.
-On vLLM 0.29.0 this resolves to `VLLM_COMPILE` with `FULL_AND_PIECEWISE`:
-full graphs for decode and piecewise graphs for eligible prefill batches.
-The launcher no longer forces `NONE` / `FULL_DECODE_ONLY` for MoE.
-The default MoE batched-token budget is 2048. Explicit
-`--cudagraph-capture-sizes`, `--max-num-seqs` and scheduler overrides are forwarded
-to vLLM.
-Dense models retain their existing decode-only configuration.
+Mach supports the Quark packed E3M2 checkpoint with dynamic per-32 E4M3 activations on two SM120 GPUs. The default launcher uses TP2, BF16 activations, FP32 recurrent state and vLLM's default compilation/CUDA Graph configuration. On vLLM 0.33.0 this resolves to `VLLM_COMPILE` with `FULL_AND_PIECEWISE`: full graphs for decode and piecewise graphs for eligible prefill batches. The launcher no longer forces `NONE` / `FULL_DECODE_ONLY` for MoE. The default MoE batched-token budget is 2048. Explicit `--cudagraph-capture-sizes`, `--max-num-seqs` and scheduler overrides are forwarded to vLLM. Dense models retain their existing decode-only configuration.
 
 The package also installs [37 measured projection configurations](moe-projection-20260923.md)
 for this model's TP2 BF16 path on SM120. They are loaded before workspace
@@ -22,17 +10,12 @@ planning and graph capture, with no external tuning file or checkpoint change.
 The native config ABI is checked at startup. Set
 `VLLM_MACH_MOE_PROJECTION_TUNING=0` before starting a new worker to disable them.
 
-Build `mxfp6-sm120` from revision
-`a4cdc1b23a72cdedecb29707534fa4e3a595933f` (v0.2.1) against the serving
-environment's PyTorch, following [installation](installation.md). The existing
-`deploy/build-mxfp6.py` pins this source and CUTLASS; this release already
-contains the required MoE kernels. The framework adapters originated from the vLLM example at revision
-`cd4e964c391fcb8aaf1a27d28a63d778e3a38ece` and ported to vLLM 0.29.0.
+Mach 0.3 uses the native library and dependencies listed in [runtime versions](installation.md#runtime-versions). Build the native wheel against the serving environment's PyTorch, following [installation](installation.md). `deploy/build-mxfp6.py` pins the native source and CUTLASS revisions.
 
 For the local kernel checkout and model:
 
 ```bash
-# Inside the vLLM 0.29.0 / torch 2.13.0 environment:
+# Inside the serving environment from the installation guide:
 python -m pip install --no-deps --no-build-isolation /path/to/mxfp6_sm120
 python -m pip install --no-deps .
 vllm-mach-install --apply

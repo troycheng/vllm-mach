@@ -8,6 +8,8 @@ M1..8 dispatch stays inside the historical mx8_ba_only::small_n opaque op.
 """
 from __future__ import annotations
 
+from vllm_mach.stack import BUILD_PACKAGES, require_version
+
 from collections import Counter
 from functools import wraps
 from importlib import import_module
@@ -54,8 +56,7 @@ def install(worker=None) -> bool:
             UnquantizedLinearMethod, "_q35_ba_installed", False):
         raise RuntimeError("a conflicting BA adapter is already installed")
     installed = version("b12x")
-    if installed != "1.2.6":
-        raise RuntimeError(f"champion BA requires b12x 1.2.6; found {installed}")
+    require_version("b12x", installed, BUILD_PACKAGES["b12x"])
     _GEMV = import_module("vllm_mach.mxfp8.ba_gemv")
     _SMALL_OP = torch.library.custom_op("mx8_ba_only::small_n", mutates_args=())(_small_impl)
     _SMALL_OP.register_fake(_fake)

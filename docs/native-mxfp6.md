@@ -1,9 +1,6 @@
 # Native MXFP6 integration
 
-This profile ports the optimization series based on vLLM `v0.29.0`
-(`98dff2a81d747d1dba01a47f939f48c3526d4206`), ending at
-`8983c0369eb5dfae42194261d06d8fbbdaab15e6`.
-The optimization checkout is not a runtime dependency.
+Mach 0.3 integrates native MXFP6 with vLLM 0.33.0; dependencies are listed in [runtime versions](installation.md#runtime-versions). The original optimization series was based on vLLM `v0.29.0` (`98dff2a81d747d1dba01a47f939f48c3526d4206`), ending at `8983c0369eb5dfae42194261d06d8fbbdaab15e6`. The optimization checkout is not a runtime dependency.
 
 ## Imported boundaries
 
@@ -26,17 +23,10 @@ for Dense default (unless both prefill options are explicitly disabled).
 The persistent GDN source is packaged under `vllm_mach.mxfp6.gdn` and JIT-built
 through FlashInfer during warmup.
 
-The wheel includes a 13-file dense source patch, a separate Quark MoE patch,
-a version/file manifest and
-FlashInfer local IPC patch. `vllm-mach-install` checks the official dependency
-versions, stages both patches and checks patch applicability before writing.
-Incompatible or partially patched installations are rejected. Repeat installation
-is a no-op. The source patch and plugin must both
-be installed; the launcher checks the profile before starting workers.
+The wheel packages the common vLLM 0.33 runtime patch, native-only Dense/MoE differences and a FlashInfer local IPC patch with their source manifest. These form one staged installation. `vllm-mach-install` validates dependencies and source fingerprints, composes the non-overlapping vLLM changes in memory, and stages both namespaces before publishing complete files under an installer lock. Failed publication restores the replaced files. Incompatible or partially patched installations are rejected; repeat installation is a no-op. The source profile and plugin must both be installed; the launcher checks the profile before starting workers.
 
 The EXL3 implementation, old runtime overlays and offline asset tools are removed
-and remain available in Git history. The default pytest suite targets
-the current native MXFP6 package, warmup and deployment paths.
+and remain available in Git history. The native test suite covers the package, warmup and deployment paths.
 
 ## Numerical and execution contracts
 
@@ -49,7 +39,7 @@ The default launcher also enables persistent GDN at physical M1/2/4/8 and
 BA overlap at M16/24/32. Persistent changes arithmetic and supports FP32 or FP16 SSM storage
 with FP32 accumulation. Both routes have independent opt-outs and
 retain native execution for unsupported calls. See [GDN validation](gdn-decode.md)
-and the [current measurements](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md).
+and the [historical measurements](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md).
 
 FP16 SSM is opt-in because it changes state precision. Owner prefill retains
 the source series' geometry checks and numerical verification mode; it chooses
@@ -98,7 +88,7 @@ replay, request eligibility, full-logit preservation, FP16 admission guards,
 prefill shape/workspace contracts, and optional native TP2 transport/codec
 comparisons. GPU and optional-extension tests skip when prerequisites are absent.
 
-The September 16 GDN port passed all **168 current tests**, checked in groups,
+The September 16 GDN port passed all **168 tests**, checked in groups,
 including CPU routing/data checks and GPU graph/prefill checks. The standalone
 persistent harness additionally passed 16 FP32/FP16 × SD/DS × M1/2/4/8 cases with
 changing inputs, slot reuse, null-slot protection and bitwise graph/eager
@@ -134,8 +124,8 @@ translation and chemical-formula answers. Nine completion probes exercised
 greedy, logprob, stochastic and token-bias requests successfully. These are
 smoke checks, not a broad model-quality evaluation or a bitwise-equivalence claim.
 
-This earlier integration acceptance uses uniform token-ID prompts; the README's
-current [profile comparison](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md) uses frozen ShareGPT
+This earlier integration acceptance uses uniform token-ID prompts; the archived
+[profile comparison](https://github.com/troycheng/vllm-mach/blob/eaa0acd6f5700913d10a422f6d4075614b9fb6be/docs/native-fidelity.md) uses frozen ShareGPT
 prefixes and separately validated stock baselines. Do not combine the two
 workloads' throughput numbers.
 
@@ -183,12 +173,7 @@ Start the optimized service with the full command in the installation guide.
 For the historical default profile, use the opt-outs above and keep
 the same KV allocation.
 
-The native extension wheels used for acceptance matched the existing compiler
-and ABI contracts; this turn did not rebuild them. Docker was unavailable in
-the validation environment, so the revised Dockerfile was not built here.
-
-Qwen3.5-35B-A3B uses the separate [MoE TP2 integration](qwen35-moe.md),
-with adapters imported from `mxfp6_sm120` revision `cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`.
+Qwen3.5-35B-A3B uses the separate [MoE TP2 integration](qwen35-moe.md). The September adapters originated at `mxfp6_sm120` revision `cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`; current builds use the source pin in [runtime versions](installation.md#runtime-versions).
 
 ## MXFP8 serving profiles
 

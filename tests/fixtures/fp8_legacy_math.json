@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "_quantize_kernel.py": {
+      "_quant": "3b5de9578f4b2d651eb0c900498d0aef65e16fcc05c0161531336af2138e44de",
+      "quantize_out": "633852ef4dfd4bd347e5d287263309f1aba6644bfa7a53be0c4c4a95ea6004e5"
+    },
+    "_guard_kernel.py": {
+      "_old_local8_square_sum": "a6b38cdcf18e53661d2289540f94c615bbe070875cd2ff509e300a0d8d3a4930",
+      "_old_fma": "7e52f991727cd16aab404f4991e8234df716d6f299c9e9e3ce7a5587ea70d5f3",
+      "layer_norm_fwd_kernel": "ea79d79300f6eeae45ac101c356a65cb423fbc211b3dcf7c0d64078a736f4aa3"
+    }
+  },
+  "shared_prep_file_sha256": "d574290a6b3dea264fe7a9f257be30647df9877038284e30c601b9add78dc30c",
+  "provenance": "Qualified block division + combined full256/10479; guard ROW4 original component/fullgold, ROW1 V2 OLD/NEW real primitive (stock+restored oldexact), ROW2 same217 instructions as qualified native GPU restored primitive. Function AST identities come from qualified work sources."
+}

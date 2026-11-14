@@ -10,13 +10,15 @@ asks the kernel selector about a concrete device.
 
 from __future__ import annotations
 
+from vllm_mach.stack import NATIVE_VERSION
+
 import importlib
 import importlib.util
 import os
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
-_SUPPORTED_RUNTIME_VERSION = "0.2.1"
+_SUPPORTED_RUNTIME_VERSION = NATIVE_VERSION
 
 _DENSE_EXPORTS = {
     "Mxfp6Sm120LinearKernel",
