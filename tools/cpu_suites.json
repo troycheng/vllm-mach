@@ -56,7 +56,8 @@
   ],
   "profile_extra": {
     "mxfp8": [
-      "tests/native_mxfp6/test_gdn_runtime_registration.py"
+      "tests/native_mxfp6/test_gdn_runtime_registration.py",
+      "tests/test_mxfp8_2b_metadata_classification_cpu.py"
     ],
     "block-fp8": [],
     "native": [
