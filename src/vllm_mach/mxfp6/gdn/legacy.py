@@ -273,6 +273,8 @@ def prepare(layer):
     mixed_fp16.prepare(layer)
     from . import direct_norm
     direct_norm.prepare(layer)
+    from . import mixed_qkv_views
+    mixed_qkv_views.prepare(layer)
     from . import packed
     # Empty indices compile the exact pitch/dtype without touching live slots.
     device = layer.in_proj_ba.weight.device
