@@ -155,3 +155,80 @@ def test_prefill_graph_unsupported_inputs_and_mutation_use_original_once():
         f = _fixture(rows)
         assert f.obj._run(**f.args) == 'original'
         assert len(f.fallback) == 1 and not f.events
+
+
+def _actual_cold_binding_loop(leaves, leaf_type):
+    """Execute the actual six-leaf collection loop, before any recorder exists."""
+    import ast
+    import inspect
+    import textwrap
+    class Tuner:
+        def __init__(self, leaf): self.fn = leaf
+    choices = [dict(module=str(i), function='kernel') for i in range(6)]
+    modules = {str(i): NS(kernel=Tuner(leaf)) for i, leaf in enumerate(leaves)}
+    tree = ast.parse(textwrap.dedent(inspect.getsource(product.Binding.__init__)))
+    loop = next(node for node in tree.body[0].body if isinstance(node, ast.For)
+                and isinstance(node.iter, ast.Name) and node.iter.id == 'choices')
+    code = compile(ast.fix_missing_locations(ast.Module(body=[loop], type_ignores=[])),
+                   'actual-prefill-graph-cold-binding', 'exec')
+    binding = NS(installed=[])
+    scope = {**vars(product), 'self': binding, 'choices': choices,
+             'JITFunction': leaf_type, 'Autotuner': Tuner,
+             'importlib': NS(import_module=lambda name: modules[name])}
+    exec(code, scope)
+    assert len(binding.installed) == 6
+    return binding.installed
+
+
+def test_prefill_graph_cold_descriptor_run_is_retained_without_wrapper():
+    class Leaf:
+        def run(self, *args, **kwargs):
+            return self, args, kwargs
+    leaf = Leaf()
+    hooks = []
+    leaf.pre_run_hooks = hooks
+    assert 'run' not in vars(leaf) and leaf.run is not leaf.run
+    leaves = [leaf] + [Leaf() for _ in range(5)]
+    for item in leaves: item.pre_run_hooks = []
+    leaf.pre_run_hooks = hooks
+    rows = _actual_cold_binding_loop(leaves, Leaf)
+    assert all(item.run is saved and not item.pre_run_hooks for _, item, saved, _ in rows)
+    original = rows[0][2]
+    assert leaf.run is original and leaf.run is leaf.run
+    assert original.__self__ is leaf and original.__func__ is Leaf.run
+    marker = object()
+    assert original(marker, stream=7) == (leaf, (marker,), {'stream': 7})
+    assert leaf.pre_run_hooks is hooks and not hooks
+    # The unchanged identity/hook guard still detects subsequent mutations.
+    leaf.run = lambda *args: None
+    assert leaf.run is not original
+    leaf.run = original
+    hooks.append(marker)
+    assert leaf.run is original and leaf.pre_run_hooks
+
+
+def _unlaunched_triton_kernel(value):
+    return value
+
+
+def test_prefill_graph_actual_triton_cold_descriptor_needs_no_cuda():
+    pytest.importorskip('triton')
+    from triton.runtime.jit import JITFunction
+    leaf = JITFunction(_unlaunched_triton_kernel)
+    assert 'run' not in vars(leaf)
+    first, second = leaf.run, leaf.run
+    assert first is not second
+    assert first.__self__ is leaf and first.__func__ is second.__func__
+    hooks, source, function = leaf.pre_run_hooks, leaf.src, leaf.fn
+    leaves = [leaf] + [JITFunction(_unlaunched_triton_kernel) for _ in range(5)]
+    rows = _actual_cold_binding_loop(leaves, JITFunction)
+    assert all(item.run is saved and not item.pre_run_hooks for _, item, saved, _ in rows)
+    original = rows[0][2]
+    assert leaf.run is original and leaf.run is leaf.run
+    assert original.__self__ is leaf and original.__func__ is first.__func__
+    assert leaf.pre_run_hooks is hooks and not hooks
+    assert leaf.src is source and leaf.fn is function
+    assert not leaf.device_caches  # Constructed and bound; never compiled or launched.
+    other = JITFunction(_unlaunched_triton_kernel)
+    leaf.run = other.run
+    assert leaf.run is not original and leaf.run.__self__ is other

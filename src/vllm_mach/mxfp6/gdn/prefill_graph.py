@@ -17,6 +17,17 @@ def tensor_id(value):
             str(value.dtype), str(value.device)]
 
 
+def _retain_kernel_run(leaf):
+    """Retain the original bound method, as the qualified capture restore did.
+
+    JITFunction.run is a descriptor: two reads can create distinct method
+    objects. Keep one instance binding for the existing strict owner guards.
+    """
+    original = leaf.run
+    leaf.run = original
+    return original
+
+
 class Binding:
     def __init__(self, worker):
         import torch
@@ -78,7 +89,7 @@ class Binding:
                     tuner = leaf
                 leaf = leaf.fn
             assert tuner is not None
-            self.installed.append((row, leaf, leaf.run, tuner))
+            self.installed.append((row, leaf, _retain_kernel_run(leaf), tuner))
         assert len(self.installed) == 6
         self.graph = GraphDispatch(chunk, self.installed, self.stream)
         self.graph.capture_stream = torch.cuda.Stream(device=self.device)
