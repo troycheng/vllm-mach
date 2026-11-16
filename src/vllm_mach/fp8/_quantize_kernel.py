@@ -4,8 +4,8 @@ import torch
 import triton as tr
 import triton.language as tl
 
-@tr.jit
-def _quant(X,Q,S,M:tl.constexpr,K:tl.constexpr,EPS:tl.constexpr,GROUPS:tl.constexpr=4):
+@tr.jit(do_not_specialize=['M'])
+def _quant(X,Q,S,M,K:tl.constexpr,EPS:tl.constexpr,GROUPS:tl.constexpr=4):
     groups=tl.program_id(0)*GROUPS+tl.arange(0,GROUPS)
     cols=tl.arange(0,128)
     n_groups=M*(K//128)
