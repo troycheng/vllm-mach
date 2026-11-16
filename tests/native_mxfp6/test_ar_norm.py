@@ -174,7 +174,7 @@ def test_loader_reports_missing_wheel_and_abi_mismatch(monkeypatch):
 
     versions = {
         "flashinfer-python": "0.7.2.post1+local",
-        "mxfp6-sm120": "0.3.0",
+        "mxfp6-sm120": "0.3.1",
         "vllm-mach-ar-norm": "0.2.0",
     }
     monkeypatch.setattr(ar_norm.metadata, "version", versions.__getitem__)
