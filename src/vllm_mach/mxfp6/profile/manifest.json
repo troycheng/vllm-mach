@@ -7,7 +7,7 @@
   "namespaces": {
     "vllm": {
       "patch": "runtime.patch",
-      "patch_sha256": "b21b71605dde063882e7d403222711eaf06112671f1d25c97b3a1028ac95acf3",
+      "patch_sha256": "9c104b95ccf3463e36897e189b701020369a4eb04265785967812ebb25bde609",
       "files": {
         "vllm/compilation/passes/fusion/allreduce_rms_fusion.py": {
           "upstream_sha256": "4f2ca81d7fa365d22c23194a768ab56a5c1380d62affaa4a706a5ce8f6b2d65d",
@@ -79,7 +79,7 @@
         },
         "vllm/v1/worker/gpu_worker.py": {
           "upstream_sha256": "e46a2659842b5b0238ca5d13ecb4a2dcff91f028493a7117d666edb0785a742c",
-          "installed_sha256": "4b1c1c93d584ad293ab91a7cbce2d942d19811bf9f52410aa1c7ea44abb22717"
+          "installed_sha256": "97223e2c853c9878f3482053090fb12ba0816f0b99184ad0111f2c2425517da1"
         },
         "vllm/v1/attention/backends/triton_attn.py": {
           "upstream_sha256": "53b221f99c54b6bc21580d7e3e96a12c5eb1de7397bb4bfafb9d0cb6129cb223",
