@@ -36,6 +36,8 @@ The native library is built from [`eb61051`](https://github.com/Nekofish-L/mxfp6
 
 The wheel records the actual Torch/CUDA ABI, Python/toolchain identity and both native library hashes in `mxfp6/build_info.json`. The accompanying external build receipt, `mxfp8-build.json`, records source and patched CUTLASS fingerprints, build options and the wheel hash. The shared [native build entry](../deploy/build-mxfp8.py) produces both libraries and the external receipt. Mach's Dockerfiles also restore the Torch-required NCCL version and install the pinned build dependencies.
 
+The three profiles apply the same prefix-disabled KV bookkeeping guard from the packaged common runtime overlay. Each installer stages its own declared source files and validates their hashes before publication.
+
 ## Install into an existing container
 
 Start from the image digest in [deploy/Dockerfile](../deploy/Dockerfile). From the Mach checkout inside that container:
@@ -108,25 +110,24 @@ profile is validated at TP2/PP1.
 | Prefix caching | Disabled | Disabled |
 | Attention backend | `TRITON_ATTN` | `TRITON_ATTN` |
 
-The [MoE benchmark](qwen35-moe.md) uses explicit graph capture sizes and
-`--max-num-seqs 64`; see that guide to reproduce its configuration.
+The [MoE FULL benchmark command](qwen35-moe.md) specifies the capture sizes,
+64-sequence limit, 8 GiB KV cache per rank and FP16 recurrent state.
 
 | Switch | Default | Effect |
 |---|---|---|
 | `--fp16-ssm` | off | Use FP16 recurrent state |
 | `--hybrid-head` / `--no-hybrid-head` | on | One switch for compact greedy hybrid and eligible top-k/presence sampling. The 4B K2048 complete head remains installed when off. `--nvfp4-lm-head` and `--lm-head-sampling` (and their `--no-` forms) are aliases. Unfiltered and top-p-only sampling retain the original sampler. See [admission and validation](lm-head-sampling.md) |
-| `--no-lossless-prefill` / `--no-owner-prefill` | on for Dense; off for MoE | Disable the corresponding Dense prefill path |
-| `--no-gdn-persistent` / `--no-gdn-ba-overlap` | on | Disable the corresponding GDN decode optimization |
-| `--no-fused-ar-norm` | on | Disable TP2 AllReduce/residual/RMSNorm and its MXFP8 producer |
-| `--no-fused-ar-quant` | on for Dense; off for MoE | Disable only the AR/GemmaRMSNorm/MXFP8 producer |
+| `--lossless-prefill` / `--owner-prefill` | on for Dense; off for MoE | Enable the corresponding Dense prefill path; use `--no-` to disable it |
+| `--gdn-persistent` / `--gdn-ba-overlap` | on | Enable the corresponding GDN decode optimization; use `--no-` to disable it |
+| `--fused-ar-norm` | on at TP2 | Fuse AllReduce/residual/RMSNorm; `--no-fused-ar-norm` also disables its MXFP8 producer |
+| `--fused-ar-quant` | on for Dense; off for MoE | Fuse AR/GemmaRMSNorm/MXFP8; use `--no-fused-ar-quant` to disable only this producer |
 | `--verify-prefill` | off | Run diagnostic comparisons; exclude from throughput measurements |
 | `--dry-run` | off | Print the resolved command/environment without loading or validating the runtime |
 
-Full changes numerical behavior: FP16 reduces recurrent-state precision, and
-NVFP4 candidate search may change the BF16 head's argmax. The NVFP4 path supports
-eligible greedy decode with at most 32 rows; unsupported requests use the
-ordinary head/sampling path. See [NVFP4 head details](native-mxfp6.md) and
-[GDN coverage](gdn-decode.md) for restrictions and fallbacks.
+The FULL profile stores recurrent state in FP16 instead of FP32. Hybrid head
+search is enabled in both profiles and refines candidates with the BF16 head.
+See [head behavior and coverage](native-mxfp6.md) and
+[GDN coverage](gdn-decode.md) for supported shapes and numerical behavior.
 
 The optional Dense producer controls `VLLM_MACH_FUSED_SWIGLU_QUANT`,
 `VLLM_MACH_FUSED_GDN_QUANT` and `VLLM_MACH_FUSED_AR_QUANT` accept `auto` (default), `0` (disabled), or `1`

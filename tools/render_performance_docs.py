@@ -3,6 +3,8 @@
 import argparse
 import hashlib
 import json
+import math
+import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -128,7 +130,7 @@ def dataset():
         assert [p['c'] for p in model['points']] == sorted({p['c'] for p in model['points']})
         if model.get('mxfp8'):
             assert [p['c'] for p in model['points']] == [4, 16, 24, 32, 48, 64]
-    return dict(schema_version=3, updated=mx_quality['date'], unit='output tokens/s',
+    return dict(schema_version=3, runtime=dict(vllm='0.29.0', torch='2.13.0', group='historical'), updated=mx_quality['date'], unit='output tokens/s',
                 workload=dict(input_tokens=3000, output_tokens=1000), gpu='RTX 5090 32 GiB',
                 full_profile='MXFP6 full adds FP16 recurrent state and NVFP4 candidate search with BF16 head refinement.',
                 sources=SOURCES, models=models,
@@ -147,16 +149,138 @@ def dataset():
                     bootstrap=fidelity['bootstrap']))
 
 
+def asset_name(data, model, kind):
+    return f"{model['id']}{data.get('asset_suffix', '')}-{kind}.svg"
+
+
+def runtime_caption(data):
+    runtime = data.get('runtime', {})
+    return f"vLLM {runtime['vllm']} / Torch {runtime['torch']}" if runtime else 'Historical runtime'
+
+
+def migration_data(path):
+    """Read a finalized normalized dataset; never fill unfinished measurements."""
+    data = json.loads(path.read_text())
+    def complete(value):
+        if value is None or isinstance(value, str) and 'pending' in value.lower():
+            raise ValueError('Migration data contains pending/null values')
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError('Migration data contains non-finite values')
+        if isinstance(value, dict):
+            for item in value.values(): complete(item)
+        elif isinstance(value, list):
+            for item in value: complete(item)
+    complete(data)
+    if data.get('publication_status') != 'accepted':
+        raise ValueError('Migration dataset is not accepted for publication')
+    if not re.fullmatch(r'-[a-z0-9]+(?:-[a-z0-9]+)*', data.get('asset_suffix', '')):
+        raise ValueError('Migration data requires a distinct safe asset suffix')
+    if not all(isinstance(data.get('runtime', {}).get(k), str) and data['runtime'][k]
+               for k in ('vllm', 'torch', 'triton')):
+        raise ValueError('Migration runtime identity is incomplete')
+    if data.get('workload') != dict(input_tokens=3000, output_tokens=1000):
+        raise ValueError('Migration workload differs from the serving contract')
+    if data.get('unit') != 'output tokens/s' or not data.get('models') or not data.get('sources'):
+        raise ValueError('Migration model/source data is incomplete')
+    ids = set()
+    for model in data['models']:
+        if model.get('configuration_status') != 'accepted':
+            raise ValueError('Included configuration has not been accepted')
+        if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', model['id']) or model['id'] in ids:
+            raise ValueError('Invalid or duplicate model ID')
+        ids.add(model['id'])
+        for field in ('title', 'profile', 'date', 'guide', 'source'):
+            if not isinstance(model.get(field), str) or not model[field]:
+                raise ValueError('Missing migration model identity: '+field)
+        if model['source'] not in data['sources'] or type(model.get('tp')) is not int or model['tp'] < 1:
+            raise ValueError('Missing source or TP identity')
+        points = model.get('points', [])
+        if not points or any(type(p.get('c')) is not int or p['c'] <= 0 for p in points):
+            raise ValueError('Invalid concurrency inventory')
+        if [p['c'] for p in points] != sorted({p['c'] for p in points}):
+            raise ValueError('Concurrency points must be unique and ordered')
+        for point in points:
+            for field in ('baseline_tps', 'selected_tps'):
+                if type(point.get(field)) not in (int, float) or point[field] <= 0:
+                    raise ValueError('Missing positive throughput: '+field)
+            gain = 100 * (point['selected_tps'] / point['baseline_tps'] - 1)
+            if type(point.get('gain_pct')) not in (int, float) or not math.isclose(point['gain_pct'], gain, abs_tol=1e-8):
+                raise ValueError('Migration throughput ratio differs')
+            for _, field, _, _ in throughput_series(model):
+                if type(point.get(field)) not in (int, float) or point[field] <= 0:
+                    raise ValueError('Incomplete plotted series: '+field)
+        if model.get('mxfp8'):
+            quality = data['fidelity']['mxfp8'][model['id'].removeprefix('qwen35-')]
+            if not quality.get('points') or any(dtype not in p for p in quality['points'] for dtype in ('float32', 'bfloat16')):
+                raise ValueError('Incomplete MXFP8 precision series')
+        if 'fidelity_key' in model:
+            quality = data['fidelity']['native'][model['fidelity_key']]
+            intervals = data['fidelity']['native_ci95'][model['fidelity_key']]
+            if not all(k in quality and k in intervals for k in ('fp8', 'nvfp4', 'default', 'full')):
+                raise ValueError('Incomplete native precision series')
+    return data
+
+
+def throughput_series(model):
+    if 'series' in model:
+        series = [tuple(row) for row in model['series']]
+        if not series or any(len(row) != 4 or row[2] not in ('fp8', 'nvfp4', 'default', 'full') for row in series):
+            raise ValueError('Invalid explicit throughput series')
+        return series
+    if 'nvfp4_tps' in model['points'][0]:
+        return [('FP8 baseline', 'baseline_tps', 'fp8', ''), ('NVFP4 reference', 'nvfp4_tps', 'nvfp4', '//'),
+                ('MXFP6 default', 'default_tps', 'default', ''), ('MXFP6 full', 'selected_tps', 'full', '')]
+    if model.get('mxfp8'):
+        return [('Historical block FP8', 'baseline_tps', 'fp8', ''),
+                (f"MXFP8 FP32 SSM / {model['kv_dtype']} KV", 'selected_tps', 'full', ''),
+                (f"Optional BF16 SSM / {model['kv_dtype']} KV", 'bf16_tps', 'default', '')]
+    return [('FP8 baseline', 'baseline_tps', 'fp8', ''),
+            ('Mach block-FP8' if model['id']=='qwen35-4b-block-fp8' else 'MXFP8 champion', 'selected_tps', 'full', '')]
+
+
+def migration_markdown(data):
+    lines = ['# Model serving performance', '', runtime_caption(data), '',
+             'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '']
+    for model in data['models']:
+        series = throughput_series(model)
+        lines += [f'<a id="{model["id"]}"></a>', '', f"## {model['title']}", '',
+                  f"{model['profile']} · TP{model['tp']} · {model['date']}", '',
+                  f"![{model['title']} throughput](assets/{asset_name(data, model, 'throughput')})", '',
+                  '| Concurrency | '+' | '.join(row[0] for row in series)+' |',
+                  '|---|'+ '|'.join('---:' for _ in series)+'|']
+        for point in model['points']:
+            lines.append(f"| c{point['c']} | "+' | '.join(f"{point[row[1]]:.2f}" for row in series)+' |')
+        if model.get('mxfp8') or 'fidelity_key' in model:
+            lines += ['', f"![{model['title']} precision](assets/{asset_name(data, model, 'precision')})"]
+        source = data['sources'][model['source']]
+        source_label = 'Published aggregate evidence' if source.get('kind') == 'published aggregate' else 'Source measurements'
+        lines += ['', model.get('scope', ''), '',
+                  f"[{source_label}]({source['url']})", '']
+    if data.get('evidence_protocol'):
+        lines += [f"[Normalized data](data/model-performance-vllm033.json) · [Aggregation and precision protocol]({data['evidence_protocol']})", '']
+    if data.get('block_status'):
+        lines += ['## Block-FP8 migration status', '', data['block_status'], '']
+    if data.get('migration_status_note'):
+        lines += ['## Other measured configurations', '', data['migration_status_note'], '', f"[Measured migration results]({data['migration_status_evidence']})", '']
+    return '\n'.join(lines)
+
+
 def overview(data):
     lines = ['| Model / profile | GPUs | Throughput gain vs FP8 | Details |',
              '|---|---|---:|---|']
     for m in data['models']:
         gains = [p['gain_pct'] for p in m['points']]
         label = f"{min(gains):+.2f}% to {max(gains):+.2f}%"
-        if m.get('mxfp8'):
+        if data.get('asset_suffix'):
+            summaries = []
+            for title, field in m.get('overview_series', [(m.get('selected_label', ''), 'selected_tps')]):
+                values = [100 * (p[field] / p['baseline_tps'] - 1) for p in m['points']]
+                summaries.append(f"{title} {min(values):+.2f}% to {max(values):+.2f}%".strip())
+            label = '; '.join(summaries)
+        elif m.get('mxfp8'):
             bg = [p['bf16_gain_pct'] for p in m['points']]
             label = f"FP32 {label}; BF16 optional {min(bg):+.2f}% to {max(bg):+.2f}%"
-        elif 'default_tps' in m['points'][0]:
+        elif 'default_tps' in m['points'][0] and not data.get('asset_suffix'):
             dg = [p['default_gain_pct'] for p in m['points']]
             label = f"default {min(dg):+.2f}% to {max(dg):+.2f}%; full {label}"
         lines.append(f"| {m['title']} · {m['profile']} | {m['tp']} · TP{m['tp']} | {label} | [Data](docs/performance.md#{m['id']}) |")
@@ -170,8 +294,8 @@ def markdown(data, native=False):
                     and Path(path).name != 'fidelity-samples.json' else GUIDE_BASE) + path
         return path
     q=data['fidelity']; dense_q=q['native']['dense']; moe_q=q['native']['moe']
-    lines = ['# Model serving performance', '',
-             'Measured complete configurations on RTX 5090: **3,000 input / 1,000 output tokens**, text-only, non-speculative inference. Throughput is **output tokens/s**; `c` is concurrent requests, and physical kernel rows are denoted `M`.', '',
+    lines = ['# Historical model serving performance · vLLM 0.29', '',
+             'Historical vLLM 0.29 / Torch 2.13 configurations on RTX 5090: **3,000 input / 1,000 output tokens**, text-only, non-speculative inference. Throughput is **output tokens/s**; `c` is concurrent requests, and physical kernel rows are denoted `M`.', '',
              'Each model has its own throughput chart. The 27B Dense and 35B-A3B MoE comparisons include FP8, NVFP4 and both MXFP6 profiles, followed by a separate precision chart against BF16.', '',
              'MXFP6 **default** retains FP32 recurrent state and the BF16 head. **Full** adds FP16 state and NVFP4 candidate search with BF16 refinement. MXFP8 uses FP32 SSM by default: BF16 KV on 2B and FP8 KV on 4B. BF16 SSM is an optional configuration.', '']
     for m in sorted(data['models'], key=lambda m: m['id']=='qwen35-4b-block-fp8'):
@@ -259,14 +383,14 @@ def markdown(data, native=False):
     if native:
         lines += [f"These figures are generated by [vLLM Mach's renderer](https://github.com/troycheng/vllm-mach/blob/main/tools/render_performance_docs.py). The native-only kernel and earlier service studies remain in [benchmarks](benchmarks.md).", '']
     else:
-        lines += ['```bash', 'python -m pip install -r docs/data/requirements-plot.txt', 'python tools/render_performance_docs.py', 'python tools/render_performance_docs.py --check', '```', '',
-                  'Use `--mirror /path/to/mxfp6_sm120` when updating the shared service overview in both projects. Original receipt JSON and per-study reports remain the source evidence.', '']
+        lines += ['```bash', 'python -m pip install -r docs/data/requirements-plot.txt', 'python tools/render_performance_docs.py --historical', 'python tools/render_performance_docs.py --historical --check', '```', '',
+                  'Current report generation accepts `--mirror /path/to/mxfp6_sm120`. The historical report remains in Mach; original receipt JSON and per-study reports retain the source evidence.', '']
     return '\n'.join(lines)
 
 
 def chart_names(data):
-    names = [f"{m['id']}-throughput.svg" for m in data['models']]
-    names += [f"{m['id']}-precision.svg" for m in data['models'] if 'fidelity_key' in m or m.get('mxfp8')]
+    names = [asset_name(data, m, 'throughput') for m in data['models']]
+    names += [asset_name(data, m, 'precision') for m in data['models'] if 'fidelity_key' in m or m.get('mxfp8')]
     return names
 
 
@@ -297,18 +421,7 @@ def plots(data, dest, preview_dir=None):
     for m in data['models']:
         large='nvfp4_tps' in m['points'][0]
         block=m['id']=='qwen35-4b-block-fp8'
-        series=[('FP8 baseline', 'baseline_tps', 'fp8', '')]
-        if large:
-            series += [('NVFP4 reference', 'nvfp4_tps', 'nvfp4', '//'),
-                       ('MXFP6 default', 'default_tps', 'default', ''),
-                       ('MXFP6 full', 'selected_tps', 'full', '')]
-        elif m.get('mxfp8'):
-            series = [('Historical block FP8', 'baseline_tps', 'fp8', ''),
-                      (f"MXFP8 FP32 SSM / {m['kv_dtype']} KV", 'selected_tps', 'full', ''),
-                      (f"Optional BF16 SSM / {m['kv_dtype']} KV", 'bf16_tps', 'default', '')]
-        else:
-            label='Mach block-FP8' if block else 'MXFP8 champion'
-            series += [(label, 'selected_tps', 'full', '')]
+        series=throughput_series(m)
         fig,ax=plt.subplots(figsize=(11.6,4.6))
         x=list(range(len(m['points']))); width=.8/len(series)
         ymax=max(p[field] for p in m['points'] for _,field,_,_ in series)
@@ -322,9 +435,10 @@ def plots(data, dest, preview_dir=None):
             top=max(p[field] for _,field,_,_ in series)
             gain=f"{p['gain_pct']:+.1f}% vs FP8"
             if m.get('mxfp8'):
-                gain=f"FP32 {p['gain_pct']:+.1f}%"
+                gain=f"{m.get('selected_label', 'FP32')} {p['gain_pct']:+.1f}%"
             if large:
-                gain=f"Full {p['gain_pct']:+.1f}% vs FP8\n{p['nvfp4_gain_pct']:+.1f}% vs NVFP4"
+                nvfp4_gain = 100 * (p['selected_tps'] / p['nvfp4_tps'] - 1)
+                gain=f"{m.get('selected_label', 'Full')} {p['gain_pct']:+.1f}% vs FP8\n{nvfp4_gain:+.1f}% vs NVFP4"
             ax.text(i,top+ymax*.075,gain,ha='center',va='bottom',fontsize=10,
                     color=CHART_THEME['emphasis'][0],fontweight='bold',linespacing=1.4)
         ax.set(xlabel='Concurrent requests',ylabel='Output tokens/s',
@@ -335,9 +449,9 @@ def plots(data, dest, preview_dir=None):
         ax.legend(frameon=False,fontsize=10,loc='lower left',bbox_to_anchor=(0,1.005),
                   ncols=len(series),borderaxespad=0)
         fig.suptitle(f"{m['title']} — throughput",fontsize=18,fontweight='bold',x=.09,ha='left',y=.975)
-        fig.text(.09,.89,f"Mach: {m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color=CHART_THEME['muted'][0])
+        fig.text(.09,.89,f"{runtime_caption(data)} · {m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color=CHART_THEME['muted'][0])
         fig.subplots_adjust(left=.09,right=.985,bottom=.14,top=.78)
-        save(fig,f"{m['id']}-throughput.svg")
+        save(fig,asset_name(data,m,'throughput'))
         if m.get('mxfp8'):
             quality=data['fidelity']['mxfp8'][m['id'].removeprefix('qwen35-')]
             fig,ax=plt.subplots(figsize=(11.6,3.7))
@@ -358,17 +472,18 @@ def plots(data, dest, preview_dir=None):
             ax.set_axisbelow(True);ax.grid(axis='y',alpha=.65)
             ax.legend(frameon=False,loc='lower left',bbox_to_anchor=(0,1.005),ncols=2,borderaxespad=0)
             fig.suptitle(f"{m['title']} — precision",fontsize=18,fontweight='bold',x=.09,ha='left',y=.97)
-            fig.text(.09,.865,'October 20 · 256 queries / 10,479 fixed tokens · error bars: 95% query-bootstrap intervals',
+            fig.text(.09,.865,(runtime_caption(data)+' · ' if data.get('asset_suffix') else 'October 20 · ')+'256 queries / 10,479 fixed tokens · error bars: 95% query-bootstrap intervals',
                      fontsize=10,color=CHART_THEME['muted'][0])
             fig.subplots_adjust(left=.09,right=.985,bottom=.18,top=.74)
-            save(fig,f"{m['id']}-precision.svg")
-        if not large:
+            save(fig,asset_name(data,m,'precision'))
+        if 'fidelity_key' not in m:
             continue
         quality=data['fidelity']['native'][m['fidelity_key']]
         intervals=data['fidelity']['native_ci95'][m['fidelity_key']]
         keys=['fp8','nvfp4','default','full']
         labels=['FP8', 'NVFP4 (ScaleSweep)' if m['fidelity_key']=='moe' else 'NVFP4',
                 'MXFP6 default','MXFP6 full']
+        labels=[m.get('precision_labels', {}).get(k, label) for k,label in zip(keys,labels)]
         values=[quality[k] for k in keys]
         bounds=[[quality[k]-intervals[k][0] for k in keys],
                 [intervals[k][1]-quality[k] for k in keys]]
@@ -382,9 +497,9 @@ def plots(data, dest, preview_dir=None):
                xlabel='Gold-token logprob MAE vs BF16 · lower is better')
         ax.invert_yaxis();ax.set_axisbelow(True);ax.grid(axis='x',alpha=.65)
         fig.suptitle(f"{m['title']} — precision",fontsize=18,fontweight='bold',x=.09,ha='left',y=.97)
-        fig.text(.09,.86,'M32 · 256 queries / 10,479 fixed tokens · error bars: 95% query-bootstrap intervals',fontsize=10,color=CHART_THEME['muted'][0])
+        fig.text(.09,.86,(runtime_caption(data)+' · ' if data.get('asset_suffix') else '')+'M32 · 256 queries / 10,479 fixed tokens · error bars: 95% query-bootstrap intervals',fontsize=10,color=CHART_THEME['muted'][0])
         fig.subplots_adjust(left=.23,right=.97,bottom=.19,top=.78)
-        save(fig,f"{m['id']}-precision.svg")
+        save(fig,asset_name(data,m,'precision'))
 
 
 def main():
@@ -392,23 +507,30 @@ def main():
     parser.add_argument('--check',action='store_true')
     parser.add_argument('--mirror',type=Path)
     parser.add_argument('--preview-dir',type=Path,help='Optional local PNG previews; published charts use SVG.')
-    args=parser.parse_args();data=dataset()
+    parser.add_argument('--migration-data',type=Path,help='Finalized accepted normalized dataset; separate runtime-suffixed outputs.')
+    parser.add_argument('--historical', action='store_true', help='Regenerate the preserved vLLM0.29 report explicitly.')
+    args=parser.parse_args()
+    if args.historical and args.migration_data:
+        parser.error('--historical and --migration-data are mutually exclusive')
+    current = not args.historical
+    data=migration_data(args.migration_data or ROOT/'docs/data/model-performance-vllm033.json') if current else dataset()
+    output_suffix=data.get('asset_suffix','')
     with TemporaryDirectory() as tmp:
         rendered=Path(tmp)
         plots(data,rendered,args.preview_dir)
-        for root,native in [(ROOT,False)]+([(args.mirror,True)] if args.mirror else []):
+        for root,native in [(ROOT,False)]+([(args.mirror,True)] if args.mirror and current else []):
             exported = dict(data)
-            targets={root/'docs/data/model-performance.json':json.dumps(exported,indent=2)+'\n',
-                     root/'docs/performance.md':markdown(data,native)}
+            targets={root/f'docs/data/model-performance{output_suffix}.json':json.dumps(exported,indent=2)+'\n',
+                     root/('docs/performance.md' if current else 'docs/performance-vllm029.md'):migration_markdown(data) if current else markdown(data,native)}
             targets.update({root/'docs/assets'/name:(rendered/name).read_text() for name in chart_names(data)})
             if args.check:
                 for path,text in targets.items():assert path.read_text()==text,path
             else:
                 for path,text in targets.items():path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
-                for stem in ('model-throughput','model-gains'):
+                for stem in (() if current else ('model-throughput','model-gains')):
                     for suffix in ('.svg','.png'):
                         (root/'docs/assets'/f'{stem}{suffix}').unlink(missing_ok=True)
-    print(overview(data))
+    print(migration_markdown(data) if current else overview(data))
 
 
 if __name__=='__main__':

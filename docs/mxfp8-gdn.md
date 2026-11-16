@@ -79,7 +79,7 @@ The run contract records the selected state dtype and ordered backend.
 Ordered replay rounds state to BF16 after every pending token and keeps
 K/delta/alpha history in FP32. The small Gluon kernel preserves the stock
 Q/K norm and state-dot reduction trees, with the existing BV32/W4 scratch.
-Mixed decode, stock fallback, materialization and slot reset share that history.
+The qualified local-eight reductions cover the admitted Gluon FULL, deferred and edge layouts and the 2B high-row Triton path; local-four FP32 reductions retain their separate selector. Mixed decode, stock fallback, materialization and slot reset share that history.
 
 ## PDL + GDN: not fully tuned
 

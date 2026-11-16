@@ -1,6 +1,6 @@
 # Qwen3.5-2B MXFP8 champion
 
-The [single MXFP8 benchmark](mxfp8-benchmark.md) contains the current per-concurrency SSM/KV matrix.
+This profile uses Mach 0.3 on vLLM 0.33.0; see [runtime versions](installation.md#runtime-versions). The [MXFP8 benchmark](mxfp8-benchmark.md) retains the historical 0.29 per-concurrency SSM/KV matrix.
 
 The **Triton attention + K128 hybrid head** profile runs on one RTX 5090, TP1. See the [per-concurrency comparisons with block FP8](mxfp8-benchmark.md#qwen35-2b).
 
@@ -54,6 +54,7 @@ Override the shared image's default 4B entrypoint to select the 2B launcher. Giv
 ```bash
 docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   --entrypoint vllm-mach-mxfp8-2b-serve \
+  -e VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=1 \
   -v "$PWD/mxfp8-2b-output/model:/model:ro" \
   -v "$PWD/mxfp8-2b-runs:/runs" \
   vllm-mach:mxfp8-champion /model --run-dir /runs/serve \
@@ -70,7 +71,7 @@ See [BF16 SSM measurements and configuration](mxfp8-benchmark.md).
 
 ### Head CUDA Graph
 
-Add `-e VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=1` before the image name in the Docker command above to replay the existing K128 head through a CUDA Graph. This reduces repeated CPU submission while preserving the head's quantization and BF16 refinement.
+The serving example enables `VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=1` to replay the K128 head through a CUDA Graph. This reduces repeated CPU submission while preserving the head's quantization and BF16 refinement.
 
 The November 9 HTTP comparison used FP32 SSM, BF16 KV and 3,000 input / 1,000 output tokens. Two AB/BA pairs were followed by two independent confirmation pairs. The confirmation results are:
 
@@ -96,7 +97,7 @@ The combined c16/c64 workload improved by 2.05%. Each point above uses total out
 | Attention | `TRITON_ATTN` with BF16 KV |
 | Head | NVFP4 sidecar proposes K128 candidates; original BF16 weights refine scores; eligible greedy decode M≤64 |
 
-These mechanisms are already in the public package. The October 11 code qualification matched all 101 installed package source hashes.
+The 0.33 profile preserves qualified reduction order at selected recurrent, normalization and attention boundaries. FULL16 FP32 six-pointer PDL normalization uses source- and configuration-bound FMA/local ordering; FULL24, BF16 and ordinary launch paths keep their own bindings. Worker receipts identify the compiled source and selected clone. The October 11 source-hash check describes its original 0.29 package.
 
 ## Hybrid head and Triton attention
 
@@ -104,13 +105,13 @@ These mechanisms are already in the public package. The October 11 code qualific
 
 ## Precision
 
-The [current precision table](performance.md#qwen35-2b-precision) reports October 20 M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens against the frozen BF16 M32 anchor. Logprob requests use the complete BF16 head. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and a compressed bundle of raw logprobs and runtime receipts.
+The [historical precision table](performance-vllm029.md#qwen35-2b-precision) reports October 20 M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens against the frozen BF16 M32 anchor. Logprob requests use the complete BF16 head. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and a compressed bundle of raw logprobs and runtime receipts.
 
 The October 11 six-shape results used production-geometry replay; this update uses the packaged fixed-M quality mode. Their original configurations and measurements remain in `historical_validation.two_b` in the [benchmark data](data/mxfp8-benchmark.json).
 
 The October 11 generation check covered 1,536 requests and 196,608 generated tokens. Across 129,878 hybrid decisions, no BF16 winner was omitted and no lower-scored token was selected; one M24 decision selected a different token tied at BF16 score 20.375. M48/M64 full batches then used the complete BF16 head. The current greedy head supports eligible rows through M64; its newer generation and sampling checks are in the [head validation](lm-head-sampling.md).
 
-The [fixed token manifest](data/fidelity-samples.json), checkpoint reconstruction and validation tool are public. See [reproducing the precision measurements](performance.md#reproduce-mxfp8-fidelity).
+The [fixed token manifest](data/fidelity-samples.json), checkpoint reconstruction and validation tool are public. See [reproducing the precision measurements](performance-vllm029.md#reproduce-mxfp8-fidelity).
 
 ## Benchmark and revisions
 

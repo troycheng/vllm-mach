@@ -31,7 +31,7 @@ configuration, including FP16 persistent.
 Persistent fuses BA, convolution, gating and recurrent update. Its math is
 not bitwise equivalent to the native composition. The port preserves the
 historical source's Apache-2.0 notices and changes padding admission to skip
-both negative indices and vLLM 0.29's null slot zero. Empty graph rows produce
+both negative indices and the reserved null slot zero. Empty graph rows produce
 zero core output without modifying either state pool. The shared barrier and
 scratch require the worker's serialized execution; concurrent replay of graphs
 on independent streams is outside the supported contract.

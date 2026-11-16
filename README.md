@@ -15,54 +15,43 @@
 
 vLLM Mach packages model-specific serving optimizations for **vLLM 0.33.0 on RTX 5090 (SM120)**. The [MXFP6 SM120 library](https://github.com/Nekofish-L/mxfp6_sm120) supplies native MXFP6/MXFP8 kernels; Mach integrates model loading, fusion, recurrent state, attention, graph policies and serving launchers. Existing block-FP8 checkpoints have a separate optimization path.
 
-## Performance by model size
+## Serving performance
 
-**3,000 input / 1,000 output tokens · output tokens/s · text-only, non-speculative inference.** End-to-end serving on one (TP1) or two (TP2) 32 GiB RTX 5090 GPUs.
+**vLLM 0.33.0 · 3,000 input / 1,000 output tokens · output tokens/s · RTX 5090.**
 
-| Model / profile | GPUs | Throughput gain vs FP8 | Details |
-|---|---|---:|---|
-| Qwen3.5-2B · MXFP8 · FP32 SSM / BF16 KV | 1 · TP1 | FP32 +29.46% to +34.60%; BF16 optional +36.34% to +41.74% | [Data](docs/performance.md#qwen35-2b) |
-| Qwen3.5-4B · MXFP8 · FP32 SSM / FP8 KV | 1 · TP1 | FP32 +32.13% to +43.05%; BF16 optional +39.36% to +57.91% | [Data](docs/performance.md#qwen35-4b) |
-| Qwen3.5-4B block-FP8 · Block-FP8 · all four features | 1 · TP1 | +5.97% to +9.03% | [Data](docs/performance.md#qwen35-4b-block-fp8) |
-| Qwen3.8-27B Dense · MXFP6 default / full | 2 · TP2 | default +30.41% to +43.69%; full +42.18% to +55.40% | [Data](docs/performance.md#qwen38-27b) |
-| Qwen3.5-35B-A3B MoE · MXFP6 default / full | 2 · TP2 | default +48.34% to +67.01%; full +61.34% to +79.32% | [Data](docs/performance.md#qwen35-35b-a3b) |
-
-MXFP8 defaults to **FP32 SSM**, with **BF16 KV on 2B** and **FP8 KV on 4B**. The optional BF16 SSM curves use `--ssm-dtype bfloat16` with ordered GDN. The six greedy points are c4/16/24/32/48/64, measured on October 14 against historical block-FP8 references.
-
-MXFP6 **default** uses FP32 recurrent state and the BF16 head; **full** adds FP16 state and NVFP4 candidate search with BF16 refinement. The launcher enables hybrid head by default; pass `--no-hybrid-head` to reproduce the measured historical default.
+MXFP8 uses BF16 KV on 2B and FP8 KV on 4B, with FP32 recurrent state by default; BF16 is optional on 2B and 4B. Native MXFP6 uses FP32 state by default; `--fp16-ssm` selects FP16 state. The hybrid head is enabled by default; `--no-hybrid-head` selects the complete head.
 
 ### Qwen3.5-2B · MXFP8
 
-![2B block FP8 and MXFP8 SSM configurations](docs/assets/qwen35-2b-throughput.svg)
+![Qwen3.5-2B · MXFP8 throughput](docs/assets/qwen35-2b-vllm033-throughput.svg)
 
 ### Qwen3.5-4B · MXFP8
 
-![4B block FP8 and MXFP8 SSM/KV configurations](docs/assets/qwen35-4b-throughput.svg)
+![Qwen3.5-4B · MXFP8 throughput](docs/assets/qwen35-4b-vllm033-throughput.svg)
 
-### Qwen3.8-27B Dense · FP8, NVFP4 and MXFP6
+### Qwen3.5-4B · block-FP8
 
-![27B FP8, NVFP4 and MXFP6 throughput](docs/assets/qwen38-27b-throughput.svg)
+See the [block-FP8 migration results](docs/performance.md#block-fp8-migration-status).
 
-![27B precision against BF16](docs/assets/qwen38-27b-precision.svg)
+### Qwen3.8-27B Dense · MXFP6
 
-### Qwen3.5-35B-A3B MoE · FP8, NVFP4 and MXFP6
+![Qwen3.8-27B Dense · MXFP6 throughput](docs/assets/qwen38-27b-vllm033-throughput.svg)
 
-![35B-A3B FP8, NVFP4 and MXFP6 throughput](docs/assets/qwen35-35b-a3b-throughput.svg)
+### Qwen3.5-35B-A3B MoE · MXFP6
 
-![35B-A3B precision against BF16](docs/assets/qwen35-35b-a3b-precision.svg)
+![Qwen3.5-35B-A3B MoE · MXFP6 throughput](docs/assets/qwen35-35b-a3b-vllm033-throughput.svg)
 
-See the [performance report](docs/performance.md) for all point values, gains against FP8 and NVFP4, latency, precision and source data. The [4B block-FP8 comparison](docs/performance.md#qwen35-4b-block-fp8) has its own chart.
+[Performance and precision](docs/performance.md) · [Historical vLLM 0.29 FP8/NVFP4 comparisons](docs/performance-vllm029.md)
 
-The [2026-10-15 best-path and sampling recheck](docs/best-path-recheck-20261015.md)
-records fresh pre-sampling/current comparisons and top-k/top-p measurements.
-Random-sampling gains are reported separately from the greedy curves above.
+Dense retains FP32/head ON and FP16 FULL. MoE recommends FP32/head ON with headgraph OFF. [Published aggregate evidence](docs/data/evidence-vllm033/README.md) records the configurations, measurements and source hashes.
+
 
 ## Choose and run a profile
 
-Use Linux x86-64, Python 3.12, Docker Buildx and the NVIDIA container runtime. Start from the [v0.2.0 release](https://github.com/troycheng/vllm-mach/releases/tag/v0.2.0):
+Use Linux x86-64, Python 3.12, Docker Buildx and the NVIDIA container runtime. See [runtime versions](docs/installation.md#runtime-versions).
 
 ```bash
-git clone --branch v0.2.0 https://github.com/troycheng/vllm-mach.git
+git clone https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
 ```
 
@@ -82,21 +71,17 @@ docker buildx build --load --build-arg MAX_JOBS=2 \
 mkdir -p "$PWD/runs"
 docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
   --entrypoint vllm-mach-mxfp8-2b-serve \
+  -e VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=1 \
   -v /absolute/path/to/prepared-2b:/model:ro -v "$PWD/runs:/runs" \
   vllm-mach:mxfp8-champion /model --run-dir /runs/serve --host 0.0.0.0 \
-  --attention-backend TRITON_ATTN --hybrid-head
+  --attention-backend TRITON_ATTN --ssm-dtype float32 --hybrid-head
 ```
 
-`--attention-backend TRITON_ATTN` selects the measured 2B attention path; the launcher defaults to `FLASH_ATTN`. `--hybrid-head` is already enabled by default and is explicit here for clarity. The shared-image entrypoint serves 4B, so keep the 2B `--entrypoint` override. The server exposes vLLM's OpenAI-compatible API; `/v1/models` lists the served model name.
+`--attention-backend TRITON_ATTN` selects the measured 2B path. Use the 2B entrypoint shown above; the shared image defaults to 4B. The server provides an OpenAI-compatible API at `/v1`; `/v1/models` lists the served model name.
 
-For native MXFP6, the launcher selects Dense or MoE from `config.json`; append `--fp16-ssm` to select full. For block-FP8, use `--features n64 ordered silu fa2`. Each guide includes its checkpoint preparation, exact dependencies, numerical behavior and benchmark command.
+This example selects the 2B FP32 default and headgraph ON. Optional BF16 state uses `--ssm-dtype bfloat16`; the headgraph environment variable is independent of the state dtype. Native MXFP6 selects Dense or MoE from `config.json`; append `--fp16-ssm` for FP16 recurrent state. For block-FP8, use `--features n64 ordered silu fa2`. The linked guides include checkpoint preparation and benchmark commands.
 
-Native MXFP6 and both MXFP8 launchers share one `--hybrid-head` switch (default
-on) for greedy and eligible unseeded top-k sampling, including optional top-p
-and presence-only penalties. `--no-hybrid-head` disables these compact candidate
-paths; the 4B K2048 complete head remains installed. The old `--nvfp4-lm-head` and `--lm-head-sampling`
-flags are aliases of this same switch. Unfiltered random and top-p-only sampling
-always retain the original sampler. See [admission, numerical behavior and validation](docs/lm-head-sampling.md).
+`--hybrid-head` supports greedy and eligible unseeded top-k sampling, with optional top-p and presence-only penalties. Other sampling requests use the original sampler. See [sampling support and numerical behavior](docs/lm-head-sampling.md).
 
 ## What the selected profiles include
 
@@ -110,7 +95,7 @@ always retain the original sampler. See [admission, numerical behavior and valid
 
 ## Documentation
 
-- [Performance](docs/performance.md): per-model FP8/NVFP4 comparisons, all point values, latency and numerical fidelity.
+- [Performance](docs/performance.md): throughput, latency, configurations and precision.
 - [Guide index](docs/README.md): installation, model preparation, operator details and development.
 - [MXFP8 benchmark](docs/mxfp8-benchmark.md): per-concurrency results, SSM/KV configurations and block-FP8 comparisons.
 - [Shared GDN/Mamba runtime](docs/gdn-runtime.md): quantization-independent optimizations, model/path admission and NVFP4 validation.
@@ -121,6 +106,3 @@ The block-FP8 linear work is also submitted in [vLLM PR #60385](https://github.c
 ## Contributing and license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for performance and correctness evidence expected with changes. [Apache-2.0](LICENSE); derived notices are in [NOTICE](NOTICE). External components retain their own licenses. This project is independent of the vLLM project.
-
-MXFP8 integration: [Implementation notes](docs/mxfp8-profile-merge.md).
-MXFP8 serving results: [Per-concurrency SSM/KV benchmark](docs/mxfp8-benchmark.md).

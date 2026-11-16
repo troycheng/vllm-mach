@@ -78,7 +78,7 @@ Prefix caching, speculative decode, generic compact-head hooks,
 vocab-parallel greedy and unrelated Dense/MoE/AR modes are disabled by the profile.
 
 Add `--ssm-dtype bfloat16` to select BF16 state with ordered W4 GDN, now the default backend for both state dtypes. FP32 remains the default storage dtype. Use `--no-ordered-bf16-ssm` to select stock GDN/FLA for BF16 state. Grouped BF16 GDN and GDN PDL remain disabled by default.
-See [BF16 SSM measurements and configuration](mxfp8-benchmark.md).
+For ordered BF16 SSM, the 0.33 profile preserves qualified Q/K preparation, recurrent reductions and GDN output normalization. Source/configuration-bound input-normalization carry FMAs apply only to the admitted BF16 path; FP32 and stock-GDN keep their original routes. These guards apply to the actual generated body and layout in production and quality modes. See [historical BF16 SSM measurements](mxfp8-benchmark.md).
 
 `--quality-rows 32` or `64` selects a separate precision-only mode:
 
@@ -117,12 +117,12 @@ that use a run directory, its old startup-cache subdirectories may be removed.
 
 ## Performance
 
-See the [single MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the default FP32 SSM/FP8 KV configuration, the FP32 SSM/BF16 KV baseline and optional BF16 SSM configurations, each compared with historical open-source block FP8.
+See the [historical 0.29 MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the default FP32 SSM/FP8 KV configuration, the FP32 SSM/BF16 KV baseline and optional BF16 SSM configurations, each compared with historical open-source block FP8.
 
 ## Validation
 
-The [October 20 precision table](performance.md#qwen35-4b-precision) reports M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and raw logprobs with runtime receipts.
+The [October 20 precision table](performance-vllm029.md#qwen35-4b-precision) reports M32/M64 measurements for FP32 SSM and optional BF16 SSM, using Mach `afcb4cf` and native `ce0cd05`. Each configuration covers 256 queries and 10,479 fixed gold tokens. The [data](data/mxfp8-fidelity-20261020.json) include query-level errors, confidence intervals, repeated-cohort checks and raw logprobs with runtime receipts.
 
 The BF16 reference uses FLASH_ATTN and BF16 KV at each matching physical shape; this profile uses FLASHINFER and FP8 KV. Fixed-gold requests use the existing full-vocabulary NVFP4 head with K2048 BF16 score refinement. Hybrid candidate selection has separate [generation and sampling validation](lm-head-sampling.md).
 
-The [fixed token manifest](data/fidelity-samples.json) and validation tool are public; see [reproducing the precision measurements](performance.md#reproduce-mxfp8-fidelity). Earlier release qualification remains in `historical_validation.four_b` in the [benchmark data](data/mxfp8-benchmark.json).
+The [fixed token manifest](data/fidelity-samples.json) and validation tool are public; see [reproducing the precision measurements](performance-vllm029.md#reproduce-mxfp8-fidelity). Earlier release qualification remains in `historical_validation.four_b` in the [benchmark data](data/mxfp8-benchmark.json).
