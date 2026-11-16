@@ -240,29 +240,76 @@ def throughput_series(model):
 
 def migration_markdown(data):
     lines = ['# Model serving performance', '', runtime_caption(data), '',
-             'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '']
+             'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '',
+             'FP32 recurrent state is the default. The tables identify optional state formats and the reference used for each comparison.', '',
+             profile_overview(data, 'performance.md'), '']
     for model in data['models']:
         series = throughput_series(model)
-        lines += [f'<a id="{model["id"]}"></a>', '', f"## {model['title']}", '',
+        for alias in model.get('anchor_aliases', []):
+            lines += [f'<a id="{alias}"></a>', '']
+        gain_label = f"{model.get('selected_label', 'Mach')} gain vs {model.get('gain_reference_label', 'FP8')}"
+        lines += [f'<a id="{model["id"]}"></a>', '', f"## {model.get('display_name', model['title'])}", '',
                   f"{model['profile']} · TP{model['tp']} · {model['date']}", '',
                   f"![{model['title']} throughput](assets/{asset_name(data, model, 'throughput')})", '',
-                  '| Concurrency | '+' | '.join(row[0] for row in series)+' |',
-                  '|---|'+ '|'.join('---:' for _ in series)+'|']
+                  '| Concurrency | '+' | '.join(row[0] for row in series)+f' | {gain_label} |',
+                  '|---|'+ '|'.join('---:' for _ in series)+'|---:|']
         for point in model['points']:
-            lines.append(f"| c{point['c']} | "+' | '.join(f"{point[row[1]]:.2f}" for row in series)+' |')
+            lines.append(f"| c{point['c']} | "+' | '.join(f"{point[row[1]]:.2f}" for row in series)+f" | {point['gain_pct']:+.2f}% |")
         if model.get('mxfp8') or 'fidelity_key' in model:
-            lines += ['', f"![{model['title']} precision](assets/{asset_name(data, model, 'precision')})"]
-        source = data['sources'][model['source']]
-        source_label = 'Published aggregate evidence' if source.get('kind') == 'published aggregate' else 'Source measurements'
-        lines += ['', model.get('scope', ''), '',
-                  f"[{source_label}]({source['url']})", '']
-    if data.get('evidence_protocol'):
-        lines += [f"[Normalized data](data/model-performance-vllm033.json) · [Aggregation and precision protocol]({data['evidence_protocol']})", '']
-    if data.get('block_status'):
-        lines += ['## Block-FP8 migration status', '', data['block_status'], '']
-    if data.get('migration_status_note'):
-        lines += ['## Other measured configurations', '', data['migration_status_note'], '', f"[Measured migration results]({data['migration_status_evidence']})", '']
+            lines += ['', '### Precision', '', f"![{model['title']} precision](assets/{asset_name(data, model, 'precision')})"]
+        if model.get('precision_note'):
+            lines += ['', '### Precision', '', model['precision_note']]
+        if model.get('precision_comparison'):
+            quality = data['fidelity'][model['precision_comparison']]
+            lines += ['', f"![{model['title']} precision](assets/{asset_name(data, model, 'precision')})", '',
+                      f"| Decode rows | {quality['reference_label']} MAE | Mach MAE |", '|---|---:|---:|']
+            for point in quality['points']:
+                lines.append(f"| M{point['M']} | {point['reference_mae']:.6f} | {point['mach_mae']:.6f} |")
+        if model.get('scope'):
+            lines += ['', model['scope']]
+        links = [f"[Setup and benchmark]({GUIDE_BASE}{model['guide']})",
+                 f"[Measurements]({data['sources'][model['source']]['url']})"]
+        linked = {model['source']}
+        for label, field, _, _ in series:
+            source_id = model.get('series_sources', {}).get(field)
+            if source_id and source_id not in linked:
+                links.append(f"[{label} measurements]({data['sources'][source_id]['url']})")
+                linked.add(source_id)
+        lines += ['', ' · '.join(links), '']
+    lines += ['## Measurement records', '',
+              f"[Data and measurement protocol]({data['evidence_protocol']}) · [Normalized data](data/model-performance-vllm033.json) · [vLLM 0.29 → 0.33 comparison](data/evidence-vllm033/migration-status.json)", '',
+              f"[Historical vLLM 0.29 FP8/NVFP4 comparisons]({GUIDE_BASE}performance-vllm029.md)", '']
     return '\n'.join(lines)
+
+
+def profile_overview(data, report):
+    lines = ['| Model / profile | GPUs | Measured concurrency |', '|---|---:|---|']
+    for model in data['models']:
+        points = ', '.join(f"c{point['c']}" for point in model['points'])
+        lines.append(f"| [{model.get('display_name', model['title'])}]({report}#{model['id']}) | {model['tp']} | {points} |")
+    return '\n'.join(lines)
+
+
+def readme_performance(data, native=False):
+    lines = ['## Serving performance', '',
+             f"**vLLM {data['runtime']['vllm']} · RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.**", '',
+             profile_overview(data, 'docs/performance.md'), '',
+             'FP32 recurrent state is the default. The performance report includes optional BF16/FP16 state configurations and precision against BF16.', '']
+    for model in data['models']:
+        guide = GUIDE_BASE + model['guide'] if native else 'docs/' + model['guide']
+        lines += [f"### {model.get('display_name', model['title'])}", '',
+                  f"![{model['title']} throughput](docs/assets/{asset_name(data, model, 'throughput')})", '',
+                  f"[Data and precision](docs/performance.md#{model['id']}) · [Run this profile]({guide})", '']
+    historical = GUIDE_BASE + 'performance-vllm029.md' if native else 'docs/performance-vllm029.md'
+    lines += [f"[Historical vLLM 0.29 FP8/NVFP4 comparisons]({historical})", '']
+    return '\n'.join(lines)
+
+
+def update_readme(text, section):
+    begin, end = '<!-- PERFORMANCE:BEGIN -->', '<!-- PERFORMANCE:END -->'
+    before, middle = text.split(begin, 1)
+    _, after = middle.split(end, 1)
+    return before + begin + '\n' + section + '\n' + end + after
 
 
 def overview(data):
@@ -390,7 +437,7 @@ def markdown(data, native=False):
 
 def chart_names(data):
     names = [asset_name(data, m, 'throughput') for m in data['models']]
-    names += [asset_name(data, m, 'precision') for m in data['models'] if 'fidelity_key' in m or m.get('mxfp8')]
+    names += [asset_name(data, m, 'precision') for m in data['models'] if 'fidelity_key' in m or m.get('mxfp8') or m.get('precision_comparison')]
     return names
 
 
@@ -433,7 +480,7 @@ def plots(data, dest, preview_dir=None):
             ax.bar_label(bars,labels=[f"{p[field]:,.0f}" for p in m['points']],padding=4,fontsize=10)
         for i,p in enumerate(m['points']):
             top=max(p[field] for _,field,_,_ in series)
-            gain=f"{p['gain_pct']:+.1f}% vs FP8"
+            gain=f"{p['gain_pct']:+.1f}% vs {m.get('gain_reference_label', 'FP8')}"
             if m.get('mxfp8'):
                 gain=f"{m.get('selected_label', 'FP32')} {p['gain_pct']:+.1f}%"
             if large:
@@ -452,6 +499,26 @@ def plots(data, dest, preview_dir=None):
         fig.text(.09,.89,f"{runtime_caption(data)} · {m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color=CHART_THEME['muted'][0])
         fig.subplots_adjust(left=.09,right=.985,bottom=.14,top=.78)
         save(fig,asset_name(data,m,'throughput'))
+        if m.get('precision_comparison'):
+            quality = data['fidelity'][m['precision_comparison']]
+            fig, ax = plt.subplots(figsize=(11.6, 3.7))
+            for j, (field, label, color) in enumerate([
+                    ('reference_mae', quality['reference_label'], 'fp8'),
+                    ('mach_mae', quality['candidate_label'], 'full')]):
+                values = [p[field] for p in quality['points']]
+                positions = [i + (j - .5) * .34 for i in range(len(values))]
+                bars = ax.bar(positions, values, .3, color=colors[color], label=label, zorder=3)
+                ax.bar_label(bars, labels=[f'{value:.5f}' for value in values], padding=4, fontsize=10)
+            ymax = max(p[field] for p in quality['points'] for field in ('reference_mae', 'mach_mae'))
+            ax.set(xticks=list(range(len(quality['points']))), xticklabels=[f"M{p['M']}" for p in quality['points']],
+                   ylim=(0, ymax * 1.25), ylabel='Gold-token logprob MAE vs BF16', xlabel='Physical decode rows · lower error is better')
+            ax.set_axisbelow(True); ax.grid(axis='y', alpha=.65)
+            ax.legend(frameon=False, loc='lower left', bbox_to_anchor=(0, 1.005), ncols=2, borderaxespad=0)
+            fig.suptitle(f"{m['title']} — precision", fontsize=18, fontweight='bold', x=.09, ha='left', y=.97)
+            fig.text(.09, .865, f"{runtime_caption(data)} · {quality['queries']} queries / {quality['gold_tokens']:,} fixed tokens",
+                     fontsize=10, color=CHART_THEME['muted'][0])
+            fig.subplots_adjust(left=.09, right=.985, bottom=.18, top=.74)
+            save(fig, asset_name(data, m, 'precision'))
         if m.get('mxfp8'):
             quality=data['fidelity']['mxfp8'][m['id'].removeprefix('qwen35-')]
             fig,ax=plt.subplots(figsize=(11.6,3.7))
@@ -522,6 +589,8 @@ def main():
             exported = dict(data)
             targets={root/f'docs/data/model-performance{output_suffix}.json':json.dumps(exported,indent=2)+'\n',
                      root/('docs/performance.md' if current else 'docs/performance-vllm029.md'):migration_markdown(data) if current else markdown(data,native)}
+            if current:
+                targets[root/'README.md'] = update_readme((root/'README.md').read_text(), readme_performance(data, native))
             targets.update({root/'docs/assets'/name:(rendered/name).read_text() for name in chart_names(data)})
             if args.check:
                 for path,text in targets.items():assert path.read_text()==text,path

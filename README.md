@@ -15,36 +15,54 @@
 
 vLLM Mach packages model-specific serving optimizations for **vLLM 0.33.0 on RTX 5090 (SM120)**. The [MXFP6 SM120 library](https://github.com/Nekofish-L/mxfp6_sm120) supplies native MXFP6/MXFP8 kernels; Mach integrates model loading, fusion, recurrent state, attention, graph policies and serving launchers. Existing block-FP8 checkpoints have a separate optimization path.
 
+<!-- PERFORMANCE:BEGIN -->
 ## Serving performance
 
-**vLLM 0.33.0 · 3,000 input / 1,000 output tokens · output tokens/s · RTX 5090.**
+**vLLM 0.33.0 · RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.**
 
-MXFP8 uses BF16 KV on 2B and FP8 KV on 4B, with FP32 recurrent state by default; BF16 is optional on 2B and 4B. Native MXFP6 uses FP32 state by default; `--fp16-ssm` selects FP16 state. The hybrid head is enabled by default; `--no-hybrid-head` selects the complete head.
+| Model / profile | GPUs | Measured concurrency |
+|---|---:|---|
+| [Qwen3.5-2B · MXFP8](docs/performance.md#qwen35-2b) | 1 | c4, c16, c24, c32, c48, c64 |
+| [Qwen3.5-4B · MXFP8](docs/performance.md#qwen35-4b) | 1 | c4, c16, c24, c32, c48, c64 |
+| [Qwen3.5-4B · block-FP8](docs/performance.md#qwen35-4b-block-fp8) | 1 | c4, c16, c32, c64 |
+| [Qwen3.8-27B Dense · MXFP6](docs/performance.md#qwen38-27b) | 2 | c4, c16, c24, c32 |
+| [Qwen3.5-35B-A3B MoE · MXFP6](docs/performance.md#qwen35-35b-a3b) | 2 | c4, c16, c24, c32 |
+
+FP32 recurrent state is the default. The performance report includes optional BF16/FP16 state configurations and precision against BF16.
 
 ### Qwen3.5-2B · MXFP8
 
-![Qwen3.5-2B · MXFP8 throughput](docs/assets/qwen35-2b-vllm033-throughput.svg)
+![Qwen3.5-2B throughput](docs/assets/qwen35-2b-vllm033-throughput.svg)
+
+[Data and precision](docs/performance.md#qwen35-2b) · [Run this profile](docs/mxfp8-2b-champion.md)
 
 ### Qwen3.5-4B · MXFP8
 
-![Qwen3.5-4B · MXFP8 throughput](docs/assets/qwen35-4b-vllm033-throughput.svg)
+![Qwen3.5-4B throughput](docs/assets/qwen35-4b-vllm033-throughput.svg)
+
+[Data and precision](docs/performance.md#qwen35-4b) · [Run this profile](docs/mxfp8-champion.md)
 
 ### Qwen3.5-4B · block-FP8
 
-See the [block-FP8 migration results](docs/performance.md#block-fp8-migration-status).
+![Qwen3.5-4B block-FP8 throughput](docs/assets/qwen35-4b-block-fp8-vllm033-throughput.svg)
+
+[Data and precision](docs/performance.md#qwen35-4b-block-fp8) · [Run this profile](docs/fp8-profile.md)
 
 ### Qwen3.8-27B Dense · MXFP6
 
-![Qwen3.8-27B Dense · MXFP6 throughput](docs/assets/qwen38-27b-vllm033-throughput.svg)
+![Qwen3.8-27B Dense throughput](docs/assets/qwen38-27b-vllm033-throughput.svg)
+
+[Data and precision](docs/performance.md#qwen38-27b) · [Run this profile](docs/installation.md)
 
 ### Qwen3.5-35B-A3B MoE · MXFP6
 
-![Qwen3.5-35B-A3B MoE · MXFP6 throughput](docs/assets/qwen35-35b-a3b-vllm033-throughput.svg)
+![Qwen3.5-35B-A3B MoE throughput](docs/assets/qwen35-35b-a3b-vllm033-throughput.svg)
 
-[Performance and precision](docs/performance.md) · [Historical vLLM 0.29 FP8/NVFP4 comparisons](docs/performance-vllm029.md)
+[Data and precision](docs/performance.md#qwen35-35b-a3b) · [Run this profile](docs/qwen35-moe.md)
 
-Dense retains FP32/head ON and FP16 FULL. MoE recommends FP32/head ON with headgraph OFF. [Published aggregate evidence](docs/data/evidence-vllm033/README.md) records the configurations, measurements and source hashes.
+[Historical vLLM 0.29 FP8/NVFP4 comparisons](docs/performance-vllm029.md)
 
+<!-- PERFORMANCE:END -->
 
 ## Choose and run a profile
 
