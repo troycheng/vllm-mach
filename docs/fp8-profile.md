@@ -2,7 +2,7 @@
 
 `qwen35-4b-block-fp8-v1` is an explicit, independent profile for the existing Qwen3.5-4B compressed-tensors block-FP8 checkpoint on one RTX 5090 (SM120). It provides four separately selectable optimizations: n64 GEMM, ordered low-M GEMM, SiLU/block quantization and mixed FA2. It uses BF16 activations, KV cache and the ordinary model head, with FP32 SSM state.
 
-[Validation](#precision-and-qualification) records byte-identical fixed-gold M4/M32/M64 results and one stock/all serving pair at c4/c16/c32/c64, with measured throughput changes of +9.03%/+6.18%/+5.97%/+6.99%. All 680 requests per arm succeed. The final source build has verified runtime byte identity to the tested image.
+On vLLM 0.33, the four-feature profile delivers 764.49 / 2145.32 / 3008.32 / 3671.65 output tokens/s at c4/c16/c32/c64: +11.07% / +4.83% / +4.29% / +7.74% against the community FP8 reference. See the [current charts, point values and precision](performance.md#qwen35-4b-block-fp8).
 
 The profile keeps the checkpoint's block-FP8 weights and FP32 block scales. MXFP8 E8M0 scales have a different format and cannot use this entry. The [MXFP8 champion profile](mxfp8-champion.md) and native MXFP6 profiles have their own installers and launchers.
 
@@ -81,7 +81,11 @@ The attention optimization preserves the framework's graph selection and request
 
 ## Precision and qualification
 
-These optimizations do not introduce a new quantization format or change the checkpoint. n64 duplicates existing FP32 weight scales exactly; ordered GEMM and SiLU preserve their selected arithmetic contracts; mixed FA2 invokes the existing attention implementation on request slices. Component tests and matching fixed-gold model records validate this source port's tested boundary.
+The current vLLM 0.33 validation uses 256 queries and 10,479 fixed gold tokens at M32 and M64. Query-mean logprob MAE against BF16 is **0.052755 at M32** and **0.051555 at M64**, compared with 0.052977 and 0.052362 for the previously qualified profile. Repeated candidate runs produce identical values. The [published measurement record](data/evidence-vllm033/block_fp8.json) includes both precision results and throughput aggregates.
+
+n64 duplicates existing FP32 weight scales exactly; ordered GEMM and SiLU preserve their selected arithmetic contracts; mixed FA2 invokes the existing attention implementation on request slices. The checkpoint and its quantization format remain the same.
+
+### Compilation policy
 
 Package versions, native builds and the compilation recipe belong to the precision contract. In particular, an unchanged RMSNorm source can select different reduction configurations through autotuning and produce different model records. Cold-start cache isolation alone does not fix that choice.
 
@@ -89,9 +93,7 @@ The launcher selects the packaged `production` recipe through `VLLM_MACH_FP8_COM
 
 The worker installs the recipe before generated modules are compiled and verifies binding coverage and actual launch configurations after warmup. Its receipt records the policy mode and hash, required/missing bindings and observed configurations. These are compilation/configuration records, not GPU execution counts. The separate `quality4`, `quality32` and `quality64` recipes belong to the matching precision-validation drivers; the serving launcher uses `production`. Model records still must pass against the matching stock arm after a recipe change.
 
-Each fixed-M check at M4/M32/M64 uses 256 queries and 10,479 gold logprobs. All values and output record bytes match stock block-FP8; MAE, maximum absolute difference and repeat difference are zero. Build, checkpoint and record hashes are in the [measurement record](data/fp8-qualification-20261006.json).
-
-Serving completes 680 requests per arm across c4/c16/c32/c64. See the [throughput and latency tables](performance.md#qwen35-4b-block-fp8). Mean/p99 TTFT at c4 changes from 184.98/303.63 ms to 192.46/307.45 ms; the other three points improve both latency measures.
+The [October 6 vLLM 0.29 qualification](data/fp8-qualification-20261006.json) records the earlier byte-identical stock/profile comparison, build identities and latency measurements. Current results are in the [vLLM 0.33 report](performance.md#qwen35-4b-block-fp8).
 
 For a stock comparison, use the same server settings and checkpoint/tokenizer with `VLLM_PLUGINS=''` and separate vLLM/Inductor/Triton caches. Benchmark both arms with the [public protocol](mxfp8-benchmark.md), selecting `--points 4 16 32 64` and separate output directories.
 

@@ -15,14 +15,9 @@ Start with [performance by model size](performance.md), then use the guide for t
 
 ## Performance and precision
 
-- [Complete performance report](performance.md): current model throughput tables, configuration details and BF16-reference precision.
-- [Best-path and sampling recheck (2026-10-15)](best-path-recheck-20261015.md): 2B/4B pre-sampling/current comparisons, dispatch evidence and top-k/top-p results.
-- [MXFP8 benchmark](mxfp8-benchmark.md): 2B/4B FP32 defaults and optional BF16 SSM, six concurrency points, historical block-FP8 references and measurement protocol.
-- [2B/4B fixed-gold validation](performance-vllm029.md#reproduce-mxfp8-fidelity): October 20 M32/M64 results, FP32/BF16 SSM comparisons and the public reproduction tool.
-- [Block-FP8 validation](fp8-profile.md#precision-and-qualification): source identities and numerical checks.
-- [Dense optimization breakdown](dense-gains-aligned-baseline-20260920.md), [MoE breakdown](moe-gains-fp8-baseline-20260920.md) and [MXFP6 fidelity](profile-fidelity-20260917.md).
-- [Historical vLLM 0.29 report](performance-vllm029.md): original FP8/NVFP4/MXFP6 throughput and precision.
-- [Normalized historical 0.29 data](data/model-performance.json); original receipts remain alongside it in `data/`.
+- [Current performance report](performance.md): charts, per-concurrency throughput and precision for all five serving profiles.
+- [Measurement data and protocol](data/evidence-vllm033/README.md): published aggregates, numerical checks and runtime comparisons.
+- [Block-FP8 validation](fp8-profile.md#precision-and-qualification): precision results and benchmark commands.
 
 ## Runtime and operators
 
@@ -33,6 +28,12 @@ Start with [performance by model size](performance.md), then use the guide for t
 | Fusion and prefill | [Producers](dense-producer-fusion.md), [AR/Norm/MXFP8](ar-norm-mxfp8.md), [lossless prefill](lossless-prefill.md), [observed-shape prefill](long-prefill.md) |
 | MoE | [Projection dispatch](moe-projection-20260923.md), [model integration](qwen35-moe.md) |
 | Block-FP8 | [Linear](fp8-linear.md), [activation](fp8-activation.md), [attention](fp8-attention.md) |
+
+## Historical measurements
+
+- [vLLM 0.29 performance](performance-vllm029.md): original FP8/NVFP4 comparisons and [normalized data](data/model-performance.json).
+- [2B/4B benchmark and reproduction protocol](mxfp8-benchmark.md), [October sampling recheck](best-path-recheck-20261015.md) and [fixed-gold reproduction](performance-vllm029.md#reproduce-mxfp8-fidelity).
+- [Dense optimization breakdown](dense-gains-aligned-baseline-20260920.md), [MoE breakdown](moe-gains-fp8-baseline-20260920.md) and [MXFP6 fidelity](profile-fidelity-20260917.md).
 
 ## Contributing
 
