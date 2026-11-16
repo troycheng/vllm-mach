@@ -10,7 +10,7 @@ BASE_PACKAGES = {
 }
 TORCH_BUILD = "2.14.0+cu130"
 BUILD_PACKAGES = {"cmake": "4.1.0", "b12x": "1.5.1"}
-NATIVE_VERSION = "0.3.0"
+NATIVE_VERSION = "0.3.1"
 NATIVE_EXTENSIONS = {
     "vllm-mach-ar-norm": "0.2.0",
     "vllm-mach-owner-prefill": "0.2.0",

@@ -2,8 +2,8 @@
 
 Eligible Dense TP2 decode uses the existing MXFP6 producer operations for
 rounded SwiGLU quantization and gated RMSNorm/output projection. The required
-extension is version 0.3.0, built from
-[`eb61051`](https://github.com/Nekofish-L/mxfp6_sm120/commit/eb61051b24790d133f50730240641f388bfddc36), as listed in [runtime versions](installation.md#runtime-versions). The original producer integration used native revision
+extension is version 0.3.1, built from
+[`91e0df5`](https://github.com/Nekofish-L/mxfp6_sm120/commit/91e0df5dec211d4d8138b71b07230f75c809728d), as listed in [runtime versions](installation.md#runtime-versions). The original producer integration used native revision
 `cd4e964c391fcb8aaf1a27d28a63d778e3a38ece`.
 
 These two routes are implemented in `gdn_decode.py`, `gdn_output.py`,
