@@ -3,6 +3,8 @@
 # Adapted from vllm-mach 8c5021a (Apache-2.0).
 """Load the optional owner collective wheel without a build at service startup."""
 
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_VERSION, NATIVE_EXTENSIONS
+
 from importlib import metadata, util
 
 import torch
@@ -16,9 +18,9 @@ def load():
     if _loaded:
         return
     for package, expected in (
-        ("flashinfer-python", "0.6.18"),
-        ("mxfp6-sm120", "0.2.1"),
-        ("vllm-mach-owner-prefill", "0.1.0a1"),
+        ("flashinfer-python", BASE_PACKAGES["flashinfer-python"]),
+        ("mxfp6-sm120", NATIVE_VERSION),
+        ("vllm-mach-owner-prefill", NATIVE_EXTENSIONS["vllm-mach-owner-prefill"]),
     ):
         try:
             version = metadata.version(package).split("+", 1)[0]

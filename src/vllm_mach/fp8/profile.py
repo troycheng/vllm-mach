@@ -2,17 +2,15 @@
 """CPU-only contracts for the independent block-FP8 profile."""
 from __future__ import annotations
 
+from vllm_mach.stack import BASE_PACKAGES, require_version
+
 from importlib.metadata import distribution, version
 import os
 from pathlib import Path
 
 NAME = "qwen35-4b-block-fp8-v1"
 FEATURES = ("n64", "ordered", "silu", "fa2")
-DEPENDENCIES = {
-    "vllm": "0.29.0", "torch": "2.13.0", "triton": "3.7.1",
-    "flashinfer-python": "0.6.18", "flashinfer-cubin": "0.6.18",
-    "nvidia-cutlass-dsl": "4.6.2", "cuda-bindings": "13.3.1",
-}
+DEPENDENCIES = dict(BASE_PACKAGES)
 
 
 def selected_features():
@@ -38,8 +36,7 @@ def check_environment():
             raise RuntimeError(f"Block-FP8 profile cannot be combined with {name}")
     actual = {key: version(key) for key in DEPENDENCIES}
     for key, expected in DEPENDENCIES.items():
-        if actual[key].split("+", 1)[0] != expected:
-            raise RuntimeError(f"Block-FP8 requires {key}=={expected}; found {actual[key]}")
+        require_version(key, actual[key], expected)
     return actual
 
 

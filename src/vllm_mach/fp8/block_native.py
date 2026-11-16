@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Load the optional standalone n64 wheel; never compile in a worker."""
 
-from importlib import import_module
+from vllm_mach.stack import TORCH_BUILD, NATIVE_EXTENSIONS, require_version
+
+from importlib import import_module, metadata as package_metadata
 from pathlib import Path
 import hashlib
 import json
@@ -19,12 +21,13 @@ def verify_runtime():
     if _LOADED:
         return dict(_IDENTITY)
     torch = import_module("torch")
-    if torch.__version__ != "2.13.0+cu130":
-        raise RuntimeError("block-FP8 native wheel requires torch==2.13.0+cu130")
+    require_version("torch", torch.__version__, TORCH_BUILD)
     override = os.environ.get("VLLM_MACH_BLOCK_FP8_LIBRARY")
     if override:
         library = Path(override).expanduser().resolve()
     else:
+        require_version("vllm-mach-block-fp8", package_metadata.version("vllm-mach-block-fp8"),
+                        NATIVE_EXTENSIONS["vllm-mach-block-fp8"])
         try:
             library = Path(import_module("vllm_mach_block_fp8").library_path()).resolve()
         except ImportError as exc:

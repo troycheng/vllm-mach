@@ -220,11 +220,11 @@ class TwoBBAContracts(unittest.TestCase):
             self.assertFalse(ba.enabled())
             with self.assertRaisesRegex(RuntimeError, "requires qwen35-2b"):
                 ba.install()
-        with patch.object(ba, "version", return_value="1.2.6"), \
+        with patch.object(ba, "version", return_value="1.5.1"), \
                 patch.object(ba, "import_module", return_value=NS(__file__=ROOT.parent/"ba_gemv.py")):
             self.assertEqual(ba.load_kernel().__file__, ROOT.parent/"ba_gemv.py")
         with patch.object(ba, "version", return_value="1.2.7"):
-            with self.assertRaisesRegex(RuntimeError, "audited b12x"):
+            with self.assertRaisesRegex(RuntimeError, "requires b12x==1.5.1"):
                 ba.load_kernel()
         self.assertFalse(hasattr(ba, "install_worker_hook"))
         self.assertFalse(hasattr(ba, "install_fixture_capture"))
@@ -234,7 +234,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             self.assertTrue(ba.install())
             method, layer = Method(), NS(weight=Tensor(), bias=None)
             method.process_weights_after_loading(layer)
@@ -262,7 +262,7 @@ class TwoBBAContracts(unittest.TestCase):
         modules, Method, kernel, cache = ba_api(events)
         kernel.__file__ = ROOT.parent/"ba_gemv.py"
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             ba.install()
             method = Method()
             layers = []
@@ -294,7 +294,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             ba.install()
             layer = NS(weight=Tensor(), bias=None)
             Method().process_weights_after_loading(layer)
@@ -313,7 +313,7 @@ class TwoBBAContracts(unittest.TestCase):
         modules, Method, kernel, cache = ba_api(events)
         kernel.precompile_bf16_gemv_small_n = lambda weight: None
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             ba.install()
             layer = NS(weight=Tensor(), bias=None)
             with self.assertRaisesRegex(RuntimeError, "missed a row count"):
@@ -336,7 +336,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             ba.install()
             layer = NS(weight=Tensor(), bias=None)
             method = Method()
@@ -364,7 +364,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             ba.install()
             valid_x, valid_w = Tensor((16, 2048)), Tensor()
             foreign_w = Tensor()
@@ -392,7 +392,7 @@ class TwoBBAContracts(unittest.TestCase):
             missing = load("ba")
             with patch.dict(sys.modules, missing_modules), \
                     patch.object(missing, "load_kernel", return_value=kernel), \
-                    patch.object(missing, "version", return_value="0.29.0"):
+                    patch.object(missing, "version", return_value="0.33.0"):
                 missing.install()
                 self.assertIsNone(missing._M16)
                 self.assertEqual(missing._small_impl(valid_x, valid_w, Tensor()), "fallback")
@@ -403,7 +403,7 @@ class TwoBBAContracts(unittest.TestCase):
         modules, _, kernel, _ = ba_api([])
         modules["torch"].ops.mxfp8_sm120.bf16_ba_m16 = lambda *args: (_ for _ in ()).throw(RuntimeError("launch failed"))
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.29.0"):
+                patch.object(ba, "version", return_value="0.33.0"):
             ba.install()
             with self.assertRaisesRegex(RuntimeError, "launch failed"):
                 ba._small_impl(Tensor((16, 2048)), Tensor(), Tensor())

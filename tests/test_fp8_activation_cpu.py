@@ -67,7 +67,7 @@ def fixture():
     torch = types.ModuleType("torch")
     torch.ops = ops
     torch.bfloat16, torch.float8_e4m3fn, torch.float32 = "bf16", "e4m3", "f32"
-    torch.__version__ = "2.13.0+cu130"
+    torch.__version__ = "2.14.0+cu130"
     torch.version = types.SimpleNamespace(cuda="13.0")
     torch.library = types.SimpleNamespace(
         Library=Library, register_fake=lambda name, fn: fake.append((name, fn))
@@ -162,14 +162,14 @@ class ActivationTests(unittest.TestCase):
 
     def test_missing_wheel_or_incompatible_worker_fails_before_installation(self):
         with fixture() as (module, torch, _, _, _, _):
-            with patch.object(module, "version", return_value="0.29.0"), \
+            with patch.object(module, "version", side_effect=lambda name: "0.33.0" if name == "vllm" else "0.2.0"), \
                     patch.object(module.importlib.util, "find_spec", return_value=None):
                 with self.assertRaisesRegex(RuntimeError, "prebuilt"):
                     module.install()
             self.assertFalse(module.inspect()["installed"])
             torch.__version__ = "2.12.0"
-            with patch.object(module, "version", return_value="0.29.0"):
-                with self.assertRaisesRegex(RuntimeError, "Torch 2.13"):
+            with patch.object(module, "version", side_effect=lambda name: "0.33.0" if name == "vllm" else "0.2.0"):
+                with self.assertRaisesRegex(RuntimeError, "torch==2.14"):
                     module.verify_runtime()
             torch.__version__ = "2.13.0"
             module.verify_runtime = lambda: {}
@@ -188,7 +188,7 @@ class ActivationTests(unittest.TestCase):
                 "bool is_scale_transposed) -> ()"
             )
             spec = types.SimpleNamespace(origin=str(library))
-            with patch.object(module, "version", return_value="0.29.0"), \
+            with patch.object(module, "version", side_effect=lambda name: "0.33.0" if name == "vllm" else "0.2.0"), \
                     patch.object(module.importlib.util, "find_spec", return_value=spec):
                 identity = module.verify_runtime()
                 self.assertEqual(module.verify_runtime(), identity)

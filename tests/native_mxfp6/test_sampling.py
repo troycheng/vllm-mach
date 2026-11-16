@@ -21,12 +21,17 @@ def fixture_sampler(k=4, p=0.9, temperature=0.7, penalty=0.0):
         vocab_size=128,
         any_explicit_seed=lambda _: False,
     )
-    penalties = NS(
+    penalties = sampling.PenaltiesState.__new__(sampling.PenaltiesState)
+    penalties.__dict__.update(
         use_penalty=np.full(2, penalty != 0),
         repetition_penalty=array(1.0),
         frequency_penalty=array(0.0),
         presence_penalty=array(penalty),
     )
+    bias = sampling.LogitBiasState.__new__(sampling.LogitBiasState)
+    bias.use_logit_bias = np.zeros(2, bool)
+    bad_words = sampling.BadWordsState.__new__(sampling.BadWordsState)
+    bad_words.num_bad_words = array(0)
     sampler = NS(
         sampling_states=states,
         penalties_state=penalties,
@@ -35,8 +40,7 @@ def fixture_sampler(k=4, p=0.9, temperature=0.7, penalty=0.0):
         return_sampling_mask=False,
         trace_replay_state=None,
         get_logprobs_dims=lambda _: None,
-        logit_bias_state=NS(use_logit_bias=np.zeros(2, bool)),
-        bad_words_state=NS(num_bad_words=array(0)),
+        logits_processors=[bias, penalties, bad_words],
         thinking_budget_state=NS(enabled=False),
     )
     return sampler, NS(idx_mapping_np=np.arange(2))
@@ -94,9 +98,9 @@ def test_full_logit_and_seeded_requests_fall_back(reason):
     elif reason == "fp64":
         s.use_fp64_gumbel = True
     elif reason == "bias":
-        s.logit_bias_state.use_logit_bias[0] = True
+        s.logits_processors[0].use_logit_bias[0] = True
     elif reason == "bad_words":
-        s.bad_words_state.num_bad_words.np[0] = 1
+        s.logits_processors[2].num_bad_words.np[0] = 1
     elif reason == "thinking":
         s.thinking_budget_state = NS(enabled=True, use_thinking_budget=np.ones(2, bool))
     elif reason in ("repetition", "frequency"):
@@ -117,6 +121,29 @@ def test_full_logit_and_seeded_requests_fall_back(reason):
         s.sampling_states.top_p.np[:] = 1
         s.penalties_state.use_penalty[:] = True
     assert sampling.sampling_params(s, b) is None
+
+
+@pytest.mark.parametrize("change", ["custom", "reordered", "subclass", "detached"])
+def test_changed_processor_pipeline_keeps_upstream_sampling(change):
+    sampler, batch = fixture_sampler()
+    if change == "custom":
+        sampler.logits_processors.append(object())
+    elif change == "reordered":
+        sampler.logits_processors.reverse()
+    elif change == "subclass":
+        class CustomBias(sampling.LogitBiasState):
+            pass
+        sampler.logits_processors[0] = CustomBias.__new__(CustomBias)
+    else:
+        sampler.penalties_state = object()
+    assert sampling.sampling_params(sampler, batch) is None
+
+
+def test_033_sampler_pipeline_needs_no_removed_state_aliases():
+    sampler, batch = fixture_sampler()
+    assert not hasattr(sampler, "logit_bias_state")
+    assert not hasattr(sampler, "bad_words_state")
+    assert sampling.sampling_params(sampler, batch) == ("topk", 4, 0.9, 0.7, False)
 
 
 def make_head(vocab=16):

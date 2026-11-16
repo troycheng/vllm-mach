@@ -112,6 +112,44 @@ class BuildContracts(unittest.TestCase):
                 self.assertEqual(shlex.split(shlex.join(args)), args)
                 self.assertEqual([name[:4] for name in builder.PATCHES], ["0001", "0003", "0004", "0005", "0006"])
 
+    def test_mxfp6_entrypoint_delegates_both_targets_without_duplicate_builder(self):
+        builder = load_builder("build-mxfp6.py")
+        with patch.object(builder._builder, "main", return_value=0) as main:
+            self.assertEqual(builder.main([]), 0)
+            main.assert_called_with(["--revision", builder.REVISION])
+            args = ["--source-dir", "/reviewed/source", "--check-only"]
+            self.assertEqual(builder.main(args), 0)
+            main.assert_called_with(args)
+            args = ["--revision=" + "f" * 40, "--max-jobs", "2"]
+            builder.main(args)
+            main.assert_called_with(args)
+        self.assertIs(builder.discover_toolchain, builder._builder.discover_toolchain)
+        self.assertIs(builder.cmake_arguments, builder._builder.cmake_arguments)
+
+    def test_all_images_prepare_public_target_stack_before_native_build(self):
+        from vllm_mach.stack import BUILD_PACKAGES
+        lock = (DEPLOY / "requirements-mxfp8.txt").read_text()
+        self.assertIn("b12x==" + BUILD_PACKAGES["b12x"], lock)
+        self.assertIn("cmake==" + BUILD_PACKAGES["cmake"], lock)
+        self.assertIn("nvidia-nccl-cu13==2.30.7", lock)
+        self.assertEqual(lock.count("--hash=sha256:"), 3)
+        for name in ("Dockerfile", "Dockerfile.fp8", "Dockerfile.mxfp8"):
+            with self.subTest(name=name):
+                source = (DEPLOY / name).read_text()
+                self.assertIn("vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3", source)
+                self.assertNotIn("apt-get", source)
+                self.assertNotIn("cf5adb86", source)
+                self.assertIn("--no-deps --require-hashes", source)
+                self.assertIn("opentelemetry-exporter-otlp-common opentelemetry-exporter-http-transport", source)
+                self.assertGreaterEqual(source.count("python3 -m pip check"), 2)
+                self.assertLess(source.index("COPY src/vllm_mach/__init__.py src/vllm_mach/stack.py"), source.index("RUN python3"))
+                self.assertLess(source.index("COPY src /opt/mach/src"), source.index("COPY pyproject.toml"))
+                self.assertIn("CUDA_HOME=/usr/local/cuda-13.0", source)
+                self.assertNotIn("/opt/mach-native", source)
+        dense = (DEPLOY / "Dockerfile").read_text()
+        self.assertIn("COPY deploy/install.py deploy/build-mxfp8.py deploy/build-mxfp6.py", dense)
+        self.assertIn("mxfp8-build.json", dense)
+
     def test_no_gpu_smoke_requires_loaded_ba_and_bool_pdl_schema(self):
         builder = load_builder("build-mxfp6.py")
         tree = ast.parse((DEPLOY / "build-mxfp8.py").read_text())
@@ -121,9 +159,10 @@ class BuildContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             library = Path(td) / "native.so"
             library.write_bytes(b"cpu-test")
+            (library.parent / "build_info.json").write_text("{}")
             mx6 = types.ModuleType("mxfp6")
             loads = []
-            mx6.load_library = lambda: loads.append("mx6")
+            mx6.load_library = lambda: (loads.append("mx6") or library)
             mx6.gemm_from_gdn = lambda: None
             mx6.mxfp8 = types.SimpleNamespace(load_library=lambda: (loads.append("mx8") or library))
             mx6.mxfp8_dual = types.SimpleNamespace(load_library=lambda: library,

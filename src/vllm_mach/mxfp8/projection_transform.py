@@ -16,7 +16,10 @@ from typing import Any
 IMPORT = "from vllm_mach.mxfp8.projection_parallel import dispatch as _qkvz_ba_pair"
 Q = "torch.ops.vllm.mach_mx8_dual_qkvz_both.default"
 B = "torch.ops.mx8_ba_only.small_n.default"
-ALLOWED_ASSERTS = {"assert_size_stride", "assert_alignment"}
+ALLOWED_ASSERTS = {
+    "assert_size_stride", "assert_size_stride_grouped",
+    "assert_tensor_metadata", "assert_alignment",
+}
 
 
 def _sha(data: str) -> str:

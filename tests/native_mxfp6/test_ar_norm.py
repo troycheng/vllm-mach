@@ -169,13 +169,13 @@ def test_loader_reports_missing_wheel_and_abi_mismatch(monkeypatch):
         "version",
         lambda package: (_ for _ in ()).throw(ar_norm.metadata.PackageNotFoundError()),
     )
-    with pytest.raises(RuntimeError, match=r"flashinfer-python==0.6.18"):
+    with pytest.raises(RuntimeError, match=r"flashinfer-python==0.7.2.post1"):
         ar_norm.load_library()
 
     versions = {
-        "flashinfer-python": "0.6.18+local",
-        "mxfp6-sm120": "0.2.1",
-        "vllm-mach-ar-norm": "0.1.0a1",
+        "flashinfer-python": "0.7.2.post1+local",
+        "mxfp6-sm120": "0.3.0",
+        "vllm-mach-ar-norm": "0.2.0",
     }
     monkeypatch.setattr(ar_norm.metadata, "version", versions.__getitem__)
     monkeypatch.setattr(ar_norm.util, "find_spec", lambda _: types.SimpleNamespace(origin="/tmp/x.so"))

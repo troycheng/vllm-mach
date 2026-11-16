@@ -229,6 +229,7 @@ def test_compact_head_masks_padding_and_preserves_full_logits(
 @torch.inference_mode()
 def test_private_head_graph_replay_ownership_and_guards():
     import pytest
+    from head_topk_contract import assert_exact_unsorted_topk
     from vllm.platforms import current_platform
     if not torch.cuda.is_available() or not current_platform.has_device_capability(120):
         pytest.skip("NVFP4 b12x requires SM120")
@@ -239,9 +240,11 @@ def test_private_head_graph_replay_ownership_and_guards():
     state.max_rows = 4
     hidden = torch.randn((4, 512), device="cuda", dtype=torch.bfloat16)
     expected = {}
+    expected_coarse = {}
     for rows in (1, 4):
         h = hidden[:rows]
         coarse = state.coarse_logits(h, None)
+        expected_coarse[rows] = coarse.clone()
         for k in (1, 32, 40, 64, 128):
             ids = state.select_candidates(coarse, top_k=k)
             scores = state.refine_logits(h, layer.weight, ids, None)
@@ -252,14 +255,17 @@ def test_private_head_graph_replay_ownership_and_guards():
         for k in (1, 32, 40, 64, 128):
             actual = state.replay_candidates(hidden[:rows], layer.weight, k)
             assert actual is not None
-            # The selector is explicitly unsorted: compare scores by token ID.
+            # Unsorted top-k leaves boundary tie IDs unspecified. Both sets must
+            # still be exact, and graph arithmetic must match eager for its IDs.
             scores, ids = actual
-            ref_scores, ref_ids = expected[rows, k]
-            order, ref_order = ids.argsort(dim=-1), ref_ids.argsort(dim=-1)
-            torch.testing.assert_close(ids.gather(1, order), ref_ids.gather(1, ref_order),
-                                       atol=0, rtol=0)
-            torch.testing.assert_close(scores.gather(1, order), ref_scores.gather(1, ref_order),
-                                       atol=0, rtol=0)
+            _, ref_ids = expected[rows, k]
+            coarse = state.coarse_logits(hidden[:rows], None)
+            assert torch.equal(coarse.contiguous().view(torch.uint8),
+                               expected_coarse[rows].contiguous().view(torch.uint8))
+            assert_exact_unsorted_topk(coarse, ref_ids, ids)
+            same_id_scores = state.refine_logits(hidden[:rows], layer.weight, ids, None)
+            assert torch.equal(scores.contiguous().view(torch.uint8),
+                               same_id_scores.contiguous().view(torch.uint8))
             saved.append((actual, tuple(x.clone() for x in actual)))
         scores, ids = expected[rows, 1]
         tokens = hybrid_nvfp4.indexed_argmax_triton(scores, ids)[1]

@@ -1,6 +1,8 @@
 """Frozen 2B BA adapter composed by the Mach champion profile."""
 from __future__ import annotations
 
+from vllm_mach.stack import BASE_PACKAGES, BUILD_PACKAGES, require_version
+
 from collections import Counter
 from functools import wraps
 import hashlib
@@ -33,8 +35,7 @@ def load_kernel():
     """Resolve installed code only; never import the 4B profile."""
     if not enabled():
         raise RuntimeError("2B BA requires qwen35-2b-mxfp8-champion-v1")
-    if version("b12x") != "1.2.6":
-        raise RuntimeError("2B BA requires the audited b12x 1.2.6")
+    require_version("b12x", version("b12x"), BUILD_PACKAGES["b12x"])
     kernel = import_module("vllm_mach.mxfp8.ba_gemv")
     if sha(kernel.__file__) != KERNEL_SHA256:
         raise RuntimeError("installed BA GEMV differs from the audited source")
@@ -108,8 +109,7 @@ def install(worker=None) -> bool:
         return False
     import torch
     from vllm.model_executor.layers.linear import UnquantizedLinearMethod
-    if version("vllm").split("+", 1)[0] != "0.29.0":
-        raise RuntimeError("2B BA adapter requires audited vLLM 0.29.0")
+    require_version("vllm", version("vllm"), BASE_PACKAGES["vllm"])
     for marker in ("_mx8_ba_only_installed", "_q35_ba_installed", "_two_b_ba_installed"):
         if getattr(UnquantizedLinearMethod, marker, False):
             raise RuntimeError(f"conflicting BA adapter: {marker}")

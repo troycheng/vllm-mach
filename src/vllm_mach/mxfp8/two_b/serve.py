@@ -32,6 +32,8 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-
             "--kv-cache-memory", str(cfg["kv_cache_memory_bytes"]), "--kv-cache-dtype", "bfloat16",
             "--no-enable-prefix-caching", "--mamba-ssm-cache-dtype", ssm_dtype,
             "--attention-backend", attention_backend, "--quantization", "compressed-tensors",
+            *(["--attention-config", '{"flash_attn_version":2}']
+              if attention_backend == "FLASH_ATTN" else []),
             "--linear-backend", "flashinfer_cutlass", "--seed", "20260907",
             *(["--enable-chunked-prefill", "--logprobs-mode", "raw_logprobs", "--disable-log-stats"]
               if quality_rows is not None else []),
@@ -54,7 +56,7 @@ def configure_environment(directory, *, quality_rows=None, attention_backend="FL
     settings = {"OMP_NUM_THREADS": "1", "VLLM_PLUGINS": "mach",
                 "VLLM_MACH_PROFILE": NAME, "VLLM_MACH_NATIVE_MXFP8": "0",
                 "VLLM_MACH_MXFP8_RUN_DIR": str(directory), "MX8_NATIVE_POLICY": "all",
-                "VLLM_USE_V2_MODEL_RUNNER": "1", "VLLM_FLASH_ATTN_VERSION": "2",
+                "VLLM_USE_V2_MODEL_RUNNER": "1",
                 "VLLM_MACH_2B_PINNED_IDS": "1", "TORCHINDUCTOR_COMPILE_THREADS": "1",
                 "VLLM_MACH_2B_ATTENTION_BACKEND": attention_backend,
                 "VLLM_MACH_2B_HYBRID_HEAD": "1" if hybrid_head else "0",

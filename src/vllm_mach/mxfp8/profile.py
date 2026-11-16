@@ -6,6 +6,8 @@ after init_device; serving receipts describe actual installed paths.
 """
 from __future__ import annotations
 
+from vllm_mach.stack import BASE_PACKAGES, BUILD_PACKAGES, NATIVE_VERSION, require_version
+
 from functools import wraps
 from importlib.metadata import distribution, version
 import json
@@ -16,12 +18,8 @@ from .ssm import selected_dtype, select_gdn, ordered_enabled
 from . import kv
 
 NAME = "qwen35-4b-mxfp8-champion-v1"
-DEPENDENCIES = {
-    "vllm": "0.29.0", "torch": "2.13.0", "triton": "3.7.1",
-    "flashinfer-python": "0.6.18", "flashinfer-cubin": "0.6.18",
-    "nvidia-cutlass-dsl": "4.6.2", "cuda-bindings": "13.3.1",
-    "b12x": "1.2.6", "mxfp6-sm120": "0.2.1",
-}
+DEPENDENCIES = {**BASE_PACKAGES, "b12x": BUILD_PACKAGES["b12x"],
+                "mxfp6-sm120": NATIVE_VERSION}
 
 
 def quality_contract(rows):
@@ -170,8 +168,7 @@ def _verify_quality_capture(worker, rows):
 def check_environment():
     versions = {name: version(name) for name in DEPENDENCIES}
     for name, expected in DEPENDENCIES.items():
-        if versions[name].split("+", 1)[0] != expected:
-            raise RuntimeError(f"{NAME} requires {name}=={expected}, found {versions[name]}")
+        require_version(name, versions[name], expected)
     return versions
 
 
@@ -199,6 +196,8 @@ def _directory():
 def write_receipt(worker, phase):
     from . import ba, compile_choices, dual, gdn, graph_policy, head, kv
     from . import native_backend, projection_parallel, swiglu_quant, greedy_head, norm_frontend
+    from vllm_mach import gdn_prep
+    from . import input_geometry
 
     receipt = {
         "profile": NAME, "phase": phase, "pid": os.getpid(),
@@ -206,9 +205,11 @@ def write_receipt(worker, phase):
         "versions": check_environment(),
         "runtime_sources": worker._mach_mxfp8_runtime_sources,
         "native": native_backend.inspect(worker),
+        "input_geometry": input_geometry.inspect_worker(worker),
         "dual": dual.inspect_worker(worker), "ba": ba.inspect_worker(worker),
         "gdn": select_gdn(gdn).inspect_worker(worker), "kv": kv.inspect_cache(worker),
         "norm_frontend": norm_frontend.inspect_frontend(),
+        "ordered_prep_sources": gdn_prep.identity() if gdn_prep.profile_enabled() else {},
         "graph": (_quality_graph_receipt(worker, worker._mach_mxfp8_contract["quality_rows"])
                   if worker._mach_mxfp8_contract["mode"] == "quality"
                   else graph_policy.inspect_worker(worker)),
@@ -219,6 +220,9 @@ def write_receipt(worker, phase):
         "compile_choices": compile_choices.inspect(),
         "counter_scope": "Python execution and CUDA graph construction; graph replay is not counted",
     }
+    if gdn_prep.four_b_enabled():
+        from .two_b import ordered_reduction
+        receipt["initial_norm_ordering"] = ordered_reduction.receipt()
     target = _directory() / f"worker-{os.getpid()}.json"
     temporary = target.with_suffix(".tmp")
     temporary.write_text(json.dumps(receipt, indent=2, allow_nan=False) + "\n")
@@ -244,6 +248,10 @@ def install_worker_hook():
     from . import compile_choices, gdn, graph_policy
     gdn = select_gdn(gdn)
     compile_choices.install()
+    from vllm_mach.gdn_prep import four_b_enabled
+    if four_b_enabled():
+        from .two_b import ordered_reduction
+        ordered_reduction.install()
     if contract["mode"] == "production":
         graph_policy.install_dispatch()
 
@@ -270,6 +278,8 @@ def install_worker_hook():
         from . import norm_frontend
         norm_frontend.install()
         gdn.install_runtime(self)
+        from vllm_mach.gdn_prep import verify_binding
+        verify_binding()
         return result
 
     @wraps(original_load)
@@ -324,6 +334,8 @@ def install_worker_hook():
             compact = greedy_head.install(self)
             if os.environ.get("VLLM_MACH_HEAD_AUDIT") == "1":
                 greedy_head.install_audit(self, compact)
+        if four_b_enabled():
+            ordered_reduction.receipt(require_complete=True)
         write_receipt(self, "compiled")
         self._mach_mxfp8_ready = True
         return result

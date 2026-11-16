@@ -1,3 +1,3 @@
 """vLLM Mach runtime extensions."""
 
-__version__ = "0.2.0"
+from .stack import MACH_VERSION as __version__

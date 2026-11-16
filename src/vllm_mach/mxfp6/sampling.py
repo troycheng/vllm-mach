@@ -24,6 +24,9 @@ from vllm.logger import init_logger
 from vllm.model_executor.layers.vocab_parallel_embedding import VocabParallelEmbedding
 from vllm.platforms import current_platform
 from vllm.triton_utils import HAS_TRITON
+from vllm.v1.worker.gpu.sample.bad_words import BadWordsState
+from vllm.v1.worker.gpu.sample.logit_bias import LogitBiasState
+from vllm.v1.worker.gpu.sample.penalties import PenaltiesState
 
 from .argmax_triton import reduce_global_argmax_triton
 from .presence_penalty_triton import (
@@ -52,8 +55,22 @@ def sampling_params(sampler, batch):
         or sampler.trace_replay_state is not None
         or sampler.sampling_states.any_explicit_seed(indices)
         or sampler.get_logprobs_dims(indices) is not None
-        or np.any(sampler.logit_bias_state.use_logit_bias[indices])
-        or np.any(sampler.bad_words_state.num_bad_words.np[indices] != 0)
+    ):
+        return None
+    # 0.33 owns these states in pipeline order rather than sampler attributes.
+    # Custom/replaced processors need the full upstream logits pipeline, even
+    # when their request-specific behavior cannot be inferred from builtins.
+    processors = sampler.logits_processors
+    if (
+        len(processors) != 3
+        or tuple(type(processor) for processor in processors)
+        != (LogitBiasState, PenaltiesState, BadWordsState)
+        or processors[1] is not sampler.penalties_state
+    ):
+        return None
+    bias, _, bad_words = processors
+    if np.any(bias.use_logit_bias[indices]) or np.any(
+        bad_words.num_bad_words.np[indices] != 0
     ):
         return None
     thinking = sampler.thinking_budget_state

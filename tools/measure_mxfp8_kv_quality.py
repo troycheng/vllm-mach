@@ -55,7 +55,7 @@ def score(llm, samples, rows, budget):
             params.append(SamplingParams(temperature=0, max_tokens=len(seq),
                 ignore_eos=True, logprobs=1, detokenize=False,
                 extra_args={teacher_decode.KEY: {'id': sample['id'],
-                    'forced_ids': seq, 'pad_id': seq[-1]}}))
+                    'forced_ids': seq, 'pad_id': seq[-1], 'prompt_len': len(p) - 1}}))
         core = llm.llm_engine.engine_core
         core.call_utility('pause_scheduler', 'keep', False)
         try:

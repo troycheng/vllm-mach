@@ -1,51 +1,6 @@
 {
   "schema_version": 1,
   "profile": "qwen35-4b-block-fp8-v1",
-  "packages": {
-    "vllm": "0.29.0",
-    "torch": "2.13.0",
-    "triton": "3.7.1",
-    "flashinfer-python": "0.6.18",
-    "flashinfer-cubin": "0.6.18",
-    "nvidia-cutlass-dsl": "4.6.2",
-    "cuda-bindings": "13.3.1"
-  },
-  "base_image": "docker.m.daocloud.io/vllm/vllm-openai@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
-  "patch_sha256": "7bfccdca9130522bb0d0248f441e9900ff5176c24d6dfb985b473bb228ff0dce",
-  "files": {
-    "vllm/_custom_ops.py": {
-      "upstream_sha256": "d384c2684db4b605031266acd6f8c0235df773ba89c91852d697aed02108baa1",
-      "installed_sha256": "582bbf6ec1d9af1f3f9e6655838cedf1bf257cc0268e3075280e5bbc7d2ad858"
-    },
-    "vllm/compilation/passes/fusion/act_quant_fusion.py": {
-      "upstream_sha256": "1fa9c3ca4fb424685b7053c3dda89dda16c98dc5645d85f0f28dca58429792b3",
-      "installed_sha256": "b62bf52421e1dc37fecbc34c43238268ae360856ab252b97f815010e1f2574de"
-    },
-    "vllm/v1/attention/backends/flash_attn.py": {
-      "upstream_sha256": "5d9c676d8d03ec4e583183f9f42fac33c223768fdc3d6088dff97b5ac0cd4c3a",
-      "installed_sha256": "de5f7f44b80837474d3b7c9353440eef9bc56c197442cf3f01e532ec2155a0e8"
-    },
-    "vllm/model_executor/kernels/linear/scaled_mm/cutlass.py": {
-      "upstream_sha256": "d01b6fe09e3c3fa3991045f6ac7b469a58a550c56426ffd8900badbbe7e5355b",
-      "installed_sha256": "d01b6fe09e3c3fa3991045f6ac7b469a58a550c56426ffd8900badbbe7e5355b"
-    },
-    "vllm/model_executor/kernels/linear/scaled_mm/BlockScaledMMLinearKernel.py": {
-      "upstream_sha256": "26807d4a0a78dbbdcb5724c15905f3a39007924f858494cce9e88953e4cbbc76",
-      "installed_sha256": "26807d4a0a78dbbdcb5724c15905f3a39007924f858494cce9e88953e4cbbc76"
-    },
-    "vllm/model_executor/kernels/linear/scaled_mm/ScaledMMLinearKernel.py": {
-      "upstream_sha256": "d43d9aa7b3bff81f2ca9495c95995c7070c9e5bb2eed4531211c7f20d2e27c2f",
-      "installed_sha256": "d43d9aa7b3bff81f2ca9495c95995c7070c9e5bb2eed4531211c7f20d2e27c2f"
-    },
-    "vllm/model_executor/layers/quantization/input_quant_fp8.py": {
-      "upstream_sha256": "b16ee19f3f75affbaad6feb2099583932f8e4d5c51616b84d8aa5316a72b6ef2",
-      "installed_sha256": "b16ee19f3f75affbaad6feb2099583932f8e4d5c51616b84d8aa5316a72b6ef2"
-    },
-    "vllm/model_executor/layers/quantization/compressed_tensors/schemes/compressed_tensors_w8a8_fp8.py": {
-      "upstream_sha256": "7ff9cc219dde01271ffc7e46466cf757414f311b25bad558374d0e6c0c5a7ec4",
-      "installed_sha256": "7ff9cc219dde01271ffc7e46466cf757414f311b25bad558374d0e6c0c5a7ec4"
-    }
-  },
   "upstream_attribution": {
     "mixed_fa2": {
       "pr": "https://github.com/vllm-project/vllm/pull/58013",
@@ -60,5 +15,71 @@
       "scope": "Related warp scheduling; Mach uses its separate narrow scalar implementation"
     }
   },
-  "qualification": "See docs/fp8-profile.md and its linked release results."
+  "packages": {
+    "vllm": "0.33.0",
+    "torch": "2.14.0",
+    "triton": "3.8.0",
+    "flashinfer-python": "0.7.2.post1",
+    "flashinfer-cubin": "0.7.2.post1",
+    "nvidia-cutlass-dsl": "4.8.0",
+    "cuda-bindings": "13.4.4"
+  },
+  "upstream_commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+  "base_image": "vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3",
+  "patch_sha256": "b9a4262884d05a1ad2899d11d4fd530f7a97473f6e34e49c6a9976c32485ea1d",
+  "files": {
+    "vllm/_custom_ops.py": {
+      "upstream_sha256": "f7add10b87105ad21539625d7409c771b0228ea015f06a891468f3ba40bf6fa1",
+      "installed_sha256": "04f29d54983af8e741c257bbe6fbbfa63e88f0e23368af2f9cdd17b8d2865a13",
+      "changed": true
+    },
+    "vllm/compilation/passes/fusion/act_quant_fusion.py": {
+      "upstream_sha256": "0a64a72e973f8f36aee4e904b3799b8f83a2027ff884b989ad37129c86ad2daa",
+      "installed_sha256": "998d04f3b1197f5d0cbde908aa26e20686a7370169d7ed68022ab9996049863c",
+      "changed": true
+    },
+    "vllm/v1/attention/backends/flash_attn.py": {
+      "upstream_sha256": "7991393d7895994550028637790145d03d1fe28586cac03aa2946ba13afc99c5",
+      "installed_sha256": "e7a9209052764716dfdf8f21fa9cfd423a4bc42d12ac310f5c12a54462018fcc",
+      "changed": true
+    },
+    "vllm/model_executor/kernels/linear/scaled_mm/cutlass.py": {
+      "upstream_sha256": "23326e3a589b25421e6d4281e6eb489d9b82c34bc9e45d8d7574317c1f220316",
+      "installed_sha256": "23326e3a589b25421e6d4281e6eb489d9b82c34bc9e45d8d7574317c1f220316",
+      "changed": false
+    },
+    "vllm/model_executor/kernels/linear/scaled_mm/BlockScaledMMLinearKernel.py": {
+      "upstream_sha256": "7ddf3bcf7db9a14dbd2512298d456e6dc941bb3952af7456caebbcbc20fb9b98",
+      "installed_sha256": "7ddf3bcf7db9a14dbd2512298d456e6dc941bb3952af7456caebbcbc20fb9b98",
+      "changed": false
+    },
+    "vllm/model_executor/kernels/linear/scaled_mm/ScaledMMLinearKernel.py": {
+      "upstream_sha256": "49973cc4331818fa94671dceec1b67ad787b8107df64f40f78adac0a269348a5",
+      "installed_sha256": "49973cc4331818fa94671dceec1b67ad787b8107df64f40f78adac0a269348a5",
+      "changed": false
+    },
+    "vllm/model_executor/layers/quantization/input_quant_fp8.py": {
+      "upstream_sha256": "03209995cd10f5eb89e811de90aad2e746073d487f44ad18b137e189971fcd0a",
+      "installed_sha256": "03209995cd10f5eb89e811de90aad2e746073d487f44ad18b137e189971fcd0a",
+      "changed": false
+    },
+    "vllm/model_executor/layers/quantization/compressed_tensors/schemes/compressed_tensors_w8a8_fp8.py": {
+      "upstream_sha256": "c466cefbe403bd2b5562bc5d871881f7918f53c5425d0c0b776766bb74506e21",
+      "installed_sha256": "c466cefbe403bd2b5562bc5d871881f7918f53c5425d0c0b776766bb74506e21",
+      "changed": false
+    },
+    "vllm/v1/core/kv_cache_manager.py": {
+      "upstream_sha256": "39ae1c1564a034fd59736a92d962bfab5a0af03529e01349b765422dbd5a355d",
+      "installed_sha256": "27e10fd3e0c7ed5d6d725dc67c28a84fd4b08a79b5c10bce52e8024a8b8912a6",
+      "changed": true,
+      "purpose": "Return before prefix-cache commit bookkeeping when prefix caching is disabled; allocation, retirement, Mamba state, events and enabled-prefix behavior remain original."
+    }
+  },
+  "shared_patch": {
+    "name": "common-vllm033.patch",
+    "sha256": "4eb9798e102ef8bf068b98426a74e68e03935a16f5b663ee8a3a5ecc12d43d96",
+    "files": [
+      "vllm/v1/core/kv_cache_manager.py"
+    ]
+  }
 }

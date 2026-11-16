@@ -516,6 +516,12 @@ def gdn_forward(state, module, normalized, label):
         _encode_layer_name,
     )
 
+    from vllm.forward_context import get_forward_context
+
+    metadata = get_forward_context().attn_metadata
+    metadata = metadata.get(module.prefix) if isinstance(metadata, dict) else None
+    if metadata is not None and getattr(metadata, "num_prefills", 0) <= 0:
+        raise RuntimeError("Owner GDN requires prefill metadata; partial hidden rows cannot feed fused decode")
     qkvz = apply_mxfp8_weight(normalized.prepared, packed_weight(module.in_proj_qkvz))
     normalized.norm[state.other].zero_()
     ba0, ba1 = (
@@ -536,7 +542,10 @@ def gdn_forward(state, module, normalized, label):
         device=qkvz.device,
     )
     torch.ops.vllm.qwen_gdn_attention_core_fused_norm_packed(
-        qkvz, ba, core, layer_name=_encode_layer_name(module.prefix)
+        # This buffer contains only owned rows after the BA zeroing above.
+        # It is an ABI argument, not a complete decode input: prefill (or the
+        # metadata-free warmup) never reads it in the 0.33 GDN core.
+        qkvz, ba, core, normalized.norm, layer_name=_encode_layer_name(module.prefix)
     )
     output, _ = module.out_proj(core.flatten(-2))
     return output

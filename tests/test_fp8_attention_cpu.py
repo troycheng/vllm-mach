@@ -46,7 +46,8 @@ def metadata(lengths):
               seq_lens=torch.arange(len(lengths), dtype=torch.int32) + 4096,
               block_table=torch.arange(len(lengths) * 16, dtype=torch.int32)
               .reshape(len(lengths), 16),
-              use_cascade=False, common_prefix_len=0,
+              num_decode_reqs=0, num_prefill_reqs=0,
+              num_decode_tokens=0, num_prefill_tokens=0,
               scheduler_metadata=None, max_num_splits=0, causal=True,
               mm_prefix_query_range_tensor=None, rswa_prefix_lens=None,
               num_split_decodes=0, prefill_query_start_loc=None)
@@ -73,7 +74,7 @@ def test_metadata_rebases_measured_prefills_and_owns_each_build(attention, lengt
 
 
 @pytest.mark.parametrize("change", ["disabled", "tp", "pp", "dbo", "spec",
-                                    "dcp", "cascade", "scheduler", "mm", "rswa",
+                                    "dcp", "causal", "num_splits", "scheduler", "mm", "rswa",
                                     "unsorted", "pure_decode", "pure_prefill",
                                     "zero_length", "three_prefills", "offsets",
                                     "token_total", "qmax", "starts_identity"])
@@ -88,7 +89,8 @@ def test_metadata_unsupported_contract_keeps_single_call(attention, change):
     if change == "dbo": builder.vllm_config.parallel_config.enable_dbo = True
     if change == "spec": builder.vllm_config.speculative_config = object()
     if change == "dcp": builder.dcp_world_size = 2
-    if change == "cascade": meta.use_cascade = True
+    if change == "causal": meta.causal = False
+    if change == "num_splits": meta.max_num_splits = 2
     if change == "scheduler": meta.scheduler_metadata = torch.zeros(1)
     if change == "mm": meta.mm_prefix_query_range_tensor = torch.zeros(1)
     if change == "rswa": meta.rswa_prefix_lens = torch.zeros(1)
@@ -101,26 +103,62 @@ def test_metadata_unsupported_contract_keeps_single_call(attention, change):
     assert meta.prefill_query_start_loc is None
 
 
+def test_v033_split_uses_offsets_without_cascade_or_dcp_counts(attention):
+    builder, common, meta = metadata([1, 1, 5, 7])
+    assert not hasattr(meta, "use_cascade")
+    assert not hasattr(meta, "common_prefix_len")
+    attention.build_split_metadata(builder, common, meta)
+    assert meta.num_split_decodes == 2
+    assert meta.prefill_query_start_loc.tolist() == [0, 5, 12]
+    # Upstream leaves these counters zero for non-DCP attention. They are not
+    # our decode-prefix metadata and must stay untouched.
+    assert (meta.num_decode_reqs, meta.num_prefill_reqs,
+            meta.num_decode_tokens, meta.num_prefill_tokens) == (0, 0, 0, 0)
+
+
 class AttentionType(Enum):
     DECODER = 1
     ENCODER = 2
     ENCODER_ONLY = 3
 
 
+@pytest.mark.parametrize("unsupported", [None, "causal_tensor", "dcp", "capture"])
+def test_v033_forward_eligibility_without_removed_fields(attention, monkeypatch, unsupported):
+    builder, common, meta = metadata([1, 1, 5, 7])
+    attention.build_split_metadata(builder, common, meta)
+    query = torch.zeros((meta.num_actual_tokens, 16, 256), dtype=torch.bfloat16)
+    output = torch.empty_like(query)
+    cache = torch.zeros((2, 528, 4, 256), dtype=torch.bfloat16)
+    impl = NS(attn_type=AttentionType.DECODER, vllm_flash_attn_version=2,
+              dcp_world_size=1, alibi_slopes=None, sinks=None,
+              logits_soft_cap=0, sliding_window=None)
+    if unsupported == "causal_tensor": meta.causal = torch.tensor([True])
+    if unsupported == "dcp": impl.dcp_world_size = 2
+    if unsupported == "capture":
+        monkeypatch.setattr(torch.cuda, "is_current_stream_capturing", lambda: True)
+    assert attention.mixed_fa2_eligible(impl, meta, query, output, cache, cache) is (unsupported is None)
+
+
 def forward_from_source(attention, recorder):
     relative = "vllm/v1/attention/backends/flash_attn.py"
     override = os.environ.get("VLLM_MACH_FP8_FA2_SOURCE")
+    if not override and os.environ.get("MACH_TEST_RUNTIME_PROFILE") != "block-fp8":
+        pytest.skip("Select block-FP8 explicitly for installed normal-forward checks")
     if override:
         path = Path(override)
     else:
         try:
             path = Path(package_metadata.distribution("vllm").locate_file(relative))
         except package_metadata.PackageNotFoundError:
+            if os.environ.get("MACH_TEST_RUNTIME_PROFILE") == "block-fp8":
+                pytest.fail("Selected block-FP8 qualification requires the installed runtime")
             pytest.skip("Normal-forward checks require the installed block-FP8 runtime")
     manifest = json.loads((REPO / "src/vllm_mach/fp8/data/runtime_sources.json").read_text())
     identity = manifest["files"][relative]
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     if digest == identity["upstream_sha256"]:
+        if os.environ.get("MACH_TEST_RUNTIME_PROFILE") == "block-fp8":
+            pytest.fail("Selected block-FP8 profile is not installed")
         pytest.skip("Apply vllm-mach-fp8-install before normal-forward checks")
     assert digest == identity["installed_sha256"], "FA2 runtime source identity differs"
     tree = ast.parse(path.read_text())
@@ -136,7 +174,8 @@ def forward_from_source(attention, recorder):
                      is_quantized_kv_cache=lambda dtype: False,
                      _maybe_symmetrize_window=lambda window, causal: window,
                      mixed_fa2_eligible=attention.mixed_fa2_eligible,
-                     flash_attn_varlen_func=recorder)
+                     flash_attn_varlen_func=recorder,
+                     _FA4_DENSE_ATTENTION_KERNEL=recorder)
     exec(compile(module, str(path), "exec"), namespace)
     return namespace["forward"]
 

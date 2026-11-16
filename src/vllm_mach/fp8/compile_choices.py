@@ -14,11 +14,14 @@ import hashlib
 import inspect as pyinspect
 import json
 import os
+import re
 from pathlib import Path
 import threading
 
+from . import ordered_reduction
+
 from ..mxfp8.compile_choices import (
-    _config_fields, _json_hash, _make_config, _require_no_compile_pool,
+    _config_fields, _json_hash, _make_config, _require_no_compile_pool, _require_compiler_versions,
     canonical_function_sha256, descriptor, recipe_from_source,
 )
 
@@ -49,9 +52,12 @@ def load_policy(mode=None):
             raise RuntimeError("Block-FP8 compile mode changed after loading")
         if _POLICY is None:
             policy = json.loads((_DATA / f"compile_choices_{mode}.json").read_text())
-            if policy.get("format_version") != 1 or policy.get("profile_mode") != mode:
+            if policy.get("format_version") != 2 or policy.get("profile_mode") != mode:
                 raise RuntimeError("Invalid block-FP8 compile recipe mode/version")
+            if policy.get("binding_semantics") != "exact_boundary_and_selected_config":
+                raise RuntimeError("Invalid block-FP8 coverage semantics")
             ids = set()
+            semantics = {}
             for row in policy["bindings"]:
                 if row["id"] in ids:
                     raise RuntimeError("Duplicate block-FP8 compile binding")
@@ -59,6 +65,10 @@ def load_policy(mode=None):
                 for variant in row["variants"]:
                     if variant["semantic_key"] != _json_hash(variant["boundary"]):
                         raise RuntimeError("Invalid block-FP8 source descriptor")
+                    key = variant["semantic_key"]
+                    if key in semantics:
+                        raise RuntimeError("Duplicate or conflicting block-FP8 semantic group")
+                    semantics[key] = row["selected_fields"]
                 fields = row["selected_fields"]
                 if fields.get("found_by_coordesc") is not False or not all(
                     type(value) is int and value > 0 for key, value in fields.items()
@@ -76,19 +86,29 @@ def select_recipe(source, size_hints, triton_meta, *, kernel_alias, kernel_site=
     global _UNKNOWN
     policy = load_policy()
     function_sha = canonical_function_sha256(source)
-    related = [row for row in policy["bindings"] if
-               row["kernel_alias"] == kernel_alias or row["kernel_site"] == kernel_site
+    boundary = descriptor(source, size_hints, triton_meta)
+    key = _json_hash(boundary)
+    # Generated suffixes are provenance, not part of a numerical contract.
+    # Exact descriptors include the complete arithmetic AST, shape, dtypes,
+    # architecture, constants and floating/compiler flags.
+    exact = [(row, variant) for row in policy["bindings"] for variant in row["variants"]
+             if variant["semantic_key"] == _json_hash({**boundary, "function_sha256":
+                 ordered_reduction.original_body(function_sha, row["selected_fields"])})]
+    rms_family = any(isinstance(name, str) and re.fullmatch(
+        r"triton_red_fused__to_copy_add_fused_add_rms_norm(?:_per_token_group_fp8_quant_permute)?_\d+", name)
+        for name in (kernel_alias, kernel_site))
+    related = [row for row in policy["bindings"] if rms_family
+               or kernel_alias in row["kernel_aliases"] or kernel_site in row["kernel_sites"]
                or any(v["boundary"]["function_sha256"] == function_sha
+                      or {k: value for k, value in v["boundary"].items()
+                          if k not in ("function_sha256", "compiler_flags")} ==
+                         {k: value for k, value in boundary.items()
+                          if k not in ("function_sha256", "compiler_flags")}
                       for v in row["variants"])]
-    if not related:
+    if not related and not exact:
         with _LOCK:
             _UNKNOWN += 1
         return None
-    boundary = descriptor(source, size_hints, triton_meta)
-    key = _json_hash(boundary)
-    exact = [(row, variant) for row in related for variant in row["variants"]
-             if variant["semantic_key"] == key
-             and row["kernel_alias"] == kernel_alias and row["kernel_site"] == kernel_site]
     if len(exact) != 1:
         failure = {"kernel_alias": kernel_alias, "kernel_site": kernel_site,
                    "semantic_key": key, "expected_bindings": [r["id"] for r in related],
@@ -101,7 +121,9 @@ def select_recipe(source, size_hints, triton_meta, *, kernel_alias, kernel_site=
     row, variant = exact[0]
     with _LOCK:
         _HITS[row["id"]] += 1
-    return {**row, "matched_variant": variant["name"], "matched_semantic_key": key}
+    return {**row, "matched_variant": variant["name"], "matched_semantic_key": key,
+            "observed_alias": kernel_alias, "observed_site": kernel_site,
+            "observed_function_sha256": function_sha}
 
 
 def install(mode=None):
@@ -117,10 +139,10 @@ def install(mode=None):
     import torch
     from torch._inductor import async_compile, config
     from torch._inductor.runtime import triton_heuristics
+    import triton
     from triton import Config
 
-    if torch.__version__ != policy["torch_version"]:
-        raise RuntimeError(f"Block-FP8 compile recipe requires {policy['torch_version']}")
+    _require_compiler_versions(policy, torch.__version__, triton.__version__)
     with _LOCK:
         _require_no_compile_pool(async_compile)
         config.compile_threads = 1
@@ -145,6 +167,8 @@ def install(mode=None):
                                 kernel_site=imeta.get("kernel_name"))
             if row is None:
                 return original(*bound.args, **bound.kwargs)
+            boundary = descriptor(fn.src, bound.arguments["size_hints"], bound.arguments["triton_meta"])
+            bound.arguments["fn"] = ordered_reduction.prepare(fn, row, boundary)
             selected = _make_config(row, Config)
             bound.arguments["configs"] = [selected]
             bound.arguments["inductor_meta"] = {
@@ -154,6 +178,9 @@ def install(mode=None):
             result = original(*bound.args, **bound.kwargs)
             # Torch's cache lookup may replace the incoming configs in init.
             self.configs = [selected]
+            self._mach_fp8_ordered_reduction = (canonical_function_sha256(self.fn.src) !=
+                ordered_reduction.original_body(canonical_function_sha256(self.fn.src), row["selected_fields"]))
+            self._mach_fp8_python_runs = 0
             with _LOCK:
                 _AUTOTUNERS.append((self, row))
             return result
@@ -171,8 +198,17 @@ def _actual_choices():
         if configs is None:
             configs = [r.config for r in getattr(tuner, "compile_results", [])]
             state = "compiled"
-        choices.append({"binding": row["id"], "variant": row["matched_variant"],
+        actual_body = canonical_function_sha256(tuner.fn.src)
+        original_body = ordered_reduction.original_body(actual_body, row["selected_fields"])
+        if actual_body != original_body:
+            ordered_reduction.verify_helpers(tuner.fn)
+        choices.append({"binding": row["id"],
+                        "actual_function_sha256": actual_body,
+                        "ordered_reduction": actual_body != original_body,
+                        "python_run_calls": getattr(tuner, "_mach_fp8_python_runs", 0), "variant": row["matched_variant"],
                         "semantic_key": row["matched_semantic_key"], "state": state,
+                        "observed_alias": row["observed_alias"],
+                        "observed_site": row["observed_site"],
                         "selected_config": row["selected_fields"],
                         "actual_configs": [_config_fields(c) for c in configs]})
     return choices
@@ -193,7 +229,7 @@ def inspect(worker=None):
                 "missing_bindings": [r["id"] for r in _POLICY["bindings"] if not _HITS[r["id"]]],
                 "unknown_constructions": _UNKNOWN, "source_mismatches": list(_MISMATCHES),
                 "actual_choices": _actual_choices(),
-                "coverage_semantics": "autotuner construction and launch configs; excludes GPU execution"}
+                "coverage_semantics": "exact semantic/config group construction; excludes GPU execution and historical alias counts"}
 
 
 def verify_coverage(worker=None, *, require_complete=True):

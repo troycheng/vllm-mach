@@ -12,11 +12,14 @@ import os
 from pathlib import Path
 
 from vllm_mach.mxfp8.ssm import selected_dtype
+from vllm_mach.mxfp8.install import load_manifest
 
 ROOT = Path(__file__).resolve().parent
-GDN_SHA = "d0e0bda56342d12a0891fa348efd00ffc475c8153f4f80becb501d96bbfd1e60"
-RUNNER_SHA = "7e6de891206992f6018bb2b26a2c2fff5f3eabe3de1fc9066f5eb8f7e62fb52d"
-FLA_SHA = "fe6f1311014809040497aa0a623e7fa97f4b3457cdc7ee1f1f8aed21f326f755"
+# The reviewed installed sources are owned by the packaged overlay manifest.
+_SOURCE_FILES = load_manifest()["files"]
+GDN_SHA = _SOURCE_FILES["vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py"]["installed_sha256"]
+RUNNER_SHA = _SOURCE_FILES["vllm/v1/worker/gpu/model_runner.py"]["installed_sha256"]
+FLA_SHA = _SOURCE_FILES["vllm/third_party/flash_linear_attention/ops/fused_recurrent.py"]["installed_sha256"]
 W = 4
 ROWS = (1,2,4,8,16)+tuple(range(24,129,8))
 _ELIGIBLE_ROWS = ()
@@ -364,6 +367,47 @@ def _reset_allocated(ids,kind):
     _ALLOCATION_RESETS[kind] += 1
     _ALLOCATION_RESETS["ids"] += len(unique)
 
+_PAGEABLE_RESET = _reset_allocated
+
+def _reset_allocated_pinned(ids,kind):
+    if not ids or not _READY: return
+    import torch
+    from . import metadata_reset as kernels
+    unique = sorted(set(ids))
+    # CPU scheduler knows these newly assigned IDs. No device age read or
+    # capture-time host slot value is involved.
+    ids_by_device = {}
+    for key,scratch in _VIEW_SCRATCH.items():
+        pages = key[1][0]
+        if unique[-1] >= pages:
+            raise RuntimeError(f"allocated block outside GDN state pool: {unique[-1]}/{pages}")
+        dev = torch.device(key[3])
+        if key[3] not in ids_by_device:
+            host_ids = torch.tensor(unique,dtype=torch.int32,device="cpu",pin_memory=True)
+            ids_by_device[key[3]] = host_ids.to(dev,non_blocking=True)
+        device_ids = ids_by_device[key[3]]
+        kernels.reset_metadata(device_ids,scratch,pages)
+    _ALLOCATION_RESETS[kind] += 1
+    _ALLOCATION_RESETS["ids"] += len(unique)
+
+def _install_reset_policy(worker):
+    """Choose the upload policy once; leave every non-selected hot path intact."""
+    global _reset_allocated
+    if _reset_allocated is not _PAGEABLE_RESET and _reset_allocated is not _reset_allocated_pinned:
+        raise RuntimeError("GDN reset function is owned by another hook")
+    contract = getattr(worker, "_mach_mxfp8_contract", {})
+    selected = (os.environ.get("VLLM_MACH_PROFILE") == "qwen35-4b-mxfp8-champion-v1"
+                and contract.get("mode") == "production"
+                and contract.get("ssm_dtype") == "bfloat16"
+                and contract.get("ordered_gdn") is True
+                and contract.get("kv_dtype") == "fp8_e4m3"
+                and contract.get("compact_greedy_head") is True
+                and worker.vllm_config.cache_config.mamba_ssm_cache_dtype == "bfloat16"
+                and os.environ.get("VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH") == "0")
+    _reset_allocated = _reset_allocated_pinned if selected else _PAGEABLE_RESET
+
+
+
 def _install_runner_lifecycle():
     from vllm.v1.worker.gpu.model_runner import GPUModelRunner
     if getattr(GPUModelRunner,"_mach_mxfp8_ordered_lifecycle",False): return
@@ -428,6 +472,8 @@ def inspect_worker(worker):
         "fallback_dispatch":{f"{p}|m{m}":n for (p,m),n in _FALLBACK.items()},
         "profile_dispatch":{f"{p}|m{m}":n for (p,m),n in _PROFILE.items()},
         "new_block_metadata_resets":dict(_ALLOCATION_RESETS),
+        "reset_id_upload":("fresh_pinned_nonblocking" if _reset_allocated is _reset_allocated_pinned
+                           else "pageable" if _reset_allocated is _PAGEABLE_RESET else "foreign"),
         "scratch_bytes":sum(sum(getattr(s,n).numel()*getattr(s,n).element_size()
                   for n in ("pending_k","pending_d","coeff","prefix","age"))
                   for s in _VIEW_SCRATCH.values()),
@@ -489,6 +535,7 @@ def install_runtime(worker):
     _claim_worker(worker)
     _check_config(worker)
     _RUN_MODE, _QUALITY_ROW, _ = _mode_contract()
+    _install_reset_policy(worker)
     _register_gdn()
     _install_runner_lifecycle()
 

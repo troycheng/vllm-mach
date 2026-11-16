@@ -18,16 +18,7 @@ docker buildx build --load \
 
 The Dockerfile pins its vLLM base image by digest, compiles the two native extension wheels for SM120, installs Mach without replacing the base packages, and applies the block-FP8 source profile. Native build parallelism defaults to two jobs. The installer records its result at `/opt/mach/runtime-source-install.json`.
 
-The package contract is checked at startup:
-
-| Package | Required version |
-|---|---|
-| vLLM | 0.29.0 |
-| Torch | 2.13.0; the pinned image provides the CUDA 13.0 build |
-| Triton | 3.7.1 |
-| FlashInfer Python and cubin packages | 0.6.18 each |
-| CUTLASS Python DSL | 4.6.2 |
-| CUDA Python bindings | 13.3.1 |
+Mach 0.3 targets vLLM 0.33.0. Startup checks the shared [runtime versions](installation.md#runtime-versions).
 
 The native build uses NVCC 13.0.88 and FlashInfer's pinned CUTLASS headers. The [n64 wheel](../native/block_fp8/README.md) records compiler, source and header identities in `build_metadata.json`. The [SiLU wheel](../native/fp8_activation/README.md) is independent of CUTLASS and MXFP6. Both are built before serving, rather than compiled by an individual request.
 

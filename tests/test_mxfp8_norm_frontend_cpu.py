@@ -37,7 +37,8 @@ class NormFrontendTests(unittest.TestCase):
     def test_preserves_old_fallback_ast_and_real_2d_call_boundary(self):
         # The replacement is exactly the existing non-CUDA fallback plus the
         # common output projection, with no new norm or floating arithmetic.
-        original = ast.parse(textwrap.dedent(inspect.getsource(self.original))).body[0]
+        legacy = self.shared.LegacyQwenGatedDeltaNetAttention._output_projection
+        original = ast.parse(textwrap.dedent(inspect.getsource(legacy))).body[0]
         expected = ast.Module(body=original.body[1].orelse + original.body[2:], type_ignores=[])
         self.assertEqual(self.frontend._method_body(self.frontend._output_projection),
                          ast.dump(expected, include_attributes=False))

@@ -19,6 +19,8 @@ import inspect as pyinspect
 import json
 import os
 from pathlib import Path
+import re
+import sys
 import threading
 import textwrap
 import weakref
@@ -34,6 +36,7 @@ _BINDING_HITS: Counter = Counter()
 _SEMANTIC_HITS: Counter = Counter()
 _UNKNOWN_HITS: Counter = Counter()
 _MISMATCHES: list[dict[str, Any]] = []
+_ORDERED_HITS: Counter = Counter()
 _AUTOTUNERS: list[tuple[Any, dict[str, Any]]] = []
 _POLICY: dict[str, Any] | None = None
 
@@ -211,15 +214,23 @@ def load_policy() -> dict:
         policy = json.loads(path.read_text())
         if mode != "production" and policy.get("profile_mode") != mode:
             raise RuntimeError("Quality compile-choice policy mode differs")
-        expected_count = 22 if mode == "quality64" else 23
-        if policy.get("format_version") != 1 or len(policy.get("bindings", [])) != expected_count:
+        version = policy.get("format_version")
+        expected_count = ({"production": 16, "quality32": 19, "quality64": 16}[mode]
+                          if version == 2 else 22 if mode == "quality64" else 23)
+        if (version not in (1, 2) or len(policy.get("bindings", [])) != expected_count
+                or (version == 2 and policy.get("binding_count") != expected_count)):
             raise RuntimeError("Invalid champion compile-choice policy format/count")
         seen = set()
         for row in policy["bindings"]:
             if row["id"] in seen or row["semantic_key"] != _json_hash(row["boundary"]):
                 raise RuntimeError("Invalid champion compile-choice identity")
             seen.add(row["id"])
+            if version == 2 and row.get("construction_kind") not in ("template", "generated"):
+                raise RuntimeError("Invalid champion construction discriminator")
             fields = row["selected_fields"]
+            if "ordered_reduction" in row:
+                from vllm_mach.mxfp8 import ordered_reduction
+                ordered_reduction.validate(row["ordered_reduction"], row["boundary"], fields)
             if not all(isinstance(value, int) and not isinstance(value, bool) and value > 0
                        for name, value in fields.items() if name != "found_by_coordesc"):
                 raise RuntimeError("Invalid champion compile-choice launch fields")
@@ -231,8 +242,135 @@ def load_policy() -> dict:
     return _POLICY
 
 
+def _construction_kind(kernel_alias: str, kernel_site: str | None) -> str | None:
+    # Inductor loads a placeholder module while generating kernels, then the
+    # named module in compile-time autotuning and the executable wrapper. The
+    # numeric suffix is local codegen order, not a stable call-site identity.
+    if kernel_alias == "triton_" and kernel_site == "Placeholder.DESCRIPTIVE_NAME":
+        return "template"
+    if kernel_alias == kernel_site and re.fullmatch(r"triton_[A-Za-z0-9_]+_[0-9]+", kernel_alias):
+        return "generated"
+    return None
+
+
+def _code_semantic_keys(constants) -> set[str]:
+    """Read embedded kernel descriptors from a live generated code unit."""
+    keys = set()
+    for source in constants:
+        if not isinstance(source, str) or "@triton.jit" not in source or "triton_meta" not in source:
+            continue
+        try:
+            functions = [node for node in ast.parse(source).body
+                         if isinstance(node, ast.FunctionDef) and node.name.startswith("triton_")]
+            for fn in functions:
+                keys.add(recipe_from_source(source, fn.name, {}, fn.name)["semantic_key"])
+        except (ValueError, TypeError, KeyError, SyntaxError, StopIteration):
+            continue
+    return keys
+
+
+def _enclosing_kernel_context(semantic_key: str, anchors: set[str]) -> set[str]:
+    # Both exec(autotuning_code) and executable wrapper imports expose the
+    # actual embedded sources in their module code object's constants. Read
+    # the nearest enclosing unit with this kernel and an explicit anchor;
+    # no cache path, former run, generated numeric suffix or graph size is used.
+    frame = sys._getframe(1)
+    try:
+        while frame is not None:
+            if frame.f_code.co_name == "<module>":
+                keys = _code_semantic_keys(frame.f_code.co_consts)
+                if semantic_key in keys and keys & anchors:
+                    return keys
+            frame = frame.f_back
+    finally:
+        del frame
+    return set()
+
+
+def _source_with_context(source: str, kernel_name: str, anchor: str) -> str:
+    """Separate Python autotuner cache identity; preserve all numeric metadata."""
+    tree = ast.parse(source)
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == kernel_name)
+    decorator = next(n for n in fn.decorator_list if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
+                     and n.func.value.id == "triton_heuristics")
+    meta = next(k.value for k in decorator.keywords if k.arg == "inductor_meta")
+    if not isinstance(meta, ast.Dict) or any(isinstance(k, ast.Constant) and k.value == "mach_compile_context" for k in meta.keys):
+        raise CompileChoiceMismatch("Missing or already tagged Inductor compile context")
+    lines = source.splitlines(keepends=True)
+    offset = sum(len(line) for line in lines[:meta.lineno - 1]) + meta.col_offset
+    if source[offset] != "{":
+        raise CompileChoiceMismatch("Inductor metadata source location changed")
+    offset += 1
+    tagged = source[:offset] + "'mach_compile_context': " + repr(anchor) + ", " + source[offset:]
+    before = recipe_from_source(source, kernel_name, {}, kernel_name)["boundary"]
+    after = recipe_from_source(tagged, kernel_name, {}, kernel_name)["boundary"]
+    if before != after:
+        raise CompileChoiceMismatch("Compile context tag changed numeric kernel metadata")
+    return tagged
+
+
+def _ordered_spec(row):
+    spec = row.get("ordered_reduction")
+    if spec is not None:
+        from vllm_mach.mxfp8 import ordered_reduction
+        if ordered_reduction.active(spec):
+            return ordered_reduction.effective_spec(spec, row["boundary"], row["selected_fields"])
+    return None
+
+
+def _runtime_bindings(policy, *, include_original=False):
+    rows = []
+    for row in policy["bindings"]:
+        spec = _ordered_spec(row)
+        if spec is None or include_original:
+            rows.append(row)
+        if spec is not None:
+            boundary = {**row["boundary"], "function_sha256": spec["function_sha256"]}
+            rows.append({**row, "boundary": boundary, "semantic_key": _json_hash(boundary),
+                         "ordered_original_semantic_key": row["semantic_key"], "ordered_reduction": spec})
+    return rows
+
+
+def _contextual_triton(original):
+    @wraps(original)
+    def compile_triton(self, kernel_name, source_code, *args, **kwargs):
+        try:
+            recipe = recipe_from_source(source_code, kernel_name, {}, kernel_name)
+        except (ValueError, TypeError, KeyError, SyntaxError, StopIteration):
+            return original(self, kernel_name, source_code, *args, **kwargs)
+        kind = _construction_kind(kernel_name, recipe["kernel_site"])
+        group = [row for row in load_policy()["bindings"]
+                 if row["semantic_key"] == recipe["semantic_key"]
+                 and row.get("construction_kind") == kind]
+        anchors = {row["context_semantic_key"] for row in group if "context_semantic_key" in row}
+        if anchors:
+            context = _enclosing_kernel_context(recipe["semantic_key"], anchors) & anchors
+            if len(context) != 1:
+                raise CompileChoiceMismatch("Ambiguous or missing generated kernel compilation context")
+            anchor = next(iter(context))
+            group = [row for row in group if row.get("context_semantic_key") == anchor]
+            source_code = _source_with_context(source_code, kernel_name, anchor)
+        ordered = [row for row in group if _ordered_spec(row) is not None]
+        if ordered:
+            if len(ordered) != 1:
+                raise CompileChoiceMismatch("Ambiguous ordered norm source binding")
+            row = ordered[0]
+            from vllm_mach.mxfp8 import ordered_reduction
+            spec = _ordered_spec(row)
+            ordered_reduction.validate(spec, recipe["boundary"], row["selected_fields"])
+            source_code = ordered_reduction.transform(source_code, kernel_name, spec)
+            actual = recipe_from_source(source_code, kernel_name, {}, kernel_name)["boundary"]
+            expected = {**row["boundary"], "function_sha256": spec["function_sha256"]}
+            if actual != expected:
+                raise CompileChoiceMismatch("Ordered norm transformed source differs")
+        return original(self, kernel_name, source_code, *args, **kwargs)
+    return compile_triton
+
+
 def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
-                  kernel_site: str | None = None) -> dict | None:
+                  kernel_site: str | None = None, kernel_context: set[str] | None = None,
+                  require_ordered: bool = False) -> dict | None:
     """Select a fixed recipe; leave unrelated kernels on native heuristics."""
     policy = load_policy()
     # Completely unrelated generated kernels retain native behavior, even if
@@ -244,7 +382,13 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
     device = triton_meta.get("device")
     arch = ({field: device.get(field) for field in ("type", "cc")} if isinstance(device, dict)
             else {field: getattr(device, field, None) for field in ("type", "cc")})
-    candidates = [row for row in policy["bindings"]
+    bindings = _runtime_bindings(policy, include_original=not require_ordered)
+    if require_ordered and any(_ordered_spec(row) is not None and row["boundary"]["function_sha256"] == function_sha
+                               and (policy["format_version"] != 2 or row["construction_kind"] == _construction_kind(kernel_alias, kernel_site))
+                               and row["boundary"]["size_hints"] == shape and row["boundary"]["architecture"] == arch
+                               for row in policy["bindings"]):
+        raise CompileChoiceMismatch("Ordered norm source bypassed the finite compiler transform")
+    candidates = [row for row in bindings
                   if row["boundary"]["size_hints"] == shape
                   and row["boundary"]["architecture"] == arch
                   and (row["kernel_alias"] == kernel_alias
@@ -256,7 +400,7 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
         return None
     boundary = descriptor(source, size_hints, triton_meta)
     key = _json_hash(boundary)
-    group = [row for row in policy["bindings"] if row["semantic_key"] == key]
+    group = [row for row in bindings if row["semantic_key"] == key]
     if not group:
         changed = sorted({field for row in candidates for field in boundary
                           if row["boundary"][field] != boundary[field]})
@@ -266,12 +410,24 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
         with _LOCK:
             _MISMATCHES.append(mismatch)
         raise CompileChoiceMismatch(f"Champion Triton boundary changed: {mismatch}")
+    construction = None
+    if policy["format_version"] == 2:
+        construction = _construction_kind(kernel_alias, kernel_site)
+        group = [row for row in group if row["construction_kind"] == construction]
     choices = {_json_hash(row["selected_fields"]) for row in group}
-    exact = [row for row in group if row["kernel_alias"] == kernel_alias
-             and (kernel_site is None or row["kernel_site"] == kernel_site)]
-    if len(choices) > 1 and len(exact) != 1:
+    anchors = {row["context_semantic_key"] for row in group if "context_semantic_key" in row}
+    if anchors:
+        context = (_enclosing_kernel_context(key, anchors) if kernel_context is None else kernel_context)
+        exact = [row for row in group if row.get("context_semantic_key") in context]
+    else:
+        exact = [row for row in group if row["kernel_alias"] == kernel_alias
+                 and (kernel_site is None or row["kernel_site"] == kernel_site)]
+    if (not group or (len(choices) > 1 and len(exact) != 1)
+            or (anchors and any("ordered_original_semantic_key" in row for row in group) and len(exact) != 1)):
         mismatch = {"kernel_alias": kernel_alias, "kernel_site": kernel_site,
-                    "semantic_key": key, "reason": "ambiguous site discriminator",
+                    "semantic_key": key, "construction_kind": construction,
+                    "context_anchors": sorted(anchors),
+                    "reason": "ambiguous site discriminator",
                     "expected_bindings": [row["id"] for row in group]}
         with _LOCK:
             _MISMATCHES.append(mismatch)
@@ -280,7 +436,7 @@ def select_recipe(source: str, size_hints, triton_meta, *, kernel_alias: str,
     with _LOCK:
         _SEMANTIC_HITS[key] += 1
         # Equivalent aliases may safely use one choice, but do not invent
-        # evidence that all 23 historical bindings were constructed.
+        # coverage for other required construction bindings.
         if exact or len(group) == 1:
             _BINDING_HITS[row["id"]] += 1
     return row
@@ -308,6 +464,13 @@ def _require_no_compile_pool(async_compile) -> None:
         raise RuntimeError("Champion compile policy must install before a compile process pool exists")
 
 
+def _require_compiler_versions(policy, torch_version: str, triton_version: str) -> None:
+    if torch_version != policy["torch_version"] or triton_version != policy["triton_version"]:
+        raise RuntimeError(
+            f"Compile policy requires Torch {policy['torch_version']} and Triton "
+            f"{policy['triton_version']}; found {torch_version} and {triton_version}")
+
+
 def install() -> bool:
     """Install in parent/GPU worker, before compilation; forbid subprocess pools."""
     global _INSTALLED, _ORIGINAL_INIT
@@ -317,11 +480,11 @@ def install() -> bool:
     config.compile_threads = 1
     from torch._inductor import async_compile
     from torch._inductor.runtime import triton_heuristics
+    import triton
     from triton import Config
 
     policy = load_policy()
-    if not torch.__version__.split("+", 1)[0].startswith(policy["torch_version_prefix"]):
-        raise RuntimeError(f"Champion compile policy requires {policy['torch_version_prefix']}; found {torch.__version__}")
+    _require_compiler_versions(policy, torch.__version__, triton.__version__)
     with _LOCK:
         _require_no_compile_pool(async_compile)
         os.environ["TORCHINDUCTOR_COMPILE_THREADS"] = "1"
@@ -331,7 +494,8 @@ def install() -> bool:
         cls = triton_heuristics.CachingAutotuner
         original = cls.__init__
         # Inspect runtime source before applying a narrow compatibility hook.
-        # No code generation, reduction body, or PyTorch source file is edited.
+        # Ordered norms are explicit finite policy variants; Torch source and
+        # compiler flags remain unchanged.
         actual = canonical_function_sha256(pyinspect.getsource(original))
         if actual != policy["autotuner_init_sha256"]:
             raise RuntimeError("Torch CachingAutotuner constructor differs from the qualified policy ABI")
@@ -348,9 +512,15 @@ def install() -> bool:
             imeta = bound.arguments.get("inductor_meta") or {}
             row = select_recipe(fn.src, bound.arguments["size_hints"],
                                 bound.arguments["triton_meta"],
-                                kernel_alias=fn.__name__, kernel_site=imeta.get("kernel_name"))
+                                kernel_alias=fn.__name__, kernel_site=imeta.get("kernel_name"),
+                                kernel_context=({imeta["mach_compile_context"]}
+                                                if "mach_compile_context" in imeta else None),
+                                require_ordered=True)
             if row is None:
                 return original(*bound.args, **bound.kwargs)
+            if "ordered_original_semantic_key" in row:
+                from vllm_mach.mxfp8 import ordered_reduction
+                ordered_reduction.validate_globals(fn, canonical_function_sha256, row["ordered_reduction"])
             selected = _make_config(row, Config)
             bound.arguments["configs"] = [selected]
             # A cold build must not mutate the reviewed launch after choosing
@@ -360,6 +530,9 @@ def install() -> bool:
                 "coordinate_descent_tuning": False, "incremental_autotune": False,
             }
             result = original(*bound.args, **bound.kwargs)
+            if "ordered_original_semantic_key" in row:
+                with _LOCK:
+                    _ORDERED_HITS[row["id"]] += 1
             # Torch's own name/hash lookup can overwrite configs in __init__.
             # The full source/meta/site match above takes final precedence.
             self.configs = [selected]
@@ -368,6 +541,8 @@ def install() -> bool:
             return result
 
         cls.__init__ = initialize
+        if policy["format_version"] == 2:
+            async_compile.AsyncCompile.triton = _contextual_triton(async_compile.AsyncCompile.triton)
         _ORIGINAL_INIT = original
         _INSTALLED = True
         return True
@@ -388,6 +563,8 @@ def inspect(worker=None) -> dict[str, Any]:
                 "missing_bindings": [row["id"] for row in policy["bindings"]
                                      if not _BINDING_HITS[row["id"]]],
                 "semantic_hits": dict(_SEMANTIC_HITS),
+                "ordered_reduction_hits": dict(_ORDERED_HITS),
+                "ordered_reduction_bindings": [row["id"] for row in policy["bindings"] if _ordered_spec(row) is not None],
                 "unknown_semantic_key_count": len(_UNKNOWN_HITS),
                 "unknown_constructions": sum(_UNKNOWN_HITS.values()),
                 "source_mismatches": list(_MISMATCHES),
@@ -404,6 +581,9 @@ def verify_coverage(worker=None, *, require_complete=True) -> dict[str, Any]:
     receipt = inspect(worker)
     if not _INSTALLED or (require_complete and receipt["missing_bindings"]) or receipt["source_mismatches"]:
         raise CompileChoiceMismatch(f"Champion compile-choice coverage incomplete: {receipt}")
+    expected_ordered = set(receipt["ordered_reduction_bindings"])
+    if require_complete and expected_ordered - set(receipt["ordered_reduction_hits"]):
+        raise CompileChoiceMismatch("Ordered norm compilation coverage incomplete")
     from torch._inductor import async_compile, config
 
     if config.compile_threads != 1 or os.environ.get("TORCHINDUCTOR_COMPILE_THREADS") != "1":

@@ -28,14 +28,18 @@ def install(worker, native=False):
     originals = (Sampler.add_request, Sampler.sample, Sampler.__call__)
     Sampler._k4o_teacher_originals = originals
 
-    def add_request(self, req_idx, prompt_len, sampling_params):
-        originals[0](self, req_idx, prompt_len, sampling_params)
+    def add_request(self, req_idx, sampling_params):
+        originals[0](self, req_idx, sampling_params)
         if not hasattr(self, "_k4o_teacher"):
             self._k4o_teacher = {}
             self._k4o_observations = []
         self._k4o_teacher.pop(req_idx, None)
         value = (sampling_params.extra_args or {}).get(KEY)
         if value is not None:
+            # v0.33 no longer passes prompt_len to Sampler.add_request.
+            # The diagnostic caller records the exact submitted prompt length;
+            # seq_lens_upper_bound_np is a changing decode bound, not that value.
+            prompt_len = value["prompt_len"]
             assert self.logprobs_mode == "raw_logprobs"
             assert sampling_params.temperature == 0.0 and sampling_params.ignore_eos
             assert sampling_params.logprobs == 1
@@ -54,8 +58,8 @@ def install(worker, native=False):
         pos,
         input_ids,
         expanded_local_pos,
-        *,
-        return_logprobs,
+        seq_lens_upper_bound_np,
+        return_logprobs=False,
     ):
         physical_rows = state["physical_rows"]
         table = getattr(self, "_k4o_teacher", {})
@@ -70,6 +74,7 @@ def install(worker, native=False):
                 pos,
                 input_ids,
                 expanded_local_pos,
+                seq_lens_upper_bound_np,
                 return_logprobs=return_logprobs,
             )
         assert (

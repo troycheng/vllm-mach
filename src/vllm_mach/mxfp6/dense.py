@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-"""Native SM120 Dense MXFP6 backend for vLLM 0.29.0.
+"""Native SM120 Dense MXFP6 backend for vLLM 0.33.0.
 
 This is framework glue only.  The CUDA operators and checkpoint format remain
 owned by the optional ``mxfp6-sm120`` package.  The implementation follows the

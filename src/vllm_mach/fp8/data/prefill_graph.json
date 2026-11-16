@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "scope": "Qualified4BBlock/FP32SSM/production/full4features/exact2048; original compiled call+kernel AST identities; all returns fresh and all writes local activation",
+  "bank_bytes": 77578240,
+  "upstream_sources": {
+    "vllm/compilation/cuda_graph.py": "6e34824d2e62cd3bbd2eaee615ebfae3db542ce2d6be9b14d1b012398087fe2e",
+    "vllm/compilation/piecewise_backend.py": "188d926208a147c2786a496a10577edd832576455c36130e7f1ba375634e0806",
+    "vllm/compilation/backends.py": "5b860bbb94374d83bdc9a4a050d33faaf44384b9c44193741b0e75009c1145c1"
+  },
+  "families": {
+    "ea7fb4f5b7ed6eae73d7ecdcc353708b16b1e6dfe8073958252e68db05bf7d79": {
+      "triton_per_fused__to_copy_add_mean_mul_per_token_group_fp8_quant_permute_pow_rsqrt_silu_view_0": "8c75bccda484d95cf4e3558dc8aab4c8bba46793d5aeb1229991649265bc52b5",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "4ebb7ddcd957497595d8b3ab242cc36a18cbda29d3bf7b23e8554caf76e83ac7",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_2": "21b0689674e514f95d56068f9b1cef01bdc4b178cf22188d194110208c286000",
+      "_fused_qk_rmsnorm_rope_gate_kernel_0": "7c501147e7ce639d9759c932b124216622273e3ab543ad4f94971212fa84a1b4"
+    },
+    "c46fee2f739d4d3f3b36d32cbdd257459923493a08fcd556caafa1ea941b4554": {
+      "triton_poi_fused_mul_per_token_group_fp8_quant_permute_sigmoid_view_0": "e8c00fa08e99e8b1975475a2240936f474af002be9b594393fcb6f19ba9efe42",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "4ebb7ddcd957497595d8b3ab242cc36a18cbda29d3bf7b23e8554caf76e83ac7",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_2": "e61870e5cca8db15bffdb3996ab2c926aa7cddeddc61feeef345416dd8fa0efa"
+    },
+    "07b838fe2a7e5577a646fa9a0792dee7d374441bd8076f16102dc4b7841797de": {
+      "triton_poi_fused_mul_per_token_group_fp8_quant_permute_sigmoid_view_0": "e8c00fa08e99e8b1975475a2240936f474af002be9b594393fcb6f19ba9efe42",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "4ebb7ddcd957497595d8b3ab242cc36a18cbda29d3bf7b23e8554caf76e83ac7",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_2": "7464fb582f0e705924438aae07fa9e12facb11cc3ca45d91fe3316bcd8965648",
+      "triton_poi_fused_3": "5dd43e213a3f9463554468aec9c9542877898c873f40fc90ced470d846e433e2",
+      "triton_poi_fused_zeros_4": "68cfa03dade09f8f0141f046e92c6bb64b7dd7017be6a6489d861a2ec38eb97d"
+    },
+    "fd7c57eb57ac56a78782baa0919772aa9422b570442b7541541ed95fa55692fe": {
+      "triton_per_fused__to_copy_add_mean_mul_per_token_group_fp8_quant_permute_pow_rsqrt_silu_view_0": "8c75bccda484d95cf4e3558dc8aab4c8bba46793d5aeb1229991649265bc52b5",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "4ebb7ddcd957497595d8b3ab242cc36a18cbda29d3bf7b23e8554caf76e83ac7",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_2": "7464fb582f0e705924438aae07fa9e12facb11cc3ca45d91fe3316bcd8965648",
+      "triton_poi_fused_3": "5dd43e213a3f9463554468aec9c9542877898c873f40fc90ced470d846e433e2",
+      "triton_poi_fused_zeros_4": "68cfa03dade09f8f0141f046e92c6bb64b7dd7017be6a6489d861a2ec38eb97d"
+    }
+  },
+  "compilation": {
+    "mode": "VLLM_COMPILE",
+    "backend": "inductor",
+    "custom_ops": [
+      "+quant_fp8",
+      "none",
+      "+quant_fp8"
+    ],
+    "splitting_ops": [
+      "vllm::unified_attention_with_output",
+      "vllm::unified_mla_attention_with_output",
+      "vllm::mamba_mixer2",
+      "vllm::mamba_mixer",
+      "vllm::short_conv",
+      "vllm::qwen4_exp_ple_short_conv",
+      "vllm::qwen4_exp_qsa_with_output",
+      "vllm::qwen4_exp_qsa_prepare_with_output",
+      "vllm::linear_attention",
+      "vllm::qwen_gdn_attention_core",
+      "vllm::qwen_gdn_attention_core_fused_norm_packed",
+      "vllm::gdn_attention_core_xpu",
+      "vllm::olmo_hybrid_gdn_full_forward",
+      "vllm::sparse_attn_indexer",
+      "vllm::rocm_aiter_sparse_attn_indexer",
+      "vllm::deepseek_v4_attention",
+      "vllm::hpc_rope_norm_forward",
+      "vllm::unified_kv_cache_update",
+      "vllm::unified_mla_kv_cache_update"
+    ],
+    "compile_sizes": [],
+    "compile_ranges_endpoints": [
+      2048
+    ],
+    "inductor_compile_config": {
+      "enable_auto_functionalized_v2": false,
+      "combo_kernels": true,
+      "benchmark_combo_kernel": true
+    },
+    "pass_config": {
+      "fuse_norm_quant": true,
+      "fuse_act_quant": true,
+      "fuse_attn_quant": false,
+      "fuse_allreduce_rms": false,
+      "enable_qk_norm_rope_fusion": false,
+      "fuse_rope_kvcache_cat_mla": false,
+      "fuse_act_padding": false,
+      "fuse_qk_norm_rope_kvcache": false
+    },
+    "use_inductor_graph_partition": false
+  }
+}

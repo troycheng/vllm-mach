@@ -71,7 +71,10 @@ def test_compiled_gdn_reads_runtime_context(monkeypatch):
     owner.vllm_config = SimpleNamespace(compilation_config=config)
     assert gdn_decode._prepare_compiled_dispatch(owner)
     assert gdn_decode._prepare_compiled_dispatch(owner)
-    assert config.splitting_ops == ['vllm::mach_gdn_forward']
+    assert config.splitting_ops == ['vllm::mach_gdn_forward_out']
+    schema = torch.ops.vllm.mach_gdn_forward_out.default._schema
+    assert schema.arguments[1].name == 'output'
+    assert schema.arguments[1].alias_info.is_write and not schema.returns
     layer = SimpleNamespace(_mach_gdn_original=None, _mach_gdn_persistent=True,
                             _mach_gdn_aux=None)
     context = SimpleNamespace(no_compile_layers={'test': layer}, decode=False)

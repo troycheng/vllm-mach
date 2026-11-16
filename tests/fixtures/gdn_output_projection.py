@@ -2,7 +2,7 @@
 """Pinned shared GDN method before the 4B-only frontend hook."""
 from __future__ import annotations
 
-class QwenGatedDeltaNetAttention:
+class LegacyQwenGatedDeltaNetAttention:
     def _output_projection(self, core_attn_out, z):
         """Part 3: RMSNormGated + output linear projection.
 
@@ -22,4 +22,12 @@ class QwenGatedDeltaNetAttention:
             core_attn_out = core_attn_out.reshape(z_shape_og)
             core_attn_out = core_attn_out.flatten(-2)  # ... h d -> ... (h d)
         output, _ = self.out_proj(core_attn_out)
+        return output
+
+
+class QwenGatedDeltaNetAttention:
+    def _output_projection(self, core_attn_out, z):
+        """The vLLM 0.33 output projection before the 4B hook."""
+        core_attn_out = self.norm(core_attn_out, z)
+        output, _ = self.out_proj(core_attn_out.flatten(-2))
         return output

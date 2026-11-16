@@ -102,7 +102,7 @@ def main():
         )
     if args.native_only:
         return
-    run(sys.executable, "-m", "pip", "install", "--no-deps", str(ROOT))
+    run(sys.executable, "-m", "pip", "install", "--no-deps", "--no-build-isolation", str(ROOT))
     run(sys.executable, "-m", "vllm_mach.mxfp6.install", "--apply")
 
 

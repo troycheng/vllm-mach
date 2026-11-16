@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Native MXFP6-weight MoE experts for NVIDIA SM120."""
 
+from vllm_mach.stack import CACHE_NAMESPACE
+
 from dataclasses import dataclass
 from math import prod
 from typing import Literal
@@ -48,7 +50,7 @@ from vllm_mach.mxfp6.moe_utils import (
 
 logger = init_logger("vllm.mach.mxfp6.moe")
 
-_QWEN35_MOE_GRAPH_CACHE_VERSION = "mach_qwen35_tp2_v2_vllm029"
+_QWEN35_MOE_GRAPH_CACHE_VERSION = "mach_qwen35_tp2_v2_" + CACHE_NAMESPACE
 _QWEN35_SMALL_BATCH_MAX_TOKENS = 4
 _QWEN35_GROUPED_MIN_TOKENS = 5
 _QWEN35_GROUPED_MAX_TOKENS = 96

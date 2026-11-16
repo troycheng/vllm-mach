@@ -1,11 +1,6 @@
 # Shared GDN and Mamba runtime optimizations
 
-The shared vLLM 0.29.0 runtime profile includes the GDN optimizations ported
-from revision `a569aecd64`: preserve the head dimension through gated
-normalization, read row-strided mixed-decode inputs directly, reuse the output
-buffer, share FlashInfer prefill offsets across layers, and fuse aligned state
-block selection. Eligible SM120 prefill also reads and updates the BF16 state
-pool directly. Model weights, cache dtypes and sampling settings are unchanged.
+Mach 0.3's shared vLLM 0.33.0 runtime profile ([runtime versions](installation.md#runtime-versions)) includes the GDN optimizations ported from revision `a569aecd64`: preserve the head dimension through gated normalization, read row-strided mixed-decode inputs directly, reuse the output buffer, share FlashInfer prefill offsets across layers, and fuse aligned state block selection. Eligible SM120 prefill also reads and updates the BF16 state pool directly. Model weights, cache dtypes and sampling settings are unchanged.
 
 These optimizations are independent of weight quantization: none of their
 admission predicates requires NVFP4. MXFP8, FP8 and unquantized BF16 models
@@ -47,11 +42,7 @@ of the separate native MXFP6 or block-FP8 overlays.
 | Fused block selection | CUDA Mamba/GDN with aligned state caching; CPU and `all`/`none` retain existing behavior |
 | Indexed BF16 prefill state | Non-speculative SM120 FlashInfer prefill, matching 16-head state layout, supported indexed-state API and SM120 kernel |
 
-FlashInfer 0.6.18 builds differ in SM120 indexed-state support. The public
-`state_indices` argument alone is insufficient: some builds only implement it
-on SM100/103. Mach checks the SM120 kernel too and preserves the packed FP32
-intermediate-state path when support is absent. It does not modify FlashInfer
-or silently lower SSM precision. Other optimizations remain available.
+Indexed-state support requires both the FlashInfer API and an SM120 kernel. Mach checks both and preserves the packed FP32 intermediate-state path when support is absent. It does not modify FlashInfer or lower SSM precision. Other optimizations remain available.
 
 The Qwen3.5-4B model's 32 value heads do not satisfy the TP1 mixed-decode and
 indexed state-pool guards. Normalization layout, FlashInfer prefill metadata

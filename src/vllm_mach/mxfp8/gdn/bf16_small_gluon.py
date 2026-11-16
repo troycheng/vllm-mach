@@ -18,6 +18,8 @@ import os
 from triton.experimental import gluon
 from triton.experimental.gluon import language as gl
 
+from .legacy_reduction_gluon import _gl_old_square_128, _gl_old_dot_128_8local
+
 # Resolve once, before worker warmup/capture; never change captured policy.
 _PDL_SETTING = os.environ.get("VLLM_MACH_MXFP8_BF16_GDN_PDL", "0")
 if _PDL_SETTING not in ("0", "1"):
@@ -44,6 +46,13 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
                     NV: gl.constexpr, FULL: gl.constexpr,
                     STATE_ROWS: gl.constexpr = 1,
                     USE_PDL: gl.constexpr = False):
+    # The qualified deferred layout has local4 Q/K and local8 state dots.
+    legacy_bf16: gl.constexpr = (
+        base.dtype.element_ty == gl.bfloat16 and H == 16 and (HV == 16 or HV == 32)
+        and K == 128 and V == 128 and BV == 32 and NV == 4 and W == 4
+        and STATE_ROWS == 1 and not USE_PDL
+        and ((FULL and gl.num_warps() == 8)
+             or (not FULL and (gl.num_warps() == 2 or gl.num_warps() == 4))))
     if USE_PDL:
         # State, indices and pending history may also be produced upstream.
         # Wait before *any* load so repeated decode and slot resets stay safe.
@@ -82,8 +91,12 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     b_q = gl.load(ptr_mixed + ik * K + norm_k).to(gl.float32)
     b_k = gl.load(ptr_mixed + H * K + ik * K + norm_k).to(gl.float32)
     b_v = gl.load(ptr_mixed + 2 * H * K + ihv * V + ov).to(gl.float32)
-    b_q = b_q / gl.sqrt(gl.sum(b_q * b_q) + 1e-6)
-    b_k = b_k / gl.sqrt(gl.sum(b_k * b_k) + 1e-6)
+    if legacy_bf16:
+        b_q = b_q / gl.sqrt(_gl_old_square_128(b_q) + 1e-6)
+        b_k = b_k / gl.sqrt(_gl_old_square_128(b_k) + 1e-6)
+    else:
+        b_q = b_q / gl.sqrt(gl.sum(b_q * b_q) + 1e-6)
+        b_k = b_k / gl.sqrt(gl.sum(b_k * b_k) + 1e-6)
     b_q = gl.convert_layout(b_q * SCALE, gl.SliceLayout(0, state_layout))
     b_k = gl.convert_layout(b_k, gl.SliceLayout(0, state_layout))
     a_val = gl.load(a + it * stride_a + ihv).to(gl.float32)
@@ -112,10 +125,16 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     # Keep the stock packed FLA update/reduction source expressions and order.
     alpha = gl.exp(g_val)
     b_h *= alpha
-    b_v -= gl.sum(b_h * b_k[None, :], 1)
+    if legacy_bf16:
+        b_v -= _gl_old_dot_128_8local(b_h, b_k[None, :], BV)
+    else:
+        b_v -= gl.sum(b_h * b_k[None, :], 1)
     b_v *= beta_val
     b_h += b_v[:, None] * b_k[None, :]
-    b_o = gl.sum(b_h * b_q[None, :], 1)
+    if legacy_bf16:
+        b_o = _gl_old_dot_128_8local(b_h, b_q[None, :], BV)
+    else:
+        b_o = gl.sum(b_h * b_q[None, :], 1)
     gl.store(output_ptr, b_o.to(out.dtype.element_ty))
 
     if FULL or old_age == W - 1:

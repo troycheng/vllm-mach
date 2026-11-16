@@ -22,9 +22,9 @@ def test_package_version_matches_build_metadata():
 @pytest.mark.parametrize(
     ("installed", "expected"),
     [
-        ("0.2.1", True),
-        ("0.2.1+cu130", True),
-        ("0.2.0", False),
+        ("0.3.0", True),
+        ("0.3.0+cu130", True),
+        ("0.2.1", False),
         ("0.2.2", False),
         ("0.2.1rc1", False),
         ("0.2.1.dev0", False),
@@ -99,11 +99,11 @@ def test_nvfp4_launcher_does_not_require_standalone_b12x(
     def version(name):
         queried.append(name)
         if name == "vllm-mach-owner-prefill":
-            return "0.1.0a1"
+            return "0.2.0"
         if name == "vllm-mach-lossless-prefill":
-            return "0.1.0a4"
+            return "0.2.0"
         if name == "vllm-mach-ar-norm":
-            return "0.1.0a1"
+            return "0.2.0"
         if name == "b12x" and b12x_version is not None:
             return b12x_version
         raise metadata.PackageNotFoundError(name)
@@ -231,6 +231,20 @@ def test_patch_applies_once_and_rejects_unknown_source(tmp_path):
     with pytest.raises(subprocess.CalledProcessError):
         tool.patch_file(tmp_path, patch)
     assert target.read_text() == "unrelated\n"
+
+
+
+def test_runtime_installer_uses_existing_build_stack(monkeypatch):
+    tool = load("deploy/install.py")
+    calls = []
+    monkeypatch.setattr(tool, "run", lambda *args, **kwargs: calls.append(args))
+    monkeypatch.setattr(tool.sys, "argv", ["install.py", "--runtime-only"])
+    tool.main()
+    assert calls == [
+        (tool.sys.executable, "-m", "pip", "install", "--no-deps",
+         "--no-build-isolation", str(ROOT)),
+        (tool.sys.executable, "-m", "vllm_mach.mxfp6.install", "--apply"),
+    ]
 
 
 def test_native_installer_selects_ar_norm(monkeypatch, tmp_path):

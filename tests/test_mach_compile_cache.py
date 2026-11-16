@@ -25,7 +25,11 @@ def test_compile_factors_include_adapter_switches(monkeypatch, name, value):
     before = envs.compile_factors()
     monkeypatch.setenv(name, value)
     after = envs.compile_factors()
-    assert before[name] != after[name]
+    if name in {"VLLM_MACH_GDN_PERSISTENT", "VLLM_MACH_GDN_BA_OVERLAP"}:
+        # Disabled opt-ins deliberately leave the ordinary vLLM cache unpartitioned.
+        assert name not in before
+    else:
+        assert before[name] != after[name]
     assert after[name] == value
     assert len(after['VLLM_MACH_CODE_HASH']) == 64
     assert before['VLLM_MACH_CODE_HASH'] == after['VLLM_MACH_CODE_HASH']
@@ -54,7 +58,7 @@ def test_unavailable_runtime_keeps_plugin_import_light(monkeypatch):
 
     monkeypatch.delenv('VLLM_MACH_PROFILE', raising=False)
     monkeypatch.delenv('VLLM_MACH_NATIVE_MXFP8', raising=False)
-    monkeypatch.setattr(plugin, 'version', lambda name: '0.29.0')
+    monkeypatch.setattr(plugin, 'version', lambda name: '2.14.0+cu130' if name == 'torch' else plugin.BASE_PACKAGES[name])
     monkeypatch.setattr(plugin, 'register_dense_kernel', lambda: False)
     def unexpected():
         pytest.fail('optional runtime opt-out must not import compile/CUDA code')

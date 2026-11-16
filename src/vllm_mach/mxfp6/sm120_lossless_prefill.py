@@ -7,6 +7,8 @@ No Mach Python plugin or model adapter is imported. Decode retains the ordinary
 FlashInfer path; graph capture requires a separate opt-in and eager warmup.
 """
 
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_EXTENSIONS
+
 import importlib.metadata
 import importlib.util
 from functools import lru_cache
@@ -93,8 +95,8 @@ def _validate_workspace(workspace: Any, rank: int, rows: int) -> None:
 @lru_cache(maxsize=2)
 def _load_codec(kind: str) -> Any:
     for package, expected in (
-        ("flashinfer-python", "0.6.18"),
-        ("vllm-mach-lossless-prefill", "0.1.0a4"),
+        ("flashinfer-python", BASE_PACKAGES["flashinfer-python"]),
+        ("vllm-mach-lossless-prefill", NATIVE_EXTENSIONS["vllm-mach-lossless-prefill"]),
     ):
         try:
             version = importlib.metadata.version(package).split("+", 1)[0]

@@ -4,6 +4,7 @@ import functools
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 import sys
 import subprocess
@@ -87,7 +88,7 @@ def main():
     write(a.outdir / "contract.json", dict(
         mach_revision=subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=MACH, capture_output=True,
-            text=True, check=False).stdout.strip() or None,
+            text=True, check=False).stdout.strip() or None if shutil.which("git") else None,
         native_library_environment={key: os.environ.get(key) for key in
                                     ("MXFP8_LIBRARY_PATH", "MXFP6_LIBRARY_PATH")},
         profile=a.profile, rows=a.rows, ssm_dtype=a.ssm_dtype, llm_args=kwargs,

@@ -11,6 +11,10 @@ import types
 import unittest
 from unittest.mock import patch
 
+# Initialize the extension before patch.dict(sys.modules) snapshots; otherwise
+# restoring a snapshot can unload Python children of the live Triton extension.
+import triton
+
 import test_mxfp8_2b_ba_graph_cpu as graph_tests
 
 SOURCE = Path(__file__).resolve().parents[1] / "src"
@@ -75,6 +79,8 @@ class TwoBProfileContracts(unittest.TestCase):
                 self.assertEqual(json.loads(argv[argv.index("--compilation-config")+1]), contract["compilation_config"])
                 self.assertEqual(argv[argv.index("--kv-cache-dtype")+1], "bfloat16")
                 self.assertEqual(argv[argv.index("--attention-backend")+1], "FLASH_ATTN")
+                self.assertEqual(json.loads(argv[argv.index("--attention-config")+1]),
+                                 {"flash_attn_version": 2})
         for row in (0, 8, 16, 24, 128):
             with self.assertRaises(ValueError): self.profile.quality_contract(row)
         for environment in ({"VLLM_MACH_MXFP8_MODE": "quality"},
@@ -170,6 +176,10 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         stack.enter_context(patch.object(native, "install_worker_backend", side_effect=lambda obj: events.append("native")))
         stack.enter_context(patch.object(ba, "install", side_effect=lambda obj: events.append("ba")))
         stack.enter_context(patch.object(pdl, "install", side_effect=lambda: events.append("pdl_install")))
+        ordering = load("mxfp8.two_b.ordered_reduction")
+        stack.enter_context(patch.object(ordering, "install", side_effect=lambda: events.append("ordering_install")))
+        prep = load("gdn_prep")
+        stack.enter_context(patch.object(prep, "verify_binding", side_effect=lambda: events.append("prep_binding")))
         fusion = load("mxfp8.swiglu_quant")
         stack.enter_context(patch.object(fusion, "install", return_value=True))
         stack.enter_context(patch.object(pdl, "prepare", side_effect=lambda: events.append("pdl_prepare")))
@@ -201,7 +211,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         self.assertEqual(obj.compile_or_warm_up_model(), "compile")
         self.assertEqual(obj.execute_model(), "execute")
         obj.execute_model()
-        self.assertEqual(events, ["graph", "pdl_install", "device", "geometry", "native", "pdl_prepare", "install_runtime", "ba", "load",
+        self.assertEqual(events, ["graph", "ordering_install", "pdl_install", "device", "geometry", "native", "pdl_prepare", "install_runtime", "prep_binding", "ba", "load",
                                   "prepare_layers", "cache", "initialize_cache", "prepare_pools", "compile", "compiled",
                                   "execute", "serving", "execute"])
         state._CACHE_INITIALIZED = False
@@ -215,11 +225,13 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         events = []
         Worker, _ = self.lifecycle(events)
         hybrid = load("mxfp8.two_b.hybrid_head")
+        metadata = load("mxfp8.two_b.sampler_metadata")
         with patch.dict(os.environ, {"VLLM_MACH_2B_HYBRID_HEAD": "1"}), \
-                patch.object(hybrid, "install", side_effect=lambda obj: events.append("hybrid")):
+                patch.object(hybrid, "install", side_effect=lambda obj: events.append("hybrid")), \
+                patch.object(metadata, "install", side_effect=lambda obj: events.append("sampler_metadata")):
             self.profile.install_worker_hook()
             obj = Worker(); obj.init_device(); obj.compile_or_warm_up_model()
-        self.assertEqual(events[-4:], ["prepare_pools", "compile", "hybrid", "compiled"])
+        self.assertEqual(events[-5:], ["prepare_pools", "compile", "hybrid", "sampler_metadata", "compiled"])
 
     def test_quality_skips_production_dispatch_and_contract_drift_rejects_compile(self):
         for row in (4, 32, 64):
@@ -275,13 +287,13 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
 
     def test_plugin_routes_2b_without_registering_other_backends(self):
         plugin = load("plugin")
-        with patch.object(plugin, "version", return_value="0.29.0"), \
+        with patch.object(plugin, "version", side_effect=lambda name: "2.14.0+cu130" if name == "torch" else plugin.BASE_PACKAGES[name]), \
                 patch.object(plugin, "register_dense_kernel") as dense, \
                 patch.object(self.profile, "install_worker_hook") as hook:
             plugin.register()
             hook.assert_called_once_with()
             dense.assert_not_called()
-        with patch.object(plugin, "version", return_value="0.29.0"), \
+        with patch.object(plugin, "version", side_effect=lambda name: "2.14.0+cu130" if name == "torch" else plugin.BASE_PACKAGES[name]), \
                 patch.dict(os.environ, {"VLLM_MACH_PROFILE": "typo"}):
             with self.assertRaisesRegex(RuntimeError, "Unknown"):
                 plugin.register()
@@ -291,6 +303,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         graph, gdn, ba, pdl = (load("mxfp8.two_b."+name) for name in ("graph_policy", "gdn", "ba", "pdl"))
         native = load("mxfp8.worker")
         fusion = load("mxfp8.swiglu_quant")
+        ordering = load("mxfp8.two_b.ordered_reduction")
         for row in (None, 4, 32, 64):
             environment = {} if row is None else {
                 "VLLM_MACH_MXFP8_MODE": "quality", "VLLM_MACH_MXFP8_QUALITY_ROWS": str(row)}
@@ -303,7 +316,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                 cfg = worker.vllm_config
                 cfg.model_config.hf_text_config = NS(hidden_size=2048, intermediate_size=6144,
                     num_hidden_layers=24, num_attention_heads=8, num_key_value_heads=2, head_dim=256)
-                cfg.attention_config = NS(backend=NS(name="FLASH_ATTN"))
+                cfg.attention_config = NS(backend=NS(name="FLASH_ATTN"), flash_attn_version=2)
                 cfg.cache_config.cache_dtype = "bfloat16"
                 worker._mach_2b_contract = profile.run_contract()
                 worker._mach_2b_runtime_sources = {}
@@ -316,6 +329,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                 with patch.dict(sys.modules, modules), patch.object(gdn, "inspect_worker", return_value=state), \
                         patch.object(ba, "verify_capture", return_value={"native_m16_available": True}) as ba_verify, \
                         patch.object(pdl, "verify_capture", return_value={"prepared": True}) as pdl_verify, \
+                        patch.object(ordering, "receipt", return_value={"installed": True}) as order_verify, \
                         patch.object(fusion, "receipt", return_value={"installed": True}) as fusion_verify, \
                         patch.object(native, "verify_worker_execution", return_value={}) as native_verify, \
                         patch.object(profile, "check_environment", return_value={}), \
@@ -328,6 +342,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                     required = set(worker._mach_2b_contract["compilation_config"]["cudagraph_capture_sizes"])
                     ba_verify.assert_called_once_with(worker, required_rows=tuple(sorted(required & {4, 8, 16})))
                     pdl_verify.assert_called_once_with(required)
+                    order_verify.assert_called_once_with(require_complete=True)
                     fusion_verify.assert_called_once_with(required)
                     with patch.object(ba, "verify_capture", return_value={"native_m16_available": False}):
                         with self.assertRaisesRegex(RuntimeError, "requires native BF16 BA M16"):

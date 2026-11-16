@@ -296,7 +296,7 @@ def test_fake_preserves_symbolic_m_without_reading_it(backend):
 
 def test_missing_binary_and_wrong_schema_fail_before_native_is_usable(monkeypatch, tmp_path):
     torch = types.ModuleType("torch")
-    torch.__version__ = "2.13.0+cu130"
+    torch.__version__ = "2.14.0+cu130"
     torch.ops = types.SimpleNamespace(load_library=lambda path: None)
     monkeypatch.setitem(sys.modules, "torch", torch)
     native = load(monkeypatch, "block_native.py")

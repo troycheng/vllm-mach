@@ -68,7 +68,6 @@ def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm
         "VLLM_USE_AOT_COMPILE": "1", "VLLM_DISABLE_COMPILE_CACHE": "0",
         "TORCH_COMPILE_FORCE_DISABLE_CACHES": "0",
         "TORCHINDUCTOR_FORCE_DISABLE_CACHES": "0",
-        "VLLM_FLASH_ATTN_VERSION": "2",
         "TORCHINDUCTOR_COMPILE_THREADS": "1",
         "VLLM_MACH_MXFP8_MODE": "quality" if quality_rows is not None else "production",
         "VLLM_CACHE_ROOT": str(startup_cache / "vllm"),

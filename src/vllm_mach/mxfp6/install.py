@@ -1,141 +1,157 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Install the native MXFP6 source profile into an official vLLM 0.29.0 wheel."""
-
+"""Install the exact native MXFP6 source overlay on a clean target runtime."""
 from __future__ import annotations
 
 import argparse
 import importlib.metadata as metadata
 import json
-import shutil
-import subprocess
-import tempfile
+import re
+import stat
+from contextlib import ExitStack
 from pathlib import Path
 
+from vllm_mach.mxfp8.install import (
+    _installation_lock,
+    _relative,
+    _replace,
+    apply_profile_patch,
+    load_shared_patch,
+    sha256,
+)
+
 PROFILE = Path(__file__).with_name("profile")
+PROFILE_ID = "native-mxfp6-sm120-v033"
+_PATCHES = {"vllm": "runtime.patch", "flashinfer": "flashinfer-local-ipc.patch"}
 
 
-def _patch(root: Path, name: str, *, reverse: bool = False, dry: bool = False):
-    command = [
-        "patch",
-        "--batch",
-        "--force",
-        "--fuzz=0",
-        "-p1",
-        "-d",
-        str(root),
-        "-i",
-        str(PROFILE / name),
-    ]
-    command += ["--reverse" if reverse else "--forward"]
-    if dry:
-        command.append("--dry-run")
-    return subprocess.run(command, capture_output=True, text=True)
+def load_manifest(data_directory: Path | None = None) -> dict:
+    directory = PROFILE if data_directory is None else Path(data_directory)
+    manifest = json.loads((directory / "manifest.json").read_text())
+    if manifest.get("profile") != PROFILE_ID or manifest.get("schema_version") != 1:
+        raise RuntimeError("Unknown native MXFP6 source profile")
+    groups = manifest.get("namespaces", {})
+    if set(groups) != set(_PATCHES):
+        raise RuntimeError("Native MXFP6 requires vllm and flashinfer source namespaces")
+    for namespace, patch_name in _PATCHES.items():
+        group = groups[namespace]
+        if group.get("patch") != patch_name or not group.get("files"):
+            raise RuntimeError(f"Invalid {namespace} source manifest")
+        for name, entry in group["files"].items():
+            _relative(name, namespace)
+            for field in ("upstream_sha256", "installed_sha256"):
+                if not re.fullmatch(r"[0-9a-f]{64}", entry.get(field, "")):
+                    raise RuntimeError(f"Invalid {field} for {name}")
+        if sha256((directory / patch_name).read_bytes()) != group.get("patch_sha256"):
+            raise RuntimeError(f"Bundled {namespace} patch SHA256 mismatch")
+        if namespace != "vllm" and group.get("shared_patch") is not None:
+            raise RuntimeError("Shared runtime patch is only valid in the vllm namespace")
+        load_shared_patch(group.get("shared_patch"), group["files"])
+    return manifest
 
 
-def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False) -> dict:
-    """Stage all patches before writing; reject incomplete/incompatible patches."""
-    manifest = json.loads((PROFILE / "manifest.json").read_text())
-    files = manifest["files"] + manifest["moe_source"]["files"]
-    for name in files:
-        target = site / name
-        if not target.is_file():
-            raise RuntimeError(f"Missing official vLLM file: {target}")
-    flash_files = ["flashinfer/comm/mnnvl.py", "flashinfer/comm/trtllm_ar.py"]
-    with tempfile.TemporaryDirectory(prefix="mach-mxfp6-") as tmp:
-        stage = Path(tmp)
-        targets = {name: site / name for name in files}
-        targets.update({name: flashinfer_site / name for name in flash_files})
-        for name, target in targets.items():
-            destination = stage / name
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(target, destination)
-        # Peel FP16 admission before checking the unchanged base profile.
-        if _patch(stage, "moe-fp16-ssm.patch", reverse=True, dry=True).returncode == 0:
-            result = _patch(stage, "moe-fp16-ssm.patch", reverse=True)
-            if result.returncode:
-                raise RuntimeError(result.stdout + result.stderr)
-        # Peel additive compilation support before checking the base profile.
-        if (
-            _patch(stage, "compiled-ar-norm.patch", reverse=True, dry=True).returncode
-            == 0
-        ):
-            result = _patch(stage, "compiled-ar-norm.patch", reverse=True)
-            if result.returncode:
-                raise RuntimeError(result.stdout + result.stderr)
-        # Peel the additive MoE fusion patch before checking the base profile.
-        # This also permits atomic upgrades from dense-only / initial MoE installs.
-        if _patch(stage, "moe-ar-norm.patch", reverse=True, dry=True).returncode == 0:
-            result = _patch(stage, "moe-ar-norm.patch", reverse=True)
-            if result.returncode:
-                raise RuntimeError(result.stdout + result.stderr)
-        installed = (
-            _patch(stage, "runtime.patch", reverse=True, dry=True).returncode == 0
-        )
-        state = "installed" if installed else "upstream"
-        if not installed:
-            result = _patch(stage, "runtime.patch")
-            if result.returncode:
-                raise RuntimeError(result.stdout + result.stderr)
-        # Separate patch permits upgrading an already installed dense profile.
-        if _patch(stage, "moe.patch", reverse=True, dry=True).returncode != 0:
-            result = _patch(stage, "moe.patch")
-            if result.returncode:
-                raise RuntimeError(
-                    "MXFP6 MoE patch failed: " + result.stdout + result.stderr
-                )
-        result = _patch(stage, "moe-ar-norm.patch")
-        if result.returncode:
-            raise RuntimeError(
-                "MXFP6 MoE AR/Norm patch failed: " + result.stdout + result.stderr
-            )
-        result = _patch(stage, "compiled-ar-norm.patch")
-        if result.returncode:
-            raise RuntimeError(
-                "MXFP6 compiled AR/Norm patch failed: " + result.stdout + result.stderr
-            )
-        result = _patch(stage, "moe-fp16-ssm.patch")
-        if result.returncode:
-            raise RuntimeError(
-                "MoE FP16 SSM patch failed: " + result.stdout + result.stderr
-            )
-        ipc_installed = (
-            _patch(
-                stage, "flashinfer-local-ipc.patch", reverse=True, dry=True
-            ).returncode
-            == 0
-        )
-        if not ipc_installed:
-            result = _patch(stage, "flashinfer-local-ipc.patch")
-            if result.returncode:
-                raise RuntimeError(
-                    "FlashInfer IPC patch failed: " + result.stdout + result.stderr
-                )
-        changes = [
-            name
-            for name, target in targets.items()
-            if target.read_bytes() != (stage / name).read_bytes()
-        ]
-        if apply:
-            # Preserve exact bytes for rollback if any write fails. No files are
-            # touched until all dependency profiles pass their staged checks.
-            originals = {name: targets[name].read_bytes() for name in changes}
-            written = []
-            try:
-                for name in changes:
-                    written.append(name)
-                    targets[name].write_bytes((stage / name).read_bytes())
-            except BaseException:
-                for name in reversed(written):
-                    targets[name].write_bytes(originals[name])
-                raise
-    return {
-        "profile": "native-mxfp6",
-        "vllm": manifest["vllm"],
-        "source": manifest["source"],
-        "applied": apply,
-        "changed_files": changes,
-        "previous_state": state,
-    }
+def _read_sources(sites: dict[str, Path], manifest: dict) -> tuple[dict, dict]:
+    targets, sources = {}, {}
+    for namespace, group in manifest["namespaces"].items():
+        site = sites[namespace]
+        for name in group["files"]:
+            relative = _relative(name, namespace)
+            target = site / relative
+            if any((site / Path(*relative.parts[:end])).is_symlink()
+                   for end in range(1, len(relative.parts) + 1)):
+                raise RuntimeError(f"Symlinked runtime source: {target}")
+            if not target.is_file() or not target.resolve().is_relative_to(site):
+                raise RuntimeError(f"Missing or escaped runtime source: {target}")
+            targets[name] = target
+            sources[name] = target.read_bytes()
+    return targets, sources
+
+
+def _source_state(sources: dict[str, bytes], manifest: dict) -> str:
+    states = {"upstream", "installed"}
+    for group in manifest["namespaces"].values():
+        for name, entry in group["files"].items():
+            digest = sha256(sources[name])
+            matches = {state for state in states
+                       if entry[f"{state}_sha256"] == digest}
+            if not matches:
+                if digest in (entry["upstream_sha256"], entry["installed_sha256"]):
+                    raise RuntimeError("Mixed or partially installed native MXFP6 source profile")
+                raise RuntimeError(f"Runtime source SHA256 mismatch: {name}")
+            states.intersection_update(matches)
+    if len(states) != 1:
+        raise RuntimeError("Mixed or empty native MXFP6 source profile")
+    return states.pop()
+
+
+def _commit(sites: dict[str, Path], manifest: dict, targets: dict[str, Path],
+            before: dict[str, bytes], after: dict[str, bytes], changes: list[str]) -> None:
+    # Lock both distributions in stable order; the shared lock also excludes
+    # concurrent MXFP8 publication when both profiles touch the same vLLM tree.
+    with ExitStack() as locks:
+        for site in sorted(set(sites.values()), key=str):
+            locks.enter_context(_installation_lock(site))
+        locked_targets, current = _read_sources(sites, manifest)
+        if locked_targets != targets or current != before:
+            raise RuntimeError("Runtime changed during staging")
+        modes = {name: stat.S_IMODE(targets[name].stat().st_mode) for name in changes}
+        published = []
+        try:
+            for name in changes:
+                # Include the attempted file: a replacement may publish and
+                # then raise (for example a post-write filesystem failure).
+                published.append(name)
+                _replace(targets[name], after[name], modes[name])
+            _, current = _read_sources(sites, manifest)
+            if current != after:
+                raise RuntimeError("Runtime changed during publication")
+        except BaseException as error:
+            failures = []
+            for name in reversed(published):
+                try:
+                    _replace(targets[name], before[name], modes[name])
+                except BaseException as rollback_error:
+                    failures.append(f"{name}: {rollback_error}")
+            if failures:
+                raise RuntimeError("Runtime install failed and rollback was incomplete: "
+                                   + "; ".join(failures)) from error
+            raise
+
+
+def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False,
+                    verify_packages: bool = True,
+                    data_directory: Path | None = None) -> dict:
+    """Validate the complete pair, stage exact hunks, then publish with rollback.
+
+    Only clean pinned 0.33 upstream or this exact complete installed overlay is
+    accepted. Direct offline auditors may disable package checks explicitly;
+    the CLI always verifies the central stack and required native producers.
+    """
+    manifest = load_manifest(data_directory)
+    if verify_packages:
+        check_versions()
+    sites = {"vllm": Path(site).resolve(), "flashinfer": Path(flashinfer_site).resolve()}
+    targets, before = _read_sources(sites, manifest)
+    state = _source_state(before, manifest)
+    directory = PROFILE if data_directory is None else Path(data_directory)
+    after = dict(before)
+    if state == "upstream":
+        for namespace, group in manifest["namespaces"].items():
+            sources = {name: before[name] for name in group["files"]}
+            after.update(apply_profile_patch(sources, (directory / group["patch"]).read_bytes(),
+                                             group.get("shared_patch"), namespace=namespace))
+    for group in manifest["namespaces"].values():
+        for name, entry in group["files"].items():
+            if sha256(after[name]) != entry["installed_sha256"]:
+                raise RuntimeError(f"Staged runtime source SHA256 mismatch: {name}")
+            compile(after[name], name, "exec")
+    changes = [name for name in before if before[name] != after[name]]
+    if apply and changes:
+        _commit(sites, manifest, targets, before, after, changes)
+    return {"profile": manifest["profile"], "vllm": manifest["vllm"],
+            "source": manifest["source"], "applied": bool(apply and changes),
+            "dry_run": not apply, "changed_files": changes, "previous_state": state,
+            "packages_verified": verify_packages,
+            "result_sha256": {name: sha256(value) for name, value in after.items()}}
 
 
 def check_mxfp6_producers() -> None:
@@ -164,17 +180,8 @@ def check_mxfp6_producers() -> None:
 
 
 def check_versions() -> None:
-    for name, expected in (
-        ("vllm", "0.29.0"),
-        ("torch", "2.13.0"),
-        ("flashinfer-python", "0.6.18"),
-        ("flashinfer-cubin", "0.6.18"),
-        ("nvidia-cutlass-dsl", "4.6.2"),
-        ("mxfp6-sm120", "0.2.1"),
-    ):
-        found = metadata.version(name).split("+", 1)[0]
-        if found != expected:
-            raise RuntimeError(f"{name}: expected {expected}, found {found}")
+    from vllm_mach.stack import BASE_PACKAGES, NATIVE_VERSION, check_versions as check_stack
+    check_stack({**BASE_PACKAGES, "mxfp6-sm120": NATIVE_VERSION}, lookup=metadata.version)
     check_mxfp6_producers()
 
 
@@ -184,7 +191,6 @@ def main() -> None:
         "--apply", action="store_true", help="write after all checks pass"
     )
     args = parser.parse_args()
-    check_versions()
     site = Path(metadata.distribution("vllm").locate_file(""))
     flash_site = Path(metadata.distribution("flashinfer-python").locate_file(""))
     result = install_profile(site, flash_site, apply=args.apply)

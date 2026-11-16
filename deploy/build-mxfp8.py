@@ -34,9 +34,10 @@ PATCHES = (
     "0005-sm120-static-problem-shape.patch",
     "0006-sm120-pdl-release.patch",
 )
-BASE_PACKAGES = {"vllm": "0.29.0", "torch": "2.13.0", "triton": "3.7.1",
-                 "flashinfer-python": "0.6.18", "flashinfer-cubin": "0.6.18",
-                 "nvidia-cutlass-dsl": "4.6.2", "cuda-bindings": "13.3.1"}
+# The same tuple is consumed by serving and native extension admission.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from vllm_mach.stack import BASE_PACKAGES, BUILD_PACKAGES, NATIVE_VERSION, check_versions as check_stack
+
 EXCLUDED_DIRECTORIES = {".git", "build", "dist", "__pycache__", ".pytest_cache", ".cache", "CMakeFiles", "_skbuild", "third_party"}
 EXCLUDED_FILES = {"CMakeCache.txt", "build.ninja", ".ninja_log", ".ninja_deps"}
 EXCLUDED_SUFFIXES = {".so", ".o", ".a", ".whl", ".pyc", ".pyo", ".cubin", ".ptx"}
@@ -87,13 +88,18 @@ def validate_source(source: Path) -> dict:
             "source_sha256": source_hashes(source)}
 
 
-def archive(repository: str, revision: str, parent: Path) -> tuple[Path, dict]:
+def archive(repository: str, revision: str, parent: Path, *, cached: Path | None = None, expected_sha256: str | None = None) -> tuple[Path, dict]:
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise RuntimeError("Supply a full 40-character source commit; tags and branch names are not pins")
     parent.mkdir(parents=True, exist_ok=False)
     url = f"https://codeload.github.com/{repository}/tar.gz/{revision}"
     tarball = parent / "source.tar.gz"
-    urllib.request.urlretrieve(url, tarball)
+    if cached is None:
+        urllib.request.urlretrieve(url, tarball)
+    else:
+        if not expected_sha256 or digest(cached) != expected_sha256:
+            raise RuntimeError("Prefetched source archive SHA256 mismatch")
+        shutil.copy2(cached, tarball)
     with tarfile.open(tarball) as stream:
         stream.extractall(parent, filter="data")
     source = parent / (repository.split("/")[-1] + "-" + revision)
@@ -152,15 +158,7 @@ def cmake_arguments(cutlass: Path, toolchain: dict) -> list[str]:
 
 
 def versions() -> dict[str, str]:
-    result = {name: metadata.version(name) for name in BASE_PACKAGES}
-    for name, expected in BASE_PACKAGES.items():
-        if result[name].split("+", 1)[0] != expected:
-            raise RuntimeError(f"Public base must retain {name}=={expected}; found {result[name]}")
-    for name, expected in {"cmake": "4.1.0", "b12x": "1.2.6"}.items():
-        result[name] = metadata.version(name)
-        if result[name] != expected:
-            raise RuntimeError(f"Build requires {name}=={expected}")
-    return result
+    return check_stack({**BASE_PACKAGES, **BUILD_PACKAGES})
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -170,9 +168,13 @@ def main(argv: list[str] | None = None) -> int:
     source.add_argument("--revision", help="Full official source commit containing BA M16, dual kernels and bool PDL ABI")
     parser.add_argument("--work-dir", type=Path, default=Path("/opt/mach-build"))
     parser.add_argument("--cuda-home", type=Path)
+    parser.add_argument("--cutlass-archive", type=Path, help="Prefetched official fixed-commit archive")
+    parser.add_argument("--cutlass-archive-sha256", help="Required SHA256 for --cutlass-archive")
     parser.add_argument("--max-jobs", type=int, default=int(os.environ.get("MAX_JOBS", "2")))
     parser.add_argument("--check-only", action="store_true", help="Only validate --source-dir; no network/CUDA/build")
     args = parser.parse_args(argv)
+    if bool(args.cutlass_archive) != bool(args.cutlass_archive_sha256):
+        parser.error("Supply both --cutlass-archive and --cutlass-archive-sha256")
     if args.max_jobs < 1:
         parser.error("--max-jobs must be positive")
     if args.check_only:
@@ -192,7 +194,8 @@ def main(argv: list[str] | None = None) -> int:
         snapshot = copy_source(downloaded, kernel)
         kernel_receipt.update(kind="official-commit-archive", source_sha256=snapshot["source_sha256"])
     checked = validate_source(kernel)
-    cutlass, cutlass_receipt = archive("NVIDIA/cutlass", CUTLASS, work / "cutlass-archive")
+    cutlass, cutlass_receipt = archive("NVIDIA/cutlass", CUTLASS, work / "cutlass-archive",
+                                        cached=args.cutlass_archive, expected_sha256=args.cutlass_archive_sha256)
     for name in PATCHES:
         patch_file(cutlass, kernel / "patches/cutlass" / name)
     toolchain = discover_toolchain(args.cuda_home)
@@ -212,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
     wheels.mkdir()
     subprocess.run([sys.executable, "-m", "pip", "wheel", "--no-deps", "--no-build-isolation",
                     str(kernel), "-w", str(wheels)], env=env, check=True)
-    wheel, = wheels.glob("mxfp6_sm120-0.2.1-*.whl")
+    wheel, = wheels.glob(f"mxfp6_sm120-{NATIVE_VERSION}-*.whl")
     with zipfile.ZipFile(wheel) as package:
         for name in ("mxfp6/mxfp6_torch.so", "mxfp6/mxfp8_torch.so", "mxfp6/mxfp8_dual.py"):
             if name not in package.namelist():
@@ -221,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
     # Dispatcher registration and shape selection require no CUDA allocations.
     probe = """import json, torch, mxfp6
 from mxfp6 import mxfp8, mxfp8_dual
-mxfp6.load_library()
+mxfp6_library = mxfp6.load_library()
 a=mxfp8.load_library(); b=mxfp8_dual.load_library()
 assert a == b
 for shape in mxfp8_dual.SUPPORTED_SHAPES: assert mxfp8_dual.select_variant(*shape)
@@ -230,6 +233,8 @@ assert 'Tensor x' in ba and 'Tensor weight' in ba, ba
 gemm = str(torch.ops.mxfp8_sm120.gemm.default._schema)
 assert 'bool use_pdl=False' in gemm, gemm
 print(json.dumps({'library_sha256': __import__('hashlib').sha256(a.read_bytes()).hexdigest(),
+ 'mxfp6_library_sha256': __import__('hashlib').sha256(mxfp6_library.read_bytes()).hexdigest(),
+ 'build_info': json.loads((a.parent/'build_info.json').read_text()),
  'schemas': {n:str(getattr(torch.ops.mxfp8_sm120,n).default._schema) for n in ('gemm','allocate_workspace','dual_gemm_out','bf16_ba_m16')}}))
 """
     probe_result = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True)

@@ -52,7 +52,7 @@ class PackageGlueTests(unittest.TestCase):
 
     def test_opt_out_does_not_import_worker_or_cuda_backend(self):
         plugin = load("vllm_mach.plugin", "plugin.py")
-        plugin.version = lambda name: "0.29.0"
+        plugin.version = lambda name: "2.14.0+cu130" if name == "torch" else ({**plugin.BASE_PACKAGES, "mxfp6-sm120": plugin.NATIVE_VERSION})[name]
         with patch.dict(os.environ, {"VLLM_MACH_NATIVE_MXFP8": "0"}):
             plugin.register()
         self.assertEqual(self.mx6_calls, ["mx6"])
@@ -86,7 +86,7 @@ class PackageGlueTests(unittest.TestCase):
                                           "counts": {"native_calls": 1}}
         sys.modules[backend.__name__] = backend
         plugin = load("vllm_mach.plugin", "plugin.py")
-        plugin.version = lambda name: "0.29.0"
+        plugin.version = lambda name: "2.14.0+cu130" if name == "torch" else ({**plugin.BASE_PACKAGES, "mxfp6-sm120": plugin.NATIVE_VERSION})[name]
         with patch.dict(os.environ, {"VLLM_MACH_NATIVE_MXFP8": "1"}):
             plugin.register()
             plugin.register()

@@ -339,7 +339,8 @@ def main():
                     detokenize=False,
                     extra_args={
                         teacher_decode.KEY: dict(
-                            id=s["id"], forced_ids=seq, pad_id=seq[-1]
+                            id=s["id"], forced_ids=seq, pad_id=seq[-1],
+                            prompt_len=len(s["prompt_token_ids"]) - 1,
                         )
                     },
                 )

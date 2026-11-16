@@ -1,10 +1,9 @@
 {
-  "accepted_inventory_sha256": "71dde07f4997d99c41c9f8511577958277b47f4bcf52ec956d48b47200f16e0a",
-  "autotuner_init_sha256": "76354c38ef8f0405b8a7f21a3fc58bbe6be75797b9c894d67a5ef089f11954a6",
+  "autotuner_init_sha256": "2e7dd6f9718a7934ae6ae482b2aad4f9776ad2483240f4de3100e468e3d64b70",
+  "baseline_inventory_sha256": "71dde07f4997d99c41c9f8511577958277b47f4bcf52ec956d48b47200f16e0a",
+  "binding_count": 19,
   "bindings": [
     {
-      "accepted_choice_sha256": "0f9a6e43589636edfc06706c6811e4e10d9ce0c88714d7ee995560b92a9c8997",
-      "accepted_source_sha256": "201ee7b5cd37d9d61835c0ca182da804dd73d7d44aa9c9ad823056e37d21f4c2",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -104,10 +103,13 @@
           }
         ]
       },
+      "construction_kind": "generated",
+      "context_semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
       "heuristic": "reduction",
-      "id": "quality32_00",
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+      "id": "quality32_generated_4891aea6058f_gdn",
+      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+      "observed_source_sha256": "b86d09e1542bc66bbb4e1ae742389d4581b6a67e3c2540c6c81377105df3279d",
       "selected_fields": {
         "R0_BLOCK": 1024,
         "XBLOCK": 1,
@@ -115,95 +117,16 @@
         "num_stages": 1,
         "num_warps": 8
       },
-      "semantic_key": "4891aea6058fedb2e11a0b3f0d953193aed7d59bdcc2b6ec63db58aee637ca1a"
+      "semantic_key": "4891aea6058fedb2e11a0b3f0d953193aed7d59bdcc2b6ec63db58aee637ca1a",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 4,
+        "chunk_accumulation": "fma",
+        "function_sha256": "727bce2d92acfe174f4775c330c5126c56a9109891bd35d85b34d64d96516169",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
-      "accepted_choice_sha256": "55da039a6866ce9eb19011be3837ec700b2744d8c8cc0bf857c249088a362cfd",
-      "accepted_source_sha256": "1e4a3664d92bf3d78e3b4a8bafaa2b778af441327a175bcca78f9c2858d151f1",
-      "boundary": {
-        "architecture": {
-          "cc": 120,
-          "type": "cuda"
-        },
-        "compiler_flags": {
-          "disable_ftz": false,
-          "enable_fp_fusion": true,
-          "launch_pdl": false,
-          "native_matmul": false
-        },
-        "constants": {},
-        "function_sha256": "755d8b2116e33e6558605503bc4880d2cec564d7206b615396781b3fa99ff791",
-        "signature": {
-          "XBLOCK": "constexpr",
-          "in_ptr0": "*bf16",
-          "ks0": "i64",
-          "out_ptr0": "*bf16",
-          "xnumel": "i32"
-        },
-        "size_hints": {
-          "x": 33554432
-        },
-        "specialization": [
-          {
-            "__mapping__": [
-              [
-                {
-                  "__tuple__": [
-                    0
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    1
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    3
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ]
-            ]
-          }
-        ]
-      },
-      "heuristic": "pointwise",
-      "id": "quality32_01",
-      "kernel_alias": "triton_poi_fused__to_copy__unsafe_view_add_clone_mean_mul_mxfp8_quantize_pow_rsqrt_silu_view_1",
-      "kernel_site": "triton_poi_fused__to_copy__unsafe_view_add_clone_mean_mul_mxfp8_quantize_pow_rsqrt_silu_view_1",
-      "selected_fields": {
-        "XBLOCK": 1024,
-        "found_by_coordesc": false,
-        "num_stages": 1,
-        "num_warps": 4
-      },
-      "semantic_key": "320bf037e46a6e966d44a83449dc339438a7777c336843e53814decbd5c6e311"
-    },
-    {
-      "accepted_choice_sha256": "5cd7a77d649b7de907a21bbe7e3cc19791bcce0633599c891be10b7299b29332",
-      "accepted_source_sha256": "11b55474ed7756fdd841ae5aa78c351cdae8745b45ded9a424918a2ee90b035d",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -331,10 +254,12 @@
           }
         ]
       },
+      "construction_kind": "generated",
       "heuristic": "reduction",
-      "id": "quality32_02",
+      "id": "quality32_generated_7b72739bd93f",
       "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_3",
       "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_3",
+      "observed_source_sha256": "1552b4db4bd0a24576bb514ad6ed2deb65726490fadfcfa2c2863e72212b9f43",
       "selected_fields": {
         "R0_BLOCK": 4096,
         "XBLOCK": 1,
@@ -342,11 +267,16 @@
         "num_stages": 1,
         "num_warps": 16
       },
-      "semantic_key": "7b72739bd93f54c8d0b905f457f13508807e9eb319c0a59634603221f07969fc"
+      "semantic_key": "7b72739bd93f54c8d0b905f457f13508807e9eb319c0a59634603221f07969fc",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 8,
+        "chunk_accumulation": "original",
+        "function_sha256": "fe0038bef367024b1d6ec6c3fa52c38f3b43f21ff7486dda727819dd201e44b1",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
-      "accepted_choice_sha256": "357c6c6635416e3a6f7da8f9442a64778f66fe4f8975aff2105af9c24ccfd858",
-      "accepted_source_sha256": "e1e73600e98044db837e38afe30619c9c1160e4c1fe2d6cdfc52872f34412233",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -457,10 +387,12 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "pointwise",
-      "id": "quality32_03",
+      "id": "quality32_template_f360f3136a2a",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "bab6b295a7a3afcc38acd035bfa8d7276018d7485f5e5fb422b4e135217a35f5",
       "selected_fields": {
         "XBLOCK": 512,
         "found_by_coordesc": false,
@@ -470,8 +402,6 @@
       "semantic_key": "f360f3136a2ac765c85583cda10312bd52ce8be7e4232e44b21b6cb289a11018"
     },
     {
-      "accepted_choice_sha256": "019b77d74a80474ec93de884610351fc1b9cf7e2657b678d30e983e259de1ed8",
-      "accepted_source_sha256": "f13d212c174ea3aad2a1432038a14f559d7484526d23f4e53aa71db1b499cad9",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -526,10 +456,12 @@
           }
         ]
       },
+      "construction_kind": "generated",
       "heuristic": "pointwise",
-      "id": "quality32_04",
-      "kernel_alias": "triton_poi_fused_zeros_6",
-      "kernel_site": "triton_poi_fused_zeros_6",
+      "id": "quality32_generated_749e48d7f8f5",
+      "kernel_alias": "triton_poi_fused_zeros_5",
+      "kernel_site": "triton_poi_fused_zeros_5",
+      "observed_source_sha256": "f3380ee225f7d95e9e9c7adee164d5bff3d79cbd4bcecb0a0fabb80ea0a10d47",
       "selected_fields": {
         "XBLOCK": 512,
         "found_by_coordesc": false,
@@ -539,8 +471,6 @@
       "semantic_key": "749e48d7f8f59ff06af52700b6bbc0bde19a2e10ff3a382abe3c885896991d59"
     },
     {
-      "accepted_choice_sha256": "c825c4a99bb798cf2c645f13a12aecf97c041ed7e63affcd9f072ee10eb2fd72",
-      "accepted_source_sha256": "1fe1fb7a43e595fa11626663fdca191bc3a247fd76275789a9a91fdaadae698e",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -609,10 +539,12 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "pointwise",
-      "id": "quality32_05",
+      "id": "quality32_template_15761f5eb493",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "b0ca56bd52c76fb86588141093736b30dd120420d40789e0ef46290efa45f104",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -622,8 +554,6 @@
       "semantic_key": "15761f5eb493dabc38d729af69ee99c329fe299076e56894d47ac76c54aea6eb"
     },
     {
-      "accepted_choice_sha256": "81c5fbf4b6fa189533826a919c1b292eceb1390038635d2120d703a553922503",
-      "accepted_source_sha256": "c441dd6622df81aa22382eefa3bc3bd747919a7f0a20973c3f79226af58a6da2",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -636,82 +566,13 @@
           "native_matmul": false
         },
         "constants": {},
-        "function_sha256": "fdf982d7d1331f55bbebe43e7d6120ead441308fc8acfe93bf7b219836b17bd0",
-        "signature": {
-          "XBLOCK": "constexpr",
-          "out_ptr0": "*bf16",
-          "xnumel": "i32"
-        },
-        "size_hints": {
-          "x": 33554432
-        },
-        "specialization": [
-          {
-            "__mapping__": [
-              [
-                {
-                  "__tuple__": [
-                    0
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    1
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ]
-            ]
-          }
-        ]
-      },
-      "heuristic": "pointwise",
-      "id": "quality32_06",
-      "kernel_alias": "triton_poi_fused_0",
-      "kernel_site": "triton_poi_fused_0",
-      "selected_fields": {
-        "XBLOCK": 512,
-        "found_by_coordesc": false,
-        "num_stages": 1,
-        "num_warps": 8
-      },
-      "semantic_key": "749e48d7f8f59ff06af52700b6bbc0bde19a2e10ff3a382abe3c885896991d59"
-    },
-    {
-      "accepted_choice_sha256": "19b7dde784bd6d09ccf3c68044f233f8018abcca6834ad9ce03fe265067dc644",
-      "accepted_source_sha256": "0cb7b1ea2ee4a94af660d288fb846783b7aa36739393baf41cf2ff65aed3c29b",
-      "boundary": {
-        "architecture": {
-          "cc": 120,
-          "type": "cuda"
-        },
-        "compiler_flags": {
-          "disable_ftz": false,
-          "enable_fp_fusion": true,
-          "launch_pdl": false,
-          "native_matmul": false
-        },
-        "constants": {},
-        "function_sha256": "0b8e835ec8e37a268ae46f413e3b23d012c8fc8d27972d3f330c964f95ca7cb0",
+        "function_sha256": "85920b6fffb03e34d3c4b654155b8810330577e6609294e1044cb7e974992ce9",
         "signature": {
           "XBLOCK": "constexpr",
           "in_ptr0": "*bf16",
           "in_ptr1": "*bf16",
           "in_ptr2": "*bf16",
-          "out_ptr1": "*bf16",
+          "out_ptr2": "*bf16",
           "r0_numel": "i32",
           "xnumel": "i32"
         },
@@ -804,21 +665,21 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "persistent_reduction",
-      "id": "quality32_07",
+      "id": "quality32_template_dc10aefcfcbc",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "a542de918f2615db45543d879c91615507208b76c18edd9f03de3ffdf75ec50f",
       "selected_fields": {
         "XBLOCK": 32,
         "found_by_coordesc": false,
         "num_stages": 1,
         "num_warps": 2
       },
-      "semantic_key": "47ceb13fbbc6926d4b80435981cccc2fd3f9a4c1a2b8115d48c0ff2781fe5b2d"
+      "semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8"
     },
     {
-      "accepted_choice_sha256": "915af1c4c51dc4dcd5ff166adaf0e071b7fe88515427f082cc424b6e872649b0",
-      "accepted_source_sha256": "d6647f8858b220887bf8996c73bbf59966e462096dfde0810be4c263e6bef9a8",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -887,10 +748,13 @@
           }
         ]
       },
+      "construction_kind": "generated",
+      "context_semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
       "heuristic": "pointwise",
-      "id": "quality32_08",
-      "kernel_alias": "triton_poi_fused_mul_silu_slice_3",
-      "kernel_site": "triton_poi_fused_mul_silu_slice_3",
+      "id": "quality32_generated_1f5fbccffbb7_gdn",
+      "kernel_alias": "triton_poi_fused_mul_silu_slice_2",
+      "kernel_site": "triton_poi_fused_mul_silu_slice_2",
+      "observed_source_sha256": "19c4b9c931b28f6f01272da6f331b0628897c9954f2134bd7337a9aa8fe27244",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -900,8 +764,6 @@
       "semantic_key": "1f5fbccffbb7bc09e804ef32520a7794fcb610ed45da7c8f8de99301fd2483b5"
     },
     {
-      "accepted_choice_sha256": "9fc6b7a36b1128df1e1cd005c0f11f896515e0470b058ae4febf186f7877ae8d",
-      "accepted_source_sha256": "333720ca10331bacd7c87c34dc5c3520254db67c3aabab4fd1461d2ae83d12df",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -970,10 +832,12 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "pointwise",
-      "id": "quality32_09",
+      "id": "quality32_template_207e2c660ef7",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "24c6370c391b535af67690bd8b0b2c666f02afbc1b1d3f896332a639248d9a8d",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -983,8 +847,6 @@
       "semantic_key": "207e2c660ef7db457c784248b3d0e32627c030accd1ac5498f80cf954c4f761d"
     },
     {
-      "accepted_choice_sha256": "f148f7118434f925f6efdc08e00bbd324d399a84356835e740f5cab4c31707f8",
-      "accepted_source_sha256": "cf4686be1f554789be24ff4b3db2657ccacc893cb0051a2982ee069100abd8dd",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1067,10 +929,12 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "pointwise",
-      "id": "quality32_10",
+      "id": "quality32_template_a729fc372fe1",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "e10c769f533aa1d43682f01a0c7e24beac1a414a259977799773acc3fd407ca3",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -1080,8 +944,6 @@
       "semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b"
     },
     {
-      "accepted_choice_sha256": "907b9fd5fd65c7389c2ed5ed4fb0b67e33acd2f18935c8a96584a180c758d40f",
-      "accepted_source_sha256": "f997c498c00ed12084bacf0b5fa16ab0f673f331635e4554854db06d4ecd3c97",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1094,156 +956,13 @@
           "native_matmul": false
         },
         "constants": {},
-        "function_sha256": "558ac2424583841268b736426852741fe87128e1c938fa4dad3625c3d4e137ac",
+        "function_sha256": "85920b6fffb03e34d3c4b654155b8810330577e6609294e1044cb7e974992ce9",
         "signature": {
-          "R0_BLOCK": "constexpr",
           "XBLOCK": "constexpr",
           "in_ptr0": "*bf16",
           "in_ptr1": "*bf16",
           "in_ptr2": "*bf16",
-          "in_ptr3": "*bf16",
-          "out_ptr1": "*bf16",
           "out_ptr2": "*bf16",
-          "r0_numel": "i32",
-          "xnumel": "i32"
-        },
-        "size_hints": {
-          "r0_": 4096,
-          "x": 8192
-        },
-        "specialization": [
-          {
-            "__mapping__": [
-              [
-                {
-                  "__tuple__": [
-                    0
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    1
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    2
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    3
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    4
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    5
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    7
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ]
-            ]
-          }
-        ]
-      },
-      "heuristic": "reduction",
-      "id": "quality32_11",
-      "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_4",
-      "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_4",
-      "selected_fields": {
-        "R0_BLOCK": 4096,
-        "XBLOCK": 1,
-        "found_by_coordesc": false,
-        "num_stages": 1,
-        "num_warps": 16
-      },
-      "semantic_key": "7b72739bd93f54c8d0b905f457f13508807e9eb319c0a59634603221f07969fc"
-    },
-    {
-      "accepted_choice_sha256": "a935524d90ce2547d3bf39fd93b3e5baccf4cc3fe81f5203792b361187683c39",
-      "accepted_source_sha256": "cbf1f9df714772a9f434bcd911007c441406d396d194a4247fe8aa2391c40041",
-      "boundary": {
-        "architecture": {
-          "cc": 120,
-          "type": "cuda"
-        },
-        "compiler_flags": {
-          "disable_ftz": false,
-          "enable_fp_fusion": true,
-          "launch_pdl": false,
-          "native_matmul": false
-        },
-        "constants": {},
-        "function_sha256": "0b8e835ec8e37a268ae46f413e3b23d012c8fc8d27972d3f330c964f95ca7cb0",
-        "signature": {
-          "XBLOCK": "constexpr",
-          "in_ptr0": "*bf16",
-          "in_ptr1": "*bf16",
-          "in_ptr2": "*bf16",
-          "out_ptr1": "*bf16",
           "r0_numel": "i32",
           "xnumel": "i32"
         },
@@ -1336,21 +1055,27 @@
           }
         ]
       },
+      "construction_kind": "generated",
       "heuristic": "persistent_reduction",
-      "id": "quality32_12",
-      "kernel_alias": "triton_per_fused__to_copy__unsafe_view_add_clone_mean_mul_pow_rsqrt_silu_view_0",
-      "kernel_site": "triton_per_fused__to_copy__unsafe_view_add_clone_mean_mul_pow_rsqrt_silu_view_0",
+      "id": "quality32_generated_dc10aefcfcbc",
+      "kernel_alias": "triton_per_fused__to_copy__unsafe_view_add_clone_mean_mul_mxfp8_quantize_pow_rsqrt_silu_view_0",
+      "kernel_site": "triton_per_fused__to_copy__unsafe_view_add_clone_mean_mul_mxfp8_quantize_pow_rsqrt_silu_view_0",
+      "observed_source_sha256": "e9eeb058e9d3f7a8eaae72387c4135b3c6a6b48a41cadd34826957d61c80828f",
       "selected_fields": {
         "XBLOCK": 32,
         "found_by_coordesc": false,
         "num_stages": 1,
         "num_warps": 2
       },
-      "semantic_key": "47ceb13fbbc6926d4b80435981cccc2fd3f9a4c1a2b8115d48c0ff2781fe5b2d"
+      "semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
+      "ordered_reduction": {
+        "function_sha256": "dde78dd0e0fbf58b105ba9f8d64d749c0901050bdd71ba86bd29305adf1b5ff8",
+        "helper_sha256": "4c4c03b704d04c8196fba7d1f14c07f9b538302527f9d2fbdc08a595bd56396a",
+        "kind": "gdn128_bf16",
+        "version": 2
+      }
     },
     {
-      "accepted_choice_sha256": "7276afcc72a2e68adf27cf407f0278b1bcde7ce4b98de0556d3dc8b9f85ae4b6",
-      "accepted_source_sha256": "f67dd3a53f17ca0433098d1d75bf9655263fc596d15c558a2426b1f686ccf0e9",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1405,10 +1130,12 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "pointwise",
-      "id": "quality32_13",
+      "id": "quality32_template_749e48d7f8f5",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "f7660cfb35e713cdd674847f6b0ec9e3257979c717ae78910d0e037ec737c983",
       "selected_fields": {
         "XBLOCK": 512,
         "found_by_coordesc": false,
@@ -1418,8 +1145,6 @@
       "semantic_key": "749e48d7f8f59ff06af52700b6bbc0bde19a2e10ff3a382abe3c885896991d59"
     },
     {
-      "accepted_choice_sha256": "e375da94230c7b880fde437a1b75c6245f3f2aa2fed7acaf50b5f10c43d0c5ff",
-      "accepted_source_sha256": "9cef85c7454b3091a1fc6c6c8508a24319813d0bdc3638facb627506f7fcf7d9",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1519,10 +1244,13 @@
           }
         ]
       },
+      "construction_kind": "generated",
+      "context_semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b",
       "heuristic": "reduction",
-      "id": "quality32_14",
+      "id": "quality32_generated_4891aea6058f_attention",
       "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
       "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+      "observed_source_sha256": "b86d09e1542bc66bbb4e1ae742389d4581b6a67e3c2540c6c81377105df3279d",
       "selected_fields": {
         "R0_BLOCK": 4096,
         "XBLOCK": 1,
@@ -1530,11 +1258,16 @@
         "num_stages": 1,
         "num_warps": 16
       },
-      "semantic_key": "4891aea6058fedb2e11a0b3f0d953193aed7d59bdcc2b6ec63db58aee637ca1a"
+      "semantic_key": "4891aea6058fedb2e11a0b3f0d953193aed7d59bdcc2b6ec63db58aee637ca1a",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 8,
+        "chunk_accumulation": "original",
+        "function_sha256": "48aa89937e6fd1490bfb9d7689062dfaebc017ad9148cb9e1dffe4e5b5d0a8c2",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
-      "accepted_choice_sha256": "cfc1f469b4b91a0b75d78c694a6f60016c6eb294c7b96476634bdae5d584a0db",
-      "accepted_source_sha256": "0026092dc4bd8734fa43db9d09cb48f13567aafd9939953e0916f65403ac5991",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1631,10 +1364,12 @@
           }
         ]
       },
+      "construction_kind": "template",
       "heuristic": "pointwise",
-      "id": "quality32_15",
+      "id": "quality32_template_9474cdb5b95b",
       "kernel_alias": "triton_",
       "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+      "observed_source_sha256": "fb67150b397b1ed30bad348ceacc2cf8c4fe7e9d8fa7f60d32cea98582adc47f",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -1644,8 +1379,6 @@
       "semantic_key": "9474cdb5b95b16af086a0f4d0327e257c068cc0b65fe654eb085a6b50917320c"
     },
     {
-      "accepted_choice_sha256": "31f2dea0f91aff511564efa6c4193be6dc511e40e9cafefa4d6881653e9b518c",
-      "accepted_source_sha256": "e62abc4aa0d5eb99a06dd4e12712fe130d0121cbef68f7283811519f8b4ec448",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1745,10 +1478,12 @@
           }
         ]
       },
+      "construction_kind": "generated",
       "heuristic": "reduction",
-      "id": "quality32_16",
+      "id": "quality32_generated_d5c6e0a31b4f",
       "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_3",
       "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_3",
+      "observed_source_sha256": "0e16c827dd4afc08c106aaa5e72f20ce402e25bc2b72e1bf4f5c412ac521b4d4",
       "selected_fields": {
         "R0_BLOCK": 4096,
         "XBLOCK": 1,
@@ -1756,11 +1491,16 @@
         "num_stages": 1,
         "num_warps": 16
       },
-      "semantic_key": "d5c6e0a31b4f756662b1dfe3fff7a1b0c561755b4ccd34e25da124242ee8d225"
+      "semantic_key": "d5c6e0a31b4f756662b1dfe3fff7a1b0c561755b4ccd34e25da124242ee8d225",
+      "ordered_reduction": {
+        "version": 1,
+        "group": 8,
+        "chunk_accumulation": "original",
+        "function_sha256": "c2baba096ec03f7f60bd6fd07d0914f0df2fca939ae1625c2d05b59280246bf7",
+        "helper_sha256": "f5f648467910ffbda413d8e054ec8e2479374f2a8014857b90ffe6352f151c81"
+      }
     },
     {
-      "accepted_choice_sha256": "b9817fd32238e8953b0b03c1696dc5e6716bab708eed0702b3b96500490de909",
-      "accepted_source_sha256": "2b907c07aa6e506f176b41200d791a2f810515cd16f0adc7ee7ebd7106659bf5",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1857,10 +1597,13 @@
           }
         ]
       },
+      "construction_kind": "generated",
+      "context_semantic_key": "37ff2d4e81b3208912f94c9549242ce5e3c528a7d176f0eb1e4da908c63ccc8e",
       "heuristic": "pointwise",
-      "id": "quality32_17",
-      "kernel_alias": "triton_poi_fused_2",
-      "kernel_site": "triton_poi_fused_2",
+      "id": "quality32_generated_9474cdb5b95b_embedding",
+      "kernel_alias": "triton_poi_fused_1",
+      "kernel_site": "triton_poi_fused_1",
+      "observed_source_sha256": "41a8bf1f31bd1010e6b80d532d8d12dd6af08827bc3aae6b1ea14a32586bf781",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -1870,8 +1613,6 @@
       "semantic_key": "9474cdb5b95b16af086a0f4d0327e257c068cc0b65fe654eb085a6b50917320c"
     },
     {
-      "accepted_choice_sha256": "ac9539705150de885b47a453c7c29d467c40583482ae79826f89de3e1ead8fce",
-      "accepted_source_sha256": "8f27bb86d935b525290dce72d3c3c2c08815bc8608584aa9e8e3783b8a9edf88",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -1968,190 +1709,125 @@
           }
         ]
       },
+      "construction_kind": "generated",
+      "context_semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
       "heuristic": "pointwise",
-      "id": "quality32_18",
-      "kernel_alias": "triton_poi_fused_5",
-      "kernel_site": "triton_poi_fused_5",
-      "selected_fields": {
-        "XBLOCK": 512,
-        "found_by_coordesc": false,
-        "num_stages": 1,
-        "num_warps": 8
-      },
-      "semantic_key": "9474cdb5b95b16af086a0f4d0327e257c068cc0b65fe654eb085a6b50917320c"
-    },
-    {
-      "accepted_choice_sha256": "e07399b9102df34ef36fb63cbe817e4fcb2cc183a3c0fd8d5f942ff73722be4c",
-      "accepted_source_sha256": "a347ba848853708a20f8826af0d2c8988ab9de86e429636ac20e1207e55c36ce",
-      "boundary": {
-        "architecture": {
-          "cc": 120,
-          "type": "cuda"
-        },
-        "compiler_flags": {
-          "disable_ftz": false,
-          "enable_fp_fusion": true,
-          "launch_pdl": false,
-          "native_matmul": false
-        },
-        "constants": {},
-        "function_sha256": "fdf982d7d1331f55bbebe43e7d6120ead441308fc8acfe93bf7b219836b17bd0",
-        "signature": {
-          "XBLOCK": "constexpr",
-          "out_ptr0": "*bf16",
-          "xnumel": "i32"
-        },
-        "size_hints": {
-          "x": 33554432
-        },
-        "specialization": [
-          {
-            "__mapping__": [
-              [
-                {
-                  "__tuple__": [
-                    0
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    1
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ]
-            ]
-          }
-        ]
-      },
-      "heuristic": "pointwise",
-      "id": "quality32_19",
-      "kernel_alias": "triton_poi_fused_zeros_5",
-      "kernel_site": "triton_poi_fused_zeros_5",
-      "selected_fields": {
-        "XBLOCK": 512,
-        "found_by_coordesc": false,
-        "num_stages": 1,
-        "num_warps": 8
-      },
-      "semantic_key": "749e48d7f8f59ff06af52700b6bbc0bde19a2e10ff3a382abe3c885896991d59"
-    },
-    {
-      "accepted_choice_sha256": "001287677ec2c314ff982bae3f2a4c33da8920dc1137ac0a0c1dec8a63ac69b3",
-      "accepted_source_sha256": "fdc837ad8288bd8fcc3801cb691f9474ca13dcc83c2bae0ee509b55f3e03191c",
-      "boundary": {
-        "architecture": {
-          "cc": 120,
-          "type": "cuda"
-        },
-        "compiler_flags": {
-          "disable_ftz": false,
-          "enable_fp_fusion": true,
-          "launch_pdl": false,
-          "native_matmul": false
-        },
-        "constants": {},
-        "function_sha256": "76a6752ddf6ee973cb854e33d9969119192d57df8c8c634361a5902f89e441ac",
-        "signature": {
-          "XBLOCK": "constexpr",
-          "in_ptr0": "*bf16",
-          "out_ptr0": "*bf16",
-          "out_ptr1": "*bf16",
-          "xnumel_0": "i32",
-          "xnumel_1": "i32"
-        },
-        "size_hints": {
-          "x": 262144
-        },
-        "specialization": [
-          {
-            "__mapping__": [
-              [
-                {
-                  "__tuple__": [
-                    0
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    1
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    2
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    3
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ],
-              [
-                {
-                  "__tuple__": [
-                    4
-                  ]
-                },
-                [
-                  [
-                    "tt.divisibility",
-                    16
-                  ]
-                ]
-              ]
-            ]
-          }
-        ]
-      },
-      "heuristic": "pointwise",
-      "id": "quality32_20",
+      "id": "quality32_generated_9474cdb5b95b_gdn",
       "kernel_alias": "triton_poi_fused_4",
       "kernel_site": "triton_poi_fused_4",
+      "observed_source_sha256": "7058df2bfe9c12d02da20e3729fc12a6145f5b523cd33918822c3803bb14bb9f",
+      "selected_fields": {
+        "XBLOCK": 512,
+        "found_by_coordesc": false,
+        "num_stages": 1,
+        "num_warps": 8
+      },
+      "semantic_key": "9474cdb5b95b16af086a0f4d0327e257c068cc0b65fe654eb085a6b50917320c"
+    },
+    {
+      "boundary": {
+        "architecture": {
+          "cc": 120,
+          "type": "cuda"
+        },
+        "compiler_flags": {
+          "disable_ftz": false,
+          "enable_fp_fusion": true,
+          "launch_pdl": false,
+          "native_matmul": false
+        },
+        "constants": {},
+        "function_sha256": "76a6752ddf6ee973cb854e33d9969119192d57df8c8c634361a5902f89e441ac",
+        "signature": {
+          "XBLOCK": "constexpr",
+          "in_ptr0": "*bf16",
+          "out_ptr0": "*bf16",
+          "out_ptr1": "*bf16",
+          "xnumel_0": "i32",
+          "xnumel_1": "i32"
+        },
+        "size_hints": {
+          "x": 262144
+        },
+        "specialization": [
+          {
+            "__mapping__": [
+              [
+                {
+                  "__tuple__": [
+                    0
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    1
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    2
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    3
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ],
+              [
+                {
+                  "__tuple__": [
+                    4
+                  ]
+                },
+                [
+                  [
+                    "tt.divisibility",
+                    16
+                  ]
+                ]
+              ]
+            ]
+          }
+        ]
+      },
+      "construction_kind": "generated",
+      "context_semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b",
+      "heuristic": "pointwise",
+      "id": "quality32_generated_9474cdb5b95b_attention",
+      "kernel_alias": "triton_poi_fused_4",
+      "kernel_site": "triton_poi_fused_4",
+      "observed_source_sha256": "7058df2bfe9c12d02da20e3729fc12a6145f5b523cd33918822c3803bb14bb9f",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -2161,8 +1837,6 @@
       "semantic_key": "9474cdb5b95b16af086a0f4d0327e257c068cc0b65fe654eb085a6b50917320c"
     },
     {
-      "accepted_choice_sha256": "0c7e411a998d13a3cf05837282c0a1961041ce1a4d870102b7ad00c7fc482717",
-      "accepted_source_sha256": "250aabddc6d2e952c2cc6101326cf7dbb96e51328490855f26d2c96794260531",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -2231,10 +1905,13 @@
           }
         ]
       },
+      "construction_kind": "generated",
+      "context_semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b",
       "heuristic": "pointwise",
-      "id": "quality32_21",
+      "id": "quality32_generated_1f5fbccffbb7_attention",
       "kernel_alias": "triton_poi_fused_mul_silu_slice_2",
       "kernel_site": "triton_poi_fused_mul_silu_slice_2",
+      "observed_source_sha256": "19c4b9c931b28f6f01272da6f331b0628897c9954f2134bd7337a9aa8fe27244",
       "selected_fields": {
         "XBLOCK": 512,
         "found_by_coordesc": false,
@@ -2244,8 +1921,6 @@
       "semantic_key": "1f5fbccffbb7bc09e804ef32520a7794fcb610ed45da7c8f8de99301fd2483b5"
     },
     {
-      "accepted_choice_sha256": "e98e6d45208f15338ca281a8902dec613c85b775d64c2865cb47e593e8f16511",
-      "accepted_source_sha256": "3e970064b2ab6c0801b0484752e2f6a988f21a9c75137a6e0a5d5285f63907c9",
       "boundary": {
         "architecture": {
           "cc": 120,
@@ -2328,10 +2003,12 @@
           }
         ]
       },
+      "construction_kind": "generated",
       "heuristic": "pointwise",
-      "id": "quality32_22",
+      "id": "quality32_generated_a729fc372fe1",
       "kernel_alias": "triton_poi_fused_mul_sigmoid_view_0",
       "kernel_site": "triton_poi_fused_mul_sigmoid_view_0",
+      "observed_source_sha256": "44a23ccdf4ba92449e6cf9d5d9d93beda808df2dd49475a3c4be71bd8a5be95a",
       "selected_fields": {
         "XBLOCK": 1024,
         "found_by_coordesc": false,
@@ -2344,19 +2021,54 @@
   "canonical_conflicts": [
     {
       "bindings": [
-        "quality32_00",
-        "quality32_14"
+        "quality32_generated_1f5fbccffbb7_gdn",
+        "quality32_generated_1f5fbccffbb7_attention"
       ],
       "discriminator": [
-        "kernel_alias",
-        "kernel_site"
+        "construction_kind",
+        "context_semantic_key"
+      ],
+      "semantic_key": "1f5fbccffbb7bc09e804ef32520a7794fcb610ed45da7c8f8de99301fd2483b5",
+      "sites": [
+        {
+          "construction_kind": "generated",
+          "context_semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
+          "id": "quality32_generated_1f5fbccffbb7_gdn",
+          "selected_fields": {
+            "XBLOCK": 1024,
+            "found_by_coordesc": false,
+            "num_stages": 1,
+            "num_warps": 4
+          }
+        },
+        {
+          "construction_kind": "generated",
+          "context_semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b",
+          "id": "quality32_generated_1f5fbccffbb7_attention",
+          "selected_fields": {
+            "XBLOCK": 512,
+            "found_by_coordesc": false,
+            "num_stages": 1,
+            "num_warps": 8
+          }
+        }
+      ]
+    },
+    {
+      "bindings": [
+        "quality32_generated_4891aea6058f_gdn",
+        "quality32_generated_4891aea6058f_attention"
+      ],
+      "discriminator": [
+        "construction_kind",
+        "context_semantic_key"
       ],
       "semantic_key": "4891aea6058fedb2e11a0b3f0d953193aed7d59bdcc2b6ec63db58aee637ca1a",
       "sites": [
         {
-          "id": "quality32_00",
-          "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
-          "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_2",
+          "construction_kind": "generated",
+          "context_semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
+          "id": "quality32_generated_4891aea6058f_gdn",
           "selected_fields": {
             "R0_BLOCK": 1024,
             "XBLOCK": 1,
@@ -2366,9 +2078,9 @@
           }
         },
         {
-          "id": "quality32_14",
-          "kernel_alias": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
-          "kernel_site": "triton_red_fused__to_copy_add_fused_add_rms_norm_1",
+          "construction_kind": "generated",
+          "context_semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b",
+          "id": "quality32_generated_4891aea6058f_attention",
           "selected_fields": {
             "R0_BLOCK": 4096,
             "XBLOCK": 1,
@@ -2381,56 +2093,20 @@
     },
     {
       "bindings": [
-        "quality32_08",
-        "quality32_21"
+        "quality32_template_9474cdb5b95b",
+        "quality32_generated_9474cdb5b95b_embedding",
+        "quality32_generated_9474cdb5b95b_gdn",
+        "quality32_generated_9474cdb5b95b_attention"
       ],
       "discriminator": [
-        "kernel_alias",
-        "kernel_site"
-      ],
-      "semantic_key": "1f5fbccffbb7bc09e804ef32520a7794fcb610ed45da7c8f8de99301fd2483b5",
-      "sites": [
-        {
-          "id": "quality32_08",
-          "kernel_alias": "triton_poi_fused_mul_silu_slice_3",
-          "kernel_site": "triton_poi_fused_mul_silu_slice_3",
-          "selected_fields": {
-            "XBLOCK": 1024,
-            "found_by_coordesc": false,
-            "num_stages": 1,
-            "num_warps": 4
-          }
-        },
-        {
-          "id": "quality32_21",
-          "kernel_alias": "triton_poi_fused_mul_silu_slice_2",
-          "kernel_site": "triton_poi_fused_mul_silu_slice_2",
-          "selected_fields": {
-            "XBLOCK": 512,
-            "found_by_coordesc": false,
-            "num_stages": 1,
-            "num_warps": 8
-          }
-        }
-      ]
-    },
-    {
-      "bindings": [
-        "quality32_15",
-        "quality32_17",
-        "quality32_18",
-        "quality32_20"
-      ],
-      "discriminator": [
-        "kernel_alias",
-        "kernel_site"
+        "construction_kind",
+        "context_semantic_key"
       ],
       "semantic_key": "9474cdb5b95b16af086a0f4d0327e257c068cc0b65fe654eb085a6b50917320c",
       "sites": [
         {
-          "id": "quality32_15",
-          "kernel_alias": "triton_",
-          "kernel_site": "Placeholder.DESCRIPTIVE_NAME",
+          "construction_kind": "template",
+          "id": "quality32_template_9474cdb5b95b",
           "selected_fields": {
             "XBLOCK": 1024,
             "found_by_coordesc": false,
@@ -2439,9 +2115,9 @@
           }
         },
         {
-          "id": "quality32_17",
-          "kernel_alias": "triton_poi_fused_2",
-          "kernel_site": "triton_poi_fused_2",
+          "construction_kind": "generated",
+          "context_semantic_key": "37ff2d4e81b3208912f94c9549242ce5e3c528a7d176f0eb1e4da908c63ccc8e",
+          "id": "quality32_generated_9474cdb5b95b_embedding",
           "selected_fields": {
             "XBLOCK": 1024,
             "found_by_coordesc": false,
@@ -2450,9 +2126,9 @@
           }
         },
         {
-          "id": "quality32_18",
-          "kernel_alias": "triton_poi_fused_5",
-          "kernel_site": "triton_poi_fused_5",
+          "construction_kind": "generated",
+          "context_semantic_key": "dc10aefcfcbc08e9568f53273077e240fb00f470f502e73cf37908a8198720d8",
+          "id": "quality32_generated_9474cdb5b95b_gdn",
           "selected_fields": {
             "XBLOCK": 512,
             "found_by_coordesc": false,
@@ -2461,9 +2137,9 @@
           }
         },
         {
-          "id": "quality32_20",
-          "kernel_alias": "triton_poi_fused_4",
-          "kernel_site": "triton_poi_fused_4",
+          "construction_kind": "generated",
+          "context_semantic_key": "a729fc372fe1d491a1e3e69d8cc0e8fd76827bb0c92cf75863217f77b0eb0c6b",
+          "id": "quality32_generated_9474cdb5b95b_attention",
           "selected_fields": {
             "XBLOCK": 1024,
             "found_by_coordesc": false,
@@ -2474,7 +2150,9 @@
       ]
     }
   ],
-  "format_version": 1,
+  "format_version": 2,
   "profile_mode": "quality32",
-  "torch_version_prefix": "2.13."
+  "semantic_key_count": 11,
+  "torch_version": "2.14.0+cu130",
+  "triton_version": "3.8.0"
 }

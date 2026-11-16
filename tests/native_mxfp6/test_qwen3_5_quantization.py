@@ -130,6 +130,7 @@ def test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out(monkeypat
     layer = NS(
         get_state_dtype=lambda: (torch.bfloat16, torch.float16),
         tp_size=2,
+        _is_sm120=True,
         hidden_size=5120,
         num_k_heads=16,
         num_v_heads=48,
@@ -139,13 +140,14 @@ def test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out(monkeypat
         gqa_interleaved_layout=False,
         norm=NS(activation="silu"),
     )
-    config = NS(model_config=NS(dtype=torch.bfloat16), speculative_config=None)
+    config = NS(model_config=NS(dtype=torch.bfloat16), speculative_config=None, lora_config=None)
     guard = gdn.QwenGatedDeltaNetAttention._fused_gdn_decode_unsupported_reason
     monkeypatch.setattr(
         torch.ops._C, "fused_gdn_decode_post_conv_mtp", object(), raising=False
     )
     with patch.object(gdn, "current_platform") as platform:
         platform.is_cuda.return_value = True
+        platform.is_rocm.return_value = False
         platform.is_device_capability.return_value = True
         platform.has_device_capability.return_value = True
         monkeypatch.setenv("VLLM_QWEN3_5_FP16_SSM", "0")
@@ -158,6 +160,8 @@ def test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out(monkeypat
         assert torch.float16 not in gdn.FUSED_GDN_STATE_DTYPES
         for obj, attr, value in (
             (config, "speculative_config", object()),
+            (config, "lora_config", object()),
+            (layer, "_is_sm120", False),
             (layer, "tp_size", 1),
             (layer, "hidden_size", 4096),
             (layer, "hidden_size", 2048),
@@ -170,5 +174,5 @@ def test_fp16_gdn_admission_keeps_speculative_and_other_geometries_out(monkeypat
             setattr(obj, attr, value)
             assert guard(layer, config) is not None
             setattr(obj, attr, old)
-        platform.is_device_capability.return_value = False
+        platform.has_device_capability.return_value = False
         assert guard(layer, config) is not None

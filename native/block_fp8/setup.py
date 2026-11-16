@@ -9,15 +9,16 @@ import subprocess
 import sys
 import sysconfig
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_EXTENSIONS, TORCH_BUILD, check_versions
+
 from setuptools import setup
 import torch
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 
 
-if version("flashinfer-python") != "0.6.18":
-    raise RuntimeError("block-FP8 requires FlashInfer 0.6.18 CUTLASS headers")
-if torch.__version__ != "2.13.0+cu130":
-    raise RuntimeError("block-FP8 requires torch==2.13.0+cu130")
+check_versions({"torch": BASE_PACKAGES["torch"], "flashinfer-python": BASE_PACKAGES["flashinfer-python"]})
+
 if not CUDA_HOME:
     raise RuntimeError("CUDA 13.0.88 compiler is required")
 compiler = subprocess.check_output(
@@ -54,20 +55,20 @@ Path("vllm_mach_block_fp8/build_metadata.json").write_text(json.dumps({
 
 setup(
     name="vllm-mach-block-fp8",
-    version="0.1.0a1",
+    version=NATIVE_EXTENSIONS["vllm-mach-block-fp8"],
     description="Selected SM120 block-FP8 n64 Pingpong GEMM",
     license="Apache-2.0",
     license_files=["LICENSE"],
     packages=["vllm_mach_block_fp8"],
     package_data={"vllm_mach_block_fp8": ["build_metadata.json"]},
-    install_requires=["torch==2.13.0"],
+    install_requires=["torch==" + BASE_PACKAGES["torch"]],
     ext_modules=[CUDAExtension(
         "vllm_mach_block_fp8._C", ["block_fp8.cu"],
         include_dirs=[str(headers / "include"), str(headers / "tools/util/include")],
         extra_compile_args={
-            "cxx": ["-O3", "-std=c++17", *system_include_flags],
+            "cxx": ["-O3", "-std=c++20", *system_include_flags],
             "nvcc": [
-                "-O3", "-std=c++17", "--expt-relaxed-constexpr",
+                "-O3", "-std=c++20", "--expt-relaxed-constexpr",
                 "--expt-extended-lambda", "-gencode=arch=compute_120a,code=sm_120a",
                 "--threads=2", "-Xptxas=-v",
                 *system_include_flags,

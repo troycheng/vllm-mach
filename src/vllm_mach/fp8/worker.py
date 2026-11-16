@@ -30,6 +30,9 @@ def validate_worker_config(worker):
     if (cfg.cache_config.cache_dtype not in ("auto", "bfloat16")
             or cfg.cache_config.mamba_ssm_cache_dtype != "float32"):
         raise RuntimeError("Block-FP8 profile requires BF16 KV and FP32 SSM caches")
+    additional = getattr(cfg, "additional_config", None)
+    if not isinstance(additional, dict) or additional.get("gdn_prefill_backend") != "triton":
+        raise RuntimeError("Block-FP8 requires additional_config.gdn_prefill_backend=triton")
     offload = getattr(cfg, "offload_config", None)
     if (getattr(getattr(offload, "uva", None), "cpu_offload_gb", 0)
             or getattr(getattr(offload, "prefetch", None), "offload_group_size", 0)):
@@ -40,6 +43,10 @@ def inspect(worker=None):
     from . import compile_choices
     features = selected_features()
     result = {"features": list(features), "compile_choices": compile_choices.inspect()}
+    from . import quantize, prefill, guard_norm, packed_fp32
+    result["legacy_math"] = {"quantize": quantize.receipt(require=False),
+                             "prefill": prefill.inspect(worker), "guard_norm": guard_norm.inspect(),
+                             "packed_fp32": packed_fp32.receipt()}
     if "n64" in features or "ordered" in features:
         from . import linear
         result["linear"] = linear.inspect(worker)
@@ -48,6 +55,8 @@ def inspect(worker=None):
         result["activation"] = activation.inspect()
     if worker is not None:
         result["sources"] = worker._mach_fp8_sources
+        from . import prefill_graph
+        result["prefill_graph"] = prefill_graph.inspect_worker(worker)
     return result
 
 
@@ -70,6 +79,8 @@ def install_worker_hook():
     features = selected_features()
     from . import compile_choices
     compile_choices.install()
+    from . import quantize
+    quantize.install()
     if "n64" in features or "ordered" in features:
         from . import linear
         linear.register()
@@ -84,16 +95,23 @@ def install_worker_hook():
         return False
     original_init = Worker.init_device
     original_compile = Worker.compile_or_warm_up_model
+    original_load = Worker.load_model
 
     @wraps(original_init)
     def init(self, *args, **kwargs):
         validate_worker_config(self)
+        from . import prefill_graph
+        prefill_graph.configure(self, features)
         result = original_init(self, *args, **kwargs)
         import torch
         if torch.cuda.get_device_capability() != (12, 0):
             raise RuntimeError("Block-FP8 profile requires CUDA SM120")
         self._mach_fp8_sources = sources
         self._mach_fp8_compiled = False
+        from . import prefill, guard_norm, packed_fp32
+        prefill.install()
+        packed_fp32.install()
+        guard_norm.install()
         if "n64" in features or "ordered" in features:
             from . import linear
             linear.install(n64="n64" in features, ordered="ordered" in features)
@@ -102,11 +120,21 @@ def install_worker_hook():
             activation.install()
         return result
 
+    @wraps(original_load)
+    def load_model(self, *args, **kwargs):
+        result = original_load(self, *args, **kwargs)
+        from . import prefill_graph
+        prefill_graph.bind_model(self)
+        return result
+
     @wraps(original_compile)
     def compile_model(self, *args, **kwargs):
         if selected_features() != features:
             raise RuntimeError("Block-FP8 feature selection changed before compilation")
+        from . import prefill_graph
+        prefill_graph.before_compile(self)
         result = original_compile(self, *args, **kwargs)
+        prefill_graph.after_compile(self)
         compile_choices.verify_coverage()
         receipt = write_receipt(self)
         if "linear" in receipt:
@@ -129,6 +157,7 @@ def install_worker_hook():
 
     Worker.init_device = init
     Worker.compile_or_warm_up_model = compile_model
+    Worker.load_model = load_model
     # These public worker RPCs can replace weight/scale storage after capture.
     # This profile has no online reload or weight-transfer contract.
     Worker.reload_weights = reject_weight_update

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import torch
 from vllm.triton_utils import tl, triton
 from vllm.third_party.flash_linear_attention.ops.op import exp
+from .legacy_reduction import _old_square_128, _old_dot_128_8local
 
 HV, H, V, K, BV = 32, 16, 128, 128, 32
 NV = V // BV
@@ -65,6 +66,11 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
                     SCALE: tl.constexpr, H: tl.constexpr, HV: tl.constexpr,
                     V: tl.constexpr, K: tl.constexpr, BV: tl.constexpr,
                     NV: tl.constexpr, USE_PDL: tl.constexpr = False):
+    # This high-M caller fixes the qualified one-warp local8 state layout.
+    legacy_bf16: tl.constexpr = (
+        base.dtype.element_ty == tl.bfloat16 and H == 16 and HV == 32
+        and K == 128 and V == 128 and BV == 32 and NV == 4 and W == 4
+        and not USE_PDL)
     if USE_PDL:
         tl.inline_asm_elementwise("griddepcontrol.wait; // $0", "=r", [],
                                   dtype=tl.int32, is_pure=False, pack=1)
@@ -109,8 +115,12 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     b_q = tl.load(ptr_mixed + ik * K + ok).to(tl.float32)
     b_k = tl.load(ptr_mixed + H * K + ik * K + ok).to(tl.float32)
     b_v = tl.load(ptr_mixed + 2 * H * K + ihv * V + ov).to(tl.float32)
-    b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
-    b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
+    if legacy_bf16:
+        b_q = b_q / tl.sqrt(_old_square_128(b_q) + 1e-6)
+        b_k = b_k / tl.sqrt(_old_square_128(b_k) + 1e-6)
+    else:
+        b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
+        b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
     b_q = b_q * SCALE
     a_val = tl.load(a + it * stride_a + ihv).to(tl.float32)
     b_val = tl.load(b + it * stride_b + ihv).to(tl.float32)
@@ -124,10 +134,16 @@ def _ordered_decode(mixed_qkv, a, b, A_log, dt_bias, out, base, indices,
     # Keep the stock packed FLA update/reduction source expressions and order.
     alpha = exp(g_val)
     b_h *= alpha
-    b_v -= tl.sum(b_h * b_k[None, :], 1)
+    if legacy_bf16:
+        b_v -= _old_dot_128_8local(b_h, b_k[None, :], BV)
+    else:
+        b_v -= tl.sum(b_h * b_k[None, :], 1)
     b_v *= beta_val
     b_h += b_v[:, None] * b_k[None, :]
-    b_o = tl.sum(b_h * b_q[None, :], 1)
+    if legacy_bf16:
+        b_o = _old_dot_128_8local(b_h, b_q[None, :], BV)
+    else:
+        b_o = tl.sum(b_h * b_q[None, :], 1)
     tl.store(output_ptr, b_o.to(out.dtype.element_ty))
 
     if old_age == W - 1:
