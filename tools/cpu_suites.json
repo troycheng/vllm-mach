@@ -57,7 +57,8 @@
   "profile_extra": {
     "mxfp8": [
       "tests/native_mxfp6/test_gdn_runtime_registration.py",
-      "tests/test_mxfp8_2b_metadata_classification_cpu.py"
+      "tests/test_mxfp8_2b_metadata_classification_cpu.py",
+      "tests/test_mxfp8_2b_head_scale_cpu.py"
     ],
     "block-fp8": [],
     "native": [
@@ -139,7 +140,13 @@
       "test_selected_2b_sampler_metadata_actual_runtime",
       "test_selected_2b_selector_graph_actual_runtime",
       "test_actual_prepare_inputs_all_fields_and_retained_prefixes",
-      "test_selected_2b_presence_graph_actual_runtime"
+      "test_selected_2b_presence_graph_actual_runtime",
+      "test_frozen_kernel_guard_and_launch_AST",
+      "test_admitted_launch_fresh_scalar_and_original_inverse",
+      "test_selected_install_duplicate_and_owner_refusal",
+      "test_unselected_profiles_leave_runtime_and_original_untouched",
+      "test_capture_install_refuses_before_binding",
+      "test_actual_CPU_tensor_falls_back_without_CUDA_initialization"
     ],
     "block-fp8": [
       "test_selected_runtime_profile_sources_are_installed",
