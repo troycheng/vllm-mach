@@ -95,7 +95,7 @@ def _check_geometry(worker, contract):
 
 def inspect_worker(worker):
     worker = _worker(worker)
-    from . import ba, gdn, graph_policy, hybrid_head, pdl, sampler_metadata, metadata_classification
+    from . import ba, gdn, graph_policy, hybrid_head, pdl, sampler_metadata, metadata_classification, head_scale
     from .. import input_geometry
     from ..worker import verify_worker_execution
     import torch
@@ -138,6 +138,7 @@ def inspect_worker(worker):
             "head": {"dtype": "bfloat16", "shape": [248320, 2048]},
             "hybrid_head": hybrid, "sampler_metadata": sampler_metadata.inspect_worker(worker),
             "metadata_classification": metadata_classification.inspect_worker(worker),
+            "head_scale": head_scale.inspect_worker(worker),
             "input_geometry": input_geometry.inspect_worker(worker),
             "ordered_attention_sources": attention.identity(),
             "ordered_prep_sources": gdn_prep.identity(),
@@ -233,6 +234,8 @@ def install_worker_hook():
             sampler_metadata.install(self)
             from . import metadata_classification
             metadata_classification.install(self)
+        from . import head_scale
+        head_scale.install(self)
         write_receipt(self, "compiled")
         self._mach_2b_ready = True
         return result
