@@ -32,7 +32,7 @@ Use `deploy/Dockerfile.mxfp8` for 2B/4B MXFP8 or `deploy/Dockerfile.fp8` for an 
 | CUDA compiler | 13.0.88 |
 | NCCL | 2.30.7 |
 
-The native library is built from [`91e0df5`](https://github.com/Nekofish-L/mxfp6_sm120/commit/91e0df5dec211d4d8138b71b07230f75c809728d).
+The Docker images and source installer build the native library from [`206d526`](https://github.com/Nekofish-L/mxfp6_sm120/commit/206d5266e4c08f20dfcdd56d04ffec3887215c67).
 
 The wheel records the actual Torch/CUDA ABI, Python/toolchain identity and both native library hashes in `mxfp6/build_info.json`. The accompanying external build receipt, `mxfp8-build.json`, records source and patched CUTLASS fingerprints, build options and the wheel hash. The shared [native build entry](../deploy/build-mxfp8.py) produces both libraries and the external receipt. Mach's Dockerfiles also restore the Torch-required NCCL version and install the pinned build dependencies.
 

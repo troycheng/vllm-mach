@@ -1,7 +1,8 @@
 """Version selection and ABI gates must remain independent of CUDA imports."""
 import os
 import sys
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -40,3 +41,25 @@ def test_explicit_plugin_checks_torch_abi_before_hooks_or_cuda():
         with pytest.raises(RuntimeError, match="torch=="):
             plugin.register()
         dense.assert_not_called()
+
+
+@pytest.mark.parametrize("has_python_api", [False, True])
+def test_compact_moe_plugin_rejects_old_native_before_registering(monkeypatch, has_python_api):
+    from vllm_mach import plugin
+
+    versions = {**stack.BASE_PACKAGES, "torch": stack.TORCH_BUILD}
+    monkeypatch.setenv("VLLM_MACH_MOE_HIGH_M_COMPACT", "1")
+    monkeypatch.setattr(plugin, "version", versions.__getitem__)
+    register_dense = Mock()
+    monkeypatch.setattr(plugin, "register_dense_kernel", register_dense)
+    load_native = Mock()
+    native = SimpleNamespace(load_library=load_native)
+    if has_python_api:
+        native.qwen35_compact_gemm_out = Mock()
+    monkeypatch.setitem(sys.modules, "mxfp6", native)
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(ops=SimpleNamespace(mxfp6=object())))
+
+    with pytest.raises(RuntimeError, match="requires the native qwen35_compact_gemm_out"):
+        plugin.register()
+    assert load_native.call_count == int(has_python_api)
+    register_dense.assert_not_called()

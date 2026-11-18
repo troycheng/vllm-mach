@@ -45,9 +45,51 @@ The adapter retains packed expert weights, packs checkpoint scales to the
 native layout and uses the package's routed grouped GEMMs for prefill. Eligible
 Qwen35 TP2 layers combine the shared expert with the routed weights for the
 1–4 token fused router/expert schedule and use the indirect grouped schedule
-for 5–96 tokens. Larger batches use the generic routed path. With AR/Norm
+for 5–96 tokens. Larger batches use the generic routed path by default. With AR/Norm
 fusion disabled, the standard vLLM runner performs the final TP reduction;
 with fusion enabled, the following norm owns it.
+
+## Compact MoE at high token counts
+
+Pass `--moe-high-m-compact` to opt in on native Qwen3.5-35B-A3B MXFP6 TP2.
+Eligible layers use compact expert scheduling for physical M97–160, where M is
+the number of rows submitted to the MoE layer, including graph padding. The
+schedule preserves the vLLM router's FP32 summation order and rounds the routed
+output to BF16 before adding the shared expert. It uses a separate compilation
+cache. Startup requires a native wheel with `qwen35_compact_gemm_out`.
+
+The vLLM 0.33.0 trial used the same Quark E3M2 checkpoint and scheduler for both
+arms on two RTX 5090 GPUs with TP2, FP32 SSM, the full BF16 head and BF16 KV.
+The c128 HTTP workload used 3,000 input and 1,000 output tokens per request,
+256 timed requests per window, 11 GiB of KV per GPU, and full M128 decode graphs
+under `VLLM_COMPILE` / `FULL_AND_PIECEWISE`. Against the released Mach generic
+route, alternating service launches showed a geometric mean throughput gain
+of 1.67%. An independent pair measured 4,825.46 to 4,882.88 output tokens/s
+(+1.19%). The c64 comparison measured −0.87% with zero M97–160 graph steps.
+The launcher leaves this option off by default.
+
+For each of M128 and M160, the trial matched the released route on all
+10,479 teacher-forced gold logprobs and top-1 tokens. All 128 M128 free-generation
+token sequences matched. The throughput measurement covers c128 with M128
+decode graph replay. M160 was checked for numerical fidelity.
+
+To use the measured precision and serving configuration, keep the graph sizes
+from `GRAPH_CONFIG` above and select the compact schedule explicitly.
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 OMP_NUM_THREADS=4 vllm-mach-serve \
+  --model "$MODEL" --tokenizer "$MODEL" --tensor-parallel-size 2 \
+  --moe-high-m-compact --no-hybrid-head --mamba-ssm-cache-dtype float32 \
+  --kv-cache-dtype bfloat16 --kv-cache-memory-bytes 11811160064 \
+  --max-model-len 16384 --max-num-seqs 256 --max-num-batched-tokens 2048 \
+  --enable-chunked-prefill --compilation-config "$GRAPH_CONFIG" \
+  --cudagraph-metrics --host 127.0.0.1 --port 8000
+```
+
+The compact path reports `Executing Qwen3.5-35B TP2 MXFP6 compact high-M schedule`
+on each worker that executes it.
+
+## Other MoE routes
 
 The launcher recognizes `qwen3_5_moe` and `qwen3_5_moe_text` in the local model
 configuration. Native TP2 AllReduce/residual/RMSNorm fusion supports both
