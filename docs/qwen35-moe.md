@@ -58,20 +58,16 @@ schedule preserves the vLLM router's FP32 summation order and rounds the routed
 output to BF16 before adding the shared expert. It uses a separate compilation
 cache. Startup requires a native wheel with `qwen35_compact_gemm_out`.
 
-The vLLM 0.33.0 trial used the same Quark E3M2 checkpoint and scheduler for both
-arms on two RTX 5090 GPUs with TP2, FP32 SSM, the full BF16 head and BF16 KV.
-The c128 HTTP workload used 3,000 input and 1,000 output tokens per request,
-256 timed requests per window, 11 GiB of KV per GPU, and full M128 decode graphs
-under `VLLM_COMPILE` / `FULL_AND_PIECEWISE`. Against the released Mach generic
-route, alternating service launches showed a geometric mean throughput gain
-of 1.67%. An independent pair measured 4,825.46 to 4,882.88 output tokens/s
-(+1.19%). The c64 comparison measured −0.87% with zero M97–160 graph steps.
-The launcher leaves this option off by default.
+On two RTX 5090s, the installed native and Mach wheels served the same Quark E3M2 checkpoint with vLLM 0.33.0, TP2, FP32 SSM, the full BF16 head, and BF16 KV. Each c128 window used 128 warmup requests, then 256 timed requests with 3,000 input and 1,000 output tokens. Both settings used 11 GiB of KV per GPU and replayed full M128 decode graphs.
 
-For each of M128 and M160, the trial matched the released route on all
-10,479 teacher-forced gold logprobs and top-1 tokens. All 128 M128 free-generation
-token sequences matched. The throughput measurement covers c128 with M128
-decode graph replay. M160 was checked for numerical fidelity.
+| c128 run order | Default, output tok/s | Compact, output tok/s | Change |
+|---|---:|---:|---:|
+| Default → compact | 4,811.15 | 4,888.94 | +1.62% |
+| Compact → default | 4,817.09 | 4,916.22 | +2.06% |
+
+The geometric mean throughput change was **+1.84%**. In the earlier c64 trial, the compact configuration averaged −0.87% across two pairs, with zero graph steps in the target range. Use the default schedule for c64.
+
+At physical M128 and M160, all 10,479 fixed-token log probabilities and top-1 predictions per shape matched the released route. Mean absolute logprob error relative to BF16 was 0.07264 at M128 and 0.07144 at M160. All 128 M128 free-generation token sequences matched.
 
 To use the measured precision and serving configuration, keep the graph sizes
 from `GRAPH_CONFIG` above and select the compact schedule explicitly.
