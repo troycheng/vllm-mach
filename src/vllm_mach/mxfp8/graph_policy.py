@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Exact2048 PIECEWISE policy; no parent CUDA work or diagnostic GPU counters."""
-from collections import Counter
+"""Capture settings and replay verification for the 4B MXFP8 profile."""
 from functools import wraps
 
 BASE = (1, 2, 4, *range(8, 257, 8))
@@ -9,7 +8,6 @@ FULL_SIZES = tuple(x for x in BASE if x <= 128)
 MAX_CAPTURE_SIZE = 2048
 _READY = False
 _MANAGER = None
-_ROUTES = Counter()
 
 
 def compilation_settings():
@@ -18,46 +16,10 @@ def compilation_settings():
             "max_cudagraph_capture_size": MAX_CAPTURE_SIZE}
 
 
-def apply_descriptor(desc, num_tokens, num_reqs):
-    """Correct large tail descriptors before the runner pads its input tensors."""
-    from vllm.config.compilation import CUDAGraphMode
-    from vllm.v1.worker.gpu.cudagraph_utils import BatchExecutionDescriptor
-    if num_tokens is None or num_reqs is None:
-        raise RuntimeError("PW2048 dispatch requires actual token and request counts")
-    if num_tokens > 256 and num_tokens != 2048 and desc.cg_mode == CUDAGraphMode.PIECEWISE:
-        desc = BatchExecutionDescriptor(cg_mode=CUDAGraphMode.NONE,
-            num_tokens=num_tokens,num_reqs=num_reqs,num_active_loras=desc.num_active_loras)
-    if num_tokens > 256 and desc.num_tokens != num_tokens:
-        raise RuntimeError("Non-target padding changed arithmetic shape")
-    if num_tokens == 2048 and desc.cg_mode != CUDAGraphMode.PIECEWISE:
-        raise RuntimeError("actual2048 requires PIECEWISE2048")
-    return desc
-
-
-def install_dispatch():
-    """Register before compilation; enable routing after verified graph capture."""
-    from vllm.v1.worker.gpu.cudagraph_utils import CudaGraphManager
-    if getattr(CudaGraphManager, "_mach_mxfp8_pw2048", False):
-        return False
-    original = CudaGraphManager.dispatch
-    @wraps(original)
-    def dispatch(self, *args, **kwargs):
-        desc = original(self, *args, **kwargs)
-        if not _READY:
-            return desc
-        num_tokens = kwargs.get("num_tokens", args[1] if len(args) > 1 else None)
-        num_reqs = kwargs.get("num_reqs", args[0] if args else None)
-        desc = apply_descriptor(desc, num_tokens, num_reqs)
-        _ROUTES[(desc.cg_mode.name, int(num_tokens), int(desc.num_tokens))] += 1
-        return desc
-    CudaGraphManager.dispatch = dispatch
-    CudaGraphManager._mach_mxfp8_pw2048 = True
-    return True
-
-
 def verify_capture(worker):
     """After compile: bind the manager and prove the exact capture/capacity policy."""
     global _READY, _MANAGER
+    from vllm.compilation.cuda_graph import CUDAGraphWrapper
     from vllm.config.compilation import CUDAGraphMode
     from . import native_backend
     manager = worker.model_runner.cudagraph_manager
@@ -74,6 +36,21 @@ def verify_capture(worker):
         raise RuntimeError("PW2048 requires FULL_AND_PIECEWISE and maxcapture2048")
     if worker.vllm_config.cache_config.kv_cache_memory_bytes != 19*2**30:
         raise RuntimeError("PW2048 altered fixed 19 GiB KV capacity")
+    prefill_graphs = [
+        entry.cudagraph
+        for wrapper in list(CUDAGraphWrapper._all_instances)
+        if wrapper.vllm_config is worker.vllm_config
+        and wrapper.runtime_mode == CUDAGraphMode.PIECEWISE
+        for desc, entry in wrapper.concrete_cudagraph_entries.items()
+        if desc.num_tokens == MAX_CAPTURE_SIZE
+    ]
+    if not prefill_graphs or any(graph is None for graph in prefill_graphs):
+        raise RuntimeError("Missing 4B PIECEWISE prefill capture")
+    for tokens in (257, 1728, 1848, 1920, 2040, MAX_CAPTURE_SIZE):
+        desc = manager.dispatch(num_reqs=1, num_tokens=tokens,
+                                uniform_token_count=None, num_active_loras=0)
+        if desc.cg_mode != CUDAGraphMode.PIECEWISE or desc.num_tokens != MAX_CAPTURE_SIZE:
+            raise RuntimeError(f"Missing padded prefill replay at {tokens} tokens")
     native = native_backend.inspect(worker)
     if native["counts"].get("capture_cache_miss", 0):
         raise RuntimeError("native MXFP8 workspace missed during graph capture")
@@ -84,9 +61,7 @@ def verify_capture(worker):
 def inspect_worker(worker=None):
     return {"ready": _READY, "capture_sizes": list(CAPTURE_SIZES),
             "full_sizes": list(FULL_SIZES), "max_capture_size": MAX_CAPTURE_SIZE,
-            "route_counts": [{"mode": k[0], "actual_tokens": k[1],
-                              "physical_tokens": k[2], "calls": v}
-                             for k,v in sorted(_ROUTES.items())],
+            "dispatch": "vllm", "route_counts": [],  # No per-step Mach hook.
             "descriptor_counts": {mode.name: len(descs) for mode,descs in
                                   getattr(_MANAGER, "_capture_descs", {}).items()},
             "counts_are_python_construction_only": True}
@@ -97,7 +72,6 @@ def install_hook():
     from vllm.v1.worker.gpu_worker import Worker
     if getattr(Worker, "_mach_mxfp8_pw2048_hook", False):
         return False
-    install_dispatch()
     original = Worker.compile_or_warm_up_model
     @wraps(original)
     def compile_or_warm_up_model(self, *args, **kwargs):

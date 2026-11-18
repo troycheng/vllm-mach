@@ -171,11 +171,9 @@ def install_worker_hook():
     if any(getattr(Worker, name, False) for name in
            ("_mach_mxfp8_native_hook", "_mach_mxfp8_champion_hook", "_two_b_gdn_ordered_worker_hook", "_two_b_ba_hook")):
         raise RuntimeError("Another MXFP8 worker profile is already installed")
-    from . import ba, gdn, graph_policy, pdl
+    from . import ba, gdn, pdl
     from ..worker import install_worker_backend
     gdn = select_gdn(gdn)
-    if contract["mode"] == "production":
-        graph_policy.install_dispatch()
     from . import ordered_reduction
     ordered_reduction.install()
     pdl.install()

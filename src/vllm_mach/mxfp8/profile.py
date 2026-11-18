@@ -245,15 +245,13 @@ def install_worker_hook():
     if (getattr(Worker, "_mach_mxfp8_native_hook", False)
             or getattr(Worker, "_mach_2b_hook", False)):
         raise RuntimeError("Select the complete profile instead of stacking the standalone native hook")
-    from . import compile_choices, gdn, graph_policy
+    from . import compile_choices, gdn
     gdn = select_gdn(gdn)
     compile_choices.install()
     from vllm_mach.gdn_prep import four_b_enabled
     if four_b_enabled():
         from .two_b import ordered_reduction
         ordered_reduction.install()
-    if contract["mode"] == "production":
-        graph_policy.install_dispatch()
 
     from . import swiglu_quant
     swiglu_quant.install()

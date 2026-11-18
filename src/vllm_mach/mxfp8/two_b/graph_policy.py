@@ -1,10 +1,8 @@
-"""Frozen FULL decode / exact2048 PIECEWISE graph policy for the 2B profile."""
-from functools import wraps
+"""Capture settings and replay checks for the 2B profile."""
 import os
 
 BASE_CAPTURE_SIZES = (4, 8, 16, 24, 32, 48, 64, 96, 128, 160)
 CAPTURE_SIZES = (*BASE_CAPTURE_SIZES, 2048)
-_INSTALLED = False
 
 
 def _contract():
@@ -24,20 +22,6 @@ def compilation_settings():
     return {"cudagraph_mode": "FULL_AND_PIECEWISE",
             "cudagraph_capture_sizes": list(captures),
             "max_cudagraph_capture_size": captures[-1]}
-
-
-def apply_descriptor(desc, num_tokens, num_reqs):
-    from vllm.config.compilation import CUDAGraphMode
-    from vllm.v1.worker.gpu.cudagraph_utils import BatchExecutionDescriptor
-    if num_tokens > 160 and num_tokens != 2048:
-        # Before prepare_inputs: large tails keep their actual shape.
-        return BatchExecutionDescriptor(cg_mode=CUDAGraphMode.NONE,
-            num_tokens=num_tokens, num_reqs=num_reqs,
-            num_active_loras=desc.num_active_loras)
-    if num_tokens == 2048 and (desc.cg_mode != CUDAGraphMode.PIECEWISE
-                              or desc.num_tokens != 2048):
-        raise RuntimeError("actual2048 requires captured exact PIECEWISE2048")
-    return desc
 
 
 def verify_capture(worker):
@@ -85,8 +69,6 @@ def verify_capture(worker):
             pw_counts[desc.num_tokens] = pw_counts.get(desc.num_tokens, 0) + 1
     if sorted(pw_counts) != list(captures):
         raise RuntimeError(f"2B PIECEWISE graph capture incomplete: {pw_counts}")
-    # Do not arm dispatch until real graphs and the fixed capacity are verified.
-    manager._mach_2b_graph_mode = mode
     for tokens in range(1, maxseq + 1):
         padded = next(m for m in full if m >= tokens)
         for uniform, route in ((1, CUDAGraphMode.FULL), (None, CUDAGraphMode.PIECEWISE)):
@@ -95,48 +77,28 @@ def verify_capture(worker):
                                     num_active_loras=0, max_query_len=1 if uniform else tokens)
             if desc.cg_mode != route or desc.num_tokens != padded:
                 raise RuntimeError(f"2B graph dispatch changed at {tokens} tokens")
-    probes = (161, 2047, 2049) if mode == "production" else (maxseq + 1,)
-    for tokens in probes:
-        desc = manager.dispatch(num_reqs=1, num_tokens=tokens,
-                                uniform_token_count=None, num_active_loras=0)
-        if desc.cg_mode != CUDAGraphMode.NONE or desc.num_tokens != tokens:
-            raise RuntimeError("2B uncaptured tails require NONE without padding")
     if mode == "production":
-        desc = manager.dispatch(num_reqs=1, num_tokens=2048,
-                                uniform_token_count=None, num_active_loras=0)
-        if desc.cg_mode != CUDAGraphMode.PIECEWISE or desc.num_tokens != 2048:
-            raise RuntimeError("actual2048 requires captured exact PIECEWISE2048")
+        for tokens in (161, 1920, 2040, 2048):
+            desc = manager.dispatch(num_reqs=1, num_tokens=tokens,
+                                    uniform_token_count=None, num_active_loras=0)
+            if desc.cg_mode != CUDAGraphMode.PIECEWISE or desc.num_tokens != maxbatch:
+                raise RuntimeError(f"Missing padded prefill replay at {tokens} tokens")
+    beyond_capture = captures[-1] + 1
+    desc = manager.dispatch(num_reqs=1, num_tokens=beyond_capture,
+                            uniform_token_count=None, num_active_loras=0)
+    if desc.cg_mode != CUDAGraphMode.NONE or desc.num_tokens != beyond_capture:
+        raise RuntimeError("Unexpected graph beyond the largest capture")
     return {"ready": True, "mode": mode, "captures": planned,
             "capture_sizes": list(captures), "full_sizes": list(full),
             "piecewise_sizes": list(captures),
             "piecewise_graph_counts": {str(m): n for m, n in sorted(pw_counts.items())},
-            "kv_capacity_bytes": capacity, "large_tail_mode": "NONE",
-            "large_tail_padding": False}
-
-
-def install_dispatch():
-    """Install only manager dispatch; worker lifecycle belongs to the profile."""
-    global _INSTALLED
-    if os.environ.get("VLLM_MACH_PROFILE") != "qwen35-2b-mxfp8-champion-v1":
-        raise RuntimeError("2B graph policy requires qwen35-2b-mxfp8-champion-v1")
-    if _INSTALLED:
-        return False
-    from vllm.v1.worker.gpu.cudagraph_utils import CudaGraphManager
-    dispatch = CudaGraphManager.dispatch
-
-    @wraps(dispatch)
-    def exact_dispatch(self, num_reqs, num_tokens, *args, **kwargs):
-        desc = dispatch(self, num_reqs, num_tokens, *args, **kwargs)
-        if getattr(self, "_mach_2b_graph_mode", None) != "production":
-            return desc
-        return apply_descriptor(desc, num_tokens, num_reqs)
-
-    CudaGraphManager.dispatch = exact_dispatch
-    _INSTALLED = True
-    return True
+            "kv_capacity_bytes": capacity, "dispatch": "vllm",
+            "large_tail_mode": "PIECEWISE" if mode == "production" else "NONE",
+            "large_tail_padding": mode == "production"}
 
 
 def inspect_worker(worker=None):
     if worker is None:
-        return {"installed": _INSTALLED, "compilation_settings": compilation_settings()}
-    return {"installed": _INSTALLED, **verify_capture(worker)}
+        return {"installed": False, "dispatch": "vllm",
+                "compilation_settings": compilation_settings()}
+    return {"installed": False, **verify_capture(worker)}

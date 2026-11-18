@@ -14,7 +14,7 @@ class Mode(enum.Enum):
     FULL = 1
     PIECEWISE = 2
     FULL_AND_PIECEWISE = 3
-@dataclass
+@dataclass(frozen=True)
 class Descriptor:
     cg_mode: Mode
     num_tokens: int
@@ -29,38 +29,10 @@ def load():
 class GraphPolicyContracts(unittest.TestCase):
     def setUp(self):
         self.comp=types.ModuleType('vllm.config.compilation');self.comp.CUDAGraphMode=Mode
-        self.cg=types.ModuleType('vllm.v1.worker.gpu.cudagraph_utils');self.cg.BatchExecutionDescriptor=Descriptor
-        self.modules={self.comp.__name__:self.comp,self.cg.__name__:self.cg}
+        self.modules={self.comp.__name__:self.comp}
         self.patch=patch.dict(sys.modules,self.modules);self.patch.start()
         self.policy=load()
     def tearDown(self):self.patch.stop()
-
-    def test_exact2048_and_small_decode_preserve_descriptor(self):
-        for mode,tokens in ((Mode.PIECEWISE,2048),(Mode.FULL,32),(Mode.FULL,128)):
-            desc=Descriptor(mode,tokens,32)
-            self.assertIs(self.policy.apply_descriptor(desc,tokens,32),desc)
-        with self.assertRaisesRegex(RuntimeError,'PIECEWISE2048'):
-            self.policy.apply_descriptor(Descriptor(Mode.NONE,2048,32),2048,32)
-
-    def test_non_target_large_tail_uses_none_without_padding(self):
-        for tokens in (264,1992,2047,2056):
-            desc=self.policy.apply_descriptor(Descriptor(Mode.PIECEWISE,2048,None,2),tokens,7)
-            self.assertEqual(desc,Descriptor(Mode.NONE,tokens,7,2))
-        with self.assertRaisesRegex(RuntimeError,'padding'):
-            self.policy.apply_descriptor(Descriptor(Mode.NONE,2048,7),1992,7)
-        with self.assertRaisesRegex(RuntimeError,'counts'):
-            self.policy.apply_descriptor(Descriptor(Mode.NONE,1992,7),None,7)
-
-    def test_install_once_and_no_routing_change_before_capture(self):
-        class Manager:
-            def dispatch(self,num_reqs,num_tokens):return Descriptor(Mode.PIECEWISE,2048,None)
-        self.cg.CudaGraphManager=Manager
-        self.assertTrue(self.policy.install_dispatch());self.assertFalse(self.policy.install_dispatch())
-        manager=Manager()
-        self.assertEqual(manager.dispatch(2,1992).num_tokens,2048)
-        self.policy._READY=True
-        self.assertEqual(manager.dispatch(num_reqs=2,num_tokens=1992).num_tokens,1992)
-        self.assertEqual(manager.dispatch(2,2048).cg_mode,Mode.PIECEWISE)
 
     def test_capture_policy_capacity_and_native_workspace_verification(self):
         native=types.ModuleType('vllm_mach.mxfp8.native_backend')
@@ -73,8 +45,25 @@ class GraphPolicyContracts(unittest.TestCase):
             vllm_config=types.SimpleNamespace(compilation_config=types.SimpleNamespace(
                 cudagraph_mode=Mode.FULL_AND_PIECEWISE,max_cudagraph_capture_size=2048),
                 cache_config=types.SimpleNamespace(kv_cache_memory_bytes=19*2**30)))
-        with patch.dict(sys.modules,{package.__name__:package,native.__name__:native}):
-            self.assertTrue(self.policy.verify_capture(worker)['ready'])
+        manager = worker.model_runner.cudagraph_manager
+        manager.dispatch = lambda **kwargs: Descriptor(Mode.PIECEWISE, 2048, None)
+        wrapper = types.SimpleNamespace(
+            vllm_config=worker.vllm_config, runtime_mode=Mode.PIECEWISE,
+            concrete_cudagraph_entries={Descriptor(Mode.PIECEWISE,2048,None):
+                                        types.SimpleNamespace(cudagraph=object())})
+        module = types.ModuleType("vllm.compilation.cuda_graph")
+        module.CUDAGraphWrapper = types.SimpleNamespace(_all_instances=[wrapper])
+        with patch.dict(sys.modules,{package.__name__:package,native.__name__:native,
+                                     module.__name__:module}):
+            self.assertEqual(self.policy.verify_capture(worker)["dispatch"], "vllm")
+            with patch.object(manager, "dispatch", side_effect=lambda **kw:
+                    Descriptor(Mode.NONE, kw["num_tokens"], 1) if kw["num_tokens"] == 2040
+                    else Descriptor(Mode.PIECEWISE, 2048, None)):
+                with self.assertRaisesRegex(RuntimeError, "prefill replay at 2040"):
+                    self.policy.verify_capture(worker)
+            with patch.object(module.CUDAGraphWrapper, "_all_instances", []):
+                with self.assertRaisesRegex(RuntimeError, "prefill capture"):
+                    self.policy.verify_capture(worker)
             worker.vllm_config.cache_config.kv_cache_memory_bytes=4*2**30
             with self.assertRaisesRegex(RuntimeError,'19 GiB'):self.policy.verify_capture(worker)
             worker.vllm_config.cache_config.kv_cache_memory_bytes=19*2**30

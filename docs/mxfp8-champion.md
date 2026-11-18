@@ -16,7 +16,7 @@ The profile combines the following optimizations:
 | 6. Ordered-W4 GDN | FP32 state; M1/2/8 full-store, M4/16 deferred, M24–128 step8 deferred; materialization/reset/slot ownership and fallback lifecycle |
 | 7. Full-vocabulary head | NVFP4 coarse scores, `topk(sorted=False)` K2048, indexed BF16 score replacement; original sampler and tied BF16 head |
 | 8. FlashInfer FP8 KV | Eight layers, E4M3 storage, 16 fixed FP32 scales and device/CPU/float mirror installation before profiling |
-| 9. Graph policy | FULL small decode, exact2048 PIECEWISE, other large tails routed before padding |
+| 9. Graph policy | FULL small decode, padded PIECEWISE prefill through 2048 tokens |
 | 10. Parallel QKVZ/BA | Closed fork/join at M1/2/4/8/16/24/32/64 for linear-attention ordinals 1–23; ordinal0 serial |
 | 11. Compile choices | Production 16, quality M32 19 and quality M64 16 fixed bindings, selected by the declared mode and rebuilt from source; no inherited compiler cache |
 | 12. Fixed model | BF16 revision `851bf6…` source, exact L0 codes, 595 verified output tensors, tokenizer/config and KV metadata |
@@ -68,7 +68,7 @@ The launcher defaults to `--kv-cache-dtype fp8_e4m3`; omitting the flag does not
 Production defaults are BF16 model activations, FP32 SSM, FP8 E4M3 KV,
 19 GiB KV capacity, maxseq128, maxlen8192 and maxbatch2048. Captures are
 `[1,2,4,8..256 step8,2048]`: FULL through128 and PIECEWISE descriptors through
-2048. Exact2048 uses PIECEWISE; other tails above256 use NONE without padding.
+2048. vLLM can pad smaller prefill and mixed batches to the compatible 2048-token graph.
 The launcher enables a K128 candidate/BF16-refinement greedy path through M64;
 `--no-hybrid-head` keeps the complete K2048 head for all calls. Score requests,
 constrained requests and unsupported cases use the complete head. The same `--hybrid-head` switch also admits unseeded top-k decode, including optional top-p and presence-only penalties; other sampling and penalty combinations use the complete head.

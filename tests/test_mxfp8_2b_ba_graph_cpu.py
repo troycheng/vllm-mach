@@ -89,32 +89,37 @@ class TwoBGraphContracts(unittest.TestCase):
         env.start()
         self.addCleanup(env.stop)
 
-    def test_exact2048_and_unpadded_tails_use_installed_dispatch(self):
+    def test_prefill_tails_replay_the_larger_capture(self):
         policy = load("graph_policy")
         modules, Manager, Wrapper, sentinel = graph_api()
         with patch.dict(sys.modules, modules):
-            self.assertTrue(policy.install_dispatch())
-            self.assertFalse(policy.install_dispatch())
             worker = worker_fixture(Manager, Wrapper, sentinel)
-            receipt = policy.verify_capture(worker)
-            self.assertEqual(receipt["kv_capacity_bytes"], 19*2**30)
             manager = worker.model_runner.cudagraph_manager
-            for tokens in (161, 512, 2047, 2049, 8192):
-                desc = manager.dispatch(3, tokens, num_active_loras=2)
-                self.assertEqual(desc, Descriptor(Mode.NONE, tokens, 3, 2))
-            self.assertEqual(manager.dispatch(1, 2048).cg_mode, Mode.PIECEWISE)
+            self.assertEqual(policy.verify_capture(worker)["dispatch"], "vllm")
+            for tokens in (161, 512, 1920, 2040, 2047, 2048):
+                desc = manager.dispatch(3, tokens)
+                self.assertEqual((desc.cg_mode, desc.num_tokens), (Mode.PIECEWISE, 2048))
+            self.assertEqual(manager.dispatch(1, 2049).cg_mode, Mode.NONE)
             self.assertEqual(manager.dispatch(5, 5, uniform_token_count=1).num_tokens, 8)
-            with self.assertRaisesRegex(RuntimeError, "exact PIECEWISE2048"):
-                policy.apply_descriptor(Descriptor(Mode.FULL, 2048), 2048, 1)
-            with self.assertRaisesRegex(RuntimeError, "exact PIECEWISE2048"):
-                policy.apply_descriptor(Descriptor(Mode.PIECEWISE, 4096), 2048, 1)
+
+    def test_capture_verification_rejects_forced_eager_prefill(self):
+        policy = load("graph_policy")
+        modules, Manager, Wrapper, sentinel = graph_api()
+        class EagerTailManager(Manager):
+            def dispatch(self, num_reqs, num_tokens, **kwargs):
+                if num_tokens == 2040:
+                    return Descriptor(Mode.NONE, num_tokens, num_reqs)
+                return super().dispatch(num_reqs, num_tokens, **kwargs)
+        with patch.dict(sys.modules, modules):
+            worker = worker_fixture(EagerTailManager, Wrapper, sentinel)
+            with self.assertRaisesRegex(RuntimeError, "prefill replay at 2040"):
+                policy.verify_capture(worker)
 
     def test_plan_and_flag_do_not_prove_real_graph_capture(self):
         for kind in ("full_missing", "full_none", "pw_none", "pw_missing", "pw_wrong_owner"):
             policy = load("graph_policy")
             modules, Manager, Wrapper, sentinel = graph_api()
             with patch.dict(sys.modules, modules):
-                policy.install_dispatch()
                 worker = worker_fixture(Manager, Wrapper, sentinel)
                 manager = worker.model_runner.cudagraph_manager
                 first = next(iter(manager.graphs))
@@ -125,13 +130,11 @@ class TwoBGraphContracts(unittest.TestCase):
                 else: Wrapper._all_instances[0].vllm_config = object()
                 with self.assertRaisesRegex(RuntimeError, "graph capture incomplete"):
                     policy.verify_capture(worker)
-                self.assertFalse(hasattr(manager, "_mach_2b_graph_mode"))
 
     def test_capacity_and_runtime_rejections(self):
         policy = load("graph_policy")
         modules, Manager, Wrapper, sentinel = graph_api()
         with patch.dict(sys.modules, modules):
-            policy.install_dispatch()
             for section, field, value in (("cache_config", "kv_cache_memory_bytes", 4*2**30),
                                          ("cache_config", "enable_prefix_caching", True),
                                          ("scheduler_config", "max_num_seqs", 128),

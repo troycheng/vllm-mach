@@ -167,7 +167,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         Worker, modules = worker_api(events)
         stack.enter_context(patch.dict(sys.modules, modules))
         profile = self.profile
-        gdn, ba, graph, pdl = (load("mxfp8.two_b."+name) for name in ("gdn", "ba", "graph_policy", "pdl"))
+        gdn, ba, pdl = (load("mxfp8.two_b."+name) for name in ("gdn", "ba", "pdl"))
         native = load("mxfp8.worker")
         stack.enter_context(patch.object(profile, "check_environment", return_value={}))
         stack.enter_context(patch.object(profile, "check_runtime_sources", return_value={"pinned": True}))
@@ -183,7 +183,6 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         fusion = load("mxfp8.swiglu_quant")
         stack.enter_context(patch.object(fusion, "install", return_value=True))
         stack.enter_context(patch.object(pdl, "prepare", side_effect=lambda: events.append("pdl_prepare")))
-        stack.enter_context(patch.object(graph, "install_dispatch", side_effect=lambda: events.append("graph")))
         for name in ("install_runtime", "prepare_layers", "prepare_pools"):
             stack.enter_context(patch.object(gdn, name, side_effect=lambda obj, label=name: events.append(label)))
         state = load("mxfp8.two_b.gdn.worker")
@@ -211,7 +210,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         self.assertEqual(obj.compile_or_warm_up_model(), "compile")
         self.assertEqual(obj.execute_model(), "execute")
         obj.execute_model()
-        self.assertEqual(events, ["graph", "ordering_install", "pdl_install", "device", "geometry", "native", "pdl_prepare", "install_runtime", "prep_binding", "ba", "load",
+        self.assertEqual(events, ["ordering_install", "pdl_install", "device", "geometry", "native", "pdl_prepare", "install_runtime", "prep_binding", "ba", "load",
                                   "prepare_layers", "cache", "initialize_cache", "prepare_pools", "compile", "compiled",
                                   "execute", "serving", "execute"])
         state._CACHE_INITIALIZED = False
@@ -273,14 +272,14 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
 
     def test_4b_rejects_an_existing_2b_profile(self):
         profile = load("mxfp8.profile")
-        choices, graph = load("mxfp8.compile_choices"), load("mxfp8.graph_policy")
+        choices = load("mxfp8.compile_choices")
         Worker, modules = worker_api([])
         Worker._mach_2b_hook = True
         before = Worker.init_device
         with patch.dict(sys.modules, modules), patch.dict(os.environ, {"VLLM_MACH_PROFILE": profile.NAME}), \
                 patch.object(profile, "check_environment", return_value={}), \
                 patch.object(profile, "check_runtime_sources", return_value={}), \
-                patch.object(choices, "install", return_value=True), patch.object(graph, "install_dispatch", return_value=True):
+                patch.object(choices, "install", return_value=True):
             with self.assertRaisesRegex(RuntimeError, "profile|hook|2B|2b"):
                 profile.install_worker_hook()
         self.assertIs(Worker.init_device, before)
@@ -300,7 +299,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
 
     def test_inspection_requires_actual_graphs_and_all_eligible_gdn_captures(self):
         profile = self.profile
-        graph, gdn, ba, pdl = (load("mxfp8.two_b."+name) for name in ("graph_policy", "gdn", "ba", "pdl"))
+        gdn, ba, pdl = (load("mxfp8.two_b."+name) for name in ("gdn", "ba", "pdl"))
         native = load("mxfp8.worker")
         fusion = load("mxfp8.swiglu_quant")
         ordering = load("mxfp8.two_b.ordered_reduction")
@@ -332,10 +331,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                         patch.object(ordering, "receipt", return_value={"installed": True}) as order_verify, \
                         patch.object(fusion, "receipt", return_value={"installed": True}) as fusion_verify, \
                         patch.object(native, "verify_worker_execution", return_value={}) as native_verify, \
-                        patch.object(profile, "check_environment", return_value={}), \
-                        patch.object(graph, "_INSTALLED", False):
-                    if row is None:
-                        graph.install_dispatch()
+                        patch.object(profile, "check_environment", return_value={}):
                     receipt = profile.inspect_worker(worker)
                     self.assertTrue(receipt["graph"]["ready"])
                     native_verify.assert_called_once_with(worker, require_capture=True)

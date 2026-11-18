@@ -132,7 +132,7 @@ class ProfileTests(unittest.TestCase):
                     ("install_runtime", "prepare_layers", "initialize_cache", "prepare_pools", "inspect_worker")],
             "head": [("install_head", (worker,), {}), ("inspect_head", (worker,), {})],
             "kv": [("install_scales", (worker,), {}), ("inspect_scales", (worker,), {})],
-            "graph_policy": [("install_dispatch", (), {}), ("verify_capture", (worker,), {})],
+            "graph_policy": [("verify_capture", (worker,), {})],
             "projection_parallel": [("prepare_model", (worker,), {"cache_directory": Path("/public/aot")}),
                                     ("verify_capture", (worker,), {}), ("inspect_worker", (worker,), {})],
             "compile_choices": [("install", (), {}), ("verify_coverage", (), {}), ("inspect", (), {})],
@@ -275,7 +275,7 @@ class ProfileTests(unittest.TestCase):
             stack.enter_context(patch.object(self.profile, "_verify_quality_capture", side_effect=lambda *args: events.append("quality_capture")))
             targets = {"norm_frontend": ["install"],
                        "compile_choices": ["install", "verify_coverage"],
-                       "graph_policy": ["install_dispatch", "verify_capture"],
+                       "graph_policy": ["verify_capture"],
                        "worker": ["install_worker_backend", "verify_worker_execution"],
                        "dual": ["install", "prepare_model", "verify_capture"],
                        "ba": ["install", "prepare_model", "verify_capture"],
@@ -362,7 +362,7 @@ class ProfileTests(unittest.TestCase):
     def test_quality_does_not_install_pw_or_claim_all_production_coverage(self):
         events = self.lifecycle(quality_rows=64)
         self.assertIn("quality_capture", events)
-        for name in ("graph_policy.install_dispatch", "graph_policy.verify_capture", "dual.verify_capture",
+        for name in ("graph_policy.verify_capture", "dual.verify_capture",
                      "ba.verify_capture", "projection_parallel.verify_capture", "compile_choices.verify_coverage"):
             self.assertNotIn(name, events)
 

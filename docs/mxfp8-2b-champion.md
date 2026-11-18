@@ -64,7 +64,7 @@ docker run --rm --gpus '"device=0"' --ipc=host -p 8000:8000 \
 
 After startup, `http://localhost:8000/v1/models` lists `q35-2b-study`. The launcher checks the installed package versions and runtime sources, hashes the full checkpoint, and checks the worker's graph and operator state before serving. `--print-command` displays JSON containing the underlying vLLM `argv` and a reproducible Mach `launch_command`, including the head selection, without starting a worker. `--quality-rows 4`, `32` or `64` selects a separate fixed-row numerical check mode; use the default production mode for serving and throughput measurements.
 
-The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and complete BF16 vocabulary-head weights, FP32 SSM, Triton attention, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Eligible greedy head calls use the candidate/refinement path described below. Native MXFP8 projections, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16 and pinned asynchronous GDN reset-ID uploads run under the 2B profile. Exact FULL16/FULL24 captures also use the complete PDL dependency chain. The graph policy preserves FULL decode captures at 4/8/16/24/32/48/64/96/128/160 rows and routes exact 2048-token prefill or mixed batches to PIECEWISE mode. Batches above 160 tokens with a size other than 2048 use NONE without padding. Prefix caching and LoRA are outside this profile.
+The production contract is TP1, text-only, non-speculative inference with BF16 activations, BF16 KV and complete BF16 vocabulary-head weights, FP32 SSM, Triton attention, `max_num_seqs=160`, `max_model_len=16384`, `max_num_batched_tokens=2048` and a 19 GiB KV pool. Eligible greedy head calls use the candidate/refinement path described below. Native MXFP8 projections, ordered FP32 GDN with mixed D1–160 decode, BF16 BA M1–8/M16 and pinned asynchronous GDN reset-ID uploads run under the 2B profile. Exact FULL16/FULL24 captures also use the complete PDL dependency chain. The graph plan captures FULL decode at 4/8/16/24/32/48/64/96/128/160 rows and a 2048-token PIECEWISE graph covering the prefill budget. vLLM can pad smaller prefill and mixed batches to a compatible capture. Prefix caching and LoRA are outside this profile.
 
 Add `--ssm-dtype bfloat16` to select BF16 state with ordered W4 GDN, now the default backend for both state dtypes. FP32 remains the default storage dtype. Use `--no-ordered-bf16-ssm` to select stock GDN/FLA for BF16 state. Grouped BF16 GDN and GDN PDL remain disabled by default.
 See [BF16 SSM measurements and configuration](mxfp8-benchmark.md).
@@ -93,7 +93,7 @@ The combined c16/c64 workload improved by 2.05%. Each point above uses total out
 | GDN | Ordered FP32 W4 recurrence; mixed D1–160 coverage; explicit state materialization and slot lifecycle |
 | CPU submission | Pinned asynchronous reset-ID uploads |
 | Dependency scheduling | Full norm → quantization → GEMM → SwiGLU PDL chains for actual FULL16/FULL24 captures |
-| Graph routing | FULL decode at 4/8/16/24/32/48/64/96/128/160; exact2048 PIECEWISE; other large tails use NONE without padding |
+| Graph routing | FULL decode at 4/8/16/24/32/48/64/96/128/160, padded PIECEWISE prefill through 2048 tokens |
 | Attention | `TRITON_ATTN` with BF16 KV |
 | Head | NVFP4 sidecar proposes K128 candidates; original BF16 weights refine scores; eligible greedy decode M≤64 |
 
