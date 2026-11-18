@@ -74,11 +74,18 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
     }
     if not dense and (lossless or owner):
         raise ValueError("Qwen3.5 MoE does not support the dense-only prefill options")
+    if getattr(args, "moe_high_m_compact", False):
+        if dense or _is_mxfp8(args.model) or tp_size != 2:
+            raise ValueError(
+                "--moe-high-m-compact requires native MXFP6 Qwen3.5 MoE with TP2"
+            )
+        env["VLLM_MACH_MOE_HIGH_M_COMPACT"] = "1"
     return env
 
 
 def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str], dict]:
     env = dict(os.environ)
+    env.pop("VLLM_MACH_MOE_HIGH_M_COMPACT", None)
     env.update(profile_environment(args))
     mxfp8 = _is_mxfp8(args.model)
     moe = _is_qwen35_moe(args.model)
@@ -150,6 +157,11 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Overlap BA with QKV/conv at M16/24/32 (default on)",
+    )
+    parser.add_argument(
+        "--moe-high-m-compact",
+        action="store_true",
+        help="Enable compact native Qwen3.5-35B-A3B MXFP6 MoE at physical M97–160",
     )
     parser.add_argument(
         "--lossless-prefill",

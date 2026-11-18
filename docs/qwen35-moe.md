@@ -45,9 +45,47 @@ The adapter retains packed expert weights, packs checkpoint scales to the
 native layout and uses the package's routed grouped GEMMs for prefill. Eligible
 Qwen35 TP2 layers combine the shared expert with the routed weights for the
 1–4 token fused router/expert schedule and use the indirect grouped schedule
-for 5–96 tokens. Larger batches use the generic routed path. With AR/Norm
+for 5–96 tokens. Larger batches use the generic routed path by default. With AR/Norm
 fusion disabled, the standard vLLM runner performs the final TP reduction;
 with fusion enabled, the following norm owns it.
+
+## Compact MoE at high token counts
+
+Pass `--moe-high-m-compact` to opt in on native Qwen3.5-35B-A3B MXFP6 TP2.
+Eligible layers use compact expert scheduling for physical M97–160, where M is
+the number of rows submitted to the MoE layer, including graph padding. The
+schedule preserves the vLLM router's FP32 summation order and rounds the routed
+output to BF16 before adding the shared expert. It uses a separate compilation
+cache. Startup requires a native wheel with `qwen35_compact_gemm_out`.
+
+On two RTX 5090s, the installed native and Mach wheels served the same Quark E3M2 checkpoint with vLLM 0.33.0, TP2, FP32 SSM, the full BF16 head, and BF16 KV. Each c128 window used 128 warmup requests, then 256 timed requests with 3,000 input and 1,000 output tokens. Both settings used 11 GiB of KV per GPU and replayed full M128 decode graphs.
+
+| c128 run order | Default, output tok/s | Compact, output tok/s | Change |
+|---|---:|---:|---:|
+| Default → compact | 4,811.15 | 4,888.94 | +1.62% |
+| Compact → default | 4,817.09 | 4,916.22 | +2.06% |
+
+The geometric mean throughput change was **+1.84%**. In the earlier c64 trial, the compact configuration averaged −0.87% across two pairs, with zero graph steps in the target range. Use the default schedule for c64.
+
+At physical M128 and M160, all 10,479 fixed-token log probabilities and top-1 predictions per shape matched the released route. Mean absolute logprob error relative to BF16 was 0.07264 at M128 and 0.07144 at M160. All 128 M128 free-generation token sequences matched.
+
+To use the measured precision and serving configuration, keep the graph sizes
+from `GRAPH_CONFIG` above and select the compact schedule explicitly.
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 OMP_NUM_THREADS=4 vllm-mach-serve \
+  --model "$MODEL" --tokenizer "$MODEL" --tensor-parallel-size 2 \
+  --moe-high-m-compact --no-hybrid-head --mamba-ssm-cache-dtype float32 \
+  --kv-cache-dtype bfloat16 --kv-cache-memory-bytes 11811160064 \
+  --max-model-len 16384 --max-num-seqs 256 --max-num-batched-tokens 2048 \
+  --enable-chunked-prefill --compilation-config "$GRAPH_CONFIG" \
+  --cudagraph-metrics --host 127.0.0.1 --port 8000
+```
+
+The compact path reports `Executing Qwen3.5-35B TP2 MXFP6 compact high-M schedule`
+on each worker that executes it.
+
+## Other MoE routes
 
 The launcher recognizes `qwen3_5_moe` and `qwen3_5_moe_text` in the local model
 configuration. Native TP2 AllReduce/residual/RMSNorm fusion supports both

@@ -176,6 +176,38 @@ def test_moe_disables_dense_fused_ar_quant(tmp_path):
     assert environment["VLLM_MACH_FUSED_AR_QUANT"] == "0"
 
 
+def test_moe_high_m_compact_requires_explicit_launcher_opt_in(
+    monkeypatch, tmp_path, capsys
+):
+    from vllm_mach.mxfp6 import serve
+
+    (tmp_path / "config.json").write_text('{"model_type": "qwen3_5_moe"}')
+    flag = "VLLM_MACH_MOE_HIGH_M_COMPACT"
+    monkeypatch.setenv(flag, "1")
+    argv = ["vllm-mach-serve", "--model", str(tmp_path), "--dry-run"]
+    monkeypatch.setattr(serve.sys, "argv", argv)
+    serve.main()
+    default = json.loads(capsys.readouterr().out)
+    assert flag not in default["environment"]
+
+    argv.append("--moe-high-m-compact")
+    serve.main()
+    enabled = json.loads(capsys.readouterr().out)
+    assert enabled["environment"][flag] == "1"
+    assert enabled["command"] == default["command"]
+
+    argv.extend(["--tensor-parallel-size", "1"])
+    with pytest.raises(SystemExit, match="2"):
+        serve.main()
+    assert "requires native MXFP6 Qwen3.5 MoE with TP2" in capsys.readouterr().err
+
+    (tmp_path / "config.json").write_text("{}")
+    argv[-1] = "2"
+    with pytest.raises(SystemExit, match="2"):
+        serve.main()
+    assert "requires native MXFP6 Qwen3.5 MoE with TP2" in capsys.readouterr().err
+
+
 def fixture_model(root, shard="model.safetensors"):
     root.mkdir()
     (root / "config.json").write_text("{}")

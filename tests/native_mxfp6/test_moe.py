@@ -2,7 +2,10 @@
 
 import argparse
 import json
+import sys
+from contextlib import nullcontext
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 import torch
@@ -51,18 +54,79 @@ def test_moe_launcher_enables_gdn_ar_norm_and_optional_head(tmp_path):
         setattr(args, flag, None)
 
 
-def test_schedule_boundaries():
+@pytest.mark.parametrize(
+    "size, default, enabled",
+    [
+        (0, "generic", "generic"),
+        (1, "small_batch", "small_batch"),
+        (4, "small_batch", "small_batch"),
+        (5, "grouped", "grouped"),
+        (96, "grouped", "grouped"),
+        (97, "generic", "compact"),
+        (160, "generic", "compact"),
+        (161, "generic", "generic"),
+    ],
+)
+def test_schedule_boundaries(size, default, enabled):
     from vllm_mach.mxfp6.moe import _qwen35_moe_schedule
 
-    for size, expected in (
-        (0, "generic"),
-        (1, "small_batch"),
-        (4, "small_batch"),
-        (5, "grouped"),
-        (96, "grouped"),
-        (97, "generic"),
-    ):
-        assert _qwen35_moe_schedule(size) == expected
+    assert _qwen35_moe_schedule(size) == default
+    assert _qwen35_moe_schedule(size, high_m_compact=True) == enabled
+
+
+def test_compact_moe_graph_cache_mode(monkeypatch):
+    from vllm_mach.mxfp6 import moe, moe_ar_norm
+    from vllm_mach.stack import CACHE_NAMESPACE
+
+    monkeypatch.setattr(moe_ar_norm, "prepare_compiled_ar_norm", lambda config: None)
+    config = SimpleNamespace(additional_config={})
+    moe._prepare_qwen35_moe_graph_cache(config, high_m_compact=False)
+    original = config.additional_config["mxfp6_sm120_moe_graph"]
+    assert original == "mach_qwen35_tp2_v2_" + CACHE_NAMESPACE
+    moe._prepare_qwen35_moe_graph_cache(config, high_m_compact=True)
+    assert config.additional_config["mxfp6_sm120_moe_graph"] != original
+
+
+def test_compact_moe_rounds_routed_before_shared_add(monkeypatch):
+    from vllm_mach.mxfp6 import moe
+
+    hidden = torch.empty(97, 2048, dtype=torch.bfloat16)
+    logits = torch.empty(97, 256, dtype=torch.bfloat16)
+    output = torch.empty_like(hidden)
+    shared_output = torch.full_like(hidden, 2**-8)
+    shared = Mock(output=shared_output)
+    shared.maybe_forward_async.return_value = True
+    runner = object.__new__(moe.Mxfp6Sm120MoERunner)
+    packed = torch.empty(257)
+    runner.__dict__.update(
+        _mxfp6_sm120_qwen35_small_batch_state=SimpleNamespace(
+            high_m_compact=True, w1=packed, w1_scales=packed, w2=packed, w2_scales=packed
+        ),
+        _shared_experts=shared,
+        routed_experts=Mock(),
+        gate=Mock(return_value=(logits, None)),
+        _sequence_parallel_context=nullcontext,
+        _maybe_dispatch=lambda hidden, logits: (hidden, logits),
+    )
+    workspace = object()
+    monkeypatch.setattr(moe, "_qwen35_grouped_workspace", lambda _: (workspace, output))
+
+    def reduce_routed(workspace_arg, output_arg):
+        assert workspace_arg is workspace and output_arg is output
+        shared.wait.assert_called_once_with()
+        # The two BF16 rounding steps give 1. Fusing the shared add gives 1 + 2**-7.
+        output_arg.fill_(1 + 2**-8)
+
+    native = SimpleNamespace(
+        qwen35_compact_gemm_out=Mock(), qwen35_grouped_reduce_out=reduce_routed
+    )
+    monkeypatch.setitem(sys.modules, "mxfp6", native)
+    assert runner._forward_impl(hidden, logits, hidden) is output
+    torch.testing.assert_close(output, torch.ones_like(output), rtol=0, atol=0)
+    args, kwargs = native.qwen35_compact_gemm_out.call_args
+    assert not kwargs
+    assert args[0] is workspace and args[1] is hidden and args[2] is logits
+    assert [tuple(tensor.shape) for tensor in args[3:]] == [(256,)] * 4
 
 
 @pytest.mark.parametrize("rows", [5, 32, 96])

@@ -35,6 +35,30 @@ def test_compile_factors_include_adapter_switches(monkeypatch, name, value):
     assert before['VLLM_MACH_CODE_HASH'] == after['VLLM_MACH_CODE_HASH']
 
 
+def test_compile_factors_follow_compact_moe_toggle(monkeypatch):
+    from vllm import envs
+
+    from vllm_mach.plugin import register_compile_factors
+
+    name = "VLLM_MACH_MOE_HIGH_M_COMPACT"
+    monkeypatch.setattr(envs, "environment_variables", dict(envs.environment_variables))
+    monkeypatch.delenv(name, raising=False)
+    register_compile_factors()
+    default = envs.compile_factors()
+    assert default[name] == "0"
+
+    monkeypatch.setenv(name, "1")
+    assert envs.compile_factors()[name] == "1"
+    register_compile_factors()
+    assert envs.compile_factors()[name] == "1"
+
+    monkeypatch.setenv(name, "0")
+    register_compile_factors()
+    assert envs.compile_factors() == default
+    monkeypatch.delenv(name)
+    assert envs.compile_factors() == default
+
+
 def test_standalone_native_keeps_main_kernel_selection(monkeypatch):
     """Generic registration must not shadow the standalone FlashInfer adapter."""
     from types import SimpleNamespace

@@ -43,16 +43,33 @@ def register_compile_factors() -> None:
         "VLLM_MACH_GDN_TP1": "0",
         "VLLM_MACH_GDN_PERSISTENT": "0",
         "VLLM_MACH_GDN_BA_OVERLAP": "0",
+        # The early AOT lookup may precede the post-load MoE graph marker.
+        "VLLM_MACH_MOE_HIGH_M_COMPACT": "0",
     }.items():
         envs.environment_variables[name] = (
             lambda name=name, default=default: os.environ.get(name, default)
         )
 
 
+def _check_qwen35_compact_moe() -> None:
+    import mxfp6
+    import torch
+
+    if callable(getattr(mxfp6, "qwen35_compact_gemm_out", None)):
+        mxfp6.load_library()
+        if hasattr(torch.ops.mxfp6, "qwen35_compact_gemm_out"):
+            return
+    raise RuntimeError(
+        "--moe-high-m-compact requires the native qwen35_compact_gemm_out API "
+        "and operator. Rebuild and reinstall the wheel using deploy/build-mxfp6.py."
+    )
+
+
 def register() -> None:
     """Register every compatible vLLM Mach backend."""
 
-    selected = bool(os.environ.get("VLLM_MACH_PROFILE")) or any(
+    high_m_compact = os.environ.get("VLLM_MACH_MOE_HIGH_M_COMPACT") == "1"
+    selected = high_m_compact or bool(os.environ.get("VLLM_MACH_PROFILE")) or any(
         os.environ.get(name) == "1" for name in
         ("VLLM_MACH_NATIVE_MXFP8", "VLLM_MACH_LM_HEAD_SAMPLING")
     ) or "mach" in {name.strip() for name in os.environ.get("VLLM_PLUGINS", "").split(",")}
@@ -73,6 +90,8 @@ def register() -> None:
         if (os.environ.get("VLLM_MACH_NATIVE_MXFP8") == "1"
                 and not os.environ.get("MXFP8_LIBRARY_PATH")):
             check_versions({"mxfp6-sm120": NATIVE_VERSION}, lookup=version)
+    if high_m_compact:
+        _check_qwen35_compact_moe()
     if os.environ.get("VLLM_MACH_LM_HEAD_SAMPLING", "0") == "1":
         from .mxfp6.sampling import install_sampling_hook
 

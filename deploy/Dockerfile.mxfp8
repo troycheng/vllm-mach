@@ -17,7 +17,7 @@ RUN python3 -m pip uninstall -y opentelemetry-exporter-otlp-common opentelemetry
     && python3 -m pip check
 
 # Native 0.3.1 build identities and the complete MXFP6/MXFP8 operator set.
-ARG MXFP6_REVISION=91e0df5dec211d4d8138b71b07230f75c809728d
+ARG MXFP6_REVISION=206d5266e4c08f20dfcdd56d04ffec3887215c67
 COPY deploy/install.py deploy/build-mxfp8.py deploy/build-mxfp6.py /opt/mach/deploy/
 # One standard wheel build produces both DSOs, BA M16 and both dual tile families.
 RUN python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \

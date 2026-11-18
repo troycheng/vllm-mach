@@ -4,6 +4,7 @@
 
 from vllm_mach.stack import CACHE_NAMESPACE
 
+import os
 from dataclasses import dataclass
 from math import prod
 from typing import Literal
@@ -54,14 +55,16 @@ _QWEN35_MOE_GRAPH_CACHE_VERSION = "mach_qwen35_tp2_v2_" + CACHE_NAMESPACE
 _QWEN35_SMALL_BATCH_MAX_TOKENS = 4
 _QWEN35_GROUPED_MIN_TOKENS = 5
 _QWEN35_GROUPED_MAX_TOKENS = 96
+_QWEN35_COMPACT_MAX_TOKENS = 160
 
 
-def _prepare_qwen35_moe_graph_cache(vllm_config) -> None:
+def _prepare_qwen35_moe_graph_cache(vllm_config, *, high_m_compact: bool) -> None:
     from .moe_ar_norm import prepare_compiled_ar_norm
 
     # Post-load op selection is absent from Dynamo's traced-file cache key.
     vllm_config.additional_config["mxfp6_sm120_moe_graph"] = (
         _QWEN35_MOE_GRAPH_CACHE_VERSION
+        + ("_compact_high_m_v1" if high_m_compact else "")
     )
     # The unfused path also embeds rank-specific devices and vocabulary bounds
     # in Inductor artifacts. It needs the same cache isolation as fused AR/Norm.
@@ -70,11 +73,18 @@ def _prepare_qwen35_moe_graph_cache(vllm_config) -> None:
 
 def _qwen35_moe_schedule(
     num_tokens: int,
-) -> Literal["small_batch", "grouped", "generic"]:
+    *,
+    high_m_compact: bool = False,
+) -> Literal["small_batch", "grouped", "compact", "generic"]:
     if 1 <= num_tokens <= _QWEN35_SMALL_BATCH_MAX_TOKENS:
         return "small_batch"
     if _QWEN35_GROUPED_MIN_TOKENS <= num_tokens <= _QWEN35_GROUPED_MAX_TOKENS:
         return "grouped"
+    if (
+        high_m_compact
+        and _QWEN35_GROUPED_MAX_TOKENS < num_tokens <= _QWEN35_COMPACT_MAX_TOKENS
+    ):
+        return "compact"
     return "generic"
 
 
@@ -110,6 +120,7 @@ class _Qwen35MoeSmallBatchState:
     w2: torch.Tensor
     w2_scales: torch.Tensor
     workspaces: dict[int, _Qwen35MoeSmallBatchWorkspace]
+    high_m_compact: bool
 
 
 def _qwen35_moe_small_batch(
@@ -213,7 +224,10 @@ class Mxfp6Sm120MoERunner(MoERunner):
         input_ids: torch.Tensor | None = None,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         state = getattr(self, "_mxfp6_sm120_qwen35_small_batch_state", None)
-        schedule = _qwen35_moe_schedule(hidden_states.shape[0])
+        schedule = _qwen35_moe_schedule(
+            hidden_states.shape[0],
+            high_m_compact=state is not None and state.high_m_compact,
+        )
         if (
             state is not None
             and hidden_states.shape[1] == 2048
@@ -223,15 +237,21 @@ class Mxfp6Sm120MoERunner(MoERunner):
         if (
             state is not None
             and hidden_states.shape[1] == 2048
-            and schedule == "grouped"
+            and schedule in ("grouped", "compact")
             and shared_experts_input is not None
             and self.shared_experts is not None
         ):
             import mxfp6
 
-            logger.info_once(
-                "Executing Qwen3.5-35B TP2 MXFP6 indirect grouped schedule"
-            )
+            if schedule == "compact":
+                logger.info_once(
+                    "Executing Qwen3.5-35B TP2 MXFP6 compact high-M schedule",
+                    scope="process",
+                )
+            else:
+                logger.info_once(
+                    "Executing Qwen3.5-35B TP2 MXFP6 indirect grouped schedule"
+                )
             self.routed_experts._ensure_moe_quant_config_init()
             shared_overlapping = self.shared_experts.maybe_forward_async(
                 shared_experts_input
@@ -249,24 +269,33 @@ class Mxfp6Sm120MoERunner(MoERunner):
                     SharedExpertsOrder.NO_OVERLAP,
                 )
                 workspace, output = _qwen35_grouped_workspace(hidden_states)
-                mxfp6.qwen35_grouped_gemm_out(
-                    workspace,
-                    hidden_states,
-                    router_logits,
+                routed_weights = (
                     state.w1[:256],
                     state.w1_scales[:256],
                     state.w2[:256],
                     state.w2_scales[:256],
-                    renormalize=True,
                 )
+                if schedule == "compact":
+                    mxfp6.qwen35_compact_gemm_out(
+                        workspace, hidden_states, router_logits, *routed_weights
+                    )
+                else:
+                    mxfp6.qwen35_grouped_gemm_out(
+                        workspace,
+                        hidden_states,
+                        router_logits,
+                        *routed_weights,
+                        renormalize=True,
+                    )
                 if shared_overlapping:
                     self.shared_experts.wait()
                 shared_output = self.shared_experts.output
-                mxfp6.qwen35_grouped_reduce_out(
-                    workspace,
-                    output,
-                    shared_output,
-                )
+                if schedule == "compact":
+                    # Match the generic path's BF16 boundary before adding the shared expert.
+                    mxfp6.qwen35_grouped_reduce_out(workspace, output)
+                    output.add_(shared_output)
+                else:
+                    mxfp6.qwen35_grouped_reduce_out(workspace, output, shared_output)
                 return output
         result = super()._forward_impl(
             hidden_states,
@@ -425,6 +454,7 @@ def try_enable_qwen35_moe_small_batch(layer: torch.nn.Module) -> bool:
             ),
             output=torch.empty((tokens, 2048), device=device, dtype=torch.bfloat16),
         )
+    high_m_compact = os.environ.get("VLLM_MACH_MOE_HIGH_M_COMPACT") == "1"
     runner._mxfp6_sm120_qwen35_small_batch_state = _Qwen35MoeSmallBatchState(
         combined_gate=combined_gate,
         w1=w1,
@@ -432,9 +462,10 @@ def try_enable_qwen35_moe_small_batch(layer: torch.nn.Module) -> bool:
         w2=w2,
         w2_scales=w2_scales,
         workspaces=workspaces,
+        high_m_compact=high_m_compact,
     )
     runner._forward_entry = torch.ops.vllm.mxfp6_sm120_moe_forward
-    _prepare_qwen35_moe_graph_cache(vllm_config)
+    _prepare_qwen35_moe_graph_cache(vllm_config, high_m_compact=high_m_compact)
     logger.info_once(
         "Enabled Qwen3.5-35B TP2 MXFP6 fused small-batch router/shared-expert schedule"
     )
