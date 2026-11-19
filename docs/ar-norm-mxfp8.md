@@ -4,7 +4,7 @@ The Dense profile can produce MXFP8 activations inside its existing tensor-paral
 
 ## Installation and dispatch
 
-Build `native/ar_norm` against Mach 0.3's [runtime versions](installation.md#runtime-versions), then install Mach. The default `deploy/install.py` and Docker build include it. To add only this extension to an existing installation:
+Build `native/ar_norm` against the [Mach serving stack](installation.md#runtime-versions), then install Mach. The default `deploy/install.py` and Docker build include it. To add only this extension to an existing installation:
 
 ```bash
 python deploy/install.py --native-only --native-part ar_norm --cuda-home /usr/local/cuda

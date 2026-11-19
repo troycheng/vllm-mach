@@ -5,7 +5,7 @@ Mach builds on the official vLLM 0.34.0 image for RTX 5090 (SM120). The same sou
 ## Build an image
 
 ```bash
-git clone https://github.com/troycheng/vllm-mach.git
+git clone --branch v0.4.0 --depth 1 https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
 docker buildx build --load --build-arg MAX_JOBS=2 \
   -f deploy/Dockerfile -t vllm-mach:mxfp6 .
@@ -42,18 +42,7 @@ The 0.34 build installs OpenTelemetry 1.45.2. The bundled external LMCache 0.5.7
 
 ## vLLM 0.34 qualification
 
-RTX 5090 serving throughput in output tokens/s with 3,000 input tokens and 1,000 output tokens per request. The 2B and 4B models use one GPU. The 27B and 35B models use two GPUs with tensor parallelism. Prefix caching is disabled.
-
-| Model and profile | Concurrency | vLLM 0.33 | vLLM 0.34 | Change |
-|---|---:|---:|---:|---:|
-| 2B MXFP8, FP32 state | 16 | 5,157.45 | 5,161.78 | +0.08% |
-| 2B MXFP8, FP32 state | 64 | 9,840.45 | 9,865.12 | +0.25% |
-| 4B MXFP8, FP32 state | 16 | 2,684.51 | 2,777.18 | +3.45% |
-| 4B MXFP8, FP32 state | 64 | 4,796.72 | 4,933.82 | +2.86% |
-| 4B block-FP8, FP32 state | 32 | 3,008.32 | 3,064.28 | +1.86% |
-| 27B Dense MXFP6 FULL, FP16 state | 32 | 1,727.78 | 1,726.29 | −0.09% |
-| 35B-A3B MXFP6, FP16 state | 32 | 3,362.91 | 3,354.01 | −0.26% |
-| 35B-A3B MXFP6 compact, FP32 state | 128 | 4,902.56 | 4,915.76 | +0.27% |
+The [0.33 and 0.34 throughput comparison](performance.md#vllm-034-throughput) covers eight points on RTX 5090, with 3,000 input and 1,000 output tokens per request and prefix caching disabled. The 2B and 4B models use one GPU. The 27B and 35B models use TP2.
 
 The 2B results use the geometric mean of two runs per version on the same GPU, in 0.33 / 0.34 / 0.34 / 0.33 order. Both versions used BF16 KV, Triton attention and the hybrid head. Each c16 run completed 160 requests and each c64 run completed 320. The 4B MXFP8 results use the geometric mean of two 0.34 runs against the published 0.33 champion. The TP2 references use the geometric mean of two 0.33 runs.
 
@@ -61,11 +50,11 @@ With the same KV memory budget, 2B capacity increased from 1,470,223 to 1,475,58
 
 Fixed-gold tests cover 256 queries and 10,479 token log probabilities per decode shape. For 2B with FP32 state, mean per-query error against BF16 changed from 0.054753 to 0.054145 at M32 and from 0.056550 to 0.056711 at M64. Both 4B profiles match their 0.33 records at M32 and M64. The 27B Dense FULL profile matches all 10,479 gold log probabilities at both M4 and M32 with the production 400-token attention blocks on both TP ranks. The 35B compact profile matches at M128 and M160, including every top-1 token and all 128 free generations tested at M128.
 
-The FP32-state long-output test uses frozen BF16 token trajectories in 16-row batches. On 4B, all 190,251 gold log probabilities and top-1 IDs match the current 0.33 build. On 2B, mean per-query absolute log-probability error against BF16 changes from 0.044164 to 0.044113 across 330,328 tokens. The paired 95% bootstrap interval for the change is −0.000209 to +0.000110.
+The FP32-state long-output test uses frozen BF16 token trajectories in 16-row batches. On 4B, all 190,251 gold log probabilities and top-1 IDs match the 0.33 build. On 2B, mean per-query absolute log-probability error against BF16 changes from 0.044164 to 0.044113 across 330,328 tokens. The paired 95% bootstrap interval for the change is −0.000209 to +0.000110.
 
 The final 2B image uses an 8-row tile for the M16 GDN gated norm and reuses FlashInfer's compiled prefill launches for matching calls. It matched the initial 0.34 build bit for bit on 10,479 continuation log probabilities, 256 prefill log probabilities and all 512 greedy token IDs. Decode replayed the physical M16 CUDA Graph. A separate 3,000-token prompt produced the same eight greedy token IDs and exercised the prefill launch reuse.
 
-[27B fixed-gold results with 400-token blocks](data/vllm034-dense-400-gold.json) · [Final 2B throughput, TTFT and precision](data/vllm034-2b-followup.json) · [Initial migration data, including the original −1.32% at c16](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md)
+[27B fixed-gold results with 400-token blocks](data/vllm034-dense-400-gold.json) · [Final 2B throughput, TTFT and precision](data/vllm034-2b-followup.json) · [Initial migration data, including the original −1.32% at c16](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md#vllm-0330-concurrency-curves)
 
 ## Install into an existing container
 
@@ -85,11 +74,7 @@ The MXFP8 and block-FP8 image builds install their own dependencies and source p
 
 ## Launch a model
 
-The following examples are alternatives, not commands to run simultaneously.
-Use a local checkpoint directory with the correct `config.json`; the launcher
-uses it to select the model-specific profile. Mach does not ship model weights.
-The Dense checkpoint is available as
-[nekofish/Qwen3.8-27B-MXFP6](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
+Pass a local checkpoint directory. The launcher selects the model profile from its `config.json`. For Dense, use [nekofish/Qwen3.8-27B-MXFP6](https://huggingface.co/nekofish/Qwen3.8-27B-MXFP6).
 
 ### Qwen3.8-27B Dense
 

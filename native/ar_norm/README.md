@@ -6,7 +6,7 @@ The runtime integration is intentionally narrow: it may use this wheel only for 
 
 ## Build
 
-Install the matching native MXFP6 profile first. This wheel requires the same PyTorch and `flashinfer-python==0.6.18` used by serving, a CUDA 13.0 compiler, C++17, `sm_120f`, and the retained fast-math compile flags.
+Build in the [pinned native MXFP6 environment](../../docs/installation.md#runtime-versions) with the selected PyTorch and FlashInfer headers. The wheel uses CUDA 13.0, C++20, `sm_120f` and fast math.
 
 ```bash
 cd native/ar_norm
@@ -15,7 +15,7 @@ CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=2 \
 python -m pip install --force-reinstall --no-deps dist/vllm_mach_ar_norm-*.whl
 ```
 
-Or build all native wheels through `deploy/install.py --native-only --cuda-home /usr/local/cuda-13.0`.
+The native MXFP6 installer also builds this wheel. To rebuild it alone from the repository root, use `python deploy/install.py --native-only --native-part ar_norm --cuda-home /usr/local/cuda-13.0`.
 
 ## Source and license
 

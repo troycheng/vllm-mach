@@ -6,6 +6,7 @@ import json
 import math
 import re
 from pathlib import Path
+from statistics import geometric_mean
 from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,7 +131,8 @@ def dataset():
         assert [p['c'] for p in model['points']] == sorted({p['c'] for p in model['points']})
         if model.get('mxfp8'):
             assert [p['c'] for p in model['points']] == [4, 16, 24, 32, 48, 64]
-    return dict(schema_version=3, runtime=dict(vllm='0.29.0', torch='2.13.0', group='historical'), updated=mx_quality['date'], unit='output tokens/s',
+    # Preserve the published schema of the vLLM 0.29 archive.
+    return dict(schema_version=3, updated=mx_quality['date'], unit='output tokens/s',
                 workload=dict(input_tokens=3000, output_tokens=1000), gpu='RTX 5090 32 GiB',
                 full_profile='MXFP6 full adds FP16 recurrent state and NVFP4 candidate search with BF16 head refinement.',
                 sources=SOURCES, models=models,
@@ -238,11 +240,40 @@ def throughput_series(model):
             ('Mach block-FP8' if model['id']=='qwen35-4b-block-fp8' else 'MXFP8 champion', 'selected_tps', 'full', '')]
 
 
-def migration_markdown(data, native=False):
-    lines = ['# Model serving performance', '', runtime_caption(data), '',
-             'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '',
-             f'[vLLM 0.34 migration measurements]({GUIDE_BASE if native else ""}installation.md#vllm-034-qualification)', '',
-             'FP32 recurrent state is the default. The tables identify optional state formats and the reference used for each comparison.', '',
+def vllm034_table():
+    qualification = json.loads((DATA / 'vllm034-qualification.json').read_text())
+    final_2b = json.loads((DATA / 'vllm034-2b-followup.json').read_text())
+    final_by_concurrency = {row['concurrency']: row['summary'] for row in final_2b['serving']}
+    lines = ['2B and 4B run on one GPU. The 27B and 35B models use two GPUs (TP2).', '',
+             '| Model / profile | SSM | Concurrency | vLLM 0.33 | vLLM 0.34 | Change |',
+             '|---|---|---:|---:|---:|---:|']
+    for row in qualification['serving']:
+        concurrency = row['concurrency']
+        if row['profile'] == final_2b['profile']:
+            final = final_by_concurrency[concurrency]
+            before = final['0.33']['output_tok_s']
+            after = final['0.34-final']['output_tok_s']
+        else:
+            before = geometric_mean(row['0.33_output_tok_s'])
+            after = geometric_mean(row['0.34_output_tok_s'])
+        state = {'float32': 'FP32', 'float16': 'FP16'}[row['ssm_dtype']]
+        change = 100 * (after / before - 1)
+        lines.append(f"| {row['profile']} | {state} | c{concurrency} | {before:,.2f} | {after:,.2f} | {change:+.2f}% |")
+    return '\n'.join(lines)
+
+
+def migration_markdown(data, native=False, release_table=None):
+    lines = ['# Model serving performance', '',
+             'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '']
+    if release_table:
+        base = 'https://github.com/troycheng/vllm-mach/blob/v0.4.0/docs/' if native else ''
+        lines += ['## vLLM 0.34 throughput', '', release_table, '',
+                  f'[Precision and KV capacity]({base}installation.md#vllm-034-qualification) · '
+                  f'[Final 2B measurements]({base}data/vllm034-2b-followup.json) · '
+                  f'[Migration measurements]({base}data/vllm034-qualification.json) · '
+                  f'[27B precision with 400-token blocks]({base}data/vllm034-dense-400-gold.json)', '']
+    lines += [f"## vLLM {data['runtime']['vllm']} concurrency curves", '',
+             f"These runs use PyTorch {data['runtime']['torch']}. FP32 recurrent state is the default.", '',
              profile_overview(data, 'performance.md'), '']
     for model in data['models']:
         series = throughput_series(model)
@@ -291,14 +322,17 @@ def profile_overview(data, report):
     return '\n'.join(lines)
 
 
-def readme_performance(data, native=False):
+def readme_performance(data, native=False, release_table=None):
     lines = ['## Serving performance', '',
-             f"**vLLM {data['runtime']['vllm']} · RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.**", '',
-             profile_overview(data, 'docs/performance.md'), '',
+             'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '']
+    if release_table:
+        lines += ['### vLLM 0.34 throughput', '', release_table, '',
+                  '[Measurements and precision](docs/performance.md#vllm-034-throughput)', '']
+    lines += [f"### vLLM {data['runtime']['vllm']} concurrency curves", '',
              'FP32 recurrent state is the default. The performance report includes optional BF16/FP16 state configurations and precision against BF16.', '']
     for model in data['models']:
         guide = GUIDE_BASE + model['guide'] if native else 'docs/' + model['guide']
-        lines += [f"### {model.get('display_name', model['title'])}", '',
+        lines += [f"#### {model.get('display_name', model['title'])}", '',
                   f"![{model['title']} throughput](docs/assets/{asset_name(data, model, 'throughput')})", '',
                   f"[Data and precision](docs/performance.md#{model['id']}) · [Run this profile]({guide})", '']
     historical = GUIDE_BASE + 'performance-vllm029.md' if native else 'docs/performance-vllm029.md'
@@ -497,7 +531,8 @@ def plots(data, dest, preview_dir=None):
         ax.legend(frameon=False,fontsize=10,loc='lower left',bbox_to_anchor=(0,1.005),
                   ncols=len(series),borderaxespad=0)
         fig.suptitle(f"{m['title']} — throughput",fontsize=18,fontweight='bold',x=.09,ha='left',y=.975)
-        fig.text(.09,.89,f"{runtime_caption(data)} · {m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color=CHART_THEME['muted'][0])
+        caption = f'{runtime_caption(data)} · ' if data.get('runtime') else 'Mach: '
+        fig.text(.09,.89,f"{caption}{m['tp']} × RTX 5090 · TP{m['tp']} · 3,000 input / 1,000 output tokens",fontsize=10,color=CHART_THEME['muted'][0])
         fig.subplots_adjust(left=.09,right=.985,bottom=.14,top=.78)
         save(fig,asset_name(data,m,'throughput'))
         if m.get('precision_comparison'):
@@ -581,7 +616,10 @@ def main():
     if args.historical and args.migration_data:
         parser.error('--historical and --migration-data are mutually exclusive')
     current = not args.historical
-    data=migration_data(args.migration_data or ROOT/'docs/data/model-performance-vllm033.json') if current else dataset()
+    published_data = DATA / 'model-performance-vllm033.json'
+    selected_data = args.migration_data or published_data
+    data=migration_data(selected_data) if current else dataset()
+    release_table = vllm034_table() if current and selected_data.resolve() == published_data else None
     output_suffix=data.get('asset_suffix','')
     with TemporaryDirectory() as tmp:
         rendered=Path(tmp)
@@ -589,9 +627,9 @@ def main():
         for root,native in [(ROOT,False)]+([(args.mirror,True)] if args.mirror and current else []):
             exported = dict(data)
             targets={root/f'docs/data/model-performance{output_suffix}.json':json.dumps(exported,indent=2)+'\n',
-                     root/('docs/performance.md' if current else 'docs/performance-vllm029.md'):migration_markdown(data,native) if current else markdown(data,native)}
+                     root/('docs/performance.md' if current else 'docs/performance-vllm029.md'):migration_markdown(data,native,release_table) if current else markdown(data,native)}
             if current:
-                targets[root/'README.md'] = update_readme((root/'README.md').read_text(), readme_performance(data, native))
+                targets[root/'README.md'] = update_readme((root/'README.md').read_text(), readme_performance(data, native, release_table))
             targets.update({root/'docs/assets'/name:(rendered/name).read_text() for name in chart_names(data)})
             if args.check:
                 for path,text in targets.items():assert path.read_text()==text,path
@@ -600,7 +638,7 @@ def main():
                 for stem in (() if current else ('model-throughput','model-gains')):
                     for suffix in ('.svg','.png'):
                         (root/'docs/assets'/f'{stem}{suffix}').unlink(missing_ok=True)
-    print(migration_markdown(data) if current else overview(data))
+    print(migration_markdown(data, release_table=release_table) if current else overview(data))
 
 
 if __name__=='__main__':

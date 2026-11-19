@@ -10,7 +10,7 @@ planning and graph capture, with no external tuning file or checkpoint change.
 The native config ABI is checked at startup. Set
 `VLLM_MACH_MOE_PROJECTION_TUNING=0` before starting a new worker to disable them.
 
-Mach 0.3 uses the native library and dependencies listed in [runtime versions](installation.md#runtime-versions). Build the native wheel against the serving environment's PyTorch, following [installation](installation.md). `deploy/build-mxfp6.py` pins the native source and CUTLASS revisions.
+The [runtime versions](installation.md#runtime-versions) list the native library and dependencies. Build the native wheel against the serving environment's PyTorch, following [installation](installation.md). `deploy/build-mxfp6.py` pins the native source and CUTLASS revisions.
 
 For a local checkout and checkpoint, install the pinned native wheel and Mach package as in [installation](installation.md). The first command uses the launcher defaults. The second reproduces the measured FP16 FULL service configuration; select two free SM120 GPUs and set `MODEL` to the same checkpoint path for both commands.
 
@@ -31,7 +31,7 @@ GRAPH_CONFIG='{"mode":"VLLM_COMPILE","cudagraph_mode":"FULL_AND_PIECEWISE","cuda
 CUDA_VISIBLE_DEVICES=0,1 OMP_NUM_THREADS=4 \
 VLLM_HYBRID_NVFP4_LM_HEAD_CUDAGRAPH=0 vllm-mach-serve \
   --model "$MODEL" --tokenizer "$MODEL" --tensor-parallel-size 2 \
-  --hybrid-head --fp16-ssm --kv-cache-memory 8589934592 \
+  --hybrid-head --fp16-ssm --kv-cache-memory-bytes 8589934592 \
   --kv-cache-dtype bfloat16 --max-num-seqs 64 --max-model-len 16384 \
   --max-num-batched-tokens 2048 --compilation-config "$GRAPH_CONFIG" \
   --served-model-name migration-perf --host 127.0.0.1 --port 8000
@@ -123,6 +123,6 @@ router/shared-expert schedule`.
 
 ## Performance and numerical fidelity
 
-[Current vLLM 0.33 performance](performance.md#qwen35-35b-a3b) and its linked evidence show the published configuration. The September 28 vLLM 0.29 measurements are retained in the [historical MoE report](performance-vllm029.md#qwen35-35b-a3b).
+The [vLLM 0.34 results](performance.md#vllm-034-throughput) cover the standard FP16-state profile at c32 and the compact FP32-state profile at c128. The [vLLM 0.33 curves](performance.md#qwen35-35b-a3b) cover c4 through c32. The September 28 vLLM 0.29 measurements are retained in the [historical MoE report](performance-vllm029.md#qwen35-35b-a3b).
 
 The [configuration breakdown](moe-gains-fp8-baseline-20260920.md) records graph, sampler, communication, state and head increments. [Projection dispatch](moe-projection-20260923.md) covers physical rows 32–160. [Numerical fidelity](profile-fidelity-20260917.md) records default/full against BF16, FP8 and NVFP4 at controlled physical rows.

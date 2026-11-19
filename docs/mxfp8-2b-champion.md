@@ -128,8 +128,8 @@ The [benchmark](mxfp8-benchmark.md) defines generated requests, warmup and 1,040
 
 | Identity | Revision / record |
 |---|---|
-| Precision runtime | Mach `afcb4cf6bbab0dfa615fe6a2096e958623219ef6`; native `ce0cd05a007504853d2bf3963a183e3c76f3c75b` |
+| October precision runtime | Mach `afcb4cf6bbab0dfa615fe6a2096e958623219ef6`; native `ce0cd05a007504853d2bf3963a183e3c76f3c75b` |
 | Native MXFP8 runtime | Official decode/PDL source pinned in `deploy/Dockerfile.mxfp8`; binary SHA recorded in the precision data |
-| Current configuration matrix | [Per-concurrency benchmark](mxfp8-benchmark.md) and [consolidated data](data/mxfp8-benchmark.json) |
+| vLLM 0.29 SSM/KV matrix | [Per-concurrency benchmark](mxfp8-benchmark.md) and [consolidated data](data/mxfp8-benchmark.json) |
 
-Current throughput and precision appear together in the [model performance report](performance.md#qwen35-2b).
+The [vLLM 0.34 c16/c64 results](performance.md#vllm-034-throughput) use FP32 SSM, Triton attention and the hybrid head. See the [2B precision results](data/vllm034-2b-followup.json) and the [full vLLM 0.33 curves](performance.md#qwen35-2b).

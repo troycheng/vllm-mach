@@ -12,7 +12,7 @@ The n64 route duplicates each original N128 FP32 scale row exactly into two N64 
 
 Each invocation allocates a fresh output. Ordered raw scratch and native CUTLASS workspace are also independent per invocation, launched on the current stream and owned by the applicable CUDA Graph allocation pool. Outputs and scratch are never cached in process-global storage. Qualified kernel failures propagate; unsupported shapes use the original operation.
 
-The optional `vllm-mach-block-fp8` wheel is built against Mach 0.3's [runtime versions](installation.md#runtime-versions), using FlashInfer's bundled CUTLASS headers. No native compilation occurs in the worker or request path. The build discovers the pinned pip CUDA headers using `-isystem` to preserve nvcc's own `crt` search order. Wheel metadata records the source/CUTLASS tree hashes, compiler and Torch ABI. Runtime discovers the installed binary and verifies the exact operator schema. This wheel does not depend on mxfp6, b12x or historical SSM/norm bootstrap code.
+The optional `vllm-mach-block-fp8` wheel is built against the [Mach serving stack](installation.md#runtime-versions), using FlashInfer's bundled CUTLASS headers. No native compilation occurs in the worker or request path. The build discovers the pinned pip CUDA headers using `-isystem` to preserve nvcc's own `crt` search order. Wheel metadata records the source/CUTLASS tree hashes, compiler and Torch ABI. Runtime discovers the installed binary and verifies the exact operator schema. This wheel does not depend on mxfp6, b12x or historical SSM/norm bootstrap code.
 
 ```bash
 cd native/block_fp8

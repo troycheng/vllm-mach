@@ -15,8 +15,8 @@ Start with [performance by model size](performance.md), then use the guide for t
 
 ## Performance and precision
 
-- [Current performance report](performance.md): charts, per-concurrency throughput and precision for all five serving profiles.
-- [Measurement data and protocol](data/evidence-vllm033/README.md): published aggregates, numerical checks and runtime comparisons.
+- [vLLM 0.34 throughput](performance.md#vllm-034-throughput) covers the five serving profiles. [Precision and KV capacity](installation.md#vllm-034-qualification) includes the 27B Dense M4/M32 checks with 400-token attention blocks.
+- [Full vLLM 0.33 concurrency curves](performance.md#vllm-0330-concurrency-curves) include per-model throughput and precision. The [measurement records](data/evidence-vllm033/README.md) document each comparison.
 - [Block-FP8 validation](fp8-profile.md#precision-and-qualification): precision results and benchmark commands.
 
 ## Runtime and operators
@@ -25,7 +25,7 @@ Start with [performance by model size](performance.md), then use the guide for t
 |---|---|
 | Native integration and compatibility | [MXFP6](native-mxfp6.md), [MXFP8 installation](mxfp8-installation.md) |
 | GDN and scheduling | [Shared GDN/Mamba runtime](gdn-runtime.md), [MXFP6 GDN](gdn-decode.md), [MXFP8 GDN](mxfp8-gdn.md), [FP16 SSM](fp16-ssm.md) |
-| Fusion and prefill | [Producers](dense-producer-fusion.md), [AR/Norm/MXFP8](ar-norm-mxfp8.md), [lossless prefill](lossless-prefill.md), [observed-shape prefill](long-prefill.md) |
+| Fusion and prefill | [Producers](dense-producer-fusion.md), [AR/Norm/MXFP8](ar-norm-mxfp8.md), [lossless prefill](../native/lossless_prefill/README.md), [owner prefill](../native/owner_prefill/README.md) |
 | MoE | [Projection dispatch](moe-projection-20260923.md), [model integration](qwen35-moe.md) |
 | Block-FP8 | [Linear](fp8-linear.md), [activation](fp8-activation.md), [attention](fp8-attention.md) |
 

@@ -28,7 +28,7 @@ FP4 candidate scoring and FP8 KV reduce precision; measured BF16 error is listed
 
 ## Build, prepare, serve, benchmark
 
-Use Mach 0.3 with the [current runtime versions](installation.md#runtime-versions). The Dockerfile builds both native libraries from the pinned public source and applies the matching MXFP8 runtime profile.
+Use the [Mach serving stack](installation.md#runtime-versions). The Dockerfile builds both native libraries from the pinned public source and applies the matching MXFP8 runtime profile.
 
 ```bash
 docker buildx build --load -f deploy/Dockerfile.mxfp8 \
@@ -116,6 +116,8 @@ startup compilation time and retained cache storage. After stopping all workers
 that use a run directory, its old startup-cache subdirectories may be removed.
 
 ## Performance
+
+The [vLLM 0.34 comparison](performance.md#vllm-034-throughput) reports c16 and c64. The [vLLM 0.33 curves](performance.md#qwen35-4b) cover c4 through c64.
 
 See the [historical 0.29 MXFP8 benchmark](mxfp8-benchmark.md#qwen35-4b) for the default FP32 SSM/FP8 KV configuration, the FP32 SSM/BF16 KV baseline and optional BF16 SSM configurations, each compared with historical open-source block FP8.
 

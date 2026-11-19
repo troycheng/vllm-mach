@@ -1,12 +1,14 @@
-# MXFP8 serving benchmark
+# MXFP8 serving benchmark · vLLM 0.29
+
+Measured 2026-10-14. For vLLM 0.34 and 0.33 results, see [serving performance](performance.md).
 
 Qwen3.5-2B and Qwen3.5-4B on one RTX 5090 per model, TP1. Each table reports **output tokens/s at an individual request concurrency** and compares that configuration with the historical open-source **block FP8** reference.
 
-Launcher defaults: 4B uses **FP32 SSM / FP8 E4M3 KV** when both dtype flags are omitted. Changing the default GDN backend to ordered does not change either storage dtype. 2B fixes KV to BF16. Stock vLLM defaults to `auto` (model dtype). The 4B baseline explicitly passes `--kv-cache-dtype bfloat16`.
+The vLLM 0.29 launcher used **FP32 SSM / FP8 E4M3 KV** on 4B when both dtype flags were omitted. Changing the default GDN backend to ordered does not change either storage dtype. 2B fixes KV to BF16. Stock vLLM defaults to `auto` (model dtype). The 4B baseline explicitly passes `--kv-cache-dtype bfloat16`.
 
 The baseline is **FP32 SSM state and BF16 KV**, with MXFP8 model weights. SSM precision reduction means FP32 to BF16; KV quantization means BF16 to E4M3 FP8. The main 4B configuration keeps FP32 SSM with FP8 KV; BF16 SSM is optional. The 2B matrix retains BF16 KV.
 
-Current MXFP8 measurements use native revision `ce0cd05` and the same fused SwiGLU/MXFP8 quantization and hybrid greedy-head optimizations. The production graph and PDL selectors remain active. Both SSM dtypes use ordered GDN in the main matrix; BF16 rounds dense state after each pending token. Stock BF16 comparisons remain in the recheck section.
+The October MXFP8 measurements use native revision `ce0cd05` and the same fused SwiGLU/MXFP8 quantization and hybrid greedy-head optimizations. The production graph and PDL selectors remain active. Both SSM dtypes use ordered GDN in the main matrix; BF16 rounds dense state after each pending token. Stock BF16 comparisons remain in the recheck section.
 
 Block FP8 values are retained historical open-source measurements, not fresh paired trials. The 2B reference used another RTX 5090. Gains describe complete configurations; single-run differences have no repeated-trial confidence interval.
 
@@ -154,9 +156,9 @@ Both services ran sequentially on GPU 4 in the preceding recheck. This pair comp
 
 ### 4B historical configuration alignment
 
-The October 13 previous-ordered run used **BF16 SSM / FP8 E4M3 KV**, confirmed by its archived launcher argv. It was not a BF16 KV measurement. The current BF16 KV row is a separate configuration required by the unquantized-KV matrix. Only the FP8 KV columns below use matching SSM/KV/backend settings; native revision and GPU still differ between dates.
+The October 13 previous-ordered run used **BF16 SSM / FP8 E4M3 KV**, as recorded by its launcher. Both FP8 KV columns use the same SSM, KV and backend settings. The native revision and GPU differ between the two dates.
 
-| Concurrency | Historical ordered / FP8 KV | Current ordered / FP8 KV | Change at matching dtype | Current ordered / BF16 KV |
+| Concurrency | Oct 13 ordered / FP8 KV | Oct 14 ordered / FP8 KV | Change | Oct 14 ordered / BF16 KV |
 |---:|---:|---:|---:|---:|
 | c4 | 936.45 | 980.42 | +4.70% | 954.55 |
 | c16 | 2741.93 | 2861.86 | +4.37% | 2618.42 |
@@ -257,11 +259,11 @@ Each point performs independent prewarm (`c` requests with 256 output tokens), i
 
 Output throughput uses successful completion-token usage divided by the scored duration of that concurrency point. TTFT starts after semaphore admission; TPOT is `(response end - first token time) / (completion_tokens - 1)`. Streaming-event intervals are not independently reconstructed model-token timestamps.
 
-Every current configuration passes exact request/token accounting and worker receipt checks for the native library, SSM dtype and actual KV storage. 4B disables the optional `VLLM_SMALL_BATCH_ATTN` experimental branch and uses standard FlashInfer attention in both KV modes. Both models use a 19 GiB KV budget and FP32 or BF16 SSM as stated in each table.
+Every measured configuration passed exact request/token accounting and worker receipt checks for the native library, SSM dtype and actual KV storage. 4B disables the optional `VLLM_SMALL_BATCH_ATTN` experimental branch and uses standard FlashInfer attention in both KV modes. Both models use a 19 GiB KV budget and FP32 or BF16 SSM as stated in each table.
 
 ## Reproduction
 
-Build [Dockerfile.mxfp8](../deploy/Dockerfile.mxfp8), prepare the [4B](mxfp8-model.md) or [2B](mxfp8-2b-model.md) checkpoint, and start the [4B](mxfp8-champion.md) or [2B](mxfp8-2b-champion.md) launcher with the flags shown under the relevant table. 2B retains `--attention-backend TRITON_ATTN --hybrid-head`; 4B enables the hybrid head by default.
+Use Mach revision `9d878ad` to reproduce the October matrix. Build [Dockerfile.mxfp8](https://github.com/troycheng/vllm-mach/blob/9d878ad0c35666faef3ddf1aca67b41016ccbc6e/deploy/Dockerfile.mxfp8), prepare the [4B](https://github.com/troycheng/vllm-mach/blob/9d878ad0c35666faef3ddf1aca67b41016ccbc6e/docs/mxfp8-model.md) or [2B](https://github.com/troycheng/vllm-mach/blob/9d878ad0c35666faef3ddf1aca67b41016ccbc6e/docs/mxfp8-2b-model.md) checkpoint, and start the [4B](https://github.com/troycheng/vllm-mach/blob/9d878ad0c35666faef3ddf1aca67b41016ccbc6e/docs/mxfp8-champion.md) or [2B](https://github.com/troycheng/vllm-mach/blob/9d878ad0c35666faef3ddf1aca67b41016ccbc6e/docs/mxfp8-2b-champion.md) launcher with the flags shown under the relevant table. 2B retains `--attention-backend TRITON_ATTN --hybrid-head`; 4B enables the hybrid head by default.
 
 Against an already-ready server, use a new output directory:
 

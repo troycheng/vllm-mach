@@ -13,50 +13,59 @@
   <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.33.0%20%7C%200.34.0-6C5CE7">
 </p>
 
-vLLM Mach packages model-specific serving optimizations for **vLLM 0.34.0 and 0.33.0 on RTX 5090 (SM120)**. The [MXFP6 SM120 library](https://github.com/Nekofish-L/mxfp6_sm120) supplies native MXFP6/MXFP8 kernels; Mach integrates model loading, fusion, recurrent state, attention, graph policies and serving launchers. Existing block-FP8 checkpoints have a separate optimization path.
-
-[vLLM 0.34 upgrade results](docs/installation.md#vllm-034-qualification) cover serving throughput, precision and KV capacity for all five profiles.
+[Mach 0.4.0](https://github.com/troycheng/vllm-mach/releases/tag/v0.4.0) serves Qwen models on **RTX 5090 (SM120)** using vLLM 0.34.0 or 0.33.0. It combines model loading, fusion, recurrent state, attention and CUDA Graphs with the native kernels from [MXFP6 SM120 0.3.2](https://github.com/Nekofish-L/mxfp6_sm120/releases/tag/v0.3.2). Mach also supports existing 4B block-FP8 checkpoints.
 
 <!-- PERFORMANCE:BEGIN -->
 ## Serving performance
 
-**vLLM 0.33.0 · RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.**
+RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.
 
-| Model / profile | GPUs | Measured concurrency |
-|---|---:|---|
-| [Qwen3.5-2B · MXFP8](docs/performance.md#qwen35-2b) | 1 | c4, c16, c24, c32, c48, c64 |
-| [Qwen3.5-4B · MXFP8](docs/performance.md#qwen35-4b) | 1 | c4, c16, c24, c32, c48, c64 |
-| [Qwen3.5-4B · block-FP8](docs/performance.md#qwen35-4b-block-fp8) | 1 | c4, c16, c32, c64 |
-| [Qwen3.8-27B Dense · MXFP6](docs/performance.md#qwen38-27b) | 2 | c4, c16, c24, c32 |
-| [Qwen3.5-35B-A3B MoE · MXFP6](docs/performance.md#qwen35-35b-a3b) | 2 | c4, c16, c24, c32 |
+### vLLM 0.34 throughput
+
+2B and 4B run on one GPU. The 27B and 35B models use two GPUs (TP2).
+
+| Model / profile | SSM | Concurrency | vLLM 0.33 | vLLM 0.34 | Change |
+|---|---|---:|---:|---:|---:|
+| Qwen3.5-2B MXFP8 | FP32 | c16 | 5,157.45 | 5,161.78 | +0.08% |
+| Qwen3.5-2B MXFP8 | FP32 | c64 | 9,840.45 | 9,865.12 | +0.25% |
+| Qwen3.5-4B MXFP8 | FP32 | c16 | 2,684.51 | 2,777.18 | +3.45% |
+| Qwen3.5-4B MXFP8 | FP32 | c64 | 4,796.72 | 4,933.82 | +2.86% |
+| Qwen3.5-4B block-FP8 | FP32 | c32 | 3,008.32 | 3,064.28 | +1.86% |
+| Qwen3.8-27B Dense MXFP6 FULL | FP16 | c32 | 1,727.78 | 1,726.29 | -0.09% |
+| Qwen3.5-35B-A3B MXFP6 | FP16 | c32 | 3,362.91 | 3,354.01 | -0.26% |
+| Qwen3.5-35B-A3B MXFP6 compact | FP32 | c128 | 4,902.56 | 4,915.76 | +0.27% |
+
+[Measurements and precision](docs/performance.md#vllm-034-throughput)
+
+### vLLM 0.33.0 concurrency curves
 
 FP32 recurrent state is the default. The performance report includes optional BF16/FP16 state configurations and precision against BF16.
 
-### Qwen3.5-2B · MXFP8
+#### Qwen3.5-2B · MXFP8
 
 ![Qwen3.5-2B throughput](docs/assets/qwen35-2b-vllm033-throughput.svg)
 
 [Data and precision](docs/performance.md#qwen35-2b) · [Run this profile](docs/mxfp8-2b-champion.md)
 
-### Qwen3.5-4B · MXFP8
+#### Qwen3.5-4B · MXFP8
 
 ![Qwen3.5-4B throughput](docs/assets/qwen35-4b-vllm033-throughput.svg)
 
 [Data and precision](docs/performance.md#qwen35-4b) · [Run this profile](docs/mxfp8-champion.md)
 
-### Qwen3.5-4B · block-FP8
+#### Qwen3.5-4B · block-FP8
 
 ![Qwen3.5-4B block-FP8 throughput](docs/assets/qwen35-4b-block-fp8-vllm033-throughput.svg)
 
 [Data and precision](docs/performance.md#qwen35-4b-block-fp8) · [Run this profile](docs/fp8-profile.md)
 
-### Qwen3.8-27B Dense · MXFP6
+#### Qwen3.8-27B Dense · MXFP6
 
 ![Qwen3.8-27B Dense throughput](docs/assets/qwen38-27b-vllm033-throughput.svg)
 
 [Data and precision](docs/performance.md#qwen38-27b) · [Run this profile](docs/installation.md)
 
-### Qwen3.5-35B-A3B MoE · MXFP6
+#### Qwen3.5-35B-A3B MoE · MXFP6
 
 ![Qwen3.5-35B-A3B MoE throughput](docs/assets/qwen35-35b-a3b-vllm033-throughput.svg)
 
@@ -71,7 +80,7 @@ FP32 recurrent state is the default. The performance report includes optional BF
 Use Linux x86-64, Python 3.12, Docker Buildx and the NVIDIA container runtime. See [runtime versions](docs/installation.md#runtime-versions).
 
 ```bash
-git clone https://github.com/troycheng/vllm-mach.git
+git clone --branch v0.4.0 --depth 1 https://github.com/troycheng/vllm-mach.git
 cd vllm-mach
 ```
 
@@ -111,13 +120,13 @@ This example selects the 2B FP32 default and headgraph ON. Optional BF16 state u
 | 4B MXFP8 | Dual-activation MLP/QKVZ; M64 pipeline variant; BF16 BA GEMV; ordered GDN; parallel QKVZ/BA; FP8 KV; coarse/refined head; fixed compilation and graph routing | [Complete profile](docs/mxfp8-champion.md#required-parts) |
 | 4B block-FP8 | N64 GEMM tiles; ordered low-M GEMM; fused SiLU quantization; mixed FA2; matched RMS compilation choices | [Block-FP8 profile](docs/fp8-profile.md) |
 | 27B Dense MXFP6 | Native W6A8; compact greedy sampling; TP2 AllReduce/residual/RMSNorm and activation fusion; persistent GDN; BA overlap; lossless and owner prefill | [Configuration breakdown](docs/dense-gains-aligned-baseline-20260920.md) |
-| 35B-A3B MoE MXFP6 | Grouped experts; prefill/decode graphs; compact greedy sampling; fused TP2 communication; GDN integration; projection dispatch for selected physical rows32–160 | [MoE breakdown](docs/moe-gains-fp8-baseline-20260920.md) |
+| 35B-A3B MoE MXFP6 | Grouped experts; prefill/decode graphs; compact greedy sampling; fused TP2 communication; GDN integration; projection dispatch at selected row counts from 32 to 160; optional compact expert scheduling at 97–160 rows | [MoE guide and measurements](docs/qwen35-moe.md#compact-moe-at-high-token-counts) |
 
 ## Documentation
 
 - [Performance](docs/performance.md): throughput, latency, configurations and precision.
 - [Guide index](docs/README.md): installation, model preparation, operator details and development.
-- [MXFP8 benchmark](docs/mxfp8-benchmark.md): per-concurrency results, SSM/KV configurations and block-FP8 comparisons.
+- [vLLM 0.29 MXFP8 benchmark](docs/mxfp8-benchmark.md) compares SSM and KV formats against block-FP8.
 - [Shared GDN/Mamba runtime](docs/gdn-runtime.md): quantization-independent optimizations, model/path admission and NVFP4 validation.
 - [Releases](https://github.com/troycheng/vllm-mach/releases): packages and release notes.
 

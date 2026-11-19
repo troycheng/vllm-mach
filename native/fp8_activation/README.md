@@ -1,13 +1,16 @@
 # Optional SiLU/block-FP8 quantization wheel
 
-Prebuild with Torch2.13.0+cu130 and NVCC13.0.88 for SM120. This wheel has no CUTLASS,
-FlashInfer or MXFP6 dependency. The Mach worker loads the installed shared
-library with `torch.ops.load_library`; it never JIT compiles on a request.
+The [block-FP8 image](../../deploy/Dockerfile.fp8) builds this SM120 wheel with
+NVCC 13.0.88 and PyTorch from the
+[selected runtime](../../docs/installation.md#runtime-versions). The Mach
+worker loads the installed shared library with `torch.ops.load_library`.
+To build the wheel separately, run from `native/fp8_activation` inside that
+environment.
 
 ```bash
-CUDA_HOME=/usr/local/cuda MAX_JOBS=2 python setup.py bdist_wheel
+CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=2 \
+  python -m pip wheel --no-deps --no-build-isolation . -w dist
 ```
 
-See the Mach `docs/fp8-activation.md` for the exact mutation/fallback contract
-and required GPU qualification. There is intentionally no Python extension
-module import; Torch operator registration loads the binary directly.
+See the [activation guide](../../docs/fp8-activation.md) for the mutation and
+fallback contract and GPU qualification.
