@@ -7,7 +7,9 @@ import textwrap
 import types
 import unittest
 
-PATCH = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/data/runtime.patch"
+from vllm_mach.stack import profile_directory
+
+PATCH = profile_directory(Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/data") / "runtime.patch"
 
 
 def split_fragment():

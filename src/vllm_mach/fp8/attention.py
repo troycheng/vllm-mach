@@ -1,4 +1,4 @@
-"""Metadata helpers for the narrow vLLM 0.33 mixed FA2 source backport.
+"""Metadata helpers for the mixed FA2 source overlay.
 
 The split algorithm comes from LiRunGuo's vLLM PR #58013. No runtime
 function replacement or attention-kernel registration happens here.

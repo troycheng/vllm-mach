@@ -1,6 +1,6 @@
 # Optional community block-FP8 linear kernels
 
-Mach's block-FP8 linear adapter replaces only selected GEMMs in vLLM 0.33.0's `CutlassFp8BlockScaledMMKernel`. Original activation quantization, checkpoint weight bytes, FP32 scales, BF16 output, bias and output reshape are retained. A/B are independently enabled and require CUDA SM120. This adapter accepts community E4M3/FP32 block scales; MXFP8 E8M0 scales use a different backend.
+Mach's block-FP8 adapter selects two GEMM implementations inside vLLM's `CutlassFp8BlockScaledMMKernel` on SM120. Both use the checkpoint's E4M3 weights, original activation quantization, FP32 block scales, BF16 output, bias and output shape. Each implementation can be enabled independently.
 
 | Route | Qualified tensor boundary | Computation |
 | --- | --- | --- |

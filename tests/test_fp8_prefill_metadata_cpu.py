@@ -53,8 +53,14 @@ def test_readonly_metadata_real_cpu_cases():
     else:
         from vllm_mach.fp8 import _prefill_inputs as module
     module._initialize_metadata_parameters()  # This test uses bank.__new__, bypassing __init__.
-    assert module._METADATA_PARAMETER_TYPES == (vp.ModelWeightParameter, vp.BlockQuantScaleParameter)
-    assert module._BASE_TORCH_FUNCTION is vp.BasevLLMParameter.__torch_function__.__func__
+    inherited_hook = vp.BasevLLMParameter.__torch_function__
+    custom_hook = getattr(inherited_hook, '__func__', None)
+    if custom_hook is not None:
+        assert module._METADATA_PARAMETER_TYPES == (vp.ModelWeightParameter, vp.BlockQuantScaleParameter)
+        assert module._BASE_TORCH_FUNCTION is custom_hook
+    else:
+        assert inherited_hook is torch.nn.Parameter.__torch_function__
+        assert module._METADATA_PARAMETER_TYPES == () and module._BASE_TORCH_FUNCTION is None
     candidate = module.ActivationBank.prepare
     copies = []
     stream = [71]
@@ -161,12 +167,13 @@ def test_readonly_metadata_real_cpu_cases():
         compare('foreign-subclass-fallback', values, ro)
         cls = vp.ModelWeightParameter
         original_descriptor = cls.__dict__.get('__torch_function__')
-        qualified_hook = vp.BasevLLMParameter.__torch_function__.__func__
         overridden_calls = [0]
 
         def overridden(subcls, func, types, args=(), kwargs=None):
             overridden_calls[0] += 1
-            return qualified_hook(subcls, func, types, args, kwargs or {})
+            if custom_hook is not None:
+                return custom_hook(subcls, func, types, args, kwargs or {})
+            return inherited_hook(func, types, args, kwargs or {})
 
         setattr(cls, '__torch_function__', classmethod(overridden))
         try:

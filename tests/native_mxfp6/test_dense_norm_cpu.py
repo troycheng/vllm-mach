@@ -137,7 +137,8 @@ class DenseNormTests(unittest.TestCase):
             guard=N(__file__=str(path),layer_norm_fwd_kernel=N(run=stock))
             modules={'vllm.third_party.flash_linear_attention.ops':N(layernorm_guard=guard),
                      'vllm_mach.fp8._guard_kernel':N(layer_norm_fwd_kernel=N(run=target))}
-            with patch.dict(sys.modules,modules),patch.object(dense_norm,'_GUARD_SHA256',hashlib.sha256(path.read_bytes()).hexdigest()):
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            with patch.dict(sys.modules,modules),patch.object(dense_norm,'source_sha256',return_value=digest):
                 dense_norm._install();run=guard.layer_norm_fwd_kernel.run
                 dense_norm._install();self.assertIs(guard.layer_norm_fwd_kernel.run,run)
                 args=(object(),object(),object(),None,object(),None,object(),128,128,128,52008,128,1e-6)

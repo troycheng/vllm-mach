@@ -334,6 +334,8 @@ def _prepare_pools(worker):
                              state,out,idx,scratch,scale=128**-0.5)
             component.materialize_slots(state,idx,scratch)
     torch.cuda.synchronize(device)
+    from vllm_mach.mxfp8.gdn_cache import bind_extensible_cache
+    bind_extensible_cache(worker, layers, _view_key, _VIEW_SCRATCH)
     _READY = True
 
 def _flatten_new(blocks):

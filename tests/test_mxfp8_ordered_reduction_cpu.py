@@ -6,9 +6,12 @@ from vllm_mach.mxfp8 import ordered_reduction as ordered
 ROOT=Path(__file__).resolve().parents[1]
 
 
-def compiler():
+def compiler(release=None):
     s=importlib.util.spec_from_file_location('ordered_norm_contract',ROOT/'src/vllm_mach/mxfp8/compile_choices.py')
-    m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
+    m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+    if release is not None:
+        m._POLICY_FILE = m.profile_directory(Path(s.origin).parent / 'data', release) / 'compile_choices.json'
+    return m
 
 
 def templates(m):

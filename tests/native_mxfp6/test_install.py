@@ -16,8 +16,9 @@ from vllm_mach.mxfp6.serve import build_command
 
 
 def write_profile(directory, before, after):
-    manifest = {"schema_version": 1, "profile": installer.PROFILE_ID,
-                "vllm": "0.33.0", "source": "fixture", "namespaces": {}}
+    installed = installer.load_manifest()
+    manifest = {"schema_version": 1, "profile": installed["profile"],
+                "vllm": installed["vllm"], "source": "fixture", "namespaces": {}}
     for namespace, patch_name in installer._PATCHES.items():
         sources = {k: v for k, v in before.items() if k.startswith(namespace + "/")}
         text = "".join("".join(difflib.unified_diff(value.decode().splitlines(True),
@@ -175,9 +176,9 @@ def test_direct_install_verifies_versions_by_default(staged, monkeypatch):
 
 def test_bundled_profile_has_one_runtime_layer_and_exact_hashes():
     manifest = installer.load_manifest()
-    assert set(p.name for p in installer.PROFILE.glob("*.patch")) == {
+    assert set(p.name for p in installer.profile_directory(installer.PROFILE).glob("*.patch")) == {
         "runtime.patch", "flashinfer-local-ipc.patch"}
-    assert manifest["vllm"] == "0.33.0"
+    assert manifest["vllm"] == installer.BASE_PACKAGES["vllm"]
     assert "moe_source" not in manifest
     assert len(manifest["namespaces"]["flashinfer"]["files"]) == 2
     assert "vllm/model_executor/layers/quantization/quark/quark_moe.py" in manifest["namespaces"]["vllm"]["files"]
@@ -217,7 +218,7 @@ def test_actual_overlay_registers_env_reads_and_preserves_greedy_flag(tmp_path, 
 
     group = installer.load_manifest()["namespaces"]["vllm"]
     before = {name: (Path(source) / name).read_bytes() for name in group["files"]}
-    after = apply_profile_patch(before, (installer.PROFILE / group["patch"]).read_bytes(),
+    after = apply_profile_patch(before, (installer.profile_directory(installer.PROFILE) / group["patch"]).read_bytes(),
                                 group["shared_patch"])
     tree = ast.parse(after["vllm/envs.py"])
     registry = next(node.value for node in tree.body

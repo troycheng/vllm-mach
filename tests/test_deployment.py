@@ -79,6 +79,40 @@ def test_launch_is_complete():
     assert env["VLLM_MACH_FUSED_AR_QUANT"] == "1"
 
 
+@pytest.mark.parametrize(
+    ("version", "model_config", "tp_size", "extra", "expected"),
+    [
+        ("0.34.0", {}, 2, [], ["--block-size", "16"]),
+        ("0.34.0", {"model_type": "qwen3_5_moe"}, 2, [], ["--block-size", "16"]),
+        ("0.34.0", {}, 2, ["--block-size", "64"], ["--block-size", "64"]),
+        ("0.34.0", {}, 2, ["--block_size=32"], ["--block_size=32"]),
+        ("0.34.0", {}, 2, ["--config", "serve.yaml"], []),
+        ("0.34.0", {}, 1, [], []),
+        ("0.34.0", {"quantization_config": {"format": "mxfp8-quantized"}}, 2, [], []),
+        ("0.33.0", {}, 2, [], []),
+    ],
+)
+def test_native_tp2_cache_block_size(monkeypatch, tmp_path, version, model_config,
+                                     tp_size, extra, expected):
+    from vllm_mach.mxfp6 import serve
+
+    monkeypatch.setitem(serve.BASE_PACKAGES, "vllm", version)
+    (tmp_path / "config.json").write_text(json.dumps(model_config))
+    args = argparse.Namespace(
+        model=tmp_path, tensor_parallel_size=tp_size, fp16_ssm=False,
+        owner_prefill=None, lossless_prefill=None, verify_prefill=False,
+    )
+    command, _ = serve.build_command(args, extra)
+    if not expected:
+        assert "--block-size" not in command
+        return
+    assert command.count(expected[0]) == 1
+    index = command.index(expected[0])
+    assert command[index:index + len(expected)] == expected
+    if expected[0] == "--block_size=32":
+        assert "--block-size" not in command
+
+
 def test_checkout_launcher_uses_package_entrypoint():
     serve = load("deploy/serve.py")
     from vllm_mach.mxfp6.serve import main

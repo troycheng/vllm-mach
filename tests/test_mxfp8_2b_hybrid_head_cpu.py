@@ -70,7 +70,7 @@ def fixture():
 class HybridHeadCPU(unittest.TestCase):
     def bind(self, f):
         load()._wrap_sample(f.runner, f.head, f.processor, f.state, "bf16",
-                            f.argmax, f.compact, f.stats)
+                            f.argmax, f.compact, f.stats, lambda sampler: type(sampler) is NS)
 
     def test_graph_replay_skips_eager_stages_and_preserves_fallback(self):
         f = fixture()
@@ -109,6 +109,8 @@ runpy.run_path(sys.argv[1])
             "speculation": lambda f: setattr(f.runner, "speculative_config", object()),
             "sharder": lambda f: setattr(f.runner, "batch_sharder", object()),
             "nan_diagnostics": lambda f: setattr(f.runner.sampler, "compute_nans", True),
+            "custom_sampler": lambda f: setattr(f.runner, "sampler", object()),
+            "structured": lambda f: setattr(f.batch, "has_structured_output_reqs", True),
             "sampling_mask": lambda f: setattr(f.runner.sampler, "return_sampling_mask", True),
             "replay": lambda f: setattr(f.runner.sampler, "trace_replay_state", object()),
         }
@@ -136,7 +138,7 @@ runpy.run_path(sys.argv[1])
 
     def test_eligible_seeded_greedy_executes_qualified_order_and_plain_receipt(self):
         f = fixture()
-        f.runner.sampler.sampling_states.seeds = object()  # No seed guard for greedy.
+        f.runner.sampler.sampling_states.any_explicit_seed = lambda _: True
         self.bind(f)
         result = f.runner.sample(f.hidden, f.batch, None)
         self.assertEqual(result, (f.output, "sampled", "rejected"))

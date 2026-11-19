@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from types import MethodType
 
+from ..runtime.fla_sources import source_sha256
 from .profile import NAME
 _DATA = Path(__file__).with_name('data')
 _INSTALLED = False
@@ -109,8 +110,9 @@ def install():
     rows = json.loads((_DATA / 'fla_choices.json').read_text())['kernels']
     for row in rows:
         module = importlib.import_module(row['module'])
-        digest = hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
-        if digest != gates[Path(module.__file__).name]:
+        path = Path(module.__file__)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != source_sha256(path.name, gates[path.name]):
             raise RuntimeError('Block-FP8 FLA source changed: ' + row['module'])
         tuner = getattr(module, row['function'])
         while not isinstance(tuner, Autotuner):

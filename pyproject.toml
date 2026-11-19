@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.15"
 license = "Apache-2.0"
 authors = [{name = "Tong Cheng"}]
-dependencies = ["vllm==0.33.0"]
+dependencies = ["vllm>=0.33.0,<=0.34.0"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python :: 3",
@@ -46,10 +46,10 @@ exclude = ["vllm_mach.exl3*"]
 
 [tool.setuptools.package-data]
 "vllm_mach.runtime" = ["*.patch"]
-"vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json", "gdn/*.cu"]
-"vllm_mach.mxfp8" = ["data/*.json", "data/*.patch"]
+"vllm_mach.mxfp6" = ["profile/*.patch", "profile/*.json", "profile/v034/*.patch", "profile/v034/*.json", "gdn/*.cu"]
+"vllm_mach.mxfp8" = ["data/*.json", "data/*.patch", "data/v034/*.json", "data/v034/*.patch"]
 "vllm_mach.mxfp8.two_b" = ["data/*.json"]
-"vllm_mach.fp8" = ["data/*.json", "data/*.patch"]
+"vllm_mach.fp8" = ["data/*.json", "data/*.patch", "data/v034/*.json", "data/v034/*.patch"]
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -60,6 +60,8 @@ testpaths = [
     "tests/test_mxfp8_ssm.py",
     "tests/test_mxfp8_2b_model.py",
     "tests/test_mxfp8_2b_gdn_cpu.py",
+    "tests/test_mxfp8_2b_gdn_norm_tile_cpu.py",
+    "tests/test_mxfp8_2b_gdn_prefill_plan_cpu.py",
     "tests/test_mxfp8_2b_mixed_cpu.py",
     "tests/test_mxfp8_2b_ba_graph_cpu.py",
     "tests/test_mxfp8_2b_profile_cpu.py",

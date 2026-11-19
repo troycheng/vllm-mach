@@ -12,6 +12,7 @@ import tempfile
 from contextlib import contextmanager
 from importlib import metadata
 from pathlib import Path, PurePosixPath
+from vllm_mach.stack import profile_directory
 
 PROFILE = "qwen35-4b-mxfp8-champion-v1"
 DATA = Path(__file__).with_name("data")
@@ -34,7 +35,7 @@ def _relative(name: str, namespace: str = "vllm") -> Path:
 
 
 def load_manifest(data_directory: Path | None = None) -> dict:
-    directory = DATA if data_directory is None else Path(data_directory)
+    directory = profile_directory(DATA) if data_directory is None else Path(data_directory)
     manifest = json.loads((directory / "runtime_sources.json").read_text())
     if manifest.get("profile") != PROFILE or manifest.get("schema_version") != 1:
         raise RuntimeError("Unknown MXFP8 runtime source profile")
@@ -54,7 +55,7 @@ def load_shared_patch(shared: dict | None, files: dict | None = None) -> bytes:
     """Read the one packaged common overlay; fixtures may omit it entirely."""
     if shared is None:
         return b""
-    if shared.get("name") != "common-vllm033.patch":
+    if shared.get("name") not in ("common-vllm033.patch", "common-vllm034.patch"):
         raise RuntimeError("Unknown shared runtime patch")
     names = shared.get("files", [])
     if not names or len(names) != len(set(names)):
@@ -64,7 +65,7 @@ def load_shared_patch(shared: dict | None, files: dict | None = None) -> bytes:
         if files is not None and (name not in files or
                 files[name]["upstream_sha256"] == files[name]["installed_sha256"]):
             raise RuntimeError(f"Untracked or unchanged shared runtime source: {name}")
-    patch = _COMMON_PATCH.read_bytes()
+    patch = _COMMON_PATCH.with_name(shared["name"]).read_bytes()
     if sha256(patch) != shared.get("sha256"):
         raise RuntimeError("Bundled shared runtime patch SHA256 mismatch")
     # Profiles explicitly own different subsets of this SHA-locked overlay.
@@ -105,12 +106,8 @@ def apply_profile_patch(sources: dict[str, bytes], patch: bytes,
 
 
 def check_packages(expected: dict[str, str]) -> dict[str, str]:
-    actual = {name: metadata.version(name) for name in expected}
-    from vllm_mach.stack import require_version
-
-    for name, required in expected.items():
-        require_version(name, actual[name], required)
-    return actual
+    from vllm_mach.stack import check_versions
+    return check_versions(expected, lookup=metadata.version)
 
 
 def apply_patch(sources: dict[str, bytes], patch: bytes, *,
@@ -277,12 +274,12 @@ def install_profile(site: Path, *, apply: bool = False, verify_packages: bool = 
     disabled only by a direct Python caller doing an offline source audit.
     No MoE, allreduce, IPC, CUDA extension, or model library is built here.
     """
-    manifest = load_manifest(data_directory)
+    directory = profile_directory(DATA) if data_directory is None else Path(data_directory)
+    manifest = load_manifest(directory)
     versions = check_packages(manifest["packages"]) if verify_packages else None
     site = Path(site).resolve()
     before = _read_sources(site, manifest)
     state = inspect_sources(site, manifest)["state"]
-    directory = DATA if data_directory is None else Path(data_directory)
     after = (apply_profile_patch(before, (directory / "runtime.patch").read_bytes(),
                                  manifest.get("shared_patch"))
              if state == "upstream" else before.copy())

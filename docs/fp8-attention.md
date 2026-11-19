@@ -1,6 +1,6 @@
 # Mixed FA2 attention
 
-Mach's mixed FA2 integration derives from [LiRunGuo's vLLM PR #58013](https://github.com/vllm-project/vllm/pull/58013), original head `e17555d2673e632cbe85365a53490a138e4b2fae`. The current adapter targets pinned vLLM 0.33.0; the [runtime source manifest](../src/vllm_mach/fp8/data/runtime_sources.json) records the upstream and installed fingerprints.
+Mach's mixed FA2 integration derives from [LiRunGuo's vLLM PR #58013](https://github.com/vllm-project/vllm/pull/58013), original head `e17555d2673e632cbe85365a53490a138e4b2fae`. The [0.34 manifest](../src/vllm_mach/fp8/data/v034/runtime_sources.json) and [0.33 manifest](../src/vllm_mach/fp8/data/runtime_sources.json) record the upstream and installed source hashes.
 
 After applying the matching FP8 source profile, set `VLLM_MACH_FP8_FA2=1` before workers construct attention metadata builders. With the flag absent, the original attention call executes. This feature is independent of block-FP8 linear and SiLU quantization and does not apply to the MXFP8 FlashInfer profile.
 

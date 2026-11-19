@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+from vllm_mach.stack import check_versions
 from ..profile import DEPENDENCIES, check_runtime_sources
 from ..ssm import selected_dtype, select_gdn, ordered_enabled
 
@@ -55,11 +56,7 @@ def run_contract():
 
 
 def check_environment():
-    actual = {name: version(name) for name in DEPENDENCIES}
-    for name, required in DEPENDENCIES.items():
-        if actual[name].split("+", 1)[0] != required:
-            raise RuntimeError(f"{NAME} requires {name}=={required}, found {actual[name]}")
-    return actual
+    return check_versions(DEPENDENCIES, lookup=version)
 
 
 def _worker(worker):
@@ -120,7 +117,7 @@ def inspect_worker(worker):
     pdl_state = pdl.verify_capture(required)
     from . import ordered_reduction
     ordering = ordered_reduction.receipt(require_complete=True)
-    from . import attention
+    from . import attention, gdn_norm_tile, gdn_prefill_plan
     from vllm_mach import gdn_prep
     from .. import swiglu_quant
     fusion_state = swiglu_quant.receipt(required)
@@ -142,6 +139,8 @@ def inspect_worker(worker):
             "input_geometry": input_geometry.inspect_worker(worker),
             "ordered_attention_sources": attention.identity(),
             "ordered_prep_sources": gdn_prep.identity(),
+            "gdn_norm_tile": gdn_norm_tile.receipt(),
+            "gdn_prefill_plan": gdn_prefill_plan.receipt(),
             "counter_scope": "Python execution and CUDA graph construction; not replay counts"}
 
 
@@ -177,6 +176,9 @@ def install_worker_hook():
     from . import ordered_reduction
     ordered_reduction.install()
     pdl.install()
+    if contract['production_throughput_profile'] and contract['ssm_dtype'] == 'float32':
+        from . import gdn_norm_tile
+        gdn_norm_tile.install()
     from .. import swiglu_quant
     swiglu_quant.install()
     original_init, original_load = Worker.init_device, Worker.load_model
@@ -234,6 +236,9 @@ def install_worker_hook():
             metadata_classification.install(self)
         from . import head_scale
         head_scale.install(self)
+        if contract["production_throughput_profile"] and contract["ssm_dtype"] == "float32":
+            from . import gdn_prefill_plan
+            gdn_prefill_plan.install(self)
         write_receipt(self, "compiled")
         self._mach_2b_ready = True
         return result

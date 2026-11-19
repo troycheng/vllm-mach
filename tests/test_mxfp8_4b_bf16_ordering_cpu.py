@@ -3,7 +3,6 @@ import ast, copy, hashlib, json, os
 from pathlib import Path
 import pytest
 from vllm_mach import gdn_prep
-from vllm_mach.mxfp8 import ordered_reduction as ordered
 from test_mxfp8_ordered_reduction_cpu import compiler, templates, decode
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -17,18 +16,46 @@ def scope(monkeypatch, dtype='bfloat16', ordered_flag='1', mode='production'):
     else:monkeypatch.setenv('VLLM_MACH_MXFP8_QUALITY_ROWS',mode[-2:])
 
 
-@pytest.mark.parametrize('mode',['production','quality32','quality64'])
-def test_bf16_generated_norm_exact_source_and_old_component_tree(monkeypatch,mode):
-    scope(monkeypatch,mode=mode);m=compiler();p=m.load_policy()
-    row=next(r for r in p['bindings'] if r.get('ordered_reduction',{}).get('version')==2)
-    source,fn=templates(m)[row['boundary']['function_sha256']]
+def with_size_hints(source, hints):
     tree=ast.parse(source)
-    for n in ast.walk(tree):
-        if isinstance(n,ast.keyword)and n.arg=='size_hints':n.value=ast.parse(repr(row['boundary']['size_hints']),mode='eval').body
-    source=ast.unparse(ast.fix_missing_locations(tree))
-    transformed=m._contextual_triton(lambda self,name,s:s)(None,fn.name,source)
-    assert m.canonical_function_sha256(transformed,fn.name)==row['ordered_reduction']['function_sha256']
-    target=next(n for n in ast.parse(transformed).body if isinstance(n,ast.FunctionDef)and n.name==fn.name)
+    keyword, = (node for node in ast.walk(tree)
+                if isinstance(node, ast.keyword) and node.arg == 'size_hints')
+    keyword.value = ast.parse(repr(hints), mode='eval').body
+    return ast.unparse(ast.fix_missing_locations(tree))
+
+
+def gdn_norm_fixture(module, policy, release):
+    row, = (r for r in policy['bindings'] if r.get('ordered_reduction', {}).get('version') == 2)
+    if release == '0.33.0':
+        source, _ = templates(module)[row['boundary']['function_sha256']]
+        inputs = [(row, source)]
+    else:
+        reduction, gate = json.loads((ROOT / 'tests/data/inductor034-split-gdn-m32.json').read_text())
+        gate_hash = module.canonical_function_sha256(gate)
+        gate_row, = (r for r in policy['bindings'] if r['boundary']['function_sha256'] == gate_hash)
+        assert gate_row['construction_kind'] == 'generated' and 'ordered_reduction' not in gate_row
+        inputs = [(row, reduction), (gate_row, gate)]
+    result = []
+    for binding, source in inputs:
+        source = with_size_hints(source, binding['boundary']['size_hints'])
+        name = next(n.name for n in ast.parse(source).body if isinstance(n, ast.FunctionDef))
+        recipe = module.recipe_from_source(source, name, {}, name)
+        assert recipe['boundary'] == binding['boundary']
+        result.append((binding, source, name))
+    return result
+
+
+@pytest.mark.parametrize('release', ['0.33.0', '0.34.0'])
+@pytest.mark.parametrize('mode',['production','quality32','quality64'])
+def test_bf16_generated_norm_exact_source_and_old_component_tree(monkeypatch,mode,release):
+    scope(monkeypatch,mode=mode);m=compiler(release);p=m.load_policy()
+    (row, source, name), *other = gdn_norm_fixture(m, p, release)
+    compile_source = m._contextual_triton(lambda self, name, source: source)
+    for _, gate, gate_name in other:
+        assert compile_source(None, gate_name, gate) == gate
+    transformed=compile_source(None,name,source)
+    assert m.canonical_function_sha256(transformed,name)==row['ordered_reduction']['function_sha256']
+    target=next(n for n in ast.parse(transformed).body if isinstance(n,ast.FunctionDef)and n.name==name)
     original=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef))
     branch=next(n for n in target.body if isinstance(n,ast.If)and ast.unparse(n.test)=='XBLOCK == 32')
     reverted=copy.deepcopy(target);reverted.body[reverted.body.index(next(n for n in reverted.body if isinstance(n,ast.If)and ast.unparse(n.test)=='XBLOCK == 32'))]=copy.deepcopy(branch.orelse[0])
@@ -44,17 +71,18 @@ def test_bf16_generated_norm_exact_source_and_old_component_tree(monkeypatch,mod
 
 
 @pytest.mark.parametrize('dtype,flag,enabled',[('bfloat16','1',True),('bfloat16','0',False),('float32','1',False)])
+@pytest.mark.parametrize('release', ['0.33.0', '0.34.0'])
 @pytest.mark.parametrize('mode',['production','quality32','quality64'])
-def test_fp32_and_stock_gdn_keep_original_source_and_prep(monkeypatch,dtype,flag,enabled,mode):
-    scope(monkeypatch,dtype,flag,mode);m=compiler();p=m.load_policy()
-    row=next(r for r in p['bindings']if r.get('ordered_reduction',{}).get('version')==2)
+def test_fp32_and_stock_gdn_keep_original_source_and_prep(monkeypatch,dtype,flag,enabled,mode,release):
+    scope(monkeypatch,dtype,flag,mode);m=compiler(release);p=m.load_policy()
+    fixtures = gdn_norm_fixture(m, p, release)
+    row = fixtures[0][0]
     assert (m._ordered_spec(row)is not None)==enabled
     assert gdn_prep.selected('qwen35-4b-mxfp8-champion-v1',heads=16,value_heads=32,head_dim=128,value_dim=128,bf16=True,apply_l2norm=True,output_g_exp=False)==enabled
     if not enabled:
-        source,fn=templates(m)[row['boundary']['function_sha256']];tree=ast.parse(source)
-        for n in ast.walk(tree):
-            if isinstance(n,ast.keyword)and n.arg=='size_hints':n.value=ast.parse(repr(row['boundary']['size_hints']),mode='eval').body
-        source=ast.unparse(ast.fix_missing_locations(tree));assert m._contextual_triton(lambda self,name,s:s)(None,fn.name,source)==source
+        compile_source = m._contextual_triton(lambda self, name, source: source)
+        for _, source, name in fixtures:
+            assert compile_source(None, name, source) == source
 
 
 def test_selected_mxfp8_4b_actual_prep_binding():

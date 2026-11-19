@@ -162,13 +162,14 @@ class ActivationTests(unittest.TestCase):
 
     def test_missing_wheel_or_incompatible_worker_fails_before_installation(self):
         with fixture() as (module, torch, _, _, _, _):
-            with patch.object(module, "version", side_effect=lambda name: "0.33.0" if name == "vllm" else "0.2.0"), \
+            versions = {**module.BASE_PACKAGES, **module.NATIVE_EXTENSIONS}
+            with patch.object(module, "version", side_effect=versions.__getitem__), \
                     patch.object(module.importlib.util, "find_spec", return_value=None):
                 with self.assertRaisesRegex(RuntimeError, "prebuilt"):
                     module.install()
             self.assertFalse(module.inspect()["installed"])
             torch.__version__ = "2.12.0"
-            with patch.object(module, "version", side_effect=lambda name: "0.33.0" if name == "vllm" else "0.2.0"):
+            with patch.object(module, "version", side_effect=versions.__getitem__):
                 with self.assertRaisesRegex(RuntimeError, "torch==2.14"):
                     module.verify_runtime()
             torch.__version__ = "2.13.0"
@@ -188,7 +189,8 @@ class ActivationTests(unittest.TestCase):
                 "bool is_scale_transposed) -> ()"
             )
             spec = types.SimpleNamespace(origin=str(library))
-            with patch.object(module, "version", side_effect=lambda name: "0.33.0" if name == "vllm" else "0.2.0"), \
+            versions = {**module.BASE_PACKAGES, **module.NATIVE_EXTENSIONS}
+            with patch.object(module, "version", side_effect=versions.__getitem__), \
                     patch.object(module.importlib.util, "find_spec", return_value=spec):
                 identity = module.verify_runtime()
                 self.assertEqual(module.verify_runtime(), identity)

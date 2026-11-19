@@ -19,6 +19,7 @@ def _eligible(runner, batch, grammar_output):
     sampler = runner.sampler
     if (runner.lora_config is not None or runner.speculative_config is not None
             or runner.batch_sharder is not None or grammar_output is not None
+            or getattr(batch, "has_structured_output_reqs", False)
             or batch.is_prefilling_np.any() or sampler is None
             or batch.num_reqs == 0 or batch.num_draft_tokens != 0
             or sampler.compute_nans or sampler.return_sampling_mask
@@ -40,12 +41,14 @@ def _head_eligible(processor, head, hidden, state, bf16):
                               active_vocab_size=active_vocab, top_k=1))
 
 
-def _wrap_sample(runner, head, processor, state, bf16, argmax, compact_output, stats):
+def _wrap_sample(runner, head, processor, state, bf16, argmax, compact_output, stats,
+                 is_builtin_sampler):
     original = runner.sample
 
     def sample(self, hidden_states, input_batch, grammar_output):
         stats["calls"] += 1
-        if not _eligible(self, input_batch, grammar_output):
+        if (not is_builtin_sampler(self.sampler)
+                or not _eligible(self, input_batch, grammar_output)):
             stats["sampling_fallback_calls"] += 1
             return original(hidden_states, input_batch, grammar_output)
         hidden = hidden_states[input_batch.logits_indices]
@@ -84,6 +87,7 @@ def install(worker):
     from vllm.v1.worker.gpu.sample.output import SamplerOutput
     from vllm_mach.mxfp6 import hybrid_nvfp4_lm_head as nv
     from vllm_mach.mxfp6.argmax_triton import indexed_argmax_triton
+    from vllm_mach.mxfp6.sampling import is_builtin_sampler
 
     if hasattr(worker, _STATE):
         raise RuntimeError("2B hybrid head is already installed")
@@ -142,7 +146,7 @@ def install(worker):
                              num_sampled=num_sampled, num_rejected=num_rejected)
 
     _wrap_sample(runner, head, processor, state, torch.bfloat16,
-                 indexed_argmax_triton, compact_output, stats)
+                 indexed_argmax_triton, compact_output, stats, is_builtin_sampler)
     setattr(worker, _STATE, dict(state=state, detached=detached, stats=stats))
     if os.environ.get("VLLM_MACH_HEAD_AUDIT") == "1":
         from .. import greedy_head

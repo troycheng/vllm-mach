@@ -39,9 +39,9 @@ def _installed_method():
     else:
         source_root = os.getenv("VLLM_MACH_TEST_UPSTREAM_SOURCE")
         if not source_root:
-            pytest.skip("Set VLLM_MACH_TEST_UPSTREAM_SOURCE to the pinned vLLM 0.33 tree")
+            pytest.skip("Set VLLM_MACH_TEST_UPSTREAM_SOURCE to the pinned vLLM tree")
         before = {path: (Path(source_root) / path).read_bytes() for path in manifest["files"]}
-        after = apply_profile_patch(before, (installer.PROFILE / manifest["patch"]).read_bytes(),
+        after = apply_profile_patch(before, (installer.profile_directory(installer.PROFILE) / manifest["patch"]).read_bytes(),
                                     manifest["shared_patch"])
         installed = after[name]
         assert hashlib.sha256(installed).hexdigest() == manifest["files"][name]["installed_sha256"]
@@ -92,9 +92,11 @@ def _worker(events, *, v2=True, ssm="float16", model_type="qwen3_5_moe_text",
               compilation_config=compilation, model_runner=runner,
               model_config=NS(enforce_eager=eager, hf_text_config=NS(model_type=model_type,
                                 hidden_size=hidden), seed=0, max_model_len=16384,
+                                quantization="quark",
                                 architectures=["Qwen3_5MoeForConditionalGeneration"]
                                 if model_type == "qwen3_5_moe_text" else ["Qwen3_5ForCausalLM"]),
-              cache_config=NS(mamba_ssm_cache_dtype=ssm, kv_cache_memory_bytes=1),
+              cache_config=NS(mamba_ssm_cache_dtype=ssm, kv_cache_memory_bytes=1,
+                              enable_extensible_kv_cache=False),
               parallel_config=NS(tensor_parallel_size=tp, data_parallel_index=0),
               scheduler_config=NS(max_num_seqs=16, max_num_batched_tokens=2048),
               use_v2_model_runner=v2, _get_cudagraph_capture_context=capture_context,
@@ -130,8 +132,17 @@ def test_actual_installed_worker_lifecycle(monkeypatch, change, selected):
         return original_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", observed_import)
-    result = method(_worker(events, **change))
-    assert result == {"language_model": 0, "encoder": 0}
+    v034 = installer.BASE_PACKAGES["vllm"] == "0.34.0"
+    worker = _worker(events, **change)
+    expected_result = {"language_model": 0, "encoder": 0}
+    if v034:
+        del worker.use_v2_model_runner
+        expected_result["num_kv_blocks"] = None
+        # The legacy runner case cannot occur in the 0.34 worker.
+        if change.get("v2") is False:
+            selected = True
+    result = method(worker)
+    assert result == expected_result
     assert events.count("capture_model") == (0 if change.get("eager") else 1)
     assert events.count("capture_exit") == (0 if change.get("eager") else 1)
     if selected:

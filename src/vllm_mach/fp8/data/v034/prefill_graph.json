@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "scope": "Qualified4BBlock/FP32SSM/production/full4features/exact2048; original compiled call+kernel AST identities; all returns fresh and all writes local activation",
+  "bank_bytes": 77578240,
+  "upstream_sources": {
+    "vllm/compilation/cuda_graph.py": "e8f3221ded4a7de34d5fb55681d294deda94c4007d8756005eeb89a59ec82f5f",
+    "vllm/compilation/piecewise_backend.py": "188d926208a147c2786a496a10577edd832576455c36130e7f1ba375634e0806",
+    "vllm/compilation/backends.py": "fe827773c4c0c9b8630348648773469af06b684c3a6062de516cc0fc61366cf8"
+  },
+  "families": {
+    "ea7fb4f5b7ed6eae73d7ecdcc353708b16b1e6dfe8073958252e68db05bf7d79": {
+      "triton_per_fused__to_copy_add_mean_mul_per_token_group_fp8_quant_permute_pow_rsqrt_silu_view_0": "2765fa305c143c7a48275f585bb3e398c1cf696a1efc59373cd45b693a6c5410",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "fedfec7c1acb4c9dff7d3eef9ce0edcbb28fee1a3ce85df80dabfb6870176bbf",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_2": "14eb2d28d67bebf9c2eb7af5498087d1b728cda594d97554330cd84af02eb882",
+      "_fused_qk_rmsnorm_rope_gate_kernel_0": "77beb703fa562bfb537b9a7703cce15720667a691dde06a1e5612932ff887e29"
+    },
+    "c46fee2f739d4d3f3b36d32cbdd257459923493a08fcd556caafa1ea941b4554": {
+      "triton_poi_fused_mul_per_token_group_fp8_quant_permute_sigmoid_view_0": "68d91e0c6b4649d69b351df4cab2606db727726278992832c7faba10bbbe2490",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "fedfec7c1acb4c9dff7d3eef9ce0edcbb28fee1a3ce85df80dabfb6870176bbf",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_2": "c311afe8fa8e0d77ef476724977b8fb3aed2b25028adc7d5db11d3d0d161d4de"
+    },
+    "07b838fe2a7e5577a646fa9a0792dee7d374441bd8076f16102dc4b7841797de": {
+      "triton_poi_fused_mul_per_token_group_fp8_quant_permute_sigmoid_view_0": "68d91e0c6b4649d69b351df4cab2606db727726278992832c7faba10bbbe2490",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "fedfec7c1acb4c9dff7d3eef9ce0edcbb28fee1a3ce85df80dabfb6870176bbf",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_2": "49ec62af88d11aef67841ad77032ad0d50998fa739a8abbb4bb7e5d2744ddbd9",
+      "triton_poi_fused_3": "98daf5818fd5ba4dc1be71858d3012d3a869615f06f44124cbb32fe3a5b6e94e",
+      "triton_poi_fused_zeros_4": "c35e4ac8256aa540fe7f298d1d33b7d29f76ad584b2b230ce5926948d3851086"
+    },
+    "fd7c57eb57ac56a78782baa0919772aa9422b570442b7541541ed95fa55692fe": {
+      "triton_per_fused__to_copy_add_mean_mul_per_token_group_fp8_quant_permute_pow_rsqrt_silu_view_0": "2765fa305c143c7a48275f585bb3e398c1cf696a1efc59373cd45b693a6c5410",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_per_token_group_fp8_quant_permute_1": "fedfec7c1acb4c9dff7d3eef9ce0edcbb28fee1a3ce85df80dabfb6870176bbf",
+      "triton_red_fused__to_copy_add_fused_add_rms_norm_2": "49ec62af88d11aef67841ad77032ad0d50998fa739a8abbb4bb7e5d2744ddbd9",
+      "triton_poi_fused_3": "98daf5818fd5ba4dc1be71858d3012d3a869615f06f44124cbb32fe3a5b6e94e",
+      "triton_poi_fused_zeros_4": "c35e4ac8256aa540fe7f298d1d33b7d29f76ad584b2b230ce5926948d3851086"
+    }
+  },
+  "compilation": {
+    "mode": "VLLM_COMPILE",
+    "backend": "inductor",
+    "custom_ops": [
+      "+quant_fp8",
+      "none",
+      "+quant_fp8"
+    ],
+    "splitting_ops": [
+      "vllm::unified_attention_with_output",
+      "vllm::unified_mla_attention_with_output",
+      "vllm::mamba_mixer2",
+      "vllm::mamba_mixer",
+      "vllm::short_conv",
+      "vllm::zaya_cca",
+      "vllm::qwen4_exp_ple_short_conv",
+      "vllm::qwen4_exp_qsa_with_output",
+      "vllm::qwen4_exp_qsa_prepare_with_output",
+      "vllm::linear_attention",
+      "vllm::qwen_gdn_attention_core",
+      "vllm::qwen_gdn_attention_core_fused_norm_packed",
+      "vllm::gdn_attention_core_xpu",
+      "vllm::olmo_hybrid_gdn_full_forward",
+      "vllm::sparse_attn_indexer",
+      "vllm::rocm_aiter_sparse_attn_indexer",
+      "vllm::deepseek_v4_attention",
+      "vllm::hpc_rope_norm_forward",
+      "vllm::step5_csa_attention",
+      "vllm::unified_kv_cache_update",
+      "vllm::unified_mla_kv_cache_update"
+    ],
+    "compile_sizes": [],
+    "compile_ranges_endpoints": [
+      2048
+    ],
+    "inductor_compile_config": {
+      "enable_auto_functionalized_v2": false,
+      "combo_kernels": true,
+      "benchmark_combo_kernel": true
+    },
+    "pass_config": {
+      "fuse_norm_quant": true,
+      "fuse_act_quant": true,
+      "fuse_attn_quant": false,
+      "fuse_allreduce_rms": false,
+      "enable_qk_norm_rope_fusion": false,
+      "fuse_rope_kvcache_cat_mla": false,
+      "fuse_act_padding": false,
+      "fuse_qk_norm_rope_kvcache": false
+    },
+    "use_inductor_graph_partition": false
+  }
+}

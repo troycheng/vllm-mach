@@ -10,7 +10,9 @@ import os
 from pathlib import Path
 import threading
 
-_DATA = Path(__file__).parent / "data/prefill_graph.json"
+from ..stack import profile_directory
+
+_DATA = profile_directory(Path(__file__).parent / "data") / "prefill_graph.json"
 _BASE = (1, 2, 4, *range(8, 257, 8))
 _STATES = {}
 _TLS = threading.local()
@@ -103,6 +105,9 @@ def eligible_config(cfg, features):
         expected = json.loads(_DATA.read_text())["compilation"]
         if c.mode.name != expected["mode"] or c.backend != expected["backend"]:
             return False
+        prefill_sizes = getattr(c, "prefill_cudagraph_capture_token_sizes", None)
+        if prefill_sizes is not None and tuple(prefill_sizes) != _BASE:
+            return False
         for key in ("custom_ops", "splitting_ops", "inductor_compile_config"):
             if getattr(c, key) != expected[key]:
                 return False
@@ -178,8 +183,14 @@ def configure(worker, features):
     state = State(cfg)
     _STATES[id(cfg)] = state
     worker._mach_fp8_prefill_graph = state
-    cfg.compilation_config.cudagraph_capture_sizes = [*_BASE, 2048]
-    cfg.compilation_config.max_cudagraph_capture_size = 2048
+    c = cfg.compilation_config
+    c.cudagraph_capture_sizes = [*_BASE, 2048]
+    c.max_cudagraph_capture_size = 2048
+    if hasattr(c, "prefill_cudagraph_capture_token_sizes"):
+        # vLLM 0.34 captures from separate prefill and decode grids and checks
+        # their union when EngineCore resolves the config again after warmup.
+        c.prefill_cudagraph_capture_token_sizes = [*_BASE, 2048]
+        c.max_prefill_cudagraph_capture_tokens = 2048
     install_hooks()
     return True
 

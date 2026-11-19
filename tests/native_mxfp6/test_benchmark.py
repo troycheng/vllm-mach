@@ -59,6 +59,24 @@ def test_uniform_legacy_workload_is_available():
     assert all(1000 <= token < 240000 for p in prompts for token in p)
 
 
+@pytest.mark.parametrize("release", ["0.33.0", "0.34.0"])
+def test_native_launcher_only_sets_runner_flag_on_vllm_033(monkeypatch, release):
+    from vllm_mach.mxfp6 import serve
+
+    monkeypatch.setattr(serve, "BASE_PACKAGES", {"vllm": release})
+    monkeypatch.setenv("VLLM_USE_V2_MODEL_RUNNER", "0")
+    args = argparse.Namespace(
+        model="/models/dense", lossless_prefill=None, owner_prefill=None,
+        fp16_ssm=False, verify_prefill=False,
+    )
+    _, env = serve.build_command(args, [])
+    if release == "0.33.0":
+        assert env["VLLM_USE_V2_MODEL_RUNNER"] == "1"
+    else:
+        assert "VLLM_USE_V2_MODEL_RUNNER" not in env
+    assert env["VLLM_USE_BREAKABLE_CUDAGRAPH"] == "0"
+
+
 def test_manifest_must_cover_all_requests(tmp_path):
     path = tmp_path / "short.json"
     path.write_text(json.dumps({"prompts": [{"token_ids": [1, 2]}]}))

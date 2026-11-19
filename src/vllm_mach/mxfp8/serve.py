@@ -34,7 +34,7 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-mx8
           ["--enable-chunked-prefill", "--logprobs-mode", "raw_logprobs", "--disable-log-stats"]),
         "--no-enable-prefix-caching", "--mamba-ssm-cache-dtype", ssm_dtype,
         "--attention-backend", "FLASHINFER", "--quantization", "compressed-tensors",
-        "--linear-backend", "flashinfer_cutlass", "--kv-cache-memory", str(contract["kv_cache_memory_bytes"]),
+        "--linear-backend", "flashinfer_cutlass", "--kv-cache-memory-bytes", str(contract["kv_cache_memory_bytes"]),
         "--kv-cache-dtype", kv_cache_dtype, "--seed", "20260907",
         "--compilation-config", json.dumps(contract["compilation_config"], separators=(",", ":")),
     ]
@@ -62,7 +62,7 @@ def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm
         "VLLM_MACH_MXFP8_COMPACT_HEAD": str(int(hybrid_head)),
         "VLLM_MACH_LM_HEAD_SAMPLING": str(int(hybrid_head)),
         "VLLM_MACH_MXFP8_RUN_DIR": str(directory), "VLLM_PLUGINS": "mach",
-        "VLLM_USE_V2_MODEL_RUNNER": "1", "MX8_NATIVE_POLICY": "all",
+        "MX8_NATIVE_POLICY": "all",
         # A fresh namespace rebuilds recipe/parallel hooks on every boot.
         # AOT precompilation requires caching within this startup namespace.
         "VLLM_USE_AOT_COMPILE": "1", "VLLM_DISABLE_COMPILE_CACHE": "0",
@@ -87,6 +87,10 @@ def configure_environment(directory, *, quality_rows=None, hybrid_head=True, ssm
         os.environ.pop(kv.SCALES_ENV, None)
     else:
         settings[kv.SCALES_ENV] = kv_scales
+    if manifest["packages"]["vllm"] == "0.33.0":
+        settings["VLLM_USE_V2_MODEL_RUNNER"] = "1"
+    else:
+        os.environ.pop("VLLM_USE_V2_MODEL_RUNNER", None)
     os.environ.update(settings)
     return settings
 

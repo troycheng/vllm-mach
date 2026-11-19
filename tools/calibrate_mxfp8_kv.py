@@ -64,7 +64,7 @@ def snapshot_observer(wrapper):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model', required=True)
+    parser.add_argument('--model', required=True, help='Local Qwen3.5-4B compressed-tensors MXFP8 checkpoint')
     parser.add_argument('--outdir', type=Path, required=True)
     parser.add_argument('--seeds', type=int, nargs='+', default=[931007, 931021, 931043])
     parser.add_argument('--requests', type=int, default=192)
@@ -83,7 +83,11 @@ def main():
     from vllm_mach.mxfp8.install import load_manifest
     manifest = load_manifest()
     os.environ.pop('VLLM_MACH_PROFILE', None)
-    os.environ.update(VLLM_PLUGINS='', VLLM_USE_V2_MODEL_RUNNER='1',
+    if manifest['packages']['vllm'] == '0.33.0':
+        os.environ['VLLM_USE_V2_MODEL_RUNNER'] = '1'
+    else:
+        os.environ.pop('VLLM_USE_V2_MODEL_RUNNER', None)
+    os.environ.update(VLLM_PLUGINS='',
                       VLLM_ALLOW_INSECURE_SERIALIZATION='1', VLLM_FLASH_ATTN_VERSION='2',
                       OMP_NUM_THREADS='1', TORCHINDUCTOR_COMPILE_THREADS='1',
                       **manifest['required_disabled_legacy_environment'],

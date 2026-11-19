@@ -4,6 +4,8 @@ vLLM 0.33.0 / Torch 2.14.0+cu130
 
 RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.
 
+[vLLM 0.34 migration measurements](installation.md#vllm-034-qualification)
+
 FP32 recurrent state is the default. The tables identify optional state formats and the reference used for each comparison.
 
 | Model / profile | GPUs | Measured concurrency |

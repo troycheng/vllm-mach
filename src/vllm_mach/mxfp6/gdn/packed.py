@@ -5,6 +5,8 @@ import copy
 import hashlib
 import linecache
 
+from ...runtime.fla_sources import source_sha256
+
 _KERNEL = None
 _LAUNCHES = {}
 
@@ -19,7 +21,10 @@ def _kernel():
 
     original = fused_recurrent.fused_recurrent_gated_delta_rule_packed_decode_kernel
     from pathlib import Path
-    if hashlib.sha256(Path(fused_recurrent.__file__).read_bytes()).hexdigest() != "b065f160e94371192ce743bcd1ce3a9c75ddcecf31be243af4d55b39a898685e":
+    expected = source_sha256(
+        "fused_recurrent.py", "b065f160e94371192ce743bcd1ce3a9c75ddcecf31be243af4d55b39a898685e"
+    )
+    if hashlib.sha256(Path(fused_recurrent.__file__).read_bytes()).hexdigest() != expected:
         raise RuntimeError("Native packed source changed")
     tree = ast.parse(original.src)
     before = ast.dump(tree)

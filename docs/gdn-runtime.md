@@ -1,6 +1,6 @@
 # Shared GDN and Mamba runtime optimizations
 
-Mach 0.3's shared vLLM 0.33.0 runtime profile ([runtime versions](installation.md#runtime-versions)) includes the GDN optimizations ported from revision `a569aecd64`: preserve the head dimension through gated normalization, read row-strided mixed-decode inputs directly, reuse the output buffer, share FlashInfer prefill offsets across layers, and fuse aligned state block selection. Eligible SM120 prefill also reads and updates the BF16 state pool directly. Model weights, cache dtypes and sampling settings are unchanged.
+The shared GDN runtime preserves the head dimension through gated normalization, reads row-strided mixed-decode inputs directly and reuses the output buffer. Layers share FlashInfer prefill offsets and use fused selection of aligned state blocks. Eligible SM120 prefill reads and updates the BF16 state pool directly. See the [supported runtime versions](installation.md#runtime-versions).
 
 These optimizations are independent of weight quantization: none of their
 admission predicates requires NVFP4. MXFP8, FP8 and unquantized BF16 models

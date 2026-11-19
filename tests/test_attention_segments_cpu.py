@@ -26,7 +26,8 @@ class AttentionPartitionProfiles(unittest.TestCase):
   fn=next(n for n in ast.parse(source.read_text()).body if isinstance(n,ast.FunctionDef)and n.name=='register')
   for registered in(False,True):
    attention._NATIVE_REGISTERED=False
-   ns=dict(__package__='vllm_mach',os=os,version=lambda _: '0.33.0',BASE_PACKAGES={'vllm':'0.33.0'},register_dense_kernel=lambda:registered,register_compile_factors=lambda:None)
+   from vllm_mach.stack import SUPPORTED_VLLM
+   ns=dict(__package__='vllm_mach',os=os,version=lambda _: '0.33.0',SUPPORTED_VLLM=SUPPORTED_VLLM,register_dense_kernel=lambda:registered,register_compile_factors=lambda:None)
    exec(compile(ast.Module(body=[fn],type_ignores=[]),str(source),'exec'),ns);ns['register']()
    self.assertEqual(attention._NATIVE_REGISTERED,registered)
  def test_only_explicit_two_b_profile_and_BF16_cache(self):

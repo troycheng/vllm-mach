@@ -2,6 +2,7 @@
 """Refresh stable per-request sampler metadata only after an admission."""
 from functools import wraps
 from importlib.metadata import version
+from vllm_mach.stack import SUPPORTED_VLLM
 from types import MethodType
 
 _STATE = "_mach_2b_sampler_metadata"
@@ -84,8 +85,8 @@ def install(worker):
         return False
     if getattr(worker, _STATE, None) is not None:
         return False
-    # The enclosing profile also checks the installed 0.33 sampler/states/runner sources.
-    if version("vllm").split("+", 1)[0] != "0.33.0":
+    # The enclosing profile also checks the installed sampler/states/runner sources.
+    if version("vllm").split("+", 1)[0] not in SUPPORTED_VLLM:
         raise RuntimeError("2B sampler metadata requires the selected vLLM runtime")
     from vllm.v1.worker.gpu.sample.sampler import Sampler
     from vllm.v1.worker.gpu.sample.logit_bias import LogitBiasState

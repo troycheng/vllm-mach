@@ -238,9 +238,10 @@ def throughput_series(model):
             ('Mach block-FP8' if model['id']=='qwen35-4b-block-fp8' else 'MXFP8 champion', 'selected_tps', 'full', '')]
 
 
-def migration_markdown(data):
+def migration_markdown(data, native=False):
     lines = ['# Model serving performance', '', runtime_caption(data), '',
              'RTX 5090 · 3,000 input / 1,000 output tokens · output tokens/s.', '',
+             f'[vLLM 0.34 migration measurements]({GUIDE_BASE if native else ""}installation.md#vllm-034-qualification)', '',
              'FP32 recurrent state is the default. The tables identify optional state formats and the reference used for each comparison.', '',
              profile_overview(data, 'performance.md'), '']
     for model in data['models']:
@@ -588,7 +589,7 @@ def main():
         for root,native in [(ROOT,False)]+([(args.mirror,True)] if args.mirror and current else []):
             exported = dict(data)
             targets={root/f'docs/data/model-performance{output_suffix}.json':json.dumps(exported,indent=2)+'\n',
-                     root/('docs/performance.md' if current else 'docs/performance-vllm029.md'):migration_markdown(data) if current else markdown(data,native)}
+                     root/('docs/performance.md' if current else 'docs/performance-vllm029.md'):migration_markdown(data,native) if current else markdown(data,native)}
             if current:
                 targets[root/'README.md'] = update_readme((root/'README.md').read_text(), readme_performance(data, native))
             targets.update({root/'docs/assets'/name:(rendered/name).read_text() for name in chart_names(data)})

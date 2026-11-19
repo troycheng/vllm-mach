@@ -9,6 +9,7 @@ from pathlib import Path
 from types import FunctionType
 
 from ..mxfp8.compile_choices import canonical_function_sha256
+from ..runtime.fla_sources import source_sha256
 _BODY = 'e2a8f90402ecb470e6d0316f8cc77b832d675770f0187cb9308b33d31e38d65a'
 _STATE = None
 
@@ -114,7 +115,9 @@ def install():
     from torch._inductor.runtime import triton_heuristics as heuristics
     gates = json.loads(Path(__file__).with_name('data').joinpath('legacy_math_sources.json').read_text())['guard_sources']
     key = 'vllm/third_party/flash_linear_attention/ops/layernorm_guard.py'
-    if hashlib.sha256(Path(guard.__file__).read_bytes()).hexdigest() != gates[key]:
+    if hashlib.sha256(Path(guard.__file__).read_bytes()).hexdigest() != source_sha256(
+        "layernorm_guard.py", gates[key]
+    ):
         raise RuntimeError('Block-FP8 gated norm frontend source changed')
     _STATE = dict(hits=0, fallbacks=0, rows={})
     for cls in [heuristics.CachingAutotuner, getattr(heuristics, 'StaticallyLaunchedAutotuner', None)]:

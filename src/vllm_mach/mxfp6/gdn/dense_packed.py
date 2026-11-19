@@ -5,6 +5,8 @@ import hashlib
 import os
 from pathlib import Path
 
+from ...runtime.fla_sources import source_sha256
+
 _ROWS = (16, 24, 32)
 _KERNEL = None
 _WARMED = set()
@@ -20,7 +22,8 @@ def _kernel():
         sources = ((fused_recurrent, 'b065f160e94371192ce743bcd1ce3a9c75ddcecf31be243af4d55b39a898685e'),
                    (op, '456da84fd12411cf53c96a90dd4f78f49afb454c3d51d2c524ea8e7106fe8ae5'))
         for module, expected in sources:
-            if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != expected:
+            path = Path(module.__file__)
+            if hashlib.sha256(path.read_bytes()).hexdigest() != source_sha256(path.name, expected):
                 raise RuntimeError('Dense packed source changed: ' + module.__name__)
         name = 'fused_recurrent_gated_delta_rule_packed_decode_kernel'
         node = ast.parse(getattr(fused_recurrent, name).src).body[0]

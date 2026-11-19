@@ -8,6 +8,7 @@ import inspect
 import os
 from pathlib import Path
 
+from ..runtime.fla_sources import source_sha256
 from .profile import NAME
 
 _KERNEL = None
@@ -97,7 +98,9 @@ def install():
         return False
     import torch
     from vllm.third_party.flash_linear_attention.ops import fused_recurrent
-    if hashlib.sha256(Path(fused_recurrent.__file__).read_bytes()).hexdigest() != _SOURCE_SHA:
+    if hashlib.sha256(Path(fused_recurrent.__file__).read_bytes()).hexdigest() != source_sha256(
+        "fused_recurrent.py", _SOURCE_SHA
+    ):
         raise RuntimeError('Block-FP8 packed source file changed')
     original = getattr(fused_recurrent, _NAME)
     if hashlib.sha256(original.src.encode()).hexdigest() != _JIT_SHA:

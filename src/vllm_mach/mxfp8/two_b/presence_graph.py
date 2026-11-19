@@ -123,7 +123,8 @@ def install(worker, state):
     if hasattr(worker, _STATE):
         return False
     from importlib.metadata import version
-    if version('vllm').split('+', 1)[0] != '0.33.0':
+    from vllm_mach.stack import SUPPORTED_VLLM
+    if version('vllm').split('+', 1)[0] not in SUPPORTED_VLLM:
         raise RuntimeError('2B presence graph requires the selected vLLM runtime')
     import torch
     from vllm_mach.mxfp6.sampling import SamplingHead

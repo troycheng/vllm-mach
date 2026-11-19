@@ -254,7 +254,7 @@ def _selected(worker):
         return False
     model = config.model_config
     text = model.hf_text_config
-    if (not worker.use_v2_model_runner or model.enforce_eager
+    if (not getattr(worker, "use_v2_model_runner", True) or model.enforce_eager
             or config.cache_config.mamba_ssm_cache_dtype != "float16"
             or text.model_type != "qwen3_5_moe_text" or text.hidden_size != 2048
             or config.parallel_config.tensor_parallel_size != 2):

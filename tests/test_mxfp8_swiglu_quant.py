@@ -41,6 +41,19 @@ def test_transform_retains_kernel_literals():
     compile(transformed, '<fusion>', 'exec')
 
 
+def test_v034_inductor_producer_and_explicit_default_alignment():
+    source = source_fixture().replace(
+        'triton_poi_fused_mul_silu_slice_', 'triton_poi_fused_mul_mxfp8_quantize_silu_slice_'
+    ).replace('default(act, True)', 'default(act, True, alignment=0)')
+    transformed, count = fusion.transform(source)
+    assert count == 1 and '_mach_silu_quant(gate)' in transformed
+    assert 'default(act, True, alignment=0)' in transformed
+    compile(transformed, '<fusion034>', 'exec')
+    for alternate in ('32', '64', 'True', 'dynamic'):
+        changed = source.replace('alignment=0', f'alignment={alternate}')
+        assert fusion.transform(changed) == (changed, 0)
+
+
 def test_bf16_consumer_is_unchanged():
     source = source_fixture(quantized=False)
     assert fusion.transform(source) == (source, 0)

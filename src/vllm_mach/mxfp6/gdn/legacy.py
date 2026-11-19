@@ -10,6 +10,7 @@ import threading
 from pathlib import Path
 from types import MethodType
 
+from ...runtime.fla_sources import source_sha256
 from . import dense_attention
 
 _DATA = Path(__file__).parents[1] / 'profile'
@@ -136,7 +137,7 @@ def install():
     gates = json.loads((_DATA / 'legacy_sources.json').read_text())
     for filename, digest in gates.items():
         module = importlib.import_module('vllm.third_party.flash_linear_attention.ops.' + filename[:-3])
-        if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != digest:
+        if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != source_sha256(filename, digest):
             raise RuntimeError('Native FLA source changed: ' + filename)
     for row in json.loads((_DATA / 'fla_choices.json').read_text())['kernels']:
         tuner = getattr(importlib.import_module(row['module']), row['function'])

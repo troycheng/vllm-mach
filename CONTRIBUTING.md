@@ -6,7 +6,14 @@ Correctness comes before performance. Kernel-only measurements support kernel cl
 
 Use focused commits, add a regression test for behavior changes, and keep private paths, model data, credentials, and internal experiment receipts out of the repository.
 
-The portable CPU CI checks version admission, build configuration, teacher-token mapping, test-runner contracts and package creation on Python 3.10 and 3.12. Runtime qualification runs inside the matching Mach image with its installed source profile:
+The portable CPU CI runs on Python 3.11 and 3.12. To test an upstream update before building an image, point the source check at an unpacked vLLM release and the matching FlashInfer Python wheel. It applies all three profiles in temporary directories and verifies a second installation against the packaged hashes.
+
+```bash
+PYTHONPATH=src python3 tools/check_source_overlays.py --version 0.34.0 \
+  --vllm-source /path/to/vllm-release --flashinfer-source /path/to/unpacked-flashinfer
+```
+
+Run the CPU qualification suite inside each profile's image.
 
 ```bash
 PYTHONPATH=src python3 tools/check_cpu_profile.py --profile mxfp8 --out qualification/mxfp8

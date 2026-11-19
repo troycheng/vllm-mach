@@ -260,10 +260,14 @@ class Mxfp6Sm120MoERunner(MoERunner):
                 router_logits, _ = self.gate(hidden_states)
 
             with self._sequence_parallel_context():
-                hidden_states, router_logits = self._maybe_dispatch(
+                hidden_states, router_logits, *dispatch_scales = self._maybe_dispatch(
                     hidden_states,
                     router_logits,
                 )
+                # vLLM 0.34 also returns the scale for quantized PCP dispatch.
+                # The native schedules are admitted only for PCP=1.
+                if dispatch_scales and dispatch_scales != [None]:
+                    raise RuntimeError("Native Qwen3.5 MoE received scaled PCP inputs")
                 self.shared_experts(
                     shared_experts_input,
                     SharedExpertsOrder.NO_OVERLAP,

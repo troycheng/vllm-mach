@@ -218,3 +218,56 @@ class LifecycleCPU(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_selected_4b_mxfp8_hybrid_capacity():
+    from importlib.metadata import version
+    import pytest
+
+    if version("vllm").split("+")[0] != "0.34.0":
+        pytest.skip("vLLM 0.34 changed the default cache block size")
+
+    import torch
+    from vllm.config.cache import CacheConfig
+    from vllm.model_executor.models import ModelRegistry
+    from vllm.platforms.interface import Platform
+    from vllm.v1.attention.backends.flashinfer import FlashInferBackend
+    from vllm.v1.core.kv_cache_planning import get_kv_cache_config_from_groups
+    from vllm.v1.core.kv_cache_utils import get_kv_cache_capacity
+    from vllm.v1.kv_cache_interface import FullAttentionSpec, KVCacheGroupSpec, MambaSpec
+
+    shapes = ((3, 8192), (32, 128, 128))
+    dtypes = (torch.bfloat16, torch.float32)
+    model_cls = types.SimpleNamespace(get_mamba_state_shape_from_config=lambda cfg: shapes,
+                                      get_mamba_state_dtype_from_config=lambda cfg: dtypes)
+    model = types.SimpleNamespace(
+        architecture="Qwen3_5ForConditionalGeneration", dtype=torch.bfloat16, max_model_len=8192,
+        get_head_size=lambda: 256, get_num_kv_heads=lambda pc: 4, get_num_attention_heads=lambda pc: 16,
+        is_hybrid=True, use_mla=False,
+    )
+    four_b = "qwen35-4b-mxfp8-champion-v1"
+    two_b = "qwen35-2b-mxfp8-champion-v1"
+    for profile, explicit, page, blocks, tokens in (
+        (four_b, None, 1056, 1179, 878033), (four_b, 64, 1088, 1144, 851968),
+        (two_b, None, 1088, 1144, 851968), ("", None, 1088, 1144, 851968),
+    ):
+        cache = CacheConfig(block_size=explicit, cache_dtype="fp8_e4m3",
+                            mamba_ssm_cache_dtype="float32")
+        cache.kv_cache_layout = "LBHNC"
+        cfg = types.SimpleNamespace(model_config=model, cache_config=cache, use_flashinfer_replayssm=False,
+                                    attention_config=types.SimpleNamespace(hisparse_config=None),
+                                    parallel_config=types.SimpleNamespace(decode_context_parallel_size=1))
+        with patch.dict(os.environ, {"VLLM_MACH_PROFILE": profile}), \
+             patch.object(Platform, "_find_non_ssm_backends", return_value=[FlashInferBackend]), \
+             patch.object(ModelRegistry, "resolve_model_cls", return_value=(model_cls, "")):
+            Platform.update_block_size_for_backend(cfg)
+        assert cache.block_size == page
+        attn = FullAttentionSpec(block_size=page, num_kv_heads=4, head_size=256, dtype=torch.float8_e4m3fn)
+        ssm = MambaSpec(block_size=8192, shapes=shapes, dtypes=dtypes,
+                        page_size_padded=cache.mamba_page_size_padded)
+        assert attn.page_size_bytes == ssm.page_size_bytes == page * 2048
+        groups = [KVCacheGroupSpec([f"layer_{g}_{i}" for i in range(8)], spec)
+                  for g, spec in enumerate((ssm, ssm, ssm, attn))]
+        plan = get_kv_cache_config_from_groups(cfg, groups, 19 * 2**30)
+        assert plan.num_blocks == blocks
+        assert get_kv_cache_capacity(cfg, plan)[0] == tokens

@@ -26,7 +26,7 @@ class MixedQKVViewsContracts(unittest.TestCase):
     def test_complete_core_inverse_includes_prefill_and_copy(self):
         try:path=Path(metadata.distribution('vllm').locate_file('vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py'))
         except metadata.PackageNotFoundError:self.skipTest('actual installed vLLM source unavailable')
-        self.assertEqual(views.digest(path),views.QWEN_SHA)
+        self.assertEqual(views.digest(path),views._qwen_source_sha256())
         compiled=compile(path.read_text(),str(path),'exec',dont_inherit=True)
         cls=next(c for c in compiled.co_consts if isinstance(c,types.CodeType)and c.co_name=='QwenGatedDeltaNetAttention')
         code=next(c for c in cls.co_consts if isinstance(c,types.CodeType)and c.co_name=='_forward_core')
@@ -88,8 +88,9 @@ class MixedQKVViewsContracts(unittest.TestCase):
         class Helper:
             def __init__(self,*args):pass
             def direct(self,*args):return None
+        expected = views._qwen_source_sha256()
         with patch.dict('sys.modules',modules),patch.object(gdn,'mixed_fp16',native,create=True),patch.object(views,'_STATE',None), \
-             patch.object(views,'digest',side_effect=lambda path:views.QWEN_SHA if path==qwen.__file__ else views.MIXED_SHA), \
+             patch.object(views,'digest',side_effect=lambda path:expected if path==qwen.__file__ else views.MIXED_SHA), \
              patch.object(views,'source_node',return_value=node),patch.object(views,'transform',return_value=(node,{})),patch.object(views,'Helpers',Helper):
             first=layer();self.assertTrue(views.prepare(first));bound=first._forward_core
             self.assertFalse(views.prepare(first));self.assertIs(first._forward_core,bound)

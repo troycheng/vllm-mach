@@ -19,7 +19,7 @@ PROFILES = ('mxfp8', 'block-fp8', 'native')
 def inspect_profile(profile):
     if profile not in PROFILES:
         raise ValueError(profile)
-    from vllm_mach.stack import BASE_PACKAGES, check_versions
+    from vllm_mach.stack import BASE_PACKAGES, check_versions, profile_directory
     versions = check_versions(BASE_PACKAGES)
     site = Path(metadata.distribution('vllm').locate_file(''))
     if profile == 'native':
@@ -34,10 +34,11 @@ def inspect_profile(profile):
         source = installer.inspect_sources(site)
         if source['state'] != 'installed':
             raise RuntimeError(profile + ' overlay is not completely installed')
+    manifest = (profile_directory(installer.PROFILE) / 'manifest.json'
+                if profile == 'native' else profile_directory(installer.DATA) / 'runtime_sources.json')
     return {'profile': profile, 'versions': versions, 'vllm_site': str(site),
             'installer': installer.__file__, 'source': source,
-            'manifest_sha256': hashlib.sha256((Path(installer.__file__).with_name('profile') / 'manifest.json'
-                if profile == 'native' else Path(installer.__file__).with_name('data') / 'runtime_sources.json').read_bytes()).hexdigest()}
+            'manifest_sha256': hashlib.sha256(manifest.read_bytes()).hexdigest()}
 
 
 def batches(profile):

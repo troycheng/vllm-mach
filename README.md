@@ -10,10 +10,12 @@
 <p align="center">
   <a href="https://github.com/troycheng/vllm-mach/releases"><img alt="Release" src="https://img.shields.io/github/v/release/troycheng/vllm-mach?sort=semver"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
-  <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.33.0-6C5CE7">
+  <img alt="vLLM" src="https://img.shields.io/badge/vLLM-0.33.0%20%7C%200.34.0-6C5CE7">
 </p>
 
-vLLM Mach packages model-specific serving optimizations for **vLLM 0.33.0 on RTX 5090 (SM120)**. The [MXFP6 SM120 library](https://github.com/Nekofish-L/mxfp6_sm120) supplies native MXFP6/MXFP8 kernels; Mach integrates model loading, fusion, recurrent state, attention, graph policies and serving launchers. Existing block-FP8 checkpoints have a separate optimization path.
+vLLM Mach packages model-specific serving optimizations for **vLLM 0.34.0 and 0.33.0 on RTX 5090 (SM120)**. The [MXFP6 SM120 library](https://github.com/Nekofish-L/mxfp6_sm120) supplies native MXFP6/MXFP8 kernels; Mach integrates model loading, fusion, recurrent state, attention, graph policies and serving launchers. Existing block-FP8 checkpoints have a separate optimization path.
+
+[vLLM 0.34 upgrade results](docs/installation.md#vllm-034-qualification) cover serving throughput, precision and KV capacity for all five profiles.
 
 <!-- PERFORMANCE:BEGIN -->
 ## Serving performance
