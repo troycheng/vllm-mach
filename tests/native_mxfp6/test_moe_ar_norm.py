@@ -248,19 +248,30 @@ def test_native_moe_partitions_vllm_cache_by_rank(monkeypatch, fusion):
     from vllm_mach.mxfp6.moe import _prepare_qwen35_moe_graph_cache
 
     monkeypatch.setenv("VLLM_QWEN3_5_FUSED_AR_NORM", str(int(fusion)))
-    prepare = prepare_compiled_ar_norm if fusion else _prepare_qwen35_moe_graph_cache
+
+    def prepare(config):
+        if fusion:
+            prepare_compiled_ar_norm(config)
+        else:
+            _prepare_qwen35_moe_graph_cache(config, high_m_compact=False)
 
     from vllm.config.device import DeviceConfig
+    from vllm.config.utils import hash_factors
+
+    def config_hash(config):
+        if hasattr(config, "compile_factors"):
+            return hash_factors(config.compile_factors())
+        return config.compute_hash()
 
     configs = [VllmConfig(device_config=DeviceConfig(device="cpu")) for _ in range(2)]
     for rank, config in enumerate(configs):
         config.parallel_config.rank = rank
         config.compilation_config.mode = CompilationMode.VLLM_COMPILE
     # vLLM normally shares this hash across TP ranks.
-    assert configs[0].compute_hash() == configs[1].compute_hash()
+    assert config_hash(configs[0]) == config_hash(configs[1])
     for config in configs:
         prepare(config)
-    assert configs[0].compute_hash() != configs[1].compute_hash()
-    original = configs[0].compute_hash()
+    assert config_hash(configs[0]) != config_hash(configs[1])
+    original = config_hash(configs[0])
     prepare(configs[0])
-    assert configs[0].compute_hash() == original
+    assert config_hash(configs[0]) == original

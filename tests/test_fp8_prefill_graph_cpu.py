@@ -53,6 +53,59 @@ def test_scope_only_original_full_block_production_capacity():
             assert not pg.eligible_config(config(), features)
 
 
+def test_qualified_splitting_ops_match_this_vllm_release():
+    pytest.importorskip("vllm")
+    from vllm.config.compilation import CompilationConfig
+
+    # The production runner splits at the stock attention ops and both KV updates.
+    # An upstream addition for an unrelated architecture must be qualified explicitly.
+    ops = list(CompilationConfig._attention_ops) + [
+        "vllm::unified_kv_cache_update", "vllm::unified_mla_kv_cache_update"
+    ]
+    expected = json.loads(pg._DATA.read_text())["compilation"]["splitting_ops"]
+    assert ops == expected
+
+
+def test_v034_graph_manager_and_handshake_observe_block2048():
+    pytest.importorskip("vllm")
+    import torch
+    from vllm.config import CompilationConfig, VllmConfig
+    from vllm.config.compilation import CUDAGraphMode
+    from vllm.v1.worker.gpu import cudagraph_utils as cg
+
+    if not hasattr(VllmConfig, "_split_cudagraph_capture_sizes"):
+        pytest.skip("vLLM 0.34 introduced separate prefill/decode grids")
+    cfg = config()
+    features = ("n64", "ordered", "silu", "fa2")
+    fields = json.loads(pg._DATA.read_text())["compilation"]
+    cfg.compilation_config = c = CompilationConfig(
+        **fields, cudagraph_mode="FULL_AND_PIECEWISE",
+        cudagraph_capture_sizes=list(pg._BASE), max_cudagraph_capture_size=256,
+    )
+    cfg.model_config.enforce_eager = False
+    cfg.cache_config.use_kda_recoverssm = False
+    cfg.uniform_decode_query_len = 1
+    cfg.get_decode_cudagraph_query_lens = lambda q: {q: 128}
+    cfg.get_draft_decode_cudagraph_request_sizes = lambda: []
+    cfg._split_cudagraph_capture_sizes = lambda legacy, lens: (
+        VllmConfig._split_cudagraph_capture_sizes(cfg, legacy, lens)
+    )
+    VllmConfig._set_cudagraph_sizes(cfg)
+    decode = c.decode_cudagraph_capture_request_sizes.copy()
+    with patch.dict(pg._STATES, {}, clear=True), patch.object(pg, "install_hooks"):
+        assert pg.configure(N(vllm_config=cfg), features)
+    # The EngineCore handshake runs the real resolver again after worker warmup.
+    VllmConfig._set_cudagraph_sizes(cfg)
+    assert c.prefill_cudagraph_capture_token_sizes == c.cudagraph_capture_sizes == [*pg._BASE, 2048]
+    assert c.max_prefill_cudagraph_capture_tokens == c.max_cudagraph_capture_size == 2048
+    assert c.decode_cudagraph_capture_request_sizes == decode
+    with patch.object(cg, "get_pp_group", return_value=N(is_first_rank=True, is_last_rank=True)), \
+         patch.object(cg.current_platform, "get_global_graph_pool", return_value=None):
+        manager = cg.CudaGraphManager(cfg, torch.device("cpu"), c.cudagraph_mode, {1: 128})
+    assert {d.num_tokens for d in manager._capture_descs[CUDAGraphMode.PIECEWISE]} == {*pg._BASE, 2048}
+    assert {d.num_tokens for d in manager._capture_descs[CUDAGraphMode.FULL]} == set(decode)
+
+
 def test_manifest_locks_four_complete_call_and_kernel_families():
     manifest=json.loads(pg._DATA.read_text())
     assert manifest["bank_bytes"]==77578240 and len(manifest["families"])==4

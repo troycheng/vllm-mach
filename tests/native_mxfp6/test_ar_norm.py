@@ -161,21 +161,24 @@ def test_eligibility_is_exact_dense_bf16_sm120_tp2_with_prepared_producers(monke
 
 
 def test_loader_reports_missing_wheel_and_abi_mismatch(monkeypatch):
+    import re
+
     from vllm_mach.mxfp6 import ar_norm
 
     ar_norm._loaded = False
+    flashinfer = ar_norm.BASE_PACKAGES["flashinfer-python"]
     monkeypatch.setattr(
         ar_norm.metadata,
         "version",
         lambda package: (_ for _ in ()).throw(ar_norm.metadata.PackageNotFoundError()),
     )
-    with pytest.raises(RuntimeError, match=r"flashinfer-python==0.7.2.post1"):
+    with pytest.raises(RuntimeError, match=re.escape(f"flashinfer-python=={flashinfer}")):
         ar_norm.load_library()
 
     versions = {
-        "flashinfer-python": "0.7.2.post1+local",
-        "mxfp6-sm120": "0.3.1",
-        "vllm-mach-ar-norm": "0.2.0",
+        "flashinfer-python": f"{flashinfer}+local",
+        "mxfp6-sm120": ar_norm.NATIVE_VERSION,
+        "vllm-mach-ar-norm": ar_norm.NATIVE_EXTENSIONS["vllm-mach-ar-norm"],
     }
     monkeypatch.setattr(ar_norm.metadata, "version", versions.__getitem__)
     monkeypatch.setattr(ar_norm.util, "find_spec", lambda _: types.SimpleNamespace(origin="/tmp/x.so"))

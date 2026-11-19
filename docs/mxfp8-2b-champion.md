@@ -1,6 +1,6 @@
 # Qwen3.5-2B MXFP8 champion
 
-This profile uses Mach 0.3 on vLLM 0.33.0; see [runtime versions](installation.md#runtime-versions). The [MXFP8 benchmark](mxfp8-benchmark.md) retains the historical 0.29 per-concurrency SSM/KV matrix.
+This profile supports vLLM 0.34.0 and 0.33.0. See the [runtime versions](installation.md#runtime-versions) and the [historical 0.29 SSM and KV benchmarks](mxfp8-benchmark.md).
 
 The **Triton attention + K128 hybrid head** profile runs on one RTX 5090, TP1. See the [per-concurrency comparisons with block FP8](mxfp8-benchmark.md#qwen35-2b).
 

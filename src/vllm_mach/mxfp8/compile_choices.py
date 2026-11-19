@@ -26,7 +26,9 @@ import textwrap
 import weakref
 from typing import Any
 
-_POLICY_FILE = Path(__file__).parent / "data" / "compile_choices.json"
+from vllm_mach.stack import profile_directory
+
+_POLICY_FILE = profile_directory(Path(__file__).parent / "data") / "compile_choices.json"
 _ACTIVE_POLICY_FILE = _POLICY_FILE
 _POLICY_MODE: str | None = None
 _INSTALLED = False
@@ -217,6 +219,9 @@ def load_policy() -> dict:
         version = policy.get("format_version")
         expected_count = ({"production": 16, "quality32": 19, "quality64": 16}[mode]
                           if version == 2 else 22 if mode == "quality64" else 23)
+        if _POLICY_FILE.parent.name == "v034":
+            # The 128-wide GDN output norm emits separate reduction and gate kernels.
+            expected_count = {"production": 17, "quality32": 20, "quality64": 17}[mode]
         if (version not in (1, 2) or len(policy.get("bindings", [])) != expected_count
                 or (version == 2 and policy.get("binding_count") != expected_count)):
             raise RuntimeError("Invalid champion compile-choice policy format/count")

@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "profile": "qwen35-4b-mxfp8-champion-v1",
+  "excluded_files": {
+    "compilation/passes/fusion/allreduce_rms_fusion.py": "TP1 has no allreduce fusion.",
+    "model_executor/layers/fused_allreduce_gemma_rms_norm.py": "TP1 dense4B and fused AR-Norm disabled.",
+    "model_executor/layers/quantization/quark/quark_moe.py": "Dense MXFP8 checkpoint has no MoE.",
+    "model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py": "Native MXFP8 kernel selected through public MXFP8 API, no MXFP6 OCP scheme."
+  },
+  "required_disabled_legacy_environment": {
+    "VLLM_MACH_DENSE_AUTO": "0",
+    "VLLM_MACH_GDN_PERSISTENT": "0",
+    "VLLM_MACH_GDN_BA_OVERLAP": "0",
+    "VLLM_MACH_FUSED_SWIGLU_QUANT": "0",
+    "VLLM_MACH_FUSED_GDN_QUANT": "0",
+    "VLLM_MACH_FUSED_AR_QUANT": "0",
+    "VLLM_MACH_MOE_PROJECTION_TUNING": "0",
+    "VLLM_SM120_OWNER_PREFILL": "0",
+    "VLLM_SM120_LOSSLESS_PREFILL": "0",
+    "VLLM_QWEN3_5_FP16_SSM": "0",
+    "VLLM_QWEN3_5_FUSED_AR_NORM": "0"
+  },
+  "required_disabled_compact_environment": {
+    "VLLM_VOCAB_PARALLEL_GREEDY": "0",
+    "VLLM_HYBRID_NVFP4_LM_HEAD": "0",
+    "VLLM_HYBRID_MXFP4_LM_HEAD": "0",
+    "VLLM_HYBRID_MXFP8_LM_HEAD": "0"
+  },
+  "packages": {
+    "vllm": "0.34.0",
+    "torch": "2.14.0",
+    "triton": "3.8.0",
+    "flashinfer-python": "0.7.3",
+    "flashinfer-cubin": "0.7.3",
+    "nvidia-cutlass-dsl": "4.8.0",
+    "cuda-bindings": "13.5.0"
+  },
+  "upstream_commit": "62d4bc3c7e33b1b6c906e233e6af2d3506c482ca",
+  "base_image": "vllm/vllm-openai@sha256:cf5b2fdd087eb4f6d261736967cc5cde974bd22ff4df50365f8fa419b6b4c484",
+  "patch_sha256": "18555f18e8fc0f4374a75a062a4b880c4b2e559b9d7b710d743c23804b654ba4",
+  "files": {
+    "vllm/config/vllm.py": {
+      "upstream_sha256": "d1bbad8d631ad301d32b8b7fe85128124fe8ab2b63bb831c66c0685696098fdc",
+      "installed_sha256": "cb2dec466a552a785449e4143d0052fd2df6a7d56f2ae9c42beee668a36429f9"
+    },
+    "vllm/envs.py": {
+      "upstream_sha256": "c0adcef9664b3777ca9f76888f6dfcf842cdab8e63e47a8f4f8f200800087b47",
+      "installed_sha256": "b3001b060ccc97893451f29b93fc07152142e7d3d6bf4eba72cb8b755fa98d36",
+      "changed": true,
+      "purpose": "environment declarations/defaults and compilation factors."
+    },
+    "vllm/model_executor/kernels/linear/mxfp8/flashinfer.py": {
+      "upstream_sha256": "30dff76ce9545fd799ef64292c51fac2f611303a3c97d3a09e00c1302e7cc278",
+      "installed_sha256": "30dff76ce9545fd799ef64292c51fac2f611303a3c97d3a09e00c1302e7cc278",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/model_executor/layers/logits_processor.py": {
+      "upstream_sha256": "052ed891ef61aa060fc660822995065369cc2ec17bae7352311fe0ce48a141eb",
+      "installed_sha256": "052ed891ef61aa060fc660822995065369cc2ec17bae7352311fe0ce48a141eb",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
+      "upstream_sha256": "d53ac30cc179e5e37653be7f658e85504fe1401415be0c18dafbfaa5247ba41a",
+      "installed_sha256": "c384bf9a98234f30275fa5612328cd37a18086c9f0a418e197bfb4a2e21f20fb",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/model_executor/layers/mamba/ops/gather_initial_states.py": {
+      "upstream_sha256": "5198bb6de6d91c583a5f65d926412a76ee04a06fa72aaba76eaf156b27cd0523",
+      "installed_sha256": "4442b9e876e31eaee4b938ff28859bd37b6c1a7bea39a0858e442c7f1f54f0c6",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/model_executor/models/qwen3_5.py": {
+      "upstream_sha256": "f9f370f7b4988bd917c1dad4a4d6939e74c5fe4f5b7cea9cedfcf4c2a5637afe",
+      "installed_sha256": "f9f370f7b4988bd917c1dad4a4d6939e74c5fe4f5b7cea9cedfcf4c2a5637afe",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/models/qwen3_5/__init__.py": {
+      "upstream_sha256": "d0104a30db160e6c23b87127086d6ff936dc8cb4665bde28d0ed858282f8c3c7",
+      "installed_sha256": "69fb9281e2f7ce9727258c94b5b781b58df50daf68c7f1e589a4e211b1c0b269"
+    },
+    "vllm/platforms/interface.py": {
+      "upstream_sha256": "48e14f6e01bb14be7a27751952555d8ae922e6703662611fbb8c363f81ff2aef",
+      "installed_sha256": "c4bd7cced4de106d83a0b9346aec51dd2c4f88f6a6da2350530cfda411f45f40"
+    },
+    "vllm/third_party/flash_linear_attention/ops/fused_recurrent.py": {
+      "upstream_sha256": "9915fb0fe69f3b1205eff1532cb51c4cb640badd4e1bdf8dddced89de6e2ed69",
+      "installed_sha256": "9915fb0fe69f3b1205eff1532cb51c4cb640badd4e1bdf8dddced89de6e2ed69",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py": {
+      "upstream_sha256": "000ab8996af9788fdb8843a6a3b91833e7a14c8acc0e1ea073a536330f64cb6f",
+      "installed_sha256": "f3e47fcba7cb32ca38104aa5c5b64855c071e8b46652ee17e27a49db119c3e0e",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/utils/flashinfer.py": {
+      "upstream_sha256": "43db660971ddabf438e37fcd07522a298cc2c23bfb623119dcbc3633a4fe99c2",
+      "installed_sha256": "be8d022d0e8f12024a335d1b0020cc0e140175d79ce6ed535ba101cbd175efe5",
+      "changed": true,
+      "purpose": "SM120 XQA eligibility, autotuning and quantization helpers."
+    },
+    "vllm/v1/attention/backends/flashinfer.py": {
+      "upstream_sha256": "be0934b213f0d05d40b8a8520a8cd71965fb2fc71edd7c770dd4487c0ee42d83",
+      "installed_sha256": "16e3045b3b0076a14feaaf3806b039c1d7c37a83f06f0f2871ef4c4d726ee3ea",
+      "changed": true,
+      "purpose": "separate K/V head layout, XQA/FP8 KV eligibility and update/decode arithmetic."
+    },
+    "vllm/v1/attention/backends/gdn_attn.py": {
+      "upstream_sha256": "09abe3f04db0b8e422daa4ef7d15eb6c1347fca75c9988309bb32f6cbbf87183",
+      "installed_sha256": "ed97e6195b90e9da646a4bf846fbee5ff66bf775e591f0507aed94cc1262cef8",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/v1/attention/backends/triton_attn.py": {
+      "upstream_sha256": "4651dbe7268f5639c22b4c2d282ff02c323bddeb25d2cb98d0778579b28678cc",
+      "installed_sha256": "e1b6e0482506154d2acc9db7a8fced8aa097a661d89695b5573a50bf8abf265c"
+    },
+    "vllm/v1/attention/backends/utils.py": {
+      "upstream_sha256": "5f46854f2c72977d0c8832388fde1373df9b49da84cadf2f8c7965eb2bfb7668",
+      "installed_sha256": "cd4ed5f67317bca99f11c249c013c438f1e35ae799d9451f83b6797d5c4d12b0",
+      "changed": true,
+      "purpose": "GDN copy reduction, shared prefill metadata and fused aligned-state indexing with existing fallback paths."
+    },
+    "vllm/v1/attention/ops/triton_unified_attention.py": {
+      "upstream_sha256": "4f376e7a028866d3bff3c28839d0f9ea2e09257d1bfb2e0e666e2fd623bc2ff7",
+      "installed_sha256": "2dbd681ae41103ca1ebaa68512923e027b49f2604236d2da83a6b46f8f42d0a2",
+      "changed": true,
+      "purpose": "Explicit 2B and native MoE FP16 low-batch decode (1..32) NT16 D256 BF16 legacy merge; unmatched profiles and geometries keep the stock kernel."
+    },
+    "vllm/v1/core/kv_cache_manager.py": {
+      "upstream_sha256": "ab6a4345311227a6ba86a19de74a7de7b8ec78a389762b02e2148ccc9e9a99bd",
+      "installed_sha256": "46548c1c885e802c84bbb35d2d3fba0dbafa4a0396d248c6d57797ad74abe1e2",
+      "changed": true,
+      "purpose": "Return before prefix-cache commit bookkeeping when prefix caching is disabled; allocation, retirement, Mamba state, events and enabled-prefix behavior remain original."
+    },
+    "vllm/v1/worker/gpu/cudagraph_utils.py": {
+      "upstream_sha256": "e2f3ad9e831fa261291a04062f15d611fc8e1d2dbefa58786fb5b1158c90ecfc",
+      "installed_sha256": "f88712dba6125708525f8af646feae7a5f7def2a77150c5d415e6b4b2071e331",
+      "changed": true,
+      "purpose": "candidate ordering and graph stream; package import for empty MXFP6 warmup."
+    },
+    "vllm/v1/worker/gpu/input_batch.py": {
+      "upstream_sha256": "ada7b6827bcd5a1df8d7ba855d9d423a073745f3fbde4673417ad203016a4d54",
+      "installed_sha256": "ada7b6827bcd5a1df8d7ba855d9d423a073745f3fbde4673417ad203016a4d54",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu/model_runner.py": {
+      "upstream_sha256": "25d555c2d2b7d25bea48bba4696d47f343a228eab29ef2631f231d60128817f2",
+      "installed_sha256": "c24c0a39e48c5d05e0aec6dc6d729badd8aa21a0eb516be2fdc0555f33ca935c",
+      "changed": true,
+      "purpose": "Public full-vocabulary runner plus frozen prompt-logprob profile warmup; the selected 2B instance prebuilds immutable single-sample logit geometry; 4B retains the original prepare_inputs. General/draft and dynamic mapping paths remain original."
+    },
+    "vllm/v1/worker/gpu/sample/penalties.py": {
+      "upstream_sha256": "71b027bcdf6222d202768e6c5f220372c63d8d04822f22c9dab28ba518dfa06b",
+      "installed_sha256": "71b027bcdf6222d202768e6c5f220372c63d8d04822f22c9dab28ba518dfa06b",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu/sample/prompt_logprob.py": {
+      "upstream_sha256": "f83ce3ab693e5f3ee8216821aec7c8c82b76a8b00358c5d7466e9b85c3197fd7",
+      "installed_sha256": "f83ce3ab693e5f3ee8216821aec7c8c82b76a8b00358c5d7466e9b85c3197fd7",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu/sample/sampler.py": {
+      "upstream_sha256": "984b334c4d996550481d9bae4d9ccd57b3c208ad3fe1579d9c9f794e0be58b40",
+      "installed_sha256": "984b334c4d996550481d9bae4d9ccd57b3c208ad3fe1579d9c9f794e0be58b40",
+      "changed": false,
+      "purpose": "Pinned public source; normal full-vocabulary operations are unchanged or identical to frozen runtime."
+    },
+    "vllm/v1/worker/gpu/sample/states.py": {
+      "upstream_sha256": "59099c6053c45b8299235eb4777a6427920cc5ca38ab3bedcc44fc6da85e83b4",
+      "installed_sha256": "59099c6053c45b8299235eb4777a6427920cc5ca38ab3bedcc44fc6da85e83b4",
+      "changed": false,
+      "purpose": "Pinned public normal sampling/prompt-logprob/integer state source; disabled sparse-presence extensions are excluded."
+    },
+    "vllm/v1/worker/gpu_worker.py": {
+      "upstream_sha256": "f165f890363726a8b1c4b1baed44fd01639894d3266571517aea1dca475cccea",
+      "installed_sha256": "ef81bfc28028df2ac1d2fdd128c92218c038b4368c72ebb26ff1c2cff4104760",
+      "changed": true,
+      "purpose": "graph-memory accounting and worker lifecycle; remove verified disabled MXFP6 adapters."
+    }
+  },
+  "arithmetic_contract": {
+    "gdn_prefill_state": "Compact FP32 initial/final-state IO followed by original state dtype conversion; new FI indexed capability does not enable another route.",
+    "gdn_recurrence": "Retained Mach FP32 recurrence and explicit state/output casts.",
+    "attention": "Separate KV storage and XQA admission retained; 0.34 owns metadata, causal masks, NVFP4 handling and graph infrastructure.",
+    "norm": "4B installs the original 2D norm boundary; compiler recipes require new-stack verification."
+  },
+  "shared_patch": {
+    "name": "common-vllm034.patch",
+    "sha256": "8a1126e9923b459f676c2c1fdb7c8f7b573eb955400abd6579eb5aab2c3c855c",
+    "files": [
+      "vllm/config/vllm.py",
+      "vllm/envs.py",
+      "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+      "vllm/model_executor/layers/mamba/ops/gather_initial_states.py",
+      "vllm/models/qwen3_5/__init__.py",
+      "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py",
+      "vllm/utils/flashinfer.py",
+      "vllm/v1/attention/backends/gdn_attn.py",
+      "vllm/v1/attention/backends/triton_attn.py",
+      "vllm/v1/attention/backends/utils.py",
+      "vllm/v1/attention/ops/triton_unified_attention.py",
+      "vllm/v1/core/kv_cache_manager.py",
+      "vllm/v1/worker/gpu/cudagraph_utils.py"
+    ]
+  }
+}

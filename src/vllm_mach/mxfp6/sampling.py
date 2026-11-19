@@ -27,6 +27,7 @@ from vllm.triton_utils import HAS_TRITON
 from vllm.v1.worker.gpu.sample.bad_words import BadWordsState
 from vllm.v1.worker.gpu.sample.logit_bias import LogitBiasState
 from vllm.v1.worker.gpu.sample.penalties import PenaltiesState
+from vllm.v1.worker.gpu.sample.sampler import Sampler
 
 from .argmax_triton import reduce_global_argmax_triton
 from .presence_penalty_triton import (
@@ -44,11 +45,26 @@ ENV = "VLLM_MACH_LM_HEAD_SAMPLING"
 logger = init_logger("vllm.mach.sampling")
 
 
+def is_builtin_sampler(sampler):
+    """Custom samplers and logits processors retain the full logits pipeline."""
+    if type(sampler) is not Sampler:
+        return False
+    processors = sampler.logits_processors
+    return (
+        len(processors) == 3
+        and type(processors[0]) is LogitBiasState
+        and type(processors[1]) is PenaltiesState
+        and type(processors[2]) is BadWordsState
+        and processors[1] is sampler.penalties_state
+    )
+
+
 def sampling_params(sampler, batch):
     """Admit uniform, unseeded stochastic batches without full-logit consumers."""
     indices = batch.idx_mapping_np
     if (
-        indices.size == 0
+        not is_builtin_sampler(sampler)
+        or indices.size == 0
         or sampler.compute_nans
         or sampler.use_fp64_gumbel
         or sampler.return_sampling_mask
@@ -57,18 +73,7 @@ def sampling_params(sampler, batch):
         or sampler.get_logprobs_dims(indices) is not None
     ):
         return None
-    # 0.33 owns these states in pipeline order rather than sampler attributes.
-    # Custom/replaced processors need the full upstream logits pipeline, even
-    # when their request-specific behavior cannot be inferred from builtins.
-    processors = sampler.logits_processors
-    if (
-        len(processors) != 3
-        or tuple(type(processor) for processor in processors)
-        != (LogitBiasState, PenaltiesState, BadWordsState)
-        or processors[1] is not sampler.penalties_state
-    ):
-        return None
-    bias, _, bad_words = processors
+    bias, _, bad_words = sampler.logits_processors
     if np.any(bias.use_logit_bias[indices]) or np.any(
         bad_words.num_bad_words.np[indices] != 0
     ):

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import tempfile
 
+from ..stack import BASE_PACKAGES
 from .profile import FEATURES, NAME
 
 
@@ -23,7 +24,7 @@ def configure_environment(directory, *, features=FEATURES, compile_mode="product
     startup = Path(tempfile.mkdtemp(prefix="startup-", dir=cache))
     settings = {
         "VLLM_MACH_PROFILE": NAME, "VLLM_PLUGINS": "mach",
-        "VLLM_MACH_FP8_RUN_DIR": str(directory), "VLLM_USE_V2_MODEL_RUNNER": "1",
+        "VLLM_MACH_FP8_RUN_DIR": str(directory),
         "VLLM_MACH_FP8_COMPILE_MODE": compile_mode,
         "TORCHINDUCTOR_COMPILE_THREADS": "1",
         "OMP_NUM_THREADS": "1", "VLLM_MACH_NATIVE_MXFP8": "0",
@@ -35,6 +36,10 @@ def configure_environment(directory, *, features=FEATURES, compile_mode="product
         "TRITON_CACHE_DIR": str(startup / "triton"),
         **{f"VLLM_MACH_FP8_{name.upper()}": str(int(name in features)) for name in FEATURES},
     }
+    if BASE_PACKAGES["vllm"] == "0.33.0":
+        settings["VLLM_USE_V2_MODEL_RUNNER"] = "1"
+    else:
+        os.environ.pop("VLLM_USE_V2_MODEL_RUNNER", None)
     os.environ.update(settings)
     return settings
 
@@ -50,7 +55,7 @@ def build_argv(model, *, tokenizer=None, host="127.0.0.1", port=8000,
             "--attention-backend", "FLASH_ATTN", "--quantization", "compressed-tensors",
             "--attention-config", '{"flash_attn_version":2}',
             "--additional-config", '{"gdn_prefill_backend":"triton"}',
-            "--linear-backend", "cutlass", "--kv-cache-memory", str(19 * 2**30),
+            "--linear-backend", "cutlass", "--kv-cache-memory-bytes", str(19 * 2**30),
             "--seed", "20260907"]
 
 

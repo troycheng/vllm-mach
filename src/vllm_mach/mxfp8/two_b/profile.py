@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+from vllm_mach.stack import check_versions
 from ..profile import DEPENDENCIES, check_runtime_sources
 from ..ssm import selected_dtype, select_gdn, ordered_enabled
 
@@ -55,11 +56,7 @@ def run_contract():
 
 
 def check_environment():
-    actual = {name: version(name) for name in DEPENDENCIES}
-    for name, required in DEPENDENCIES.items():
-        if actual[name].split("+", 1)[0] != required:
-            raise RuntimeError(f"{NAME} requires {name}=={required}, found {actual[name]}")
-    return actual
+    return check_versions(DEPENDENCIES, lookup=version)
 
 
 def _worker(worker):

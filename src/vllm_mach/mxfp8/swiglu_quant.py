@@ -12,6 +12,10 @@ import json
 from pathlib import Path
 
 _INSTALLED = False
+_PRODUCER_PREFIXES = (
+    "triton_poi_fused_mul_silu_slice_",
+    "triton_poi_fused_mul_mxfp8_quantize_silu_slice_",
+)
 AUDIT = []
 _COUNTS = Counter()
 
@@ -72,7 +76,7 @@ def _producer_hashes(tree):
         if (not isinstance(node, ast.Call) or len(node.args) < 2
                 or not isinstance(node.args[0], ast.Constant)
                 or not isinstance(node.args[0].value, str)
-                or not node.args[0].value.startswith("triton_poi_fused_mul_silu_slice_")
+                or not node.args[0].value.startswith(_PRODUCER_PREFIXES)
                 or not isinstance(node.args[1], ast.Constant)
                 or not isinstance(node.args[1].value, str)):
             continue
@@ -81,6 +85,17 @@ def _producer_hashes(tree):
         fn.decorator_list = []
         found[node.args[0].value] = hashlib.sha256(ast.dump(fn, include_attributes=False).encode()).hexdigest()
     return found
+
+
+def _default_alignment(keywords):
+    # vLLM 0.34 emits the default explicitly. Positive alignments can pad
+    # the output features, which the fused kernel does not implement.
+    if not keywords:
+        return True
+    if len(keywords) != 1 or keywords[0].arg != "alignment":
+        return False
+    value = keywords[0].value
+    return isinstance(value, ast.Constant) and type(value.value) is int and value.value == 0
 
 
 def transform(source):
@@ -99,12 +114,12 @@ def transform(source):
         if not isinstance(node,ast.Expr) or not isinstance(node.value,ast.Call):continue
         call=node.value
         if not isinstance(call.func,ast.Attribute) or call.func.attr!='run':continue
-        if not isinstance(call.func.value,ast.Name) or not call.func.value.id.startswith('triton_poi_fused_mul_silu_slice_'):continue
+        if not isinstance(call.func.value,ast.Name) or not call.func.value.id.startswith(_PRODUCER_PREFIXES):continue
         if len(call.args)!=3 or not all(isinstance(a,ast.Name) for a in call.args):continue
         src,dst,_=[a.id for a in call.args]
         hits=[n for n in nodes if isinstance(n,ast.Assign) and isinstance(n.value,ast.Call)
               and ast.unparse(n.value.func)=='torch.ops.vllm.mxfp8_quantize.default'
-              and len(n.value.args)==2 and not n.value.keywords
+              and len(n.value.args)==2 and _default_alignment(n.value.keywords)
               and isinstance(n.value.args[1],ast.Constant) and n.value.args[1].value is True
               and isinstance(n.value.args[0],ast.Name) and n.value.args[0].id==dst and n.lineno>node.lineno]
         if len(hits)!=1:continue
@@ -134,7 +149,7 @@ def install():
     old=PyCodeCache.load_by_key_path.__func__
     def load(cls,key,path,linemap=None,attrs=None,*,set_sys_modules=None):
         source=Path(path).read_text()
-        if 'class Runner' in source and 'triton_poi_fused_mul_silu_slice_' in source:
+        if 'class Runner' in source and any(prefix in source for prefix in _PRODUCER_PREFIXES):
             changed,count=transform(source)
             if count:
                 digest=hashlib.sha256(changed.encode()).hexdigest()

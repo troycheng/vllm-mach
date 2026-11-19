@@ -32,7 +32,8 @@ def fixture_sampler(k=4, p=0.9, temperature=0.7, penalty=0.0):
     bias.use_logit_bias = np.zeros(2, bool)
     bad_words = sampling.BadWordsState.__new__(sampling.BadWordsState)
     bad_words.num_bad_words = array(0)
-    sampler = NS(
+    sampler = sampling.Sampler.__new__(sampling.Sampler)
+    sampler.__dict__.update(
         sampling_states=states,
         penalties_state=penalties,
         compute_nans=False,
@@ -137,6 +138,17 @@ def test_changed_processor_pipeline_keeps_upstream_sampling(change):
     else:
         sampler.penalties_state = object()
     assert sampling.sampling_params(sampler, batch) is None
+
+
+def test_custom_sampler_keeps_ordinary_sampling():
+    sampler, batch = fixture_sampler()
+
+    class CustomSampler(sampling.Sampler):
+        pass
+
+    custom = CustomSampler.__new__(CustomSampler)
+    custom.__dict__.update(sampler.__dict__)
+    assert sampling.sampling_params(custom, batch) is None
 
 
 def test_033_sampler_pipeline_needs_no_removed_state_aliases():

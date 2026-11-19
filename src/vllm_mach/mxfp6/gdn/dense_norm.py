@@ -5,6 +5,7 @@ import hashlib
 import threading
 from pathlib import Path
 
+from ...runtime.fla_sources import source_sha256
 from . import dense_prep
 
 _GUARD_SHA256 = 'b4f696187a1326f9aac44f23d0bb5db814dc28ebe4fc31da000edc24365e09c6'
@@ -32,7 +33,9 @@ def _install():
     from vllm.third_party.flash_linear_attention.ops import layernorm_guard as guard
     from ...fp8._guard_kernel import layer_norm_fwd_kernel
 
-    if hashlib.sha256(Path(guard.__file__).read_bytes()).hexdigest() != _GUARD_SHA256:
+    if hashlib.sha256(Path(guard.__file__).read_bytes()).hexdigest() != source_sha256(
+        "layernorm_guard.py", _GUARD_SHA256
+    ):
         raise RuntimeError('Dense norm guard source changed')
     original = guard.layer_norm_fwd_kernel.run
 

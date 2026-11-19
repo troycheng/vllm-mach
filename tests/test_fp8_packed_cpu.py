@@ -82,8 +82,8 @@ class PackedScope(unittest.TestCase):
             with patch.dict(sys.modules,{'torch':torch,ops.__name__:ops,module.__name__:module}), \
                  patch.dict(os.environ,{'VLLM_MACH_PROFILE':p.NAME}), \
                  patch.multiple(p,_STATE=None,_ORIGINAL=None,
-                     _SOURCE_SHA=hashlib.sha256(file.read_bytes()).hexdigest(),
                      _JIT_SHA=hashlib.sha256(original.src.encode()).hexdigest()), \
+                 patch.object(p,'source_sha256',return_value=hashlib.sha256(file.read_bytes()).hexdigest()), \
                  patch.object(p,'_kernel',return_value=candidate):
                 self.assertTrue(p.install());proxy=getattr(module,p._NAME)
                 self.assertFalse(p.install())

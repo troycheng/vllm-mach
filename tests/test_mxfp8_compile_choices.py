@@ -16,11 +16,12 @@ from unittest.mock import patch
 SOURCE_FILE = Path(__file__).resolve().parents[1] / "src/vllm_mach/mxfp8/compile_choices.py"
 
 
-def load_module():
+def load_module(release="0.33.0"):
     spec = importlib.util.spec_from_file_location("mach_compile_choices_cpu", SOURCE_FILE)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
     spec.loader.exec_module(module)
+    module._POLICY_FILE = module.profile_directory(SOURCE_FILE.parent / "data", release) / "compile_choices.json"
     return module
 
 
@@ -287,6 +288,45 @@ class CompileChoiceTests(unittest.TestCase):
                 self.assertEqual(restored["semantic_key"],
                     "47ceb13fbbc6926d4b80435981cccc2fd3f9a4c1a2b8115d48c0ff2781fe5b2d" if mode=="quality32" else
                     "1050ac67757dd5a7afa8aa25e52f90a9e44e69f651f1d2a4ee1d9b162b4f754b")
+
+    def test_034_split_gdn_preserves_norm_order_and_semantic_site(self):
+        from vllm_mach.mxfp8 import ordered_reduction
+
+        fixtures = SOURCE_FILE.parents[3] / "tests/data/inductor034-split-gdn-m32.json"
+        reduce_source, gate_source = json.loads(fixtures.read_text())
+        for mode, rows, required in (("production", 2048, 17), ("quality32", 8192, 20),
+                                     ("quality64", 16384, 17)):
+            with self.subTest(mode=mode), patch.dict(os.environ, clear=False):
+                os.environ["VLLM_MACH_MXFP8_MODE"] = "production" if mode == "production" else "quality"
+                os.environ["VLLM_MACH_PROFILE"] = "qwen35-4b-mxfp8-champion-v1"
+                os.environ["VLLM_MACH_MXFP8_SSM_DTYPE"] = "bfloat16"
+                if mode == "production":
+                    os.environ.pop("VLLM_MACH_MXFP8_QUALITY_ROWS", None)
+                else:
+                    os.environ["VLLM_MACH_MXFP8_QUALITY_ROWS"] = mode[-2:]
+                module = load_module("0.34.0")
+                policy = module.load_policy()
+                self.assertEqual(policy["binding_count"], required)
+                source = reduce_source.replace("'x': 262144", f"'x': {rows * 32}")
+                gate = gate_source.replace("'x': 33554432", f"'x': {rows * 4096}")
+                name, gate_name = (next(n.name for n in ast.parse(code).body if isinstance(n, ast.FunctionDef))
+                                   for code in (source, gate))
+                exact = module.recipe_from_source(source, name, {}, "fixture")
+                gate_key = module.recipe_from_source(gate, gate_name, {}, "gate")["semantic_key"]
+                groups = {r["construction_kind"]: r for r in policy["bindings"]
+                          if r["semantic_key"] == exact["semantic_key"]}
+                self.assertEqual(set(groups), {"template", "generated"})
+                self.assertEqual([r["construction_kind"] for r in policy["bindings"]
+                                  if r["semantic_key"] == gate_key], ["generated"])
+                row = groups["generated"]
+                self.assertTrue(any(r.get("context_semantic_key") == row["semantic_key"]
+                                    for r in policy["bindings"]))
+                spec = module._ordered_spec(row)
+                ordered_reduction.validate(spec, exact["boundary"], row["selected_fields"])
+                changed = ordered_reduction.transform(source, name, spec)
+                self.assertEqual(module.canonical_function_sha256(changed, name), spec["function_sha256"])
+                self.assertIn("old_norm128_sum(tmp1, XBLOCK, R0_BLOCK)", changed)
+                self.assertEqual(exact["boundary"]["signature"]["out_ptr0"], "*fp32")
 
     def test_same_construction_different_reduction_config_still_requires_exact_site(self):
         bindings, meta = self.fixture()

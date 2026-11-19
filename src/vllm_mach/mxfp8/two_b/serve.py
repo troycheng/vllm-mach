@@ -29,7 +29,7 @@ def build_argv(model, *, host="127.0.0.1", port=8000, served_model_name="q35-2b-
             "--dtype", "bfloat16", "--tensor-parallel-size", "1", "--language-model-only",
             "--max-model-len", str(cfg["max_model_len"]), "--max-num-seqs", str(cfg["max_num_seqs"]),
             "--max-num-batched-tokens", str(cfg["max_num_batched_tokens"]),
-            "--kv-cache-memory", str(cfg["kv_cache_memory_bytes"]), "--kv-cache-dtype", "bfloat16",
+            "--kv-cache-memory-bytes", str(cfg["kv_cache_memory_bytes"]), "--kv-cache-dtype", "bfloat16",
             "--no-enable-prefix-caching", "--mamba-ssm-cache-dtype", ssm_dtype,
             "--attention-backend", attention_backend, "--quantization", "compressed-tensors",
             *(["--attention-config", '{"flash_attn_version":2}']
@@ -56,7 +56,6 @@ def configure_environment(directory, *, quality_rows=None, attention_backend="FL
     settings = {"OMP_NUM_THREADS": "1", "VLLM_PLUGINS": "mach",
                 "VLLM_MACH_PROFILE": NAME, "VLLM_MACH_NATIVE_MXFP8": "0",
                 "VLLM_MACH_MXFP8_RUN_DIR": str(directory), "MX8_NATIVE_POLICY": "all",
-                "VLLM_USE_V2_MODEL_RUNNER": "1",
                 "VLLM_MACH_2B_PINNED_IDS": "1", "TORCHINDUCTOR_COMPILE_THREADS": "1",
                 "VLLM_MACH_2B_ATTENTION_BACKEND": attention_backend,
                 "VLLM_MACH_2B_HYBRID_HEAD": "1" if hybrid_head else "0",
@@ -75,6 +74,10 @@ def configure_environment(directory, *, quality_rows=None, attention_backend="FL
         settings["VLLM_MACH_MXFP8_QUALITY_ROWS"] = str(quality_rows)
     settings[SSM_ENV] = ssm_dtype
     settings[ORDERED_BF16_ENV] = str(int(ordered_bf16_ssm))
+    if manifest["packages"]["vllm"] == "0.33.0":
+        settings["VLLM_USE_V2_MODEL_RUNNER"] = "1"
+    else:
+        os.environ.pop("VLLM_USE_V2_MODEL_RUNNER", None)
     os.environ.update(settings)
     return settings
 

@@ -150,7 +150,7 @@ class SamplerMetadataCPU(unittest.TestCase):
 def test_selected_2b_sampler_metadata_actual_runtime():
     if importlib.util.find_spec("torch") is None or importlib.util.find_spec("vllm") is None:
         import pytest
-        pytest.skip("requires installed 0.33 runtime")
+        pytest.skip("requires installed vLLM runtime")
     import numpy as np
     import torch
     from vllm.sampling_params import SamplingParams
@@ -181,6 +181,11 @@ def test_selected_2b_sampler_metadata_actual_runtime():
         x = object.__new__(bu.StagedWriteTensor)
         x._staged_write_indices, x._staged_write_starts = [], []
         x._staged_write_contents, x._staged_write_cu_lens, x._staged_write_max_len = [], [], 0
+        if hasattr(bu.StagedWriteTensor, "_staged_chunks"):
+            from array import array
+            x._typecode = bu.TORCH_DTYPE_TO_ARRAY_TYPECODE[torch.int32]
+            x._staged_write_contents = array(x._typecode)
+            x._staged_write_chunks, x._staged_write_len = [], 0
         x.gpu = torch.zeros((size, 8), dtype=torch.int32)
         return x
     def make():
@@ -215,6 +220,7 @@ def test_selected_2b_sampler_metadata_actual_runtime():
         s.logits_processors, s.penalties_state = [bias, pen, bad], pen
         s.logprob_token_ids_state, s.thinking_budget_state, s.trace_replay_state = lp, think, None
         s.needs_logits_processing = np.zeros(size, dtype=bool)
+        s.may_mask_logits = np.zeros(size, dtype=bool)
         s.return_sampling_mask = s.compute_nans = s.use_fp64_gumbel = False
         return s, req
     def all_fields(s):
@@ -237,7 +243,8 @@ def test_selected_2b_sampler_metadata_actual_runtime():
             assert reqs.req_id_to_index[r] == slot
             removal_order.append((r, slot, preempted))
         runner = NS(req_states=reqs, model_state=NS(remove_request=model_remove), pooling_runner=None,
-                    pp_handler=None, encoder_cache=None, prompt_logprobs_worker=None, lora_state=NS(remove_request=lambda r: None))
+                    pp_handler=None, encoder_cache=None, prompt_logprobs_worker=None, speculator=None,
+                    draft_tokens_handler=set(), lora_state=NS(remove_request=lambda r: None))
         runner._remove_request = lambda r: GPUModelRunner._remove_request(runner, r)
         GPUModelRunner.finish_requests(runner, NS(finished_req_ids=set() if preempted else {name}, preempted_req_ids={name} if preempted else set()))
         assert name not in reqs.req_id_to_index and slot not in reqs.index_to_req_id
@@ -264,6 +271,7 @@ def test_selected_2b_sampler_metadata_actual_runtime():
             guards = [(view, view.clone()) for group in pending for view in group]
             original.apply_staged_writes(); selected.apply_staged_writes()
             assert all(torch.equal(view, value) for view, value in guards)
+            assert np.array_equal(original.may_mask_logits, selected.may_mask_logits)
             for a, b in zip(all_fields(original), all_fields(selected)):
                 assert a.np.tobytes() == b.np.tobytes() and torch.equal(a.gpu, b.gpu)
                 indices = list(reversed(list(selected_reqs.req_id_to_index.values())))

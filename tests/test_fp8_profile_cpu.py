@@ -25,13 +25,21 @@ def test_launch_keeps_full_capacity_precision_and_independent_features():
         assert Path(first["VLLM_CACHE_ROOT"]).parent.is_dir()
     args = serve.build_argv("/models/block", tokenizer="/models/tokenizer")
     expected = {"--max-num-seqs": "128", "--max-num-batched-tokens": "2048",
-                "--max-model-len": "8192", "--kv-cache-memory": str(19 * 2**30),
+                "--max-model-len": "8192", "--kv-cache-memory-bytes": str(19 * 2**30),
                 "--mamba-ssm-cache-dtype": "float32", "--dtype": "bfloat16",
                 "--linear-backend": "cutlass", "--attention-backend": "FLASH_ATTN",
                 "--attention-config": '{"flash_attn_version":2}',
                 "--additional-config": '{"gdn_prefill_backend":"triton"}',
                 "--tokenizer": "/models/tokenizer"}
     assert all(args[args.index(key) + 1] == value for key, value in expected.items())
+
+
+def test_launch_clears_removed_runner_flag_on_vllm_034(tmp_path, monkeypatch):
+    monkeypatch.setattr(serve, "BASE_PACKAGES", {"vllm": "0.34.0"})
+    with patch.dict(os.environ, {"VLLM_USE_V2_MODEL_RUNNER": "0"}, clear=True):
+        settings = serve.configure_environment(tmp_path, features=("fa2",))
+        assert "VLLM_USE_V2_MODEL_RUNNER" not in settings
+        assert "VLLM_USE_V2_MODEL_RUNNER" not in os.environ
 
 
 @pytest.mark.parametrize("features", [(), ("n64", "n64"), ("unknown",)])

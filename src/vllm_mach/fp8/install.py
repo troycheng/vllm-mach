@@ -14,12 +14,13 @@ from ..mxfp8.install import (
     inspect_sources as inspect_manifest, load_shared_patch, sha256,
 )
 from .profile import NAME
+from ..stack import check_versions, profile_directory
 
 DATA = Path(__file__).with_name("data")
 
 
 def load_manifest(data_directory=None):
-    directory = DATA if data_directory is None else Path(data_directory)
+    directory = profile_directory(DATA) if data_directory is None else Path(data_directory)
     manifest = json.loads((directory / "runtime_sources.json").read_text())
     if manifest.get("profile") != NAME or manifest.get("schema_version") != 1:
         raise RuntimeError("Unknown block-FP8 source profile")
@@ -40,14 +41,11 @@ def inspect_sources(site, manifest=None):
 
 
 def install_profile(site, *, apply=False, verify_packages=True, data_directory=None):
-    directory = DATA if data_directory is None else Path(data_directory)
+    directory = profile_directory(DATA) if data_directory is None else Path(data_directory)
     manifest = load_manifest(directory)
     versions = None
     if verify_packages:
-        versions = {name: metadata.version(name) for name in manifest["packages"]}
-        for name, required in manifest["packages"].items():
-            if versions[name].split("+", 1)[0] != required:
-                raise RuntimeError(f"Block-FP8 requires {name}=={required}; found {versions[name]}")
+        versions = check_versions(manifest["packages"], lookup=metadata.version)
     site = Path(site).resolve()
     before = _read_sources(site, manifest)
     state = inspect_sources(site, manifest)["state"]

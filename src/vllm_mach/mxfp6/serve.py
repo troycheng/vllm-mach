@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from vllm_mach.stack import NATIVE_EXTENSIONS
+from vllm_mach.stack import BASE_PACKAGES, NATIVE_EXTENSIONS
 
 import argparse
 import json
@@ -49,7 +49,6 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_MACH_GDN_PERSISTENT": str(int(getattr(args, "gdn_persistent", True))),
         "VLLM_MACH_GDN_BA_OVERLAP": str(int(getattr(args, "gdn_ba_overlap", True))),
         "MXFP6_AUTOTUNE": "off",
-        "VLLM_USE_V2_MODEL_RUNNER": "1",
         "VLLM_USE_BREAKABLE_CUDAGRAPH": "0",
         "VLLM_QWEN3_5_FUSED_AR_NORM": str(int(tp_size == 2 and getattr(args, "fused_ar_norm", True))),
         "VLLM_MACH_FUSED_AR_QUANT": str(int(native_tp2 and getattr(args, "fused_ar_quant", True)
@@ -72,6 +71,8 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
         "VLLM_HYBRID_NVFP4_LM_HEAD_USE_FLASHINFER_TOPK": "1",
         "VLLM_MACH_LM_HEAD_SAMPLING": str(int(getattr(args, "nvfp4_lm_head", True))),
     }
+    if BASE_PACKAGES["vllm"] == "0.33.0":
+        env["VLLM_USE_V2_MODEL_RUNNER"] = "1"
     if not dense and (lossless or owner):
         raise ValueError("Qwen3.5 MoE does not support the dense-only prefill options")
     if getattr(args, "moe_high_m_compact", False):
@@ -86,9 +87,11 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
 def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str], dict]:
     env = dict(os.environ)
     env.pop("VLLM_MACH_MOE_HIGH_M_COMPACT", None)
+    env.pop("VLLM_USE_V2_MODEL_RUNNER", None)
     env.update(profile_environment(args))
     mxfp8 = _is_mxfp8(args.model)
     moe = _is_qwen35_moe(args.model)
+    tp_size = _tp_size(args)
     command = [
         sys.executable,
         "-m",
@@ -100,7 +103,7 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "--dtype",
         "bfloat16",
         "--tensor-parallel-size",
-        str(_tp_size(args)),
+        str(tp_size),
         "--max-num-seqs",
         "32",
         "--max-model-len",
@@ -115,6 +118,12 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "--limit-mm-per-prompt",
         '{"image":0,"video":0}',
     ]
+    # Keep the native TP2 hybrid cache geometry when vLLM's default changes
+    # from 16 to 64. User arguments and config files can choose their own size.
+    if BASE_PACKAGES["vllm"] == "0.34.0" and not mxfp8 and tp_size == 2:
+        overrides = {option.split("=", 1)[0].replace("_", "-") for option in extra}
+        if not overrides.intersection({"--block-size", "--config"}):
+            command += ["--block-size", "16"]
     # MXFP8 and MoE use vLLM's default compilation and graph policy.
     # Retain the validated decode-only policy for dense MXFP6 TP2.
     if not moe and not mxfp8:

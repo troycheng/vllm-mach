@@ -2,7 +2,7 @@
 """CPU-only contracts for the independent block-FP8 profile."""
 from __future__ import annotations
 
-from vllm_mach.stack import BASE_PACKAGES, require_version
+from vllm_mach.stack import BASE_PACKAGES, check_versions
 
 from importlib.metadata import distribution, version
 import os
@@ -34,10 +34,7 @@ def check_environment():
                  "VLLM_VOCAB_PARALLEL_GREEDY"):
         if os.environ.get(name, "0") != "0":
             raise RuntimeError(f"Block-FP8 profile cannot be combined with {name}")
-    actual = {key: version(key) for key in DEPENDENCIES}
-    for key, expected in DEPENDENCIES.items():
-        require_version(key, actual[key], expected)
-    return actual
+    return check_versions(DEPENDENCIES, lookup=version)
 
 
 def check_runtime_sources():

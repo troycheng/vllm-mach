@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Opt-in fused BF16 SiLU/block-FP8 quantization for vLLM 0.33.0.
+"""Opt-in fused BF16 SiLU/block-FP8 quantization for vLLM.
 
 Registration is CPU-safe. Workers preload the native wheel after device setup;
 the opaque dispatcher preserves the original op outside the qualified boundary.

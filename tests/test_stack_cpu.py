@@ -9,6 +9,43 @@ import pytest
 from vllm_mach import stack
 
 
+@pytest.mark.parametrize("release", stack.SUPPORTED_VLLM)
+@pytest.mark.parametrize("two_b", [False, True])
+def test_mxfp8_launchers_select_the_release_runner_flag(tmp_path, release, two_b):
+    from vllm_mach.mxfp8 import install, serve
+    from vllm_mach.mxfp8.two_b import serve as serve_2b
+
+    manifest = install.load_manifest(stack.profile_directory(install.DATA, release))
+    key = "VLLM_USE_V2_MODEL_RUNNER"
+    with patch.object(install, "load_manifest", return_value=manifest), patch.dict(os.environ, {key: "0"}):
+        settings = (serve_2b if two_b else serve).configure_environment(tmp_path)
+        expected = "1" if release == "0.33.0" else None
+        assert settings.get(key) == os.environ.get(key) == expected
+
+
+@pytest.mark.parametrize("release,flashinfer,shared", [
+    ("0.33.0", "0.7.2.post1", "common-vllm033.patch"),
+    ("0.34.0", "0.7.3", "common-vllm034.patch"),
+])
+def test_release_selects_three_consistent_source_overlays(release, flashinfer, shared):
+    from vllm_mach.fp8 import install as block
+    from vllm_mach.mxfp6 import install as native
+    from vllm_mach.mxfp8 import install as mx
+
+    expected = stack.packages_for_vllm(release)
+    assert expected["flashinfer-python"] == expected["flashinfer-cubin"] == flashinfer
+    native_manifest = native.load_manifest(stack.profile_directory(native.PROFILE, release))
+    assert native_manifest["vllm"] == release
+    common = native_manifest["namespaces"]["vllm"]["shared_patch"]
+    assert common["name"] == shared
+    for module in (mx, block):
+        manifest = module.load_manifest(stack.profile_directory(module.DATA, release))
+        assert manifest["packages"]["vllm"] == release
+        assert manifest["packages"]["flashinfer-python"] == flashinfer
+        assert manifest["shared_patch"]["name"] == shared
+        assert manifest["shared_patch"]["sha256"] == common["sha256"]
+
+
 def test_target_stack_and_exact_torch_build():
     versions = {**stack.BASE_PACKAGES, "torch": stack.TORCH_BUILD}
     assert stack.check_versions(stack.BASE_PACKAGES, lookup=versions.__getitem__) == versions

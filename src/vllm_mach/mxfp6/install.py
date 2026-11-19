@@ -10,6 +10,7 @@ import stat
 from contextlib import ExitStack
 from pathlib import Path
 
+from vllm_mach.stack import BASE_PACKAGES, profile_directory
 from vllm_mach.mxfp8.install import (
     _installation_lock,
     _relative,
@@ -25,9 +26,10 @@ _PATCHES = {"vllm": "runtime.patch", "flashinfer": "flashinfer-local-ipc.patch"}
 
 
 def load_manifest(data_directory: Path | None = None) -> dict:
-    directory = PROFILE if data_directory is None else Path(data_directory)
+    directory = profile_directory(PROFILE) if data_directory is None else Path(data_directory)
     manifest = json.loads((directory / "manifest.json").read_text())
-    if manifest.get("profile") != PROFILE_ID or manifest.get("schema_version") != 1:
+    expected = {"0.33.0": PROFILE_ID, "0.34.0": "native-mxfp6-sm120-v034"}.get(manifest.get("vllm"))
+    if expected is None or manifest.get("profile") != expected or manifest.get("schema_version") != 1:
         raise RuntimeError("Unknown native MXFP6 source profile")
     groups = manifest.get("namespaces", {})
     if set(groups) != set(_PATCHES):
@@ -122,17 +124,19 @@ def install_profile(site: Path, flashinfer_site: Path, *, apply: bool = False,
                     data_directory: Path | None = None) -> dict:
     """Validate the complete pair, stage exact hunks, then publish with rollback.
 
-    Only clean pinned 0.33 upstream or this exact complete installed overlay is
+    Only the pinned upstream sources or this exact complete installed overlay are
     accepted. Direct offline auditors may disable package checks explicitly;
     the CLI always verifies the central stack and required native producers.
     """
-    manifest = load_manifest(data_directory)
+    directory = profile_directory(PROFILE) if data_directory is None else Path(data_directory)
+    manifest = load_manifest(directory)
     if verify_packages:
         check_versions()
+        if BASE_PACKAGES["vllm"] != manifest["vllm"]:
+            raise RuntimeError(f"Native MXFP6 source profile requires vllm=={manifest['vllm']}")
     sites = {"vllm": Path(site).resolve(), "flashinfer": Path(flashinfer_site).resolve()}
     targets, before = _read_sources(sites, manifest)
     state = _source_state(before, manifest)
-    directory = PROFILE if data_directory is None else Path(data_directory)
     after = dict(before)
     if state == "upstream":
         for namespace, group in manifest["namespaces"].items():

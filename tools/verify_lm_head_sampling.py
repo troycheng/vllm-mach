@@ -251,9 +251,14 @@ def main():
     )
     a = p.parse_args()
     if a.profile in ("native", "nvfp4"):
+        from vllm_mach.stack import BASE_PACKAGES
+
+        if BASE_PACKAGES["vllm"] == "0.33.0":
+            os.environ["VLLM_USE_V2_MODEL_RUNNER"] = "1"
+        else:
+            os.environ.pop("VLLM_USE_V2_MODEL_RUNNER", None)
         os.environ.update(
             VLLM_PLUGINS="mach",
-            VLLM_USE_V2_MODEL_RUNNER="1",
             VLLM_MACH_LM_HEAD_SAMPLING="1",
             VLLM_VOCAB_PARALLEL_GREEDY="1",
             VLLM_HYBRID_NVFP4_LM_HEAD="1",

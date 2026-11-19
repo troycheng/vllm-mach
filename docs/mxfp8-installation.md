@@ -1,6 +1,6 @@
 # Install the MXFP8 runtime profile
 
-The 2B and 4B MXFP8 profiles use Mach 0.3, vLLM 0.33.0 and the shared [runtime versions](installation.md#runtime-versions). `deploy/Dockerfile.mxfp8` builds the native MXFP6/MXFP8 library, installs the head and BA dependencies, then applies the runtime profile.
+The 2B and 4B MXFP8 profiles use the [version-matched serving stack](installation.md#runtime-versions). `deploy/Dockerfile.mxfp8` builds the native MXFP6/MXFP8 library, installs the head and BA dependencies, then applies the runtime profile.
 
 For an existing matching environment:
 
@@ -14,13 +14,13 @@ The first installer command previews changes; `--apply` installs them. Stop the 
 
 ## Runtime changes
 
-Mach packages a shared overlay in `runtime/common-vllm033.patch` and the MXFP8-specific overlay in `mxfp8/data/runtime.patch`. The manifest records their checksums, the upstream commit, and the original and installed file hashes. The shared overlay is also used by native MXFP6; each profile adds its own adapter and model configuration.
+Mach selects a shared runtime patch and the MXFP8 profile for the installed vLLM version. The [0.34 manifest](../src/vllm_mach/mxfp8/data/v034/runtime_sources.json) and [0.33 manifest](../src/vllm_mach/mxfp8/data/runtime_sources.json) list their exact sources. The manifest records their checksums, the upstream commit, and the original and installed file hashes. The shared overlay is also used by native MXFP6; each profile adds its own adapter and model configuration.
 
 | Area | Integration |
 |---|---|
 | GDN / recurrent state | SM120 prefill and FLA routing, ordered state updates, selected state initialization, state-index and mixed-batch metadata |
 | FlashInfer | SM120 XQA eligibility, FP8 KV layout and calibrated scale handling |
-| Worker lifecycle | Workspace preparation, graph capture routing and model-specific initialization on the vLLM 0.33 runner |
+| Worker lifecycle | Workspace preparation, graph capture routing and model-specific initialization on the vLLM V2 GPU runner |
 | Sampling and head | Model-specific full-head and hybrid-head hooks, current sampler state and fallback handling |
 | Compilation | Explicit model/mode bindings, launch configurations and reduction order |
 

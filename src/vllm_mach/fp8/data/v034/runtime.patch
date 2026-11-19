@@ -1,0 +1,168 @@
+--- a/vllm/_custom_ops.py
++++ b/vllm/_custom_ops.py
+@@ -510,7 +510,9 @@ def silu_and_mul_per_block_quant(
+         )
+ 
+     # Call the C++ kernel
+-    torch.ops._C.silu_and_mul_per_block_quant(
++    from vllm_mach.fp8.activation import get_fused_op
++
++    get_fused_op(group_size)(
+         output,
+         input,
+         scales,
+--- a/vllm/compilation/passes/fusion/act_quant_fusion.py
++++ b/vllm/compilation/passes/fusion/act_quant_fusion.py
+@@ -40,7 +40,9 @@ if silu_and_mul_nvfp4_quant_supported:
+     FUSED_OPS[kNvfp4Dynamic] = torch.ops._C.silu_and_mul_nvfp4_quant.default  # noqa: E501
+ 
+ if current_platform.is_cuda_alike():
+-    FUSED_OPS[kFp8Dynamic128Sym] = torch.ops._C.silu_and_mul_per_block_quant.default
++    from vllm_mach.fp8.activation import get_fused_op
++
++    FUSED_OPS[kFp8Dynamic128Sym] = get_fused_op()
+     FUSED_OPS[kFp8Dynamic64Sym] = torch.ops._C.silu_and_mul_per_block_quant.default
+ 
+ 
+--- a/vllm/v1/attention/backends/flash_attn.py
++++ b/vllm/v1/attention/backends/flash_attn.py
+@@ -10,6 +10,12 @@ from typing import Any, ClassVar
+ import numpy as np
+ import torch
+ 
++from vllm_mach.fp8.attention import (
++    build_split_metadata,
++    mixed_fa2_eligible,
++    mixed_fa2_enabled,
++)
++
+ from vllm.model_executor.layers.attention import Attention
+ from vllm.model_executor.warmup.jit_warmup import VllmJitKernel, WarmupChoices
+ from vllm.platforms import current_platform
+@@ -550,6 +556,10 @@ class FlashAttentionMetadata:
+     num_decode_tokens: int = 0
+     num_prefill_tokens: int = 0
+ 
++    # Narrow mixed FA2 split: independent of upstream DCP context counts.
++    num_split_decodes: int = 0
++    prefill_query_start_loc: torch.Tensor | None = None
++
+     # Optional aot scheduling
+     scheduler_metadata: torch.Tensor | None = None
+     max_num_splits: int = 0
+@@ -719,6 +729,7 @@ class FlashAttentionMetadataBuilder(AttentionMetadataBuilder[FlashAttentionMetad
+             kv_cache_block_size=self.block_size,
+             supports_fa4_hd256=True,
+         )
++        self.mach_fp8_fa2 = fa_version == 2 and mixed_fa2_enabled()
+         self.aot_schedule = fa_version == 3
+         self.fa4_hd256 = fa_version == 4 and uses_fa4_hd256_kernel(
+             self.headdim, head_size_v
+@@ -1028,6 +1039,8 @@ class FlashAttentionMetadataBuilder(AttentionMetadataBuilder[FlashAttentionMetad
+             attn_metadata.rswa_window = self.rswa_window
+             attn_metadata.rswa_window_tensor = self.persistent_rswa_window_tensor
+ 
++        if self.mach_fp8_fa2:
++            build_split_metadata(self, common_attn_metadata, attn_metadata)
+         return attn_metadata
+ 
+     def update_block_table(
+@@ -1434,6 +1447,53 @@ class FlashAttentionImpl(AttentionImpl):
+                 block_table = block_table[:, :num_pages]
+                 num_splits = 1
+ 
++            if attn_metadata.num_split_decodes and mixed_fa2_eligible(
++                self,
++                attn_metadata,
++                query[:num_actual_tokens],
++                output[:num_actual_tokens],
++                key_cache,
++                value_cache,
++            ):
++                nd = attn_metadata.num_split_decodes
++                segments = (
++                    (slice(0, nd), cu_seqlens_q[: nd + 1], slice(0, nd), 1),
++                    (
++                        slice(nd, num_actual_tokens),
++                        attn_metadata.prefill_query_start_loc,
++                        slice(nd, None),
++                        max_seqlen_q,
++                    ),
++                )
++                for tokens, starts, reqs, qmax in segments:
++                    _FA4_DENSE_ATTENTION_KERNEL(
++                        q=query[tokens],
++                        k=key_cache,
++                        v=value_cache,
++                        out=output[tokens],
++                        cu_seqlens_q=starts,
++                        max_seqlen_q=qmax,
++                        seqused_k=seqused_k[reqs],
++                        max_seqlen_k=max_seqlen_k,
++                        softmax_scale=self.scale,
++                        causal=causal,
++                        alibi_slopes=self.alibi_slopes,
++                        window_size=sliding_window_size,
++                        block_table=block_table[reqs],
++                        softcap=self.logits_soft_cap,
++                        scheduler_metadata=scheduler_metadata,
++                        fa_version=self.vllm_flash_attn_version,
++                        q_descale=q_descale[reqs] if q_descale is not None else None,
++                        k_descale=k_descale[reqs],
++                        v_descale=v_descale[reqs],
++                        dynamic_causal=dynamic_causal,
++                        num_splits=1,
++                        s_aux=self.sinks,
++                        mask_mod=rswa_mask_mod_fn or mm_mask_mod,
++                        aux_tensors=rswa_aux or mm_aux,
++                    )
++                return output
++
+             _FA4_DENSE_ATTENTION_KERNEL(
+                 q=query[:num_actual_tokens],
+                 k=key_cache,
+--- a/vllm/platforms/interface.py
++++ b/vllm/platforms/interface.py
+@@ -779,8 +779,12 @@
+         # preferences, and a size from the first alone later fails
+         # select_common_block_size().
+         if not cache_config.user_specified_block_size:
++            # The block-FP8 M4 recurrence uses 528-token hybrid cache pages.
++            default = CacheConfig.DEFAULT_BLOCK_SIZE
++            if os.getenv("VLLM_MACH_PROFILE") == "qwen35-4b-block-fp8-v1":
++                default = 16
+             preferred = cls._preferred_block_size_for_backends(
+-                backend_classes, CacheConfig.DEFAULT_BLOCK_SIZE, vllm_config
++                backend_classes, default, vllm_config
+             )
+             if preferred != CacheConfig.DEFAULT_BLOCK_SIZE:
+                 logger.info(
+--- a/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
++++ b/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
+@@ -716,6 +716,9 @@
+         self.key_dim = self.head_k_dim * self.num_k_heads
+         self.value_dim = self.head_v_dim * self.num_v_heads
+         self.gqa_interleaved_layout = gqa_interleaved_layout
++        self._mach_block_fp8 = (
++            os.getenv("VLLM_MACH_PROFILE") == "qwen35-4b-block-fp8-v1"
++        )
+         self.gdn_xpu_backend: str | None = None
+         self.qkvz_layout = "interleaved" if gqa_interleaved_layout else "flat"
+         if current_platform.is_xpu():
+@@ -1371,10 +1374,12 @@
+         # ============================================================
+         # Part 2: Core Attention (Custom Op)
+         # ============================================================
+-        # Uninitialized like the other attention backends: _forward_core
+-        # writes every row up to num_actual_tokens. Padding rows behind it
+-        # are only read by row-wise ops and never reach sampled outputs.
+-        core_attn_out = torch.empty(
++        # Preserve the compiled block-FP8 projection and padded-row layout.
++        # Its source-bound kernels were qualified with contiguous gates and zeros.
++        if self._mach_block_fp8:
++            b, a = b.contiguous(), a.contiguous()
++        allocate_output = torch.zeros if self._mach_block_fp8 else torch.empty
++        core_attn_out = allocate_output(
+             (num_tokens, self.num_v_heads // self.tp_size, self.head_v_dim),
+             dtype=hidden_states.dtype,
+             device=hidden_states.device,

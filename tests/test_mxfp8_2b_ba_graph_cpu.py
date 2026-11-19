@@ -237,7 +237,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             self.assertTrue(ba.install())
             method, layer = Method(), NS(weight=Tensor(), bias=None)
             method.process_weights_after_loading(layer)
@@ -265,7 +265,7 @@ class TwoBBAContracts(unittest.TestCase):
         modules, Method, kernel, cache = ba_api(events)
         kernel.__file__ = ROOT.parent/"ba_gemv.py"
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             ba.install()
             method = Method()
             layers = []
@@ -297,7 +297,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             ba.install()
             layer = NS(weight=Tensor(), bias=None)
             Method().process_weights_after_loading(layer)
@@ -316,7 +316,7 @@ class TwoBBAContracts(unittest.TestCase):
         modules, Method, kernel, cache = ba_api(events)
         kernel.precompile_bf16_gemv_small_n = lambda weight: None
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             ba.install()
             layer = NS(weight=Tensor(), bias=None)
             with self.assertRaisesRegex(RuntimeError, "missed a row count"):
@@ -339,7 +339,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             ba.install()
             layer = NS(weight=Tensor(), bias=None)
             method = Method()
@@ -367,7 +367,7 @@ class TwoBBAContracts(unittest.TestCase):
         events = []
         modules, Method, kernel, cache = ba_api(events)
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             ba.install()
             valid_x, valid_w = Tensor((16, 2048)), Tensor()
             foreign_w = Tensor()
@@ -395,7 +395,7 @@ class TwoBBAContracts(unittest.TestCase):
             missing = load("ba")
             with patch.dict(sys.modules, missing_modules), \
                     patch.object(missing, "load_kernel", return_value=kernel), \
-                    patch.object(missing, "version", return_value="0.33.0"):
+                    patch.object(missing, "version", return_value=missing.BASE_PACKAGES["vllm"]):
                 missing.install()
                 self.assertIsNone(missing._M16)
                 self.assertEqual(missing._small_impl(valid_x, valid_w, Tensor()), "fallback")
@@ -406,7 +406,7 @@ class TwoBBAContracts(unittest.TestCase):
         modules, _, kernel, _ = ba_api([])
         modules["torch"].ops.mxfp8_sm120.bf16_ba_m16 = lambda *args: (_ for _ in ()).throw(RuntimeError("launch failed"))
         with patch.dict(sys.modules, modules), patch.object(ba, "load_kernel", return_value=kernel), \
-                patch.object(ba, "version", return_value="0.33.0"):
+                patch.object(ba, "version", return_value=ba.BASE_PACKAGES["vllm"]):
             ba.install()
             with self.assertRaisesRegex(RuntimeError, "launch failed"):
                 ba._small_impl(Tensor((16, 2048)), Tensor(), Tensor())

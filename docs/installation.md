@@ -1,6 +1,6 @@
 # Setup and usage
 
-Mach 0.3 runs on vLLM 0.33.0 and RTX 5090 (SM120). The three Dockerfiles build the native extensions and install the matching runtime profile.
+Mach builds on the official vLLM 0.34.0 image for RTX 5090 (SM120). The same source checkout also supports vLLM 0.33.0.
 
 ## Build an image
 
@@ -13,6 +13,8 @@ docker buildx build --load --build-arg MAX_JOBS=2 \
 
 Use `deploy/Dockerfile.mxfp8` for 2B/4B MXFP8 or `deploy/Dockerfile.fp8` for an existing 4B block-FP8 checkpoint. The build pins the official Linux amd64 base image, checks dependency hashes, and compiles against its existing PyTorch and CUDA toolkit. Increase `MAX_JOBS` to use more build memory and CPU cores.
 
+To build on 0.33.0, add `--build-arg VLLM_IMAGE=vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3`. The installer selects the source patches for the installed vLLM version.
+
 ## Runtime versions
 
 [`vllm_mach.stack`](../src/vllm_mach/stack.py) is the version source used by the package, build scripts and startup checks.
@@ -20,12 +22,12 @@ Use `deploy/Dockerfile.mxfp8` for 2B/4B MXFP8 or `deploy/Dockerfile.fp8` for an 
 | Component | Version |
 |---|---|
 | Python | 3.12 in the serving image |
-| vLLM | 0.33.0 |
+| vLLM | 0.34.0 or 0.33.0 |
 | PyTorch | 2.14.0+cu130 |
 | Triton | 3.8.0 |
-| FlashInfer Python / cubin | 0.7.2.post1 |
+| FlashInfer Python / cubin | 0.7.3 on vLLM 0.34, 0.7.2.post1 on 0.33 |
 | CUTLASS Python DSL | 4.8.0 |
-| CUDA Python bindings | 13.4.4 |
+| CUDA Python bindings | 13.5.0 on vLLM 0.34, 13.4.4 on 0.33 |
 | b12x | 1.5.1 |
 | MXFP6/MXFP8 native library | 0.3.1 |
 | Mach native extensions | 0.2.0 |
@@ -36,17 +38,39 @@ The Docker images and source installer build the native library from [`206d526`]
 
 The wheel records the actual Torch/CUDA ABI, Python/toolchain identity and both native library hashes in `mxfp6/build_info.json`. The accompanying external build receipt, `mxfp8-build.json`, records source and patched CUTLASS fingerprints, build options and the wheel hash. The shared [native build entry](../deploy/build-mxfp8.py) produces both libraries and the external receipt. Mach's Dockerfiles also restore the Torch-required NCCL version and install the pinned build dependencies.
 
-The three profiles apply the same prefix-disabled KV bookkeeping guard from the packaged common runtime overlay. Each installer stages its own declared source files and validates their hashes before publication.
+The 0.34 build installs OpenTelemetry 1.45.2. The bundled external LMCache 0.5.7.post1 connector requires OpenTelemetry 1.40 or earlier, so the Mach image omits that connector. The local vLLM KV cache is built into vLLM.
+
+## vLLM 0.34 qualification
+
+RTX 5090 serving throughput in output tokens/s with 3,000 input tokens and 1,000 output tokens per request. The 2B and 4B models use one GPU. The 27B and 35B models use two GPUs with tensor parallelism. Prefix caching is disabled.
+
+| Model and profile | Concurrency | vLLM 0.33 | vLLM 0.34 | Change |
+|---|---:|---:|---:|---:|
+| 2B MXFP8, FP32 state | 16 | 5,147.56 | 5,079.82 | −1.32% |
+| 2B MXFP8, FP32 state | 64 | 9,713.19 | 9,700.85 | −0.13% |
+| 4B MXFP8, FP32 state | 16 | 2,684.51 | 2,777.18 | +3.45% |
+| 4B MXFP8, FP32 state | 64 | 4,796.72 | 4,933.82 | +2.86% |
+| 4B block-FP8, FP32 state | 32 | 3,008.32 | 3,064.28 | +1.86% |
+| 27B Dense MXFP6 FULL, FP16 state | 32 | 1,727.78 | 1,726.29 | −0.09% |
+| 35B-A3B MXFP6, FP16 state | 32 | 3,362.91 | 3,354.01 | −0.26% |
+| 35B-A3B MXFP6 compact, FP32 state | 128 | 4,902.56 | 4,915.76 | +0.27% |
+
+The 2B tests used the same GPU for both versions. The c16 result combines two runs per version in A/B/B/A order. The 4B MXFP8 results use the geometric mean of two 0.34 runs against the published 0.33 champion. The TP2 references use the geometric mean of two 0.33 runs.
+
+With the same KV memory budget, 2B capacity increased from 1,470,223 to 1,475,584 tokens. The 4B profiles retain 878,033 tokens for MXFP8 and 508,335 for block-FP8. The TP2 profiles retain 233,472 for Dense, 743,062 for standard MoE and 941,648 for compact MoE.
+
+Fixed-gold tests cover 256 queries and 10,479 token log probabilities per decode shape. For 2B with FP32 state, mean per-query error against BF16 changed from 0.054753 to 0.054145 at M32 and from 0.056550 to 0.056711 at M64. Both 4B profiles match their 0.33 records at M32 and M64. The 27B Dense FULL profile matches at M4 and M32. The 35B compact profile matches at M128 and M160, including every top-1 token and all 128 free generations tested at M128.
+
+The FP32-state long-output test uses frozen BF16 token trajectories in 16-row batches. On 4B, all 190,251 gold log probabilities and top-1 IDs match the current 0.33 build. On 2B, mean per-query absolute log-probability error against BF16 changes from 0.044164 to 0.044113 across 330,328 tokens. The paired 95% bootstrap interval for the change is −0.000209 to +0.000110.
+
+[Measurements, TTFT and precision by shape](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md)
 
 ## Install into an existing container
 
 Start from the image digest in [deploy/Dockerfile](../deploy/Dockerfile). From the Mach checkout inside that container:
 
 ```bash
-python -m pip uninstall -y \
-  opentelemetry-exporter-otlp-common opentelemetry-exporter-http-transport
-python -m pip install --no-deps --require-hashes \
-  -r deploy/requirements-mxfp8.txt
+python deploy/install-build-deps.py
 python deploy/build-mxfp6.py
 CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=2 \
   python deploy/install.py --cuda-home /usr/local/cuda-13.0

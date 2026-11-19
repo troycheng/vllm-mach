@@ -10,7 +10,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from .mxfp6 import register_dense_kernel
-from .stack import BASE_PACKAGES, CACHE_NAMESPACE, NATIVE_VERSION, check_versions
+from .stack import BASE_PACKAGES, CACHE_NAMESPACE, NATIVE_VERSION, SUPPORTED_VLLM, check_versions
 
 logger = logging.getLogger(__name__)
 
@@ -74,15 +74,15 @@ def register() -> None:
         ("VLLM_MACH_NATIVE_MXFP8", "VLLM_MACH_LM_HEAD_SAMPLING")
     ) or "mach" in {name.strip() for name in os.environ.get("VLLM_PLUGINS", "").split(",")}
     installed = version("vllm").split("+", 1)[0]
-    if installed != BASE_PACKAGES["vllm"]:
+    if installed not in SUPPORTED_VLLM:
         if selected:
             raise RuntimeError(
-                f"Explicit Mach selection requires vllm=={BASE_PACKAGES['vllm']}; found {installed}"
+                f"Explicit Mach selection requires vLLM {' or '.join(SUPPORTED_VLLM)}; found {installed}"
             )
         logger.warning(
             "Skipping vLLM Mach plugin: requires vLLM %s; found %s. "
             "The installed vLLM runtime will continue without external Mach hooks.",
-            BASE_PACKAGES["vllm"], installed,
+            " or ".join(SUPPORTED_VLLM), installed,
         )
         return
     if selected:

@@ -103,7 +103,9 @@ class OrderedGDNContracts(unittest.TestCase):
                 candidate.vllm_config.cache_config.kv_cache_memory_bytes = 4*2**30
                 with self.assertRaisesRegex(RuntimeError, "mode changed"):
                     worker._check_config(candidate)
-        manifest = json.loads((GDN.parent / "data/runtime_sources.json").read_text())
+        from vllm_mach.stack import profile_directory
+        directory = profile_directory(GDN.parent / "data")
+        manifest = json.loads((directory / "runtime_sources.json").read_text())
         self.assertEqual(worker.RUNNER_SHA,
             manifest["files"]["vllm/v1/worker/gpu/model_runner.py"]["installed_sha256"])
         self.assertEqual(worker.GDN_SHA,

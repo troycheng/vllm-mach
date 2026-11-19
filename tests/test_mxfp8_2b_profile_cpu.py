@@ -49,6 +49,11 @@ class TwoBProfileContracts(unittest.TestCase):
         self.profile = load("mxfp8.two_b.profile")
         self.serve = load("mxfp8.two_b.serve")
 
+    def test_serving_uses_canonical_byte_capacity_flag(self):
+        for rows, gib in ((None, 19), (4, 4), (32, 4), (64, 4)):
+            argv = self.serve.build_argv("/model", quality_rows=rows)
+            self.assertEqual(argv[argv.index("--kv-cache-memory-bytes") + 1], str(gib * 2**30))
+
     def test_hybrid_switch_controls_greedy_and_sampling(self):
         with tempfile.TemporaryDirectory() as directory:
             settings = self.serve.configure_environment(directory)

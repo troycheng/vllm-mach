@@ -87,7 +87,8 @@ def test_compact_moe_graph_cache_mode(monkeypatch):
     assert config.additional_config["mxfp6_sm120_moe_graph"] != original
 
 
-def test_compact_moe_rounds_routed_before_shared_add(monkeypatch):
+@pytest.mark.parametrize("dispatch_has_scale", [False, True])
+def test_compact_moe_rounds_routed_before_shared_add(monkeypatch, dispatch_has_scale):
     from vllm_mach.mxfp6 import moe
 
     hidden = torch.empty(97, 2048, dtype=torch.bfloat16)
@@ -98,6 +99,12 @@ def test_compact_moe_rounds_routed_before_shared_add(monkeypatch):
     shared.maybe_forward_async.return_value = True
     runner = object.__new__(moe.Mxfp6Sm120MoERunner)
     packed = torch.empty(257)
+
+    def dispatch(hidden, logits):
+        if dispatch_has_scale:
+            return hidden, logits, None
+        return hidden, logits
+
     runner.__dict__.update(
         _mxfp6_sm120_qwen35_small_batch_state=SimpleNamespace(
             high_m_compact=True, w1=packed, w1_scales=packed, w2=packed, w2_scales=packed
@@ -106,7 +113,7 @@ def test_compact_moe_rounds_routed_before_shared_add(monkeypatch):
         routed_experts=Mock(),
         gate=Mock(return_value=(logits, None)),
         _sequence_parallel_context=nullcontext,
-        _maybe_dispatch=lambda hidden, logits: (hidden, logits),
+        _maybe_dispatch=dispatch,
     )
     workspace = object()
     monkeypatch.setattr(moe, "_qwen35_grouped_workspace", lambda _: (workspace, output))
@@ -127,6 +134,11 @@ def test_compact_moe_rounds_routed_before_shared_add(monkeypatch):
     assert not kwargs
     assert args[0] is workspace and args[1] is hidden and args[2] is logits
     assert [tuple(tensor.shape) for tensor in args[3:]] == [(256,)] * 4
+
+    if dispatch_has_scale:
+        runner._maybe_dispatch = lambda hidden, logits: (hidden, logits, object())
+        with pytest.raises(RuntimeError, match="scaled PCP inputs"):
+            runner._forward_impl(hidden, logits, hidden)
 
 
 @pytest.mark.parametrize("rows", [5, 32, 96])

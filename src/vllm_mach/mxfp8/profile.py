@@ -6,7 +6,7 @@ after init_device; serving receipts describe actual installed paths.
 """
 from __future__ import annotations
 
-from vllm_mach.stack import BASE_PACKAGES, BUILD_PACKAGES, NATIVE_VERSION, require_version
+from vllm_mach.stack import BASE_PACKAGES, BUILD_PACKAGES, NATIVE_VERSION, check_versions
 
 from functools import wraps
 from importlib.metadata import distribution, version
@@ -166,10 +166,7 @@ def _verify_quality_capture(worker, rows):
 
 
 def check_environment():
-    versions = {name: version(name) for name in DEPENDENCIES}
-    for name, expected in DEPENDENCIES.items():
-        require_version(name, versions[name], expected)
-    return versions
+    return check_versions(DEPENDENCIES, lookup=version)
 
 
 def check_runtime_sources():

@@ -3,14 +3,22 @@
 import ast
 import __future__
 import copy
+from functools import cache
 import hashlib
 from pathlib import Path
 import types
 
-QWEN_SHA = 'dbe8912cd418914ea1e1e19daea6d95c46379fe616e60fd8e0fbcbb6e788be0b'
 MIXED_SHA = 'a5dd808134d6e7b5b51ad4af91372b4e34b8446d3d80854e838770e045f7f98b'
 _STATE = None
 _MARKER = '_mach_native_mixed_qkv_views'
+
+@cache
+def _qwen_source_sha256():
+    from ..install import load_manifest
+
+    source = "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py"
+    files = load_manifest()["namespaces"]["vllm"]["files"]
+    return files[source]["installed_sha256"]
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -153,7 +161,7 @@ def prepare(layer):
         return False
     original = cls._forward_core
     try:
-        assert digest(qwen.__file__) == QWEN_SHA, 'Qwen source changed'
+        assert digest(qwen.__file__) == _qwen_source_sha256(), 'Qwen source changed'
         assert digest(mixed_fp16.__file__) == MIXED_SHA, 'Mixed FP16 source changed'
         assert original.__globals__ is vars(qwen), 'Core globals changed'
         if _STATE is None:

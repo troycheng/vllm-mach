@@ -83,6 +83,9 @@
     ]
   },
   "profile_tests": {
+    "tests/test_mxfp8_kv_cpu.py::test_selected_4b_mxfp8_hybrid_capacity": [
+      "mxfp8"
+    ],
     "tests/native_mxfp6/test_moe_quant_admission_cpu.py::test_installed_native_constructor_matches_audited_fixture": [
       "native"
     ],

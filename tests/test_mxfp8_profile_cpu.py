@@ -99,13 +99,13 @@ class ProfileTests(unittest.TestCase):
         self.assertNotIn("torch", sys.modules)
         self.assertNotIn("vllm.v1.worker.gpu_worker", sys.modules)
         argv = self.serve.build_argv("/public/model")
-        self.assertEqual(argv[argv.index("--kv-cache-memory") + 1], str(19 * 2**30))
+        self.assertEqual(argv[argv.index("--kv-cache-memory-bytes") + 1], str(19 * 2**30))
         config = json.loads(argv[argv.index("--compilation-config") + 1])
         self.assertIn(2048, config["cudagraph_capture_sizes"])
         self.assertEqual(config["max_cudagraph_capture_size"], 2048)
         for rows in (32, 64):
             argv = self.serve.build_argv("/public/model", quality_rows=rows)
-            self.assertEqual(argv[argv.index("--kv-cache-memory") + 1], str((4 if rows == 32 else 19) * 2**30))
+            self.assertEqual(argv[argv.index("--kv-cache-memory-bytes") + 1], str((4 if rows == 32 else 19) * 2**30))
             self.assertEqual(argv[argv.index("--max-num-seqs") + 1], str(rows))
             self.assertEqual(argv[argv.index("--max-model-len") + 1], "1024")
             self.assertEqual(argv[argv.index("--max-num-batched-tokens") + 1], str(rows * 256))
@@ -142,7 +142,9 @@ class ProfileTests(unittest.TestCase):
             for name, args, kwargs in entries:
                 with self.subTest(component=component, name=name):
                     inspect.signature(getattr(modules[component], name)).bind(*args, **kwargs)
-        self.assertEqual(len(modules["compile_choices"].load_policy()["bindings"]), 16)
+        from vllm_mach.stack import BASE_PACKAGES
+        expected = 17 if BASE_PACKAGES["vllm"] == "0.34.0" else 16
+        self.assertEqual(len(modules["compile_choices"].load_policy()["bindings"]), expected)
 
     def test_environment_resets_stale_quality_and_sets_compile_before_validation(self):
         with tempfile.TemporaryDirectory() as directory:

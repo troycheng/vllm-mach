@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "profile": "native-mxfp6-sm120-v034",
+  "vllm": "0.34.0",
+  "base": "62d4bc3c7e33b1b6c906e233e6af2d3506c482ca",
+  "source": "mach-unified-v034",
+  "namespaces": {
+    "vllm": {
+      "patch": "runtime.patch",
+      "patch_sha256": "39d7bc5b0cfa3ae493e19babf45e3dd440c83e35e5e7d2fed7f696eeca1b8f68",
+      "files": {
+        "vllm/compilation/passes/fusion/allreduce_rms_fusion.py": {
+          "upstream_sha256": "4f2ca81d7fa365d22c23194a768ab56a5c1380d62affaa4a706a5ce8f6b2d65d",
+          "installed_sha256": "b92ec2ef0c87025e01fa1620203968606442e382912be9bb5fef328d66dc300d"
+        },
+        "vllm/config/vllm.py": {
+          "upstream_sha256": "d1bbad8d631ad301d32b8b7fe85128124fe8ab2b63bb831c66c0685696098fdc",
+          "installed_sha256": "cb2dec466a552a785449e4143d0052fd2df6a7d56f2ae9c42beee668a36429f9"
+        },
+        "vllm/envs.py": {
+          "upstream_sha256": "c0adcef9664b3777ca9f76888f6dfcf842cdab8e63e47a8f4f8f200800087b47",
+          "installed_sha256": "b3001b060ccc97893451f29b93fc07152142e7d3d6bf4eba72cb8b755fa98d36"
+        },
+        "vllm/model_executor/layers/fused_allreduce_gemma_rms_norm.py": {
+          "upstream_sha256": "03ab1122b2fb79c83fd5ce1c0b44cff622c179329785a27f9b44ae227a4d1ea7",
+          "installed_sha256": "9fd6171f9b70e1fb530ac5d35c79a53da6b0a0cb8ffa712465d3e3283cd2fd49"
+        },
+        "vllm/model_executor/layers/logits_processor.py": {
+          "upstream_sha256": "052ed891ef61aa060fc660822995065369cc2ec17bae7352311fe0ce48a141eb",
+          "installed_sha256": "219f31a130cd4c84c2c8e1cbc9334965f7a7954d9fc61bb050b669b0083e2f9f"
+        },
+        "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
+          "upstream_sha256": "d53ac30cc179e5e37653be7f658e85504fe1401415be0c18dafbfaa5247ba41a",
+          "installed_sha256": "c384bf9a98234f30275fa5612328cd37a18086c9f0a418e197bfb4a2e21f20fb"
+        },
+        "vllm/model_executor/layers/mamba/ops/gather_initial_states.py": {
+          "upstream_sha256": "5198bb6de6d91c583a5f65d926412a76ee04a06fa72aaba76eaf156b27cd0523",
+          "installed_sha256": "4442b9e876e31eaee4b938ff28859bd37b6c1a7bea39a0858e442c7f1f54f0c6"
+        },
+        "vllm/model_executor/layers/quantization/quark/quark_moe.py": {
+          "upstream_sha256": "5c8a52fad47d5dc2416932b0aabdcaf78f5487c63126f575d908fdd92e6f6622",
+          "installed_sha256": "8e8942cfe92107ee4f27c4a58c588536ecb07be18c4cb785b1212295fc674f32"
+        },
+        "vllm/model_executor/layers/quantization/quark/schemes/quark_ocp_mx.py": {
+          "upstream_sha256": "470e570118447cdd454e26a627161cc9e5de246c58ae9acef63db96ab5d6581e",
+          "installed_sha256": "49013b00229ff2e221b264d90ef4cfd6153d565a9935f18d10afbd836a070f8d"
+        },
+        "vllm/model_executor/models/qwen3_5.py": {
+          "upstream_sha256": "f9f370f7b4988bd917c1dad4a4d6939e74c5fe4f5b7cea9cedfcf4c2a5637afe",
+          "installed_sha256": "854cb6f9aa9dbf10dffd4d1ff65fa20ec84588c836a8377999f50f505d8659a8"
+        },
+        "vllm/models/qwen3_5/__init__.py": {
+          "upstream_sha256": "d0104a30db160e6c23b87127086d6ff936dc8cb4665bde28d0ed858282f8c3c7",
+          "installed_sha256": "69fb9281e2f7ce9727258c94b5b781b58df50daf68c7f1e589a4e211b1c0b269"
+        },
+        "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py": {
+          "upstream_sha256": "000ab8996af9788fdb8843a6a3b91833e7a14c8acc0e1ea073a536330f64cb6f",
+          "installed_sha256": "f3e47fcba7cb32ca38104aa5c5b64855c071e8b46652ee17e27a49db119c3e0e"
+        },
+        "vllm/utils/flashinfer.py": {
+          "upstream_sha256": "43db660971ddabf438e37fcd07522a298cc2c23bfb623119dcbc3633a4fe99c2",
+          "installed_sha256": "be8d022d0e8f12024a335d1b0020cc0e140175d79ce6ed535ba101cbd175efe5"
+        },
+        "vllm/v1/attention/backends/gdn_attn.py": {
+          "upstream_sha256": "09abe3f04db0b8e422daa4ef7d15eb6c1347fca75c9988309bb32f6cbbf87183",
+          "installed_sha256": "ed97e6195b90e9da646a4bf846fbee5ff66bf775e591f0507aed94cc1262cef8"
+        },
+        "vllm/v1/attention/backends/triton_attn.py": {
+          "upstream_sha256": "4651dbe7268f5639c22b4c2d282ff02c323bddeb25d2cb98d0778579b28678cc",
+          "installed_sha256": "e1b6e0482506154d2acc9db7a8fced8aa097a661d89695b5573a50bf8abf265c"
+        },
+        "vllm/v1/attention/backends/utils.py": {
+          "upstream_sha256": "5f46854f2c72977d0c8832388fde1373df9b49da84cadf2f8c7965eb2bfb7668",
+          "installed_sha256": "cd4ed5f67317bca99f11c249c013c438f1e35ae799d9451f83b6797d5c4d12b0"
+        },
+        "vllm/v1/attention/ops/triton_unified_attention.py": {
+          "upstream_sha256": "4f376e7a028866d3bff3c28839d0f9ea2e09257d1bfb2e0e666e2fd623bc2ff7",
+          "installed_sha256": "2dbd681ae41103ca1ebaa68512923e027b49f2604236d2da83a6b46f8f42d0a2"
+        },
+        "vllm/v1/core/kv_cache_manager.py": {
+          "upstream_sha256": "ab6a4345311227a6ba86a19de74a7de7b8ec78a389762b02e2148ccc9e9a99bd",
+          "installed_sha256": "46548c1c885e802c84bbb35d2d3fba0dbafa4a0396d248c6d57797ad74abe1e2",
+          "changed": true,
+          "purpose": "Return before prefix-cache commit bookkeeping when prefix caching is disabled; allocation, retirement, Mamba state, events and enabled-prefix behavior remain original."
+        },
+        "vllm/v1/worker/gpu/cudagraph_utils.py": {
+          "upstream_sha256": "e2f3ad9e831fa261291a04062f15d611fc8e1d2dbefa58786fb5b1158c90ecfc",
+          "installed_sha256": "f88712dba6125708525f8af646feae7a5f7def2a77150c5d415e6b4b2071e331"
+        },
+        "vllm/v1/worker/gpu/model_runner.py": {
+          "upstream_sha256": "25d555c2d2b7d25bea48bba4696d47f343a228eab29ef2631f231d60128817f2",
+          "installed_sha256": "e48cdc8fa23374aea47424f82838ba123a21a0370cfedc0c2c545f5ddb172d70"
+        },
+        "vllm/v1/worker/gpu/sample/sampler.py": {
+          "upstream_sha256": "984b334c4d996550481d9bae4d9ccd57b3c208ad3fe1579d9c9f794e0be58b40",
+          "installed_sha256": "6822f9f9bf45785f981c23147403577ce07e65c8aba29dc14f405f582ea5b66a"
+        },
+        "vllm/v1/worker/gpu_worker.py": {
+          "upstream_sha256": "f165f890363726a8b1c4b1baed44fd01639894d3266571517aea1dca475cccea",
+          "installed_sha256": "e561e3c990110957753d7d35c91db96770fd7c863f68ff57c1ec89b346e53783"
+        }
+      },
+      "shared_patch": {
+        "name": "common-vllm034.patch",
+        "sha256": "8a1126e9923b459f676c2c1fdb7c8f7b573eb955400abd6579eb5aab2c3c855c",
+        "files": [
+          "vllm/config/vllm.py",
+          "vllm/envs.py",
+          "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+          "vllm/model_executor/layers/mamba/ops/gather_initial_states.py",
+          "vllm/models/qwen3_5/__init__.py",
+          "vllm/third_party/flash_linear_attention/ops/fused_sigmoid_gating.py",
+          "vllm/utils/flashinfer.py",
+          "vllm/v1/attention/backends/gdn_attn.py",
+          "vllm/v1/attention/backends/triton_attn.py",
+          "vllm/v1/attention/backends/utils.py",
+          "vllm/v1/attention/ops/triton_unified_attention.py",
+          "vllm/v1/core/kv_cache_manager.py",
+          "vllm/v1/worker/gpu/cudagraph_utils.py"
+        ]
+      }
+    },
+    "flashinfer": {
+      "patch": "flashinfer-local-ipc.patch",
+      "patch_sha256": "62370d45673550e0c75c7c47765ab21a0aaf922c9069ebb2d6094bb591f56d5b",
+      "files": {
+        "flashinfer/comm/mnnvl.py": {
+          "upstream_sha256": "58a04d4ad2394c199c13a1769b564c2e56374392efaccc261879ab0ae4552717",
+          "installed_sha256": "406aa3de8e6163b3b7099536829e84f778bb608593ffd6aa068b9683052e6acd"
+        },
+        "flashinfer/comm/trtllm_ar.py": {
+          "upstream_sha256": "8c4261c7f1997f513a22fe538af1bf9b865fe9f3475537294adbda63be1d2af1",
+          "installed_sha256": "d73a270108bf7f009ffedb576b0e9e71447c17329b67a4c017c03324f908a7bb"
+        }
+      }
+    }
+  }
+}

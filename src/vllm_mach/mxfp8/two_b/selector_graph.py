@@ -2,6 +2,7 @@
 """Replay the warmed M4/K128 selector on the current adjusted coarse logits."""
 from functools import wraps
 from importlib.metadata import version
+from vllm_mach.stack import SUPPORTED_VLLM
 from pathlib import Path
 from threading import Lock
 from types import MethodType
@@ -68,7 +69,7 @@ def install(worker, state):
         return False
     if getattr(state, _STATE, None) is not None:
         return False
-    if version('vllm').split('+', 1)[0] != '0.33.0':
+    if version('vllm').split('+', 1)[0] not in SUPPORTED_VLLM:
         raise RuntimeError('2B selector graph requires the selected vLLM runtime')
     import torch
     from vllm_mach.mxfp6.hybrid_nvfp4_lm_head import HybridNvfp4LmHead

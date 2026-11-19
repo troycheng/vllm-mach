@@ -136,12 +136,12 @@ class BuildContracts(unittest.TestCase):
         for name in ("Dockerfile", "Dockerfile.fp8", "Dockerfile.mxfp8"):
             with self.subTest(name=name):
                 source = (DEPLOY / name).read_text()
-                self.assertIn("vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3", source)
+                self.assertIn("vllm/vllm-openai@sha256:cf5b2fdd087eb4f6d261736967cc5cde974bd22ff4df50365f8fa419b6b4c484", source)
                 self.assertNotIn("apt-get", source)
                 self.assertNotIn("cf5adb86", source)
-                self.assertIn("--no-deps --require-hashes", source)
-                self.assertIn("opentelemetry-exporter-otlp-common opentelemetry-exporter-http-transport", source)
-                self.assertGreaterEqual(source.count("python3 -m pip check"), 2)
+                self.assertIn("requirements-vllm034.txt", source)
+                self.assertIn("RUN python3 /opt/mach/deploy/install-build-deps.py", source)
+                self.assertIn("python3 -m pip check", source)
                 self.assertLess(source.index("COPY src/vllm_mach/__init__.py src/vllm_mach/stack.py"), source.index("RUN python3"))
                 self.assertLess(source.index("COPY src /opt/mach/src"), source.index("COPY pyproject.toml"))
                 self.assertIn("CUDA_HOME=/usr/local/cuda-13.0", source)

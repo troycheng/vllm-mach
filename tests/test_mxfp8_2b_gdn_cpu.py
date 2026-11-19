@@ -79,6 +79,48 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
+    def test_extensible_cache_rebinds_only_page_prefixes_after_warmup(self):
+        from dataclasses import dataclass
+        import numpy as np
+        from vllm_mach.mxfp8.gdn_cache import bind_extensible_cache
+
+        @dataclass
+        class Scratch:
+            age: object
+            pending: object
+
+        def worker_with(cache, address_after=100):
+            layers = [NS(kv_cache=[None, view_key(100)]),
+                      NS(kv_cache=[None, view_key(100)])]
+            def extend(num_blocks):
+                for layer in layers:
+                    layer.kv_cache[1] = view_key(address_after, num_blocks)
+            worker = NS(model_runner=NS(extensible_kv_cache=cache), extend_kv_cache=extend)
+            buffers = Scratch(np.zeros(12), np.zeros((12, 5)))
+            by_view = {view_key(100): buffers}
+            bind_extensible_cache(worker, layers, lambda key: key, by_view)
+            return worker, buffers, by_view, extend
+
+        gpu_worker = NS(_min_across_ranks=lambda blocks: blocks - 1)
+        with patch.dict(sys.modules, {"vllm.v1.worker.gpu_worker": gpu_worker}):
+            cache = NS(warmup_committable_blocks=12, committable_blocks=lambda: 9)
+            worker, original, views, _ = worker_with(cache)
+            self.assertEqual(cache.warmup_committable_blocks, 8)
+            worker.extend_kv_cache(7)
+            rebound = views[view_key(100, 7)]
+            self.assertEqual(set(views), {view_key(100, 7)})
+            self.assertEqual(rebound.pending.shape, (7, 5))
+            for tensor in ("age", "pending"):
+                self.assertTrue(np.shares_memory(getattr(rebound, tensor), getattr(original, tensor)))
+
+            for address, pages in ((200, 8), (100, 13), (100, 1)):
+                worker, original, views, _ = worker_with(cache, address_after=address)
+                with self.assertRaisesRegex(RuntimeError, "address or layout changed"):
+                    worker.extend_kv_cache(pages)
+                self.assertIs(views[view_key(100)], original)
+            worker, _, _, extend = worker_with(None)
+            self.assertIs(worker.extend_kv_cache, extend)
+
     def test_package_import_is_cpu_only_and_has_no_independent_hook(self):
         source = GDN.parents[3]
         program = (f"import sys; sys.path.insert(0, {str(source)!r}); "
@@ -97,7 +139,9 @@ class TwoBOrderedGDNContracts(unittest.TestCase):
         for name, expected in pins.items():
             self.assertEqual(hashlib.sha256((GDN / name).read_bytes()).hexdigest(), expected, name)
         worker = load_worker()
-        manifest = json.loads((GDN.parents[1] / "data/runtime_sources.json").read_text())
+        from vllm_mach.stack import profile_directory
+        directory = profile_directory(GDN.parents[1] / "data")
+        manifest = json.loads((directory / "runtime_sources.json").read_text())
         for value, path in ((worker.GDN_SHA, "model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py"),
                             (worker.RUNNER_SHA, "v1/worker/gpu/model_runner.py"),
                             (worker.FLA_SHA, "third_party/flash_linear_attention/ops/fused_recurrent.py")):

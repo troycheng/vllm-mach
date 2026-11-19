@@ -122,7 +122,8 @@ class InstallContracts(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "requires vllm==0.33.0"):
                 self.installer.check_packages({"vllm": "0.33.0"})
         for build in ("2.14.0", "2.14.0+cpu", "2.14.0+cu128"):
-            with patch.object(self.installer.metadata, "version", return_value=build):
+            with patch.object(self.installer.metadata, "version", return_value=build), \
+                    patch("vllm_mach.stack._installed_torch_build", return_value=build):
                 with self.assertRaisesRegex(RuntimeError, "torch==2.14.0\\+cu130"):
                     self.installer.check_packages({"torch": "2.14.0"})
         with patch.object(self.installer.metadata, "version", return_value="2.14.0+cu130"):
@@ -243,10 +244,20 @@ class InstallContracts(unittest.TestCase):
         manifest = self.installer.load_manifest()
         text = self.installer.load_shared_patch(manifest["shared_patch"],
                                                manifest["files"]).decode()
-        section = text.split("--- a/" + name + "\n")[1]
+        section = text.split("--- a/" + name + "\n")[1].split("--- a/", 1)[0]
         # Execute the actual bundled tail, including its original commit path.
         lines = [line[1:] for line in section.splitlines(keepends=True)
                  if line.startswith((" ", "+")) and not line.startswith("+++")]
+        if manifest["packages"]["vllm"] == "0.34.0":
+            # The second return is outside the 0.34 diff hunk. Exercise the
+            # complete function in the installed or pristine upstream file.
+            path = self.installer.metadata.distribution("vllm").locate_file(name)
+            data = path.read_bytes()
+            if self.installer.sha256(data) == manifest["files"][name]["upstream_sha256"]:
+                full_patch = ("--- a/" + name + "\n" + section).encode()
+                data = self.installer.apply_patch({name: data}, full_patch)[name]
+            self.assertEqual(self.installer.sha256(data), manifest["files"][name]["installed_sha256"])
+            lines = data.decode().splitlines(keepends=True)
         start = next(i for i, line in enumerate(lines) if "# P/D: delay caching" in line)
         returns = [i for i in range(start, len(lines))
                    if lines[i].strip() == "return self.create_kv_cache_blocks(new_blocks)"]
@@ -274,7 +285,8 @@ class InstallContracts(unittest.TestCase):
 
     def test_bundled_profile_is_self_contained_and_records_source_changes(self):
         manifest = self.installer.load_manifest()
-        self.assertEqual(manifest["packages"]["vllm"], "0.33.0")
+        from vllm_mach.stack import BASE_PACKAGES
+        self.assertEqual(manifest["packages"]["vllm"], BASE_PACKAGES["vllm"])
         self.assertNotIn("mxfp6-sm120", manifest["packages"])
         for name, entry in manifest["files"].items():
             self.assertTrue(name.startswith("vllm/"))
@@ -285,13 +297,14 @@ class InstallContracts(unittest.TestCase):
         self.assertNotIn("upgrade_patch_sha256", manifest)
         self.assertTrue(all("previous_installed_sha256" not in entry
                             for entry in manifest["files"].values()))
-        self.assertEqual(sorted(p.name for p in self.installer.DATA.glob("*.patch")),
+        directory = self.installer.profile_directory(self.installer.DATA)
+        self.assertEqual(sorted(p.name for p in directory.glob("*.patch")),
                          ["runtime.patch"])
         fla = manifest["files"]["vllm/third_party/flash_linear_attention/ops/fused_recurrent.py"]
         self.assertEqual(fla["upstream_sha256"], fla["installed_sha256"])
-        private = (self.installer.DATA / "runtime.patch").read_bytes()
+        private = (directory / "runtime.patch").read_bytes()
         shared = self.installer.load_shared_patch(manifest["shared_patch"],manifest["files"])
-        self.assertEqual(len(manifest["shared_patch"]["files"]),11)
+        self.assertIn("vllm/v1/worker/gpu/cudagraph_utils.py", manifest["shared_patch"]["files"])
         for name in manifest["shared_patch"]["files"]:
             self.assertNotIn(("--- a/"+name+"\n").encode(),private)
         patch_text = (private+shared).decode()

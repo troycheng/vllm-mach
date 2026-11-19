@@ -15,6 +15,7 @@ def install(worker):
     from . import head as full
     from .two_b.hybrid_head import _wrap_sample
     from ..mxfp6 import hybrid_nvfp4_lm_head as nv
+    from ..mxfp6.sampling import is_builtin_sampler
     from ..mxfp6.argmax_triton import indexed_argmax_triton
     from vllm.v1.worker.gpu.input_batch import get_num_sampled_and_rejected
     from vllm.v1.worker.gpu.sample.output import SamplerOutput
@@ -42,7 +43,7 @@ def install(worker):
                              num_sampled=sampled, num_rejected=rejected)
 
     _wrap_sample(runner, model.lm_head, model.logits_processor, state, torch.bfloat16,
-                 indexed_argmax_triton, output, stats)
+                 indexed_argmax_triton, output, stats, is_builtin_sampler)
     packed_weight_ptr = model.lm_head.weight.data_ptr()
     compact_sample = runner.sample
 

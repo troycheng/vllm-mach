@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from types import MethodType
 
+from ...runtime.fla_sources import source_sha256
 from . import dense_prep
 
 _DATA = Path(__file__).parents[1] / 'profile'
@@ -40,7 +41,7 @@ def install():
     for filename, digest in gates.items():
         module = importlib.import_module(
             'vllm.third_party.flash_linear_attention.ops.' + filename[:-3])
-        if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != digest:
+        if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != source_sha256(filename, digest):
             raise RuntimeError('Dense FLA source changed: ' + filename)
     rows = json.loads((_DATA / 'dense_fla_choices.json').read_text())['kernels']
     bindings = {}

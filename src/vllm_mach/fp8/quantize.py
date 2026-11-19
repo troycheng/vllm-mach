@@ -2,6 +2,9 @@
 """Profile-local substitution of the exact generated CUDA quantization call."""
 import ast,collections,functools,hashlib,importlib.metadata as md,inspect,json,sys
 from pathlib import Path
+
+from ..stack import BASE_PACKAGES, check_versions
+
 HERE=Path(__file__).parent
 _INSTALLED=False
 _ORIGINAL_OP=None
@@ -65,7 +68,7 @@ def install():
  if os.environ.get('VLLM_MACH_PROFILE') != NAME:return False
  from torch._inductor.codecache import PyCodeCache
  spec=json.loads((HERE/'data'/'legacy_math_sources.json').read_text())
- assert md.version('vllm')=='0.33.0'and md.version('torch')=='2.14.0+cu130'and md.version('triton')=='3.8.0'
+ check_versions({name: BASE_PACKAGES[name] for name in ('vllm', 'torch', 'triton')})
  path=Path(md.distribution('vllm').locate_file('vllm/model_executor/layers/quantization/utils/fp8_utils.py'))
  assert sha(path)==spec['fp8_utils_sha256'],'Quant frontend source drift'
  original=PyCodeCache.load_by_key_path.__func__

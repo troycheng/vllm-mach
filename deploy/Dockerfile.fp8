@@ -1,20 +1,15 @@
 # syntax=docker/dockerfile:1
-ARG VLLM_IMAGE=vllm/vllm-openai@sha256:91ee972ab751fb7180bc71c175865e36b091686600dca783d52b2511399810b3
+ARG VLLM_IMAGE=vllm/vllm-openai@sha256:cf5b2fdd087eb4f6d261736967cc5cde974bd22ff4df50365f8fa419b6b4c484
 FROM ${VLLM_IMAGE}
 
-# CUDA13.0.88/Torch2.14+cu130/FI0.7.2/DSL4.8 come from this public base.
+# Torch, CUDA, FlashInfer and CUTLASS come from the pinned public base.
 # Shared stack source must precede every native/setup.py and wheel build.
 COPY src/vllm_mach/__init__.py src/vllm_mach/stack.py /opt/mach/src/vllm_mach/
 ARG MAX_JOBS=2
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} TORCH_CUDA_ARCH_LIST=12.0a
-COPY deploy/requirements-mxfp8.txt /opt/mach/deploy/requirements-mxfp8.txt
-# Retain complete1.40 telemetry exporters; remove incompatible orphan fragments.
-# Restore Torch-required NCCL on this SM120 image; do not resolve/replace core deps.
-RUN python3 -m pip uninstall -y opentelemetry-exporter-otlp-common opentelemetry-exporter-http-transport \
-    && python3 -m pip install --no-deps --require-hashes --index-url "${PIP_INDEX_URL}" \
-       -r /opt/mach/deploy/requirements-mxfp8.txt \
-    && python3 -m pip check
+COPY deploy/requirements-mxfp8.txt deploy/requirements-vllm034.txt deploy/install-build-deps.py /opt/mach/deploy/
+RUN python3 /opt/mach/deploy/install-build-deps.py --index-url "${PIP_INDEX_URL}"
 
 COPY native/block_fp8 /opt/mach/native/block_fp8
 COPY native/fp8_activation /opt/mach/native/fp8_activation

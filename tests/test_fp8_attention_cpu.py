@@ -11,9 +11,11 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-from types import SimpleNamespace as NS
+from types import MethodType, SimpleNamespace as NS
 
 import pytest
+
+from vllm_mach.stack import profile_directory
 
 torch = pytest.importorskip("torch")
 REPO = Path(__file__).resolve().parents[1]
@@ -153,9 +155,14 @@ def forward_from_source(attention, recorder):
             if os.environ.get("MACH_TEST_RUNTIME_PROFILE") == "block-fp8":
                 pytest.fail("Selected block-FP8 qualification requires the installed runtime")
             pytest.skip("Normal-forward checks require the installed block-FP8 runtime")
-    manifest = json.loads((REPO / "src/vllm_mach/fp8/data/runtime_sources.json").read_text())
-    identity = manifest["files"][relative]
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    data = REPO / "src/vllm_mach/fp8/data"
+    selected = profile_directory(data)
+    identity = json.loads((selected / "runtime_sources.json").read_text())["files"][relative]
+    if override and digest not in (identity["installed_sha256"], identity["upstream_sha256"]):
+        # Explicit offline overrides may point to either supported pinned source.
+        other = data / "v034" if selected == data else data
+        identity = json.loads((other / "runtime_sources.json").read_text())["files"][relative]
     if digest == identity["upstream_sha256"]:
         if os.environ.get("MACH_TEST_RUNTIME_PROFILE") == "block-fp8":
             pytest.fail("Selected block-FP8 profile is not installed")
@@ -164,11 +171,11 @@ def forward_from_source(attention, recorder):
     tree = ast.parse(path.read_text())
     impl = next(node for node in tree.body if isinstance(node, ast.ClassDef)
                 and node.name == "FlashAttentionImpl")
-    forward = next(node for node in impl.body if isinstance(node, ast.FunctionDef)
-                   and node.name == "forward")
+    methods = [node for node in impl.body if isinstance(node, ast.FunctionDef)
+               and node.name in ("forward", "_descale")]
     future = ast.ImportFrom(module="__future__", names=[ast.alias(name="annotations")],
                             level=0)
-    module = ast.fix_missing_locations(ast.Module(body=[future, forward], type_ignores=[]))
+    module = ast.fix_missing_locations(ast.Module(body=[future, *methods], type_ignores=[]))
     namespace = dict(torch=torch, dataclass=dataclass, AttentionType=AttentionType,
                      canonicalize_singleton_dim_strides=lambda tensor: tensor,
                      is_quantized_kv_cache=lambda dtype: False,
@@ -177,7 +184,7 @@ def forward_from_source(attention, recorder):
                      flash_attn_varlen_func=recorder,
                      _FA4_DENSE_ATTENTION_KERNEL=recorder)
     exec(compile(module, str(path), "exec"), namespace)
-    return namespace["forward"]
+    return namespace["forward"], namespace.get("_descale")
 
 
 @pytest.mark.parametrize("fallback", [None, "disabled", "decode_only", "prefill_only",
@@ -220,9 +227,12 @@ def test_normal_forward_preserves_request_slices_cache_and_output(attention, mon
         kwargs["out"].copy_(kwargs["q"])
         return kwargs["out"]
 
-    forward = forward_from_source(attention, recorder)
+    forward, descale = forward_from_source(attention, recorder)
+    if descale is not None:
+        impl._descale = MethodType(descale, impl)
     layer = NS(_q_scale=torch.tensor(1.), _k_scale=torch.tensor(2.),
-               _v_scale=torch.tensor(3.))
+               _v_scale=torch.tensor(3.), _q_scale_float=1., _k_scale_float=2.,
+               _v_scale_float=3.)
     result = forward(impl, layer, q, q[:, :4], q[:, :4], cache, meta, output)
     assert result is output
     assert torch.equal(output[:actual], q[:actual])

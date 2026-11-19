@@ -11,8 +11,15 @@ from pathlib import Path
 import sys
 import types
 
-SOURCE_SHA = "5b35efdbe0f6842b45db52e2f4bcdec4324a088de330080090bd5fd602252d05"
-BUILD_AST_SHA = "518783b679836c4c6a2ef0dc3c8e8d0c26e650b9854535a6020c12622402c292"
+from vllm_mach.mxfp8.install import load_manifest
+from vllm_mach.stack import BASE_PACKAGES
+
+# The manifest pins the whole module and the transform pins the build method.
+SOURCE_SHA = load_manifest()["files"]["vllm/v1/attention/backends/gdn_attn.py"]["installed_sha256"]
+BUILD_AST_SHA = {
+    "0.33.0": "518783b679836c4c6a2ef0dc3c8e8d0c26e650b9854535a6020c12622402c292",
+    "0.34.0": "4c60d284a7d2208d6b06013c084c1d52eb9a59143b14dcb09ea5f6bf98b6101d",
+}[BASE_PACKAGES["vllm"]]
 _STATE = "_mach_2b_metadata_classification"
 _COUNTS = "num_decodes, num_prefills, num_decode_tokens, num_prefill_tokens"
 _HELPER = "_mach_exact16_classifier"
