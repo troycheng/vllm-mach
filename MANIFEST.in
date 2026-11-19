@@ -1,0 +1,9 @@
+include .dockerignore .gitattributes .gitignore CONTRIBUTING.md NOTICE
+recursive-include .github/workflows *.yml
+recursive-include assets *.png
+recursive-include deploy Dockerfile* *.py *.txt
+recursive-include docs *.gz *.json *.md *.png *.py *.svg *.txt
+recursive-include native *.cpp *.cu *.cuh *.in *.md *.py LICENSE
+recursive-include profiles *.md LICENSE
+recursive-include tests *.json *.py *.txt
+recursive-include tools *.cu *.json *.md *.py .gitignore LICENSE NOTICE

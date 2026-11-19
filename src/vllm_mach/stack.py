@@ -3,7 +3,7 @@
 from importlib import metadata
 import ast
 
-MACH_VERSION = "0.3.0"
+MACH_VERSION = "0.4.0"
 SUPPORTED_VLLM = ("0.33.0", "0.34.0")
 _PACKAGES_033 = {
     "vllm": "0.33.0", "torch": "2.14.0", "triton": "3.8.0",
@@ -47,7 +47,7 @@ def profile_directory(root, vllm_version=None):
 
 TORCH_BUILD = "2.14.0+cu130"
 BUILD_PACKAGES = {"cmake": "4.1.0", "b12x": "1.5.1"}
-NATIVE_VERSION = "0.3.1"
+NATIVE_VERSION = "0.3.2"
 NATIVE_EXTENSIONS = {
     "vllm-mach-ar-norm": "0.2.0",
     "vllm-mach-owner-prefill": "0.2.0",

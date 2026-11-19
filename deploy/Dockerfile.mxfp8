@@ -11,8 +11,8 @@ ENV CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=${MAX_JOBS} TORCH_CUDA_ARCH_LIST=12.
 COPY deploy/requirements-mxfp8.txt deploy/requirements-vllm034.txt deploy/install-build-deps.py /opt/mach/deploy/
 RUN python3 /opt/mach/deploy/install-build-deps.py --index-url "${PIP_INDEX_URL}"
 
-# Native 0.3.1 build identities and the complete MXFP6/MXFP8 operator set.
-ARG MXFP6_REVISION=206d5266e4c08f20dfcdd56d04ffec3887215c67
+# Native 0.3.2 build identities and the complete MXFP6/MXFP8 operator set.
+ARG MXFP6_REVISION=dd9752fb7743012136e32e49aecd4eb9b7dd6d94
 COPY deploy/install.py deploy/build-mxfp8.py deploy/build-mxfp6.py /opt/mach/deploy/
 # One standard wheel build produces both DSOs, BA M16 and both dual tile families.
 RUN python3 /opt/mach/deploy/build-mxfp8.py --revision "${MXFP6_REVISION}" \

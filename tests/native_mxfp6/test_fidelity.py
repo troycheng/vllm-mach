@@ -2,7 +2,9 @@
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -307,3 +309,80 @@ def test_single_gpu_mxfp8_fidelity_profile(tmp_path):
     assert flags["VLLM_MACH_FUSED_AR_QUANT"] == "0"
     assert flags["VLLM_SM120_OWNER_PREFILL"] == "0"
     assert flags["VLLM_SM120_LOSSLESS_PREFILL"] == "0"
+
+
+@pytest.mark.parametrize(
+    "release,arm,current,tp,explicit,expected",
+    [
+        ("0.34.0", "default", True, 2, None, 16),
+        ("0.34.0", "full", True, 2, None, 16),
+        ("0.34.0", "default", True, 1, None, None),
+        ("0.34.0", "default", False, 2, None, None),
+        ("0.34.0", "mxfp8", True, 2, None, None),
+        ("0.34.0", "bf16", True, 2, None, None),
+        ("0.34.0", "fp8", True, 2, None, None),
+        ("0.34.0", "nvfp4", True, 2, None, None),
+        ("0.34.0", "default", True, 2, 64, 64),
+        ("0.34.0", "bf16", True, 2, 32, 32),
+        ("0.33.0", "default", True, 2, None, None),
+    ],
+)
+def test_fidelity_passes_cache_block_size_and_runner_environment(
+    monkeypatch, tmp_path, release, arm, current, tp, explicit, expected
+):
+    from vllm_mach.mxfp6 import serve
+
+    tool = module("tools/fidelity_native_mxfp6.py")
+    monkeypatch.setattr(tool, "manifest", lambda path: [])
+    monkeypatch.setattr(tool, "importlib", SimpleNamespace(
+        metadata=SimpleNamespace(version=lambda package: release),
+    ))
+    monkeypatch.setattr(serve, "BASE_PACKAGES", {"vllm": release})
+    environment = {"VLLM_USE_V2_MODEL_RUNNER": "0"}
+    monkeypatch.setattr(tool.os, "environ", environment)
+    output = tmp_path / "output"
+    argv = ["fidelity_native_mxfp6.py", "--arm", arm, "--model", str(tmp_path),
+            "--tokenizer", "tokenizer", "--manifest", "manifest.json",
+            "--output", str(output), "--tensor-parallel-size", str(tp)]
+    if current:
+        argv += ["--current-profile"]
+    if explicit is not None:
+        argv += ["--block-size", str(explicit)]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    class ReachedEngine(Exception):
+        pass
+
+    def llm(**kwargs):
+        if expected is None:
+            assert "block_size" not in kwargs
+        else:
+            assert kwargs["block_size"] == expected
+        assert environment.get("VLLM_USE_V2_MODEL_RUNNER") == (
+            "1" if release == "0.33.0" else None
+        )
+        assert json.loads((output / "contract.json").read_text())["llm_args"] == kwargs
+        raise ReachedEngine
+
+    monkeypatch.setitem(sys.modules, "teacher_decode", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(
+        set_num_threads=lambda count: None,
+        backends=SimpleNamespace(cuda=SimpleNamespace(matmul=SimpleNamespace())),
+    ))
+    monkeypatch.setitem(sys.modules, "vllm", SimpleNamespace(LLM=llm, SamplingParams=object))
+    monkeypatch.setitem(sys.modules, "vllm.inputs", SimpleNamespace(TokensPrompt=object))
+    with pytest.raises(ReachedEngine):
+        tool.main()
+
+
+@pytest.mark.parametrize("invalid", ["0", "-1"])
+def test_fidelity_rejects_nonpositive_block_size(monkeypatch, capsys, invalid):
+    tool = module("tools/fidelity_native_mxfp6.py")
+    monkeypatch.setattr(sys, "argv", [
+        "fidelity_native_mxfp6.py", "--arm", "default", "--model", "model",
+        "--tokenizer", "tokenizer", "--manifest", "manifest.json",
+        "--output", "unused", "--block-size", invalid,
+    ])
+    with pytest.raises(SystemExit, match="2"):
+        tool.main()
+    assert "--block-size must be positive" in capsys.readouterr().err

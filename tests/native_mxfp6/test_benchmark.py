@@ -3,7 +3,11 @@
 import argparse
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 
@@ -74,6 +78,9 @@ def test_native_launcher_only_sets_runner_flag_on_vllm_033(monkeypatch, release)
         assert env["VLLM_USE_V2_MODEL_RUNNER"] == "1"
     else:
         assert "VLLM_USE_V2_MODEL_RUNNER" not in env
+    in_process_env = {"VLLM_USE_V2_MODEL_RUNNER": "0"}
+    serve.update_profile_environment(in_process_env, env)
+    assert in_process_env.get("VLLM_USE_V2_MODEL_RUNNER") == env.get("VLLM_USE_V2_MODEL_RUNNER")
     assert env["VLLM_USE_BREAKABLE_CUDAGRAPH"] == "0"
 
 
@@ -84,30 +91,122 @@ def test_manifest_must_cover_all_requests(tmp_path):
         load().make_contract(args(prompt_manifest=path))
 
 
-@pytest.mark.parametrize("arm", ["fp8", "nvfp4"])
-def test_stock_baseline_keeps_compilation_and_disables_flashinfer_ar(monkeypatch, arm):
+@pytest.mark.parametrize("release", ["0.33.0", "0.34.0"])
+@pytest.mark.parametrize("arm", ["fp8", "nvfp4", "core_stock_aligned"])
+def test_stock_baseline_keeps_compilation_and_disables_flashinfer_ar(
+    monkeypatch, arm, release
+):
+    from vllm_mach.mxfp6 import serve
+
     spec = importlib.util.spec_from_file_location(
         "serving_comparison", ROOT / "tools/compare_native_serving.py"
     )
     tool = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(tool)
+    monkeypatch.setattr(serve, "BASE_PACKAGES", {"vllm": release})
     monkeypatch.setenv("VLLM_ALLREDUCE_USE_FLASHINFER", "1")
     monkeypatch.setenv("VLLM_QWEN3_5_FUSED_AR_NORM", "1")
-    command, env = tool.launch_configuration(
-        argparse.Namespace(
-            models=Path("/models"),
-            stock_runtime=Path("/stock"),
-            devices="0,1",
-            port=8000,
-        ),
-        arm,
+    config = argparse.Namespace(
+        models=Path("/models"),
+        stock_runtime=Path("/stock"),
+        devices="0,1",
+        port=8000,
     )
+    command, env = tool.launch_configuration(config, arm)
     assert "--compilation-config" not in command
     assert "--kv-cache-memory-bytes" not in command
+    assert "--block-size" not in command
     assert command[command.index("--max-num-seqs") + 1] == "64"
-    assert env["VLLM_ALLREDUCE_USE_FLASHINFER"] == "0" and env["VLLM_PLUGINS"] == ""
-    assert "VLLM_QWEN3_5_FUSED_AR_NORM" not in env
-    assert env["PYTHONPATH"] == "/stock"
+    assert env["VLLM_ALLREDUCE_USE_FLASHINFER"] == "0"
+    if arm in tool.STOCK_ARMS:
+        assert env["VLLM_PLUGINS"] == ""
+        assert "VLLM_QWEN3_5_FUSED_AR_NORM" not in env
+        assert env["PYTHONPATH"] == "/stock"
+    else:
+        assert env["VLLM_PLUGINS"] == "mach"
+        assert env["VLLM_QWEN3_5_FUSED_AR_NORM"] == "0"
+    native, _ = tool.launch_configuration(config, "default")
+    if release == "0.34.0":
+        assert native[native.index("--block-size") + 1] == "16"
+    else:
+        assert "--block-size" not in native
+
+
+@pytest.mark.parametrize("release", ["0.33.0", "0.34.0"])
+@pytest.mark.parametrize("profile", ["27b-mxfp6", "35b-mxfp6", "27b-nvfp4", "35b-nvfp4"])
+def test_best_path_uses_selected_source_tree_and_cache_geometry(tmp_path, release, profile):
+    older_baseline = release == "0.33.0"
+    src = ROOT / "src"
+    if older_baseline:
+        src = tmp_path / "baseline" / "src"
+        package = src / "vllm_mach" / "mxfp6"
+        package.mkdir(parents=True)
+        for directory in (package.parent, package):
+            (directory / "__init__.py").touch()
+        (package / "install.py").write_text(dedent('''
+            def check_versions(): pass
+            def install_profile(*args): pass
+        '''))
+        (package / "serve.py").write_text(dedent('''
+            import os
+
+            def build_command(args, extra, /):
+                env = dict(os.environ)
+                env.pop("VLLM_MACH_MOE_HIGH_M_COMPACT", None)
+                env["VLLM_USE_V2_MODEL_RUNNER"] = "1"
+                env["MACH_TEST_BASELINE"] = "1"
+                return ["python", "-m", "vllm", "serve", str(args.model), *extra], env
+        '''))
+    (tmp_path / "config.json").write_text(json.dumps({
+        "model_type": "qwen3_5_moe" if profile.startswith("35b") else "qwen3_5",
+    }))
+    runtime = tmp_path / "runtime"
+    # Stub runtime-only imports while letting Python select and load the
+    # production or older Mach source package through PYTHONPATH.
+    harness = dedent('''
+        import json, os, runpy, sys
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        release = sys.argv.pop(1)
+        sys.argv.pop(0)
+        def launch():
+            print(json.dumps({"argv": sys.argv, "environment": {key: os.environ.get(key)
+                for key in ("VLLM_USE_V2_MODEL_RUNNER", "VLLM_MACH_MOE_HIGH_M_COMPACT",
+                            "MACH_TEST_BASELINE", "MACH_TEST_PRESERVED")}}))
+
+        sys.modules["vllm.entrypoints.cli.main"] = SimpleNamespace(main=launch)
+        with patch("importlib.metadata.version", return_value=release), \
+             patch("importlib.metadata.distribution") as distribution:
+            distribution.return_value.locate_file.return_value = "/unused"
+            from vllm_mach.mxfp6 import install
+            install.check_versions = lambda: None
+            install.install_profile = lambda *args: {"changed_files": []}
+            runpy.run_path(sys.argv[0], run_name="__main__")
+    ''')
+    result = subprocess.run(
+        [sys.executable, "-c", harness, release, str(ROOT / "tools/serve_best_path.py"),
+         "--profile", profile, "--model", str(tmp_path), "--run-dir", str(runtime),
+         "--port", "8000"],
+        env=dict(os.environ, PYTHONPATH=str(src), PYTHONDONTWRITEBYTECODE="1",
+                 VLLM_USE_V2_MODEL_RUNNER="0", VLLM_MACH_MOE_HIGH_M_COMPACT="1",
+                 MACH_TEST_PRESERVED="keep"),
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    observed = json.loads(result.stdout)
+    assert observed["environment"] == {
+        "VLLM_USE_V2_MODEL_RUNNER": "1" if older_baseline else None,
+        "VLLM_MACH_MOE_HIGH_M_COMPACT": None,
+        "MACH_TEST_BASELINE": "1" if older_baseline else None,
+        "MACH_TEST_PRESERVED": "keep",
+    }
+    argv = observed["argv"]
+    if older_baseline or profile.endswith("nvfp4"):
+        assert "--block-size" not in argv
+    else:
+        assert argv[argv.index("--block-size") + 1] == "16"
+    assert json.loads((runtime / "launch.json").read_text())["argv"] == argv
 
 
 def test_published_serving_counts_and_throughput():

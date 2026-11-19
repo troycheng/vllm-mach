@@ -1,0 +1,46 @@
+{
+  "model": "Qwen3.8-27B Dense MXFP6 FULL",
+  "vllm": "0.34.0",
+  "mach": "0.4.0",
+  "mxfp6_sm120": "0.3.2",
+  "tensor_parallel_size": 2,
+  "hardware": "2 x RTX 5090",
+  "ssm_dtype": "float16",
+  "query_manifest_sha256": "f51cdf0fec03cf4b66f7391afcccf397dd6418509edafc2c7d1d222f9db29cf2",
+  "bf16_reference_sha256": "7540a439279281429951168868d1d5b78f9849519de5ac620a87a3090e0bf31e",
+  "mae_aggregation": "mean absolute gold-token log-probability error per query, then mean across queries",
+  "shapes": {
+    "M4": {
+      "queries": 256,
+      "gold_tokens": 10479,
+      "requested_block_size": 16,
+      "effective_block_size_by_tp_rank": [
+        400,
+        400
+      ],
+      "bit_identical_gold_logprobs_vs_v033": 10479,
+      "max_abs_vs_v033": 0.0,
+      "repeat_max_abs": 0.0,
+      "bf16_query_mae_v033": 0.08421918060717802,
+      "bf16_query_mae_v034": 0.08421918060717802,
+      "v033_reference_records_sha256": "edaccc9c06efe1a7c35987eeacf309e6af784afbde97c235b83b8bdec38cc23a",
+      "v034_records_sha256": "edaccc9c06efe1a7c35987eeacf309e6af784afbde97c235b83b8bdec38cc23a"
+    },
+    "M32": {
+      "queries": 256,
+      "gold_tokens": 10479,
+      "requested_block_size": 16,
+      "effective_block_size_by_tp_rank": [
+        400,
+        400
+      ],
+      "bit_identical_gold_logprobs_vs_v033": 10479,
+      "max_abs_vs_v033": 0.0,
+      "repeat_max_abs": 0.0,
+      "bf16_query_mae_v033": 0.0881462643755338,
+      "bf16_query_mae_v034": 0.0881462643755338,
+      "v033_reference_records_sha256": "e2b3c9560dac8a86cbd1319646d256a9e9f779d5b4e3b7f36138b0879f43067f",
+      "v034_records_sha256": "e2b3c9560dac8a86cbd1319646d256a9e9f779d5b4e3b7f36138b0879f43067f"
+    }
+  }
+}

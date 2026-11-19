@@ -29,12 +29,12 @@ To build on 0.33.0, add `--build-arg VLLM_IMAGE=vllm/vllm-openai@sha256:91ee972a
 | CUTLASS Python DSL | 4.8.0 |
 | CUDA Python bindings | 13.5.0 on vLLM 0.34, 13.4.4 on 0.33 |
 | b12x | 1.5.1 |
-| MXFP6/MXFP8 native library | 0.3.1 |
+| MXFP6/MXFP8 native library | 0.3.2 |
 | Mach native extensions | 0.2.0 |
 | CUDA compiler | 13.0.88 |
 | NCCL | 2.30.7 |
 
-The Docker images and source installer build the native library from [`206d526`](https://github.com/Nekofish-L/mxfp6_sm120/commit/206d5266e4c08f20dfcdd56d04ffec3887215c67).
+The Docker images and source installer build the native library from [`dd9752f`](https://github.com/Nekofish-L/mxfp6_sm120/commit/dd9752fb7743012136e32e49aecd4eb9b7dd6d94).
 
 The wheel records the actual Torch/CUDA ABI, Python/toolchain identity and both native library hashes in `mxfp6/build_info.json`. The accompanying external build receipt, `mxfp8-build.json`, records source and patched CUTLASS fingerprints, build options and the wheel hash. The shared [native build entry](../deploy/build-mxfp8.py) produces both libraries and the external receipt. Mach's Dockerfiles also restore the Torch-required NCCL version and install the pinned build dependencies.
 
@@ -59,13 +59,13 @@ The 2B results use the geometric mean of two runs per version on the same GPU, i
 
 With the same KV memory budget, 2B capacity increased from 1,470,223 to 1,475,584 tokens. The 4B profiles retain 878,033 tokens for MXFP8 and 508,335 for block-FP8. The TP2 profiles retain 233,472 for Dense, 743,062 for standard MoE and 941,648 for compact MoE.
 
-Fixed-gold tests cover 256 queries and 10,479 token log probabilities per decode shape. For 2B with FP32 state, mean per-query error against BF16 changed from 0.054753 to 0.054145 at M32 and from 0.056550 to 0.056711 at M64. Both 4B profiles match their 0.33 records at M32 and M64. The 27B Dense FULL profile matches at M4 and M32. The 35B compact profile matches at M128 and M160, including every top-1 token and all 128 free generations tested at M128.
+Fixed-gold tests cover 256 queries and 10,479 token log probabilities per decode shape. For 2B with FP32 state, mean per-query error against BF16 changed from 0.054753 to 0.054145 at M32 and from 0.056550 to 0.056711 at M64. Both 4B profiles match their 0.33 records at M32 and M64. The 27B Dense FULL profile matches all 10,479 gold log probabilities at both M4 and M32 with the production 400-token attention blocks on both TP ranks. The 35B compact profile matches at M128 and M160, including every top-1 token and all 128 free generations tested at M128.
 
 The FP32-state long-output test uses frozen BF16 token trajectories in 16-row batches. On 4B, all 190,251 gold log probabilities and top-1 IDs match the current 0.33 build. On 2B, mean per-query absolute log-probability error against BF16 changes from 0.044164 to 0.044113 across 330,328 tokens. The paired 95% bootstrap interval for the change is −0.000209 to +0.000110.
 
 The final 2B image uses an 8-row tile for the M16 GDN gated norm and reuses FlashInfer's compiled prefill launches for matching calls. It matched the initial 0.34 build bit for bit on 10,479 continuation log probabilities, 256 prefill log probabilities and all 512 greedy token IDs. Decode replayed the physical M16 CUDA Graph. A separate 3,000-token prompt produced the same eight greedy token IDs and exercised the prefill launch reuse.
 
-[Final 2B throughput, TTFT and precision](data/vllm034-2b-followup.json) · [Initial migration data, including the original −1.32% at c16](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md)
+[27B fixed-gold results with 400-token blocks](data/vllm034-dense-400-gold.json) · [Final 2B throughput, TTFT and precision](data/vllm034-2b-followup.json) · [Initial migration data, including the original −1.32% at c16](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md)
 
 ## Install into an existing container
 

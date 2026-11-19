@@ -174,6 +174,7 @@ def main():
     p.add_argument("--model", required=True)
     p.add_argument("--tokenizer", required=True)
     p.add_argument("--tensor-parallel-size", type=int, default=2)
+    p.add_argument("--block-size", type=int, help="Explicit vLLM KV-cache block size in tokens")
     p.add_argument("--attention-backend", default="TRITON_ATTN",
                    choices=["TRITON_ATTN", "FLASH_ATTN", "FLASHINFER"])
     p.add_argument("--manifest", type=Path, required=True)
@@ -201,8 +202,14 @@ def main():
         help="Diagnostic ablation only; not the stock serving configuration",
     )
     a = p.parse_args()
+    if a.block_size is not None and a.block_size <= 0:
+        p.error("--block-size must be positive")
     samples = manifest(a.manifest)
-    from vllm_mach.mxfp6.serve import _is_qwen35_moe
+    from vllm_mach.mxfp6.serve import (
+        _is_qwen35_moe,
+        native_block_size,
+        update_profile_environment,
+    )
 
     full = a.arm in ("full", "full_ba", "full_gdn")
     moe = _is_qwen35_moe(a.model)
@@ -228,7 +235,7 @@ def main():
     cache_dir = os.environ.get("VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR")
     if cache_dir:
         flags["VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR"] = cache_dir
-    os.environ.update(flags)
+    update_profile_environment(os.environ, flags)
     os.environ["K4O_QUALITY_ARM"] = "m32"
     os.environ["VLLM_ALLOW_INSECURE_SERIALIZATION"] = "1"
     os.environ["PYTHONPATH"] = (
@@ -287,6 +294,13 @@ def main():
         args["mamba_ssm_cache_dtype"] = a.ssm_dtype
     if a.kv_cache_dtype is not None:
         args["kv_cache_dtype"] = a.kv_cache_dtype
+    block_size = a.block_size
+    if block_size is None and a.current_profile:
+        block_size = native_block_size(
+            tensor_parallel_size=a.tensor_parallel_size, native_mxfp6=a.arm in ("default", "full"),
+        )
+    if block_size is not None:
+        args["block_size"] = block_size
     args["enable_prefix_caching"] = a.enable_prefix_caching
     write(
         a.output / "contract.json",
