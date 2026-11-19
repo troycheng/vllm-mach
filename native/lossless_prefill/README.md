@@ -1,72 +1,28 @@
 # Lossless BF16 prefill collective
 
-Optional, version-locked TP2 SM120 implementation for BF16 M4096×H5120 AllReduce/residual/GemmaRMSNorm. The input-only path compresses peer reads, restoring BF16 bits before the existing FP32 sum. The optional input+SUM path also compresses the rounded BF16 sum sent to the peer; the producing rank keeps its own half raw. Both paths preserve residual/norm arithmetic and the original barriers. Other shapes keep the existing vLLM dispatcher.
+The native MXFP6 profile can compress peer transfers in the fused AllReduce,
+residual and GemmaRMSNorm calls for Qwen3.8-27B Dense prefill. The codec
+reconstructs BF16 values before the original arithmetic and stores blocks that
+cannot be encoded exactly as raw BF16.
 
-The codec uses 256-value blocks, fixed 512-byte slots, 384-byte compressed payloads and two-byte headers. Exponent ranges that cannot be represented exactly, zeros and special values select raw BF16 per block. This does not quantize activations or reduce the allocated workspace size.
+The vLLM 0.34 runtime overlay selects direct SUM at physical `M=4096` and the
+observed-shape codec at the 32 row counts in
+[`_LONG_ROWS`](../../src/vllm_mach/mxfp6/sm120_lossless_prefill.py). It requires
+contiguous BF16 tensors at hidden size 5120, SM120, TP2 and a compatible
+FlashInfer TRT-LLM IPC workspace. Other shapes or layouts follow the normal
+AR/Norm dispatcher.
 
-## Build and enable
+[Setup and usage](../../docs/installation.md) covers the current image and
+source-profile installation. Both build the `vllm-mach-lossless-prefill` wheel
+against the selected runtime stack with CUDA 13.0. To rebuild just this wheel
+in the same environment, use `python deploy/install.py --native-only --native-part lossless_prefill`
+from the repository root with `--cuda-home` pointing to that toolkit.
 
-Use the complete [a6 runtime profile](https://github.com/troycheng/vllm-mach/blob/v0.1.0a6/profiles/vllm-0.28.0/README.md) with vLLM 0.28.0 and FlashInfer 0.6.18. This extension requires CUDA **13.0** and targets `sm_120f`, matching the tested reference compiler and fast-math settings. Other compiler versions are rejected by this source profile; they require new numerical validation.
+For Qwen3.8-27B Dense MXFP6 TP2, `vllm-mach-serve` enables lossless prefill
+and leaves it off during CUDA Graph capture. Use `--no-lossless-prefill`
+to disable it. `--verify-prefill` compares the first eligible eager call per
+norm instance and row count against FlashInfer, checking both outputs
+bitwise. Run throughput measurements with verification off.
 
-```bash
-cd native/lossless_prefill
-CUDA_HOME=/path/to/cuda-13.0 MAX_JOBS=2 \
-  python -m pip wheel --no-deps --no-build-isolation . -w dist
-python -m pip install --no-deps dist/vllm_mach_lossless_prefill-*.whl
-```
-
-Install the matching Mach `0.1.0a7` wheel, then apply the thin vLLM caller patch before starting the service:
-
-```bash
-patch --batch --fuzz=0 -p1 -d /path/to/site-packages \
-  < profiles/vllm-0.28.0/lossless-prefill.patch
-export VLLM_MACH_LOSSLESS_PREFILL=1
-```
-
-To also enable the SUM leg, use native package `0.1.0a2` or later and set:
-
-```bash
-export VLLM_MACH_LOSSLESS_PREFILL_SUM=1
-```
-
-Both switches default to off. The SUM switch requires `VLLM_MACH_LOSSLESS_PREFILL=1`; leave SUM unset for the input-only path. Unsupported shapes retain their existing dispatch. Enabling a path without its native extension, on an unvalidated device, or with incompatible workspace metadata raises an error. The workspace must be the same `trtllm` object throughout the worker lifetime. Input-only needs at least 84,049,920 bytes per rank; input+SUM needs 84,213,760 bytes, with separate input/SUM header arrays totaling 320 KiB. The pointer table is not the payload allocation. Changing the mode requires a worker restart; changing the FlashInfer workspace ABI requires revalidation.
-
-The native library is loaded with `torch.ops.load_library`, not imported as a Python extension. First use must happen outside CUDA Graph capture. Decode M24/M32 remains on its original one-shot path.
-
-### Direct SUM
-
-Native package `0.1.0a3` also builds the direct SUM variant. Keep both switches above enabled and add `VLLM_MACH_LOSSLESS_PREFILL_DIRECT=1`. It packs only the input half needed by the peer, supports exact signed-zero blocks, and feeds the producing rank's BF16 sum directly into the existing residual/GemmaRMSNorm operation. This removes 20 MiB of local SUM writes and 20 MiB of rereads per rank at the supported shape. Peer SUM transfer, arithmetic ordering, both barriers and PDL completion are retained. Workspace capacity is unchanged from input+SUM.
-
-The direct switch defaults to off and requires the SUM switch. Unset it and restart workers to restore input+SUM; unset both to restore input-only. All three modes remain restricted to the validated TP2/BF16/M4096×H5120 boundary.
-
-## Validation
-
-### Observed prefill shapes
-
-Native package `0.1.0a4` adds `mach_lossless_prefill_long_ext`. After applying `lossless-prefill.patch`, apply `profiles/vllm-0.28.0/long-prefill.patch` and set `VLLM_MACH_LOSSLESS_PREFILL_LONG=1`. It is a separate opt-in: M4096 still uses the original selected mode, decode remains unchanged, and unsupported shapes keep FlashInfer's existing dispatcher.
-
-This extension supports exactly 32 observed row counts at H5120/TP2/BF16, listed in `vllm_mach.exl3.long_prefill.ROWS`. It is dispatched only outside Graph capture. For the shapes previously handled by one-shot (M≤3276), it preserves that path's input normalization; larger shapes retain two-shot semantics. Odd row counts use explicit rank ownership. Workspace capacity must be at least `M * 5120 * 4 + (M * 5120 // 256) * 4` bytes. No extra workspace pool or KV allocation is introduced.
-
-`bench_long_prefill.py` accepts `--candidate-config` and `--candidate-library`. The JSON records `M`, library basename, namespace `mach_lossless_prefill_long`, absolute `capture_root`, and a `capture_selection` object. Use an empty selection with `--synthetic-only --validate-only` for model-free checks. This checks six cases per shape, changing-input Graph replay, in-place residual output and mixed-workspace PDL. Retained model inputs are not distributed. See [integration evidence](../../docs/long-prefill.md).
-
-### Earlier M4096 modes
-
-The included boundary harness can run without model files:
-
-```bash
-python -c 'import importlib.util; print(importlib.util.find_spec("mach_lossless_prefill_ext").origin)'
-GLOO_SOCKET_IFNAME=lo python -m torch.distributed.run \
-  --nnodes=1 --nproc-per-node=2 --master-addr=127.0.0.1 --master-port=29581 \
-  bench_ar_codec.py --library /path/printed/above.so \
-  --capture-dir . --output-dir /path/to/new/results --smoke
-```
-
-It compares the installed FlashInfer implementation, a recompiled control and the packed path, including changing-input Graph replay. Real captured inputs can be supplied through `--capture-dir` with `--validate-only`; `bench_mixed_workspace.py` additionally covers mixed M24/M32 one-shot and M4096 two-shot use of a shared workspace. Those captured model inputs are not distributed.
-
-For input+SUM, use `bench_sum_codec.py` with `--reference-library` pointing to `mach_lossless_prefill_ext` and `--library` pointing to `mach_lossless_prefill_sum_ext`. The same `--smoke` mode requires no model data. `bench_sum_mixed_workspace.py` covers the new SUM path sharing a workspace with M24/M32 one-shot Graph calls.
-
-For direct SUM, use `bench_direct_codec.py` with `--reference-library` pointing to `mach_lossless_prefill_sum_ext` and `--library` pointing to `mach_lossless_prefill_direct_ext`. `bench_direct_mixed_workspace.py` tests shared-workspace transitions with the direct library. Both boundary harnesses compare against installed FlashInfer and support `--smoke` without model files.
-
-For a diagnostic service run, also set `VLLM_MACH_LOSSLESS_PREFILL_VERIFY=1`. The first eligible call at each norm instance is compared bitwise with installed FlashInfer, checking both residual and normalized outputs. This adds communication and synchronization; **disable it for performance measurement**. Logs report activation and the number of verified norm instances per rank.
-
-The source experiment recorded a +0.88% pooled c32 service result over four A/B/B/A lifecycles. That is historical evidence for the original runtime, not a Mach release speedup claim. “Lossless” describes only this communication replacement, not the quantized model's overall accuracy. See the [Mach integration record](../../docs/lossless-prefill.md) for current port acceptance.
+For the earlier EXL3/vLLM 0.28 callers, input-only and input+SUM modes, and
+standalone diagnostics, see the [v0.4.0 archive](https://github.com/troycheng/vllm-mach/blob/v0.4.0/native/lossless_prefill/README.md).

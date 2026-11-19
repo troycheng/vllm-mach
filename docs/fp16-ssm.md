@@ -6,7 +6,7 @@ FP16 recurrent storage changes numerical precision. Check your workload before e
 
 ## Configuration
 
-Use Mach 0.3 with the [runtime versions](installation.md#runtime-versions) and the native image from the [installation guide](installation.md). Add `--fp16-ssm` to `vllm-mach-serve` for the supported Dense or MoE checkpoint. The launcher selects FP16 recurrent storage while retaining BF16 convolution state and attention KV, TP2 and non-speculative decoding. Hybrid head is enabled by default; `--no-hybrid-head` independently selects the complete BF16 head.
+Build the native MXFP6 image from the [installation guide](installation.md#build-an-image). Add `--fp16-ssm` to `vllm-mach-serve` for the supported Dense or MoE checkpoint. The launcher selects FP16 recurrent storage while retaining BF16 convolution state and attention KV, TP2 and non-speculative decoding. Hybrid head is enabled by default; `--no-hybrid-head` independently selects the complete BF16 head.
 
 The model-specific GDN implementation admits the supported Dense and MoE geometries and retains its existing fallback and state-lifecycle guards. Persistent low-row decode and BA overlap have independent opt-outs; see [GDN decode options](gdn-decode.md). The current installer applies the packaged native source profile.
 

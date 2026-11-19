@@ -1,6 +1,6 @@
 # Measurement data and protocol
 
-The current report covers vLLM 0.33, Torch 2.14 and Triton 3.8 on RTX 5090. All serving charts use 3,000 input and 1,000 output tokens; rates are output tokens/s.
+This report covers vLLM 0.33, Torch 2.14 and Triton 3.8 on RTX 5090. All serving charts use 3,000 input and 1,000 output tokens. Rates are output tokens/s.
 
 ## Model records
 

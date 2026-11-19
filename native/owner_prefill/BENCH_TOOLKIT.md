@@ -1,9 +1,13 @@
-# CUDA toolkit comparison
+# Historical CUDA toolkit comparison
 
-`bench_toolkit.py` isolates the four owner-prefill extensions using the local
-Qwen3.5-27B configuration: TP2, BF16, hidden size 5120, intermediate size 17408,
-64 layers, RMSNorm epsilon 1e-6 and weight bias 1. Two SM120 GPUs are required; launch grids adapt to the device SM count.
-It checks the supplied model config; it does not load model weights.
+The September 2026 benchmark used PyTorch 2.13.0+cu130 and FlashInfer 0.6.18.
+The build harness checks the FlashInfer pin. See the [owner-prefill guide](README.md)
+for the current serving wheel.
+
+The harness isolates the four owner-prefill extensions on two SM120 GPUs using
+synthetic BF16 inputs. It checks the supplied 27B `config.json` for hidden size
+5120, intermediate size 17408, 64 layers and RMSNorm epsilon 1e-6. The synthetic
+norm uses weight bias 1.
 
 Build identical sources with each toolkit, retaining `sm_120f`, fast math and
 FlashInfer 0.6.18 headers. The harness changes only operator/C++ namespaces in
@@ -17,10 +21,10 @@ CUDA_HOME=/usr/local/cuda-13.0 MAX_JOBS=2 \
 CUDA_HOME=/path/to/cuda-13.2 MAX_JOBS=2 \
   python3 native/owner_prefill/bench_toolkit.py build \
   --tag cu132 --out /tmp/mach-owner-ab
-CUDA_VISIBLE_DEVICES=4,5 python3 -m torch.distributed.run \
+CUDA_VISIBLE_DEVICES=0,1 python3 -m torch.distributed.run \
   --standalone --nproc-per-node=2 native/owner_prefill/bench_toolkit.py run \
   --out /tmp/mach-owner-ab --tags cu132 cu130 \
-  --config /data1/models/Qwen3.5-27B-MXFP6/config.json
+  --config /models/Qwen3.5-27B-MXFP6/config.json
 ```
 
 The default cases are M512, M2048, M3000 and M4096, covering both fixed and
