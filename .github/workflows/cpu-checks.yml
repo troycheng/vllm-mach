@@ -32,6 +32,8 @@ jobs:
           tests/test_teacher_decode_cpu.py
           tests/test_mxfp8_deploy.py
           tests/test_mxfp8_flashinfer_layout_cpu.py
+          tests/test_mxfp8_2b_gdn_norm_tile_cpu.py
+          tests/test_mxfp8_2b_gdn_prefill_plan_cpu.py
           tests/test_mxfp8_2b_sampler_metadata_cpu.py
           tests/test_mxfp8_2b_selector_graph_cpu.py
           tests/test_mxfp8_2b_presence_graph_cpu.py

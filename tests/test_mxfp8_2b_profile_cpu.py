@@ -181,6 +181,10 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         stack.enter_context(patch.object(native, "install_worker_backend", side_effect=lambda obj: events.append("native")))
         stack.enter_context(patch.object(ba, "install", side_effect=lambda obj: events.append("ba")))
         stack.enter_context(patch.object(pdl, "install", side_effect=lambda: events.append("pdl_install")))
+        norm_tile = load("mxfp8.two_b.gdn_norm_tile")
+        stack.enter_context(patch.object(norm_tile, "install", return_value=False))
+        prefill_plan = load("mxfp8.two_b.gdn_prefill_plan")
+        stack.enter_context(patch.object(prefill_plan, "install", side_effect=lambda worker: events.append("prefill_plan")))
         ordering = load("mxfp8.two_b.ordered_reduction")
         stack.enter_context(patch.object(ordering, "install", side_effect=lambda: events.append("ordering_install")))
         prep = load("gdn_prep")
@@ -216,7 +220,7 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
         self.assertEqual(obj.execute_model(), "execute")
         obj.execute_model()
         self.assertEqual(events, ["ordering_install", "pdl_install", "device", "geometry", "native", "pdl_prepare", "install_runtime", "prep_binding", "ba", "load",
-                                  "prepare_layers", "cache", "initialize_cache", "prepare_pools", "compile", "compiled",
+                                  "prepare_layers", "cache", "initialize_cache", "prepare_pools", "compile", "prefill_plan", "compiled",
                                   "execute", "serving", "execute"])
         state._CACHE_INITIALIZED = False
         state._READY = True
@@ -235,7 +239,20 @@ assert not any(x in sys.modules for x in ('torch', 'vllm', 'triton'))
                 patch.object(metadata, "install", side_effect=lambda obj: events.append("sampler_metadata")):
             self.profile.install_worker_hook()
             obj = Worker(); obj.init_device(); obj.compile_or_warm_up_model()
-        self.assertEqual(events[-5:], ["prepare_pools", "compile", "hybrid", "sampler_metadata", "compiled"])
+        self.assertEqual(events[-6:], ["prepare_pools", "compile", "hybrid", "sampler_metadata", "prefill_plan", "compiled"])
+
+    def test_prefill_plan_skips_quality_and_bf16_state(self):
+        for environment in ({"VLLM_MACH_MXFP8_MODE": "quality", "VLLM_MACH_MXFP8_QUALITY_ROWS": "4"},
+                            {"VLLM_MACH_MXFP8_SSM_DTYPE": "bfloat16"}):
+            with self.subTest(environment=environment), patch.dict(os.environ, environment):
+                events = []
+                Worker, _ = self.lifecycle(events)
+                self.profile.install_worker_hook()
+                obj = Worker()
+                obj.init_device()
+                obj.compile_or_warm_up_model()
+                self.assertIn("compiled", events)
+                self.assertNotIn("prefill_plan", events)
 
     def test_quality_skips_production_dispatch_and_contract_drift_rejects_compile(self):
         for row in (4, 32, 64):
