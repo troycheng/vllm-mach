@@ -148,8 +148,15 @@ def main():
                 "float32",
             ]
         command, env = build_command(args, extra)
+        # This tool also runs against older baseline source trees. Keep the
+        # two-argument builder contract and use upstream geometry for NVFP4.
+        if fp4 and "--block-size" in command:
+            index = command.index("--block-size")
+            del command[index:index + 2]
         # Qualification-only sampling ablation; production uses one hybrid flag.
         env["VLLM_MACH_LM_HEAD_SAMPLING"] = str(int(a.sampling))
+        for key in os.environ.keys() - env.keys():
+            os.environ.pop(key, None)
         os.environ.update(env)
         os.environ["OMP_NUM_THREADS"] = "4" if moe else "1"
         os.environ["VLLM_MACH_MOE_PROJECTION_TUNING"] = (

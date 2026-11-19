@@ -53,7 +53,7 @@ def test_target_stack_and_exact_torch_build():
         with pytest.raises(RuntimeError, match="torch==2.14.0\\+cu130"):
             stack.require_version("torch", wrong, stack.BASE_PACKAGES["torch"])
     assert stack.BUILD_PACKAGES["b12x"] == "1.5.1"
-    assert stack.NATIVE_VERSION == "0.3.1"
+    assert stack.NATIVE_VERSION == "0.3.2"
 
 
 def test_plugin_unselected_mismatch_skips_and_explicit_mismatch_rejects():

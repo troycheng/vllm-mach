@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install test and build tools
-        run: python -m pip install 'setuptools>=77' wheel build pytest
+        run: python -m pip install 'setuptools>=77' wheel build pytest numpy
       - name: Compile Python sources
         run: python -m compileall -q src deploy tools tests
       - name: Check version, build, teacher and test-runner contracts
@@ -40,6 +40,11 @@ jobs:
           tests/test_mxfp8_input_geometry_cpu.py
           tests/test_fp8_prefill_graph_cpu.py
           tests/test_cpu_profile_entry.py
+          tests/native_mxfp6/test_benchmark.py::test_native_launcher_only_sets_runner_flag_on_vllm_033
+          tests/native_mxfp6/test_benchmark.py::test_stock_baseline_keeps_compilation_and_disables_flashinfer_ar
+          tests/native_mxfp6/test_benchmark.py::test_best_path_uses_selected_source_tree_and_cache_geometry
+          tests/native_mxfp6/test_fidelity.py::test_fidelity_passes_cache_block_size_and_runner_environment
+          tests/native_mxfp6/test_fidelity.py::test_fidelity_rejects_nonpositive_block_size
           tests/native_mxfp6/test_dense_prep_cpu.py
           tests/native_mxfp6/test_dense_prefill_cpu.py
           tests/native_mxfp6/test_dense_norm_cpu.py
@@ -49,3 +54,9 @@ jobs:
           tests/native_mxfp6/test_legacy_cpu.py
       - name: Build wheel and source distribution
         run: python -m build --no-isolation
+      - name: Run the vLLM 0.34 gated-norm tests from the source distribution
+        run: |
+          source_root=$(mktemp -d)
+          tar -xzf dist/vllm_mach-*.tar.gz -C "$source_root"
+          cd "$source_root"/vllm_mach-*
+          PYTHONPATH="$PWD/src" python -m pytest -q tests/test_mxfp8_2b_gdn_norm_tile_cpu.py

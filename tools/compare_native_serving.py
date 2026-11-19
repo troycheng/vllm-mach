@@ -73,6 +73,7 @@ def launch_configuration(a, arm):
             "--kv-cache-memory-bytes",
             "8218214400",
         ],
+        use_native_block_size=arm not in STOCK_ARMS and arm != ALIGNED_ARM,
     )
     env.update(CUDA_VISIBLE_DEVICES=a.devices, OMP_NUM_THREADS="1")
     if core_index is not None:

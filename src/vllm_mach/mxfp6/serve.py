@@ -84,11 +84,26 @@ def profile_environment(args: argparse.Namespace) -> dict[str, str]:
     return env
 
 
-def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str], dict]:
+def update_profile_environment(environment, settings):
+    """Apply native settings without retaining the removed runner selector."""
+    environment.pop("VLLM_USE_V2_MODEL_RUNNER", None)
+    environment.update(settings)
+
+
+def native_block_size(*, tensor_parallel_size: int, native_mxfp6: bool) -> int | None:
+    # Keep the native TP2 hybrid cache geometry when vLLM's default changes
+    # from 16 to 64.
+    if BASE_PACKAGES["vllm"] == "0.34.0" and native_mxfp6 and tensor_parallel_size == 2:
+        return 16
+    return None
+
+
+def build_command(
+    args: argparse.Namespace, extra: list[str], *, use_native_block_size: bool = True
+) -> tuple[list[str], dict]:
     env = dict(os.environ)
     env.pop("VLLM_MACH_MOE_HIGH_M_COMPACT", None)
-    env.pop("VLLM_USE_V2_MODEL_RUNNER", None)
-    env.update(profile_environment(args))
+    update_profile_environment(env, profile_environment(args))
     mxfp8 = _is_mxfp8(args.model)
     moe = _is_qwen35_moe(args.model)
     tp_size = _tp_size(args)
@@ -118,12 +133,13 @@ def build_command(args: argparse.Namespace, extra: list[str]) -> tuple[list[str]
         "--limit-mm-per-prompt",
         '{"image":0,"video":0}',
     ]
-    # Keep the native TP2 hybrid cache geometry when vLLM's default changes
-    # from 16 to 64. User arguments and config files can choose their own size.
-    if BASE_PACKAGES["vllm"] == "0.34.0" and not mxfp8 and tp_size == 2:
+    block_size = native_block_size(
+        tensor_parallel_size=tp_size, native_mxfp6=use_native_block_size and not mxfp8,
+    )
+    if block_size is not None:
         overrides = {option.split("=", 1)[0].replace("_", "-") for option in extra}
         if not overrides.intersection({"--block-size", "--config"}):
-            command += ["--block-size", "16"]
+            command += ["--block-size", str(block_size)]
     # MXFP8 and MoE use vLLM's default compilation and graph policy.
     # Retain the validated decode-only policy for dense MXFP6 TP2.
     if not moe and not mxfp8:

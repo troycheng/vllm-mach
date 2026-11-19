@@ -22,8 +22,9 @@ def test_package_version_matches_build_metadata():
 @pytest.mark.parametrize(
     ("installed", "expected"),
     [
-        ("0.3.1", True),
-        ("0.3.1+cu130", True),
+        ("0.3.2", True),
+        ("0.3.2+cu130", True),
+        ("0.3.1", False),
         ("0.3.0", False),
         ("0.2.1", False),
         ("0.2.2", False),

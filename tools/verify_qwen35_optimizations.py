@@ -121,9 +121,10 @@ def main():
     parser.add_argument("--output-tokens", type=int, default=32)
     parser.add_argument("--fp16-ssm", action="store_true")
     args = parser.parse_args()
-    from vllm_mach.mxfp6.serve import profile_environment
+    from vllm_mach.mxfp6.serve import profile_environment, update_profile_environment
 
-    os.environ.update(
+    update_profile_environment(
+        os.environ,
         profile_environment(
             SimpleNamespace(
                 model=args.model,
@@ -133,7 +134,7 @@ def main():
                 nvfp4_lm_head=True,
                 verify_prefill=False,
             )
-        )
+        ),
     )
     from vllm import LLM, SamplingParams
 
