@@ -46,8 +46,8 @@ RTX 5090 serving throughput in output tokens/s with 3,000 input tokens and 1,000
 
 | Model and profile | Concurrency | vLLM 0.33 | vLLM 0.34 | Change |
 |---|---:|---:|---:|---:|
-| 2B MXFP8, FP32 state | 16 | 5,147.56 | 5,079.82 | −1.32% |
-| 2B MXFP8, FP32 state | 64 | 9,713.19 | 9,700.85 | −0.13% |
+| 2B MXFP8, FP32 state | 16 | 5,157.45 | 5,161.78 | +0.08% |
+| 2B MXFP8, FP32 state | 64 | 9,840.45 | 9,865.12 | +0.25% |
 | 4B MXFP8, FP32 state | 16 | 2,684.51 | 2,777.18 | +3.45% |
 | 4B MXFP8, FP32 state | 64 | 4,796.72 | 4,933.82 | +2.86% |
 | 4B block-FP8, FP32 state | 32 | 3,008.32 | 3,064.28 | +1.86% |
@@ -55,7 +55,7 @@ RTX 5090 serving throughput in output tokens/s with 3,000 input tokens and 1,000
 | 35B-A3B MXFP6, FP16 state | 32 | 3,362.91 | 3,354.01 | −0.26% |
 | 35B-A3B MXFP6 compact, FP32 state | 128 | 4,902.56 | 4,915.76 | +0.27% |
 
-The 2B tests used the same GPU for both versions. The c16 result combines two runs per version in A/B/B/A order. The 4B MXFP8 results use the geometric mean of two 0.34 runs against the published 0.33 champion. The TP2 references use the geometric mean of two 0.33 runs.
+The 2B results use the geometric mean of two runs per version on the same GPU, in 0.33 / 0.34 / 0.34 / 0.33 order. Both versions used BF16 KV, Triton attention and the hybrid head. Each c16 run completed 160 requests and each c64 run completed 320. The 4B MXFP8 results use the geometric mean of two 0.34 runs against the published 0.33 champion. The TP2 references use the geometric mean of two 0.33 runs.
 
 With the same KV memory budget, 2B capacity increased from 1,470,223 to 1,475,584 tokens. The 4B profiles retain 878,033 tokens for MXFP8 and 508,335 for block-FP8. The TP2 profiles retain 233,472 for Dense, 743,062 for standard MoE and 941,648 for compact MoE.
 
@@ -63,7 +63,9 @@ Fixed-gold tests cover 256 queries and 10,479 token log probabilities per decode
 
 The FP32-state long-output test uses frozen BF16 token trajectories in 16-row batches. On 4B, all 190,251 gold log probabilities and top-1 IDs match the current 0.33 build. On 2B, mean per-query absolute log-probability error against BF16 changes from 0.044164 to 0.044113 across 330,328 tokens. The paired 95% bootstrap interval for the change is −0.000209 to +0.000110.
 
-[Measurements, TTFT and precision by shape](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md)
+The final 2B image uses an 8-row tile for the M16 GDN gated norm and reuses FlashInfer's compiled prefill launches for matching calls. It matched the initial 0.34 build bit for bit on 10,479 continuation log probabilities, 256 prefill log probabilities and all 512 greedy token IDs. Decode replayed the physical M16 CUDA Graph. A separate 3,000-token prompt produced the same eight greedy token IDs and exercised the prefill launch reuse.
+
+[Final 2B throughput, TTFT and precision](data/vllm034-2b-followup.json) · [Initial migration data, including the original −1.32% at c16](data/vllm034-qualification.json) · [Full vLLM 0.33 concurrency curves](performance.md)
 
 ## Install into an existing container
 
